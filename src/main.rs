@@ -78,5 +78,4 @@ fn main() {
     println!("Entropy: {}", bytes_to_binary_string(&entropy));
     println!("Checksum: {}", bytes_to_binary_string(&checksum));
     println!("final_entropy: {}", bytes_to_binary_string(&final_entropy));
-    println!("BIP39 Words: {:?}", bip39_words);
-}
+    println!("BIP39 Words: {}", bip39_words.join(" "));}
