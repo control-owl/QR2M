@@ -10,9 +10,27 @@ const ENTROPY_FILE: &str = "entropy/binary.qrn";
 const WORDLIST_FILE: &str = "lib/bip39-english.txt";
 
 
-fn generate_entropy() -> Vec<u8> {
-    let mut rng = rand::thread_rng();
-    (0..32).map(|_| rng.gen()).collect()
+fn generate_entropy_from_file(file_path: &str) -> Vec<u8> {
+    // Open the file for reading
+    let mut file = File::open(file_path).expect("Failed to open entropy file");
+
+    // Get the length of the file
+    let file_length = file.metadata().expect("Failed to get file metadata").len();
+    println!("file_length: {}", file_length);
+
+    // Choose a random start point in the file
+    let start_position: u64 = rand::thread_rng().gen_range(0..file_length);
+    println!("start_position: {}", start_position);
+
+    // Seek to the chosen start position
+    file.seek(SeekFrom::Start(start_position)).expect("Failed to seek in entropy file");
+
+    // Read 32 bytes from the file directly into a vector
+    let mut entropy_bytes = vec![0; 32];
+    file.read_exact(&mut entropy_bytes).expect("Failed to read entropy from file");
+
+
+    entropy_bytes
 }
 
 fn calculate_checksum(entropy: &[u8]) -> Vec<u8> {
@@ -67,7 +85,7 @@ fn decimal_words<'a>(final_entropy: &'a [u8], wordlist: &'a Vec<String>) -> Vec<
 
 
 fn main() {
-    let entropy = generate_entropy();
+    let entropy = generate_entropy_from_file(ENTROPY_FILE);
     let checksum = calculate_checksum(&entropy);
     let final_entropy: Vec<u8> = entropy.iter().cloned().chain(checksum.iter().cloned()).collect();
 
@@ -75,7 +93,7 @@ fn main() {
 
     let bip39_words = decimal_words(&final_entropy, &wordlist);
 
-    println!("Entropy: {}", bytes_to_binary_string(&entropy));
+    println!("Entropy: {:?}", bytes_to_binary_string(&entropy));
     println!("Checksum: {}", bytes_to_binary_string(&checksum));
     println!("final_entropy: {}", bytes_to_binary_string(&final_entropy));
     println!("BIP39 Words: {}", bip39_words.join(" "));}
