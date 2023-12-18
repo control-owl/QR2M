@@ -1,99 +1,73 @@
-extern crate rand;
-extern crate sha2;
-
 use rand::Rng;
 use sha2::{Digest, Sha256};
-use std::fs::{self, File};
 use std::io::{self, Read, Seek, SeekFrom};
+use std::fs::File;
 
 const ENTROPY_FILE: &str = "entropy/binary.qrn";
-const WORDLIST_FILE: &str = "lib/bip39-english.txt";
 
+fn generate_entropy_from_file(file_path: &str) -> Result<Vec<u8>, io::Error> {
+    // Open the file
+    let file = File::open(file_path)?;
+    let mut reader = io::BufReader::new(file);
 
-fn generate_entropy_from_file(file_path: &str) -> Vec<u8> {
-    // Open the file for reading
-    let mut file = File::open(file_path).expect("Failed to open entropy file");
+    // Set a random start point
+    let mut rng = rand::thread_rng();
+    let start_point: usize = rng.gen_range(0..256);
+    println!("Random Start Point: {}", start_point);
 
-    // Get the length of the file
-    let file_length = file.metadata().expect("Failed to get file metadata").len();
-    println!("file_length: {}", file_length);
+    // Seek to the random start point
+    reader.seek(io::SeekFrom::Start(start_point as u64))?;
 
-    // Choose a random start point in the file
-    let start_position: u64 = rand::thread_rng().gen_range(0..file_length);
-    println!("start_position: {}", start_position);
+    // Read only 256 characters into a string called entropy_ascii
+    let mut entropy_ascii = String::new();
+    reader.take(256).read_to_string(&mut entropy_ascii)?;
 
-    // Seek to the chosen start position
-    file.seek(SeekFrom::Start(start_position)).expect("Failed to seek in entropy file");
-
-    // Read 32 bytes from the file directly into a vector
-    let mut entropy_bytes = vec![0; 32];
-    file.read_exact(&mut entropy_bytes).expect("Failed to read entropy from file");
-
-
-    entropy_bytes
-}
-
-fn calculate_checksum(entropy: &[u8]) -> Vec<u8> {
-    let hash = Sha256::digest(entropy);
-
-    // Take 1 bit of the hash for every 32 bits of entropy
-    let num_bits = entropy.len() * 8;
-    let num_bits_to_take = num_bits / 32;
-
-    // Extract the relevant bits from the hash
-    let checksum: Vec<u8> = hash
-        .iter()
-        .take(num_bits_to_take)
-        .enumerate()
-        .filter_map(|(i, &byte)| if i % 8 == 0 { Some(byte) } else { None })
-        .collect();
-
-    checksum
-}
-
-fn bytes_to_binary_string(data: &[u8]) -> String {
-    data.iter().map(|&byte| format!("{:08b}", byte)).collect()
-}
-
-fn binary_string_to_decimal(binary_string: &str) -> u64 {
-    u64::from_str_radix(binary_string, 2).unwrap()
-}
-
-fn decimal_words_to_bip39(decimal_value: u64, wordlist: &Vec<String>) -> &str {
-    &wordlist[decimal_value as usize]
-}
-
-fn read_wordlist_from_file(file_path: &str) -> Vec<String> {
-    fs::read_to_string(file_path)
-        .expect("Failed to read wordlist file")
-        .lines()
-        .map(String::from)
-        .collect()
-}
-
-fn decimal_words<'a>(final_entropy: &'a [u8], wordlist: &'a Vec<String>) -> Vec<&'a str> {
-    bytes_to_binary_string(final_entropy)
+    // Convert the binary string to a Vec<u8>
+    let byte_vec: Vec<u8> = entropy_ascii
         .chars()
         .collect::<Vec<char>>()
-        .chunks(11)
-        .map(|chunk| {
-            let decimal_value = binary_string_to_decimal(&chunk.iter().collect::<String>());
-            decimal_words_to_bip39(decimal_value, wordlist)
-        })
-        .collect()
+        .chunks(8)
+        .map(|chunk| chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - '0' as u8)))
+        .collect();
+    
+    println!("Entropy ASCII: {}", entropy_ascii);
+    println!("Entropy Bytes: {:?}", byte_vec);
+
+    Ok(byte_vec)
 }
 
+fn entropy_checksum(entropy_ascii: Vec<u8>) -> Result<String, io::Error> {
+    // Calculate SHA256 hash of entropy_ascii directly
+    let hash = Sha256::digest(&entropy_ascii);
+    println!("Hash: {:?}", hash);
 
-fn main() {
-    let entropy = generate_entropy_from_file(ENTROPY_FILE);
-    let checksum = calculate_checksum(&entropy);
-    let final_entropy: Vec<u8> = entropy.iter().cloned().chain(checksum.iter().cloned()).collect();
+    // Convert the entire hash to UTF-8 format
+    let hash_utf8: String = hash.iter().map(|byte| format!("{:02x}", byte)).collect();
+    println!("Hash in UTF-8 format: {}", hash_utf8);
+    
+    // Convert the entire hash to ASCII format using '1' and '0'
+    let hash_ascii: String = hash
+        .iter()
+        .flat_map(|byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+        .collect();
+    println!("Hash in ASCII format: {}", hash_ascii);
 
-    let wordlist = read_wordlist_from_file(WORDLIST_FILE);
+    // Take the first 8 bits of the hash and convert each bit to ASCII
+    let ascii_chars: String = hash_ascii.chars().take(8).collect();
+    println!("First 8 bits in ASCII format: {}", ascii_chars);
 
-    let bip39_words = decimal_words(&final_entropy, &wordlist);
+    Ok(ascii_chars)
+}
 
-    println!("Entropy: {:?}", bytes_to_binary_string(&entropy));
-    println!("Checksum: {}", bytes_to_binary_string(&checksum));
-    println!("final_entropy: {}", bytes_to_binary_string(&final_entropy));
-    println!("BIP39 Words: {}", bip39_words.join(" "));}
+fn main() -> Result<(), io::Error> {
+    // Example usage
+    let entropy = generate_entropy_from_file(ENTROPY_FILE)?;
+
+    println!("Entropy: {:?}", entropy);
+
+    let checksum = entropy_checksum(entropy)?;
+
+    println!("Checksum: {:?}", checksum);
+
+    Ok(())
+}
