@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256};
 use std::io::{self, Read, Seek, SeekFrom};
 use std::fs::File;
 use std::fs;
+
 const ENTROPY_FILE: &str = "entropy/binary.qrn";
 const WORDLIST_FILE: &str = "lib/bip39-english.txt";
 
@@ -79,7 +80,6 @@ fn calculate_checksum(entropy_ascii: &Vec<u8>) -> Result<String, io::Error> {
     Ok(checksum_ascii)
 }
 
-
 fn get_full_entropy(entropy: &Vec<u8>, checksum_ascii: &String) -> Result<String, io::Error> {
     println!("----------[Final Entropy]----------");
 
@@ -125,4 +125,7 @@ fn get_mnemonic_from_full_entropy(final_entropy_ascii: &str) -> Result<(), io::E
     println!("Mnemonic words: {:?}", mnemonic_words.join(" "));
 
     Ok(())
+
 }
+
+// WORKING
