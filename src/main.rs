@@ -1,13 +1,54 @@
+#![allow(non_snake_case)]
+
 use rand::Rng;
 use sha2::{Digest, Sha256};
-use std::io::{self, Read, Seek, SeekFrom};
-use std::fs::File;
-use std::fs;
+use std::io::{self, Read, Seek};
+use std::fs::{self, File};
+use std::{error, fmt};
 
+
+// 
+// Extra error handling
+// 
+#[derive(Debug)]
+struct ErrorHandler {
+    message: String,
+}
+
+impl ErrorHandler {
+    fn new(message: &str) -> Self {
+        ErrorHandler {
+            message: message.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for ErrorHandler {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl error::Error for ErrorHandler {}
+
+impl From<io::Error> for ErrorHandler {
+    fn from(error: io::Error) -> Self {
+        ErrorHandler::new(&format!("IO Error: {}", error))
+    }
+}
+
+
+// 
+// Global variables
+// 
 const ENTROPY_FILE: &str = "entropy/binary.qrn";
 const WORDLIST_FILE: &str = "lib/bip39-english.txt";
 
-fn main() -> Result<(), io::Error> {
+
+// 
+// Main code
+// 
+fn main() -> Result<(), ErrorHandler> {
     let entropy = select_entropy_from_file(ENTROPY_FILE)?;
     let checksum = calculate_checksum(&entropy)?;
 
@@ -17,7 +58,7 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
-fn select_entropy_from_file(file_path: &str) -> Result<Vec<u8>, io::Error> {
+fn select_entropy_from_file(file_path: &str) -> Result<Vec<u8>, ErrorHandler> {
     println!("----------[Entropy]----------");
     
     // Open the entropy file
@@ -54,7 +95,7 @@ fn select_entropy_from_file(file_path: &str) -> Result<Vec<u8>, io::Error> {
     Ok(byte_vec)
 }
 
-fn calculate_checksum(entropy_ascii: &Vec<u8>) -> Result<String, io::Error> {
+fn calculate_checksum(entropy_ascii: &Vec<u8>) -> Result<String, ErrorHandler> {
     println!("----------[Checksum]----------");
 
     // Calculate SHA256 hash of entropy_ascii directly
@@ -80,7 +121,7 @@ fn calculate_checksum(entropy_ascii: &Vec<u8>) -> Result<String, io::Error> {
     Ok(checksum_ascii)
 }
 
-fn get_full_entropy(entropy: &Vec<u8>, checksum_ascii: &String) -> Result<String, io::Error> {
+fn get_full_entropy(entropy: &Vec<u8>, checksum_ascii: &String) -> Result<String, ErrorHandler> {
     println!("----------[Final Entropy]----------");
 
     // Convert the entire entropy to ASCII format using '1' and '0'
@@ -97,7 +138,7 @@ fn get_full_entropy(entropy: &Vec<u8>, checksum_ascii: &String) -> Result<String
     Ok(final_entropy_ascii)
 }
 
-fn get_mnemonic_from_full_entropy(final_entropy_ascii: &str) -> Result<(), io::Error> {
+fn get_mnemonic_from_full_entropy(final_entropy_ascii: &str) -> Result<(), ErrorHandler> {
     println!("----------[Mnemonic]----------");
 
     // Split the final entropy into groups of 11 bits
