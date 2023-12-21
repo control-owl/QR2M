@@ -16,9 +16,11 @@ Beta
 - [x] Hash it and calculate a checksum
 - [x] Concenate it as a entropy
 - [x] Convert entropy to mnemonic words
-- [ ] Calculate BIP32 Root Key
+- [x] BIP39 Seed
+    - [ ] Add user input as seed password
+- [ ] BIP32 Root Key (XPriv)
 - [ ] Derivation paths
-- [ ] Show address
+- [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
 - [ ] Show private key
 - [ ] replace select_entropy_from_file with get_entropy_from_qrng
 
