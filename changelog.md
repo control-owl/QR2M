@@ -1,6 +1,7 @@
 # version 0.1.1
 - ascii art (program description)
 - add program argument: debugging
+- add program argument: mnemonic password
 - add new file: converter.rs
 
 # version 0.1.0

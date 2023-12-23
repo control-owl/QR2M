@@ -3,7 +3,7 @@
 // Crates
 use rand::Rng;
 use sha2::{Digest, Sha256};
-use std::{env, io::{self, Read, Seek}, fs::{self, File}};
+use std::{io::{self, Read, Seek}, fs::{self, File}};
 use bip39;
 use hex;
 
@@ -20,6 +20,9 @@ struct Cli {
 
     #[structopt(short = "d", long = "debug")]
     debug: bool,
+
+    #[structopt(short = "p", long = "password", default_value = "")]
+    password: String,
 }
 
 
@@ -71,7 +74,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let _mnemonic_words = get_mnemonic_from_full_entropy(&full_entropy)?;
 
-    let _seed = create_bip39_seed(&entropy, "");
+    let _seed = create_bip39_seed(&entropy, &cli_args.password);
 
     Ok(())
 }

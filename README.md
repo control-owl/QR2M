@@ -8,7 +8,7 @@
 ╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
  ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
 Quantum Random Rust Mnemonic (0.1.1)
-control owl <qr2m[at]r-o0-t[dot]wtf>
+Control Owl <qr2m[at]r-o0-t[dot]wtf>
 ```
 
 ## Abstract
@@ -20,6 +20,38 @@ This departure from traditional pseudorandom number generators (PRNG) addresses 
 ## Still writing and testing
 
 Beta. This is my first Rust program.
+
+## Arguments
+
+### `-e, --esize`
+
+The argument sets the bit size of the entropy employed by the program.
+
+Allowed values: 128, 192, 256, 320, 384, 448, 512
+
+```rust
+./qr2m -e 256
+```
+---
+
+### `-d, --debug`
+
+Enabling debugging mode provides additional information and logs to assist in diagnosing issues or understanding the program's internal workings.
+
+```rust
+./qr2m -d
+```
+---
+
+### `-p, --password`
+
+Adds additional layer of security by specifying a passphrase. This passphrase is used in combination with the mnemonic or seed phrase to derive cryptographic keys for the wallet.The length of a BIP39 passphrase is not explicitly defined in the BIP39 standard itself. Instead, the length of the passphrase is typically determined by the implementation of the wallet or software that supports BIP39.
+ 
+
+```rust
+./qr2m -p Passw0rd1234
+```
+---
 
 ## Steps
 
