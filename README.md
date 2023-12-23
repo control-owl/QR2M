@@ -60,7 +60,7 @@ Adds additional layer of security by specifying a passphrase. This passphrase is
 - [x] Concenate it as a entropy
 - [x] Convert entropy to mnemonic words
 - [x] BIP39 Seed
-    - [ ] Add user input as seed password
+    - [x] Add user input as seed password
 - [ ] BIP32 Root Key (XPriv)
 - [ ] Derivation paths
 - [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
