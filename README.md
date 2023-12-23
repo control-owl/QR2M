@@ -1,5 +1,16 @@
 # Quantum Random Rust Mnemonic (QRRM)
 
+```
+ ██████╗ ██████╗ ██████╗ ███╗   ███╗
+██╔═══██╗██╔══██╗╚════██╗████╗ ████║
+██║   ██║██████╔╝ █████╔╝██╔████╔██║
+██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║
+╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
+ ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
+Quantum Random Rust Mnemonic (0.1.1)
+control owl <qr2m[at]r-o0-t[dot]wtf>
+```
+
 ## Abstract
 
 This application pioneers the integration of quantum random number generation (QRNG) into cryptocurrency wallet creation, redefining security standards. By harnessing quantum technology, the application ensures private keys are generated with unparalleled unpredictability.
@@ -8,7 +19,7 @@ This departure from traditional pseudorandom number generators (PRNG) addresses 
 
 ## Still writing and testing
 
-Beta
+Beta. This is my first Rust program.
 
 ## Steps
 

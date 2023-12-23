@@ -1,84 +1,93 @@
 #![allow(non_snake_case)]
 
-// Default
+// Crates
 use rand::Rng;
 use sha2::{Digest, Sha256};
-use std::io::{self, Read, Seek};
-use std::fs::{self, File};
+use std::{env, io::{self, Read, Seek}, fs::{self, File}};
 use bip39;
 use hex;
 
-// Testing
+mod converter;
+use converter::{convert_binary_to_string, convert_string_to_binary};
+
+
+// Arguments
 use structopt::StructOpt;
 #[derive(StructOpt)]
 struct Cli {
-    #[structopt(short = "e", long = "entropy_length", default_value = "256")]
+    #[structopt(short = "e", long = "esize", default_value = "256")]
     entropy_length: usize,
+
+    #[structopt(short = "d", long = "debug")]
+    debug: bool,
 }
+
+
+// Debugging
+macro_rules! D3BUG {
+    ($($arg:tt)*) => (
+        if Cli::from_args().debug {
+            println!($($arg)*);
+        }
+    );
+}
+
 
 // Global variables
 const ENTROPY_FILE: &str = "entropy/binary.qrn";
 const WORDLIST_FILE: &str = "lib/bip39-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 7] = [128, 192, 256, 320, 384, 448, 512];
 
-// 
-// Main code
-// 
+
+fn print_program_info() {
+    let description = option_env!("CARGO_PKG_DESCRIPTION").unwrap_or_default();
+    let version = option_env!("CARGO_PKG_VERSION").unwrap_or_default();
+    let authors = option_env!("CARGO_PKG_AUTHORS").unwrap_or_default();
+    
+    
+    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
+    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
+    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
+    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
+    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
+    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
+    println!("{} ({})\n{}\n", description, version, authors);
+}
+
 fn main() -> Result<(), std::io::Error> {
-    println!("\n-----------------------------");
-    println!("------------[QR2M]-----------");
-    println!("-----------------------------\n");
+    print_program_info();
 
     // Parse command-line arguments
-    let args = Cli::from_args();
-
+    let cli_args = Cli::from_args();
+    
     // Check if the provided entropy length is valid
-    let entropy_length = check_entropy_length(args.entropy_length.try_into().unwrap())?;
-    let entropy = select_entropy_from_file(ENTROPY_FILE, args.entropy_length)?;
+    let entropy_length = check_entropy_length(cli_args.entropy_length.try_into().unwrap())?;
+    let entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length)?;
 
-    // let checksum_lenght = calculate_checksum_length(args.entropy_length.try_into().unwrap())?;
-    let checksum = calculate_checksum(&entropy, entropy_length)?;
+    // let checksum_lenght = calculate_checksum_length(cli_args.entropy_length);
+    let checksum = calculate_checksum(&entropy, &entropy_length)?;
+    
+    let full_entropy = get_full_entropy(&entropy, &checksum)?;
 
-
-    let entropy_final = get_full_entropy(&entropy, &checksum)?;
-    let _mnemonic_words = get_mnemonic_from_full_entropy(&entropy_final)?;
+    let _mnemonic_words = get_mnemonic_from_full_entropy(&full_entropy)?;
 
     let _seed = create_bip39_seed(&entropy, "");
 
     Ok(())
 }
 
-fn convert_binary_to_string(binary: &[u8]) -> String {
-    binary
-        .iter()
-        .flat_map(|byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
-        .collect()
-}
+fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, std::io::Error> {
+    D3BUG!("----------[Entropy]----------");
 
-fn convert_string_to_binary(input_string: &str) -> Vec<u8> {
-    input_string
-        .chars()
-        .collect::<Vec<char>>()
-        .chunks(8)
-        .map(|chunk| {
-            chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - '0' as u8))
-        })
-        .collect()
-}
-
-fn select_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Vec<u8>, std::io::Error> {
-    println!("----------[Entropy]----------");
-
-    println!("Entropy length: {:?}", entropy_length);
     // Open the entropy file
     let file = File::open(file_path)?;
     let mut reader = io::BufReader::new(file);
-    println!("Entropy file: {:?}", file_path);
-
+    D3BUG!("Entropy file: {:?}", file_path);
+    
     // Get the file length
     let file_length = reader.seek(io::SeekFrom::End(0))?;
-    println!("Entropy file length: {:?}", file_length);
-
+    D3BUG!("Entropy file length: {:?}", file_length);
+    
     // Check if file_length is less than entropy_length
     if file_length < entropy_length as u64 {
         return Err(std::io::Error::new(
@@ -87,91 +96,55 @@ fn select_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Ve
         ));
     }
 
-    // Adjust the range based on file length
+    // Randomize reading start point
     let start_point: u64 = if file_length > entropy_length as u64 {
         let max_start = file_length.saturating_sub(entropy_length as u64);
         rand::thread_rng().gen_range(0..max_start)
     } else {
         0
     };
-
-    println!("Random start point: {:?}", start_point);
-
-    // Seek to the random start point
     reader.seek(io::SeekFrom::Start(start_point))?;
+    D3BUG!("Random start point: {:?}", start_point);
 
-    // Read only entropy_length characters
+    // Read entropy from file
     let mut entropy_raw_binary = String::new();
     reader.take(entropy_length as u64).read_to_string(&mut entropy_raw_binary)?;
-    println!("Entropy raw binary: {:?}", entropy_raw_binary);
+    println!("Entropy: {:?}", entropy_raw_binary);
 
-    // Convert the binary string to a Vec<u8>
-    let entropy_binary: Vec<u8> = convert_string_to_binary(&entropy_raw_binary);
-    println!("Entropy binary: {:?}", entropy_binary);
-
-    Ok(entropy_binary)
+    Ok(entropy_raw_binary)
 }
 
-fn calculate_checksum(entropy_binary: &Vec<u8>, entropy_length: u32) -> Result<Vec<u8>, std::io::Error> {
-    println!("----------[Checksum]----------");
+fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, std::io::Error> {
+    D3BUG!("----------[Checksum]----------");
 
-    // Calculate SHA256 hash of entropy_binary directly
-    let hash = Sha256::digest(&entropy_binary);
-    println!("Entropy binary sha256 hash: {:?}", hash);
-    
-    // Convert the entire hash to string using '1' and '0'
-    let hash_raw_binary: String = hash
-        .iter()
-        .flat_map(|byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
-        .collect();
-    println!("Entropy hash raw binary: {:?}", hash_raw_binary);
+    let entropy_binary = convert_string_to_binary(&entropy);
+    let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
+    D3BUG!("sha256(entropy): {:?}", hash_raw_binary);
 
-    // let length = checksum_length.try_into().unwrap();
     let checksum_lenght = entropy_length / 32;
-    println!("Checksum length: {:?}", checksum_lenght);
+    D3BUG!("Checksum length: {:?}", checksum_lenght);
 
-    // Problem if chacksum is lower then 8 character
-    // remove vector and format all to string
-    // show vectors only whe needed
     // Take 1 bit for every 32 bits of the hash 
     let checksum_raw_binary: String = hash_raw_binary.chars().take(checksum_lenght.try_into().unwrap()).collect();
-    println!("Checksum raw binary: {:?}", checksum_raw_binary);
+    println!("Checksum: {:?}", checksum_raw_binary);
 
-    let checksum_binary: Vec<u8> = convert_string_to_binary(&checksum_raw_binary);
-    println!("checksum_binary: {:?}", checksum_binary);
-
-
-    Ok(checksum_binary)
+    Ok(checksum_raw_binary)
 }
 
-fn get_full_entropy(entropy: &Vec<u8>, checksum: &Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
-    println!("----------[Final Entropy]----------");
+fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, std::io::Error> {
+    D3BUG!("----------[Final Entropy]----------");
 
-    // Concatenate entropy and checksum
-    let mut final_entropy_binary = Vec::with_capacity(entropy.len() + checksum.len());
-    final_entropy_binary.extend_from_slice(entropy);
-    final_entropy_binary.extend_from_slice(checksum);
-    println!("Final entropy binary: {:?}", final_entropy_binary);
-    
-    // Display vector size in bits
-    let vector_size_bits = final_entropy_binary.len() * 8;
-    println!("Final entropy binary size: {:?} bits", vector_size_bits);
+    let full_entropy = format!("{}{}", entropy, checksum);
+    D3BUG!("Final entropy: {:?}", full_entropy);
 
-    // Convert the entire entropy to raw format using '1' and '0'
-    let final_entropy_raw: String = convert_binary_to_string(&final_entropy_binary);
-    println!("Final entropy raw: {:?}", final_entropy_raw);
-
-
-    Ok(final_entropy_binary)
+    Ok(full_entropy)
 }
 
-fn get_mnemonic_from_full_entropy(final_entropy_binary: &Vec<u8>) -> Result<String, std::io::Error> {
-    println!("----------[Mnemonic]----------");
-
-    let final_entropy_raw: String = convert_binary_to_string(&final_entropy_binary);
+fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<String, std::io::Error> {
+    D3BUG!("----------[Mnemonic]----------");
 
     // Split the final entropy into groups of 11 bits
-    let chunks: Vec<String> = final_entropy_raw.chars().collect::<Vec<char>>().chunks(11).map(|chunk| chunk.iter().collect()).collect();
+    let chunks: Vec<String> = final_entropy_binary.chars().collect::<Vec<char>>().chunks(11).map(|chunk| chunk.iter().collect()).collect();
 
     // Convert each chunk to decimal numbers
     let mnemonic_decimal: Vec<u32> = chunks.iter().map(|chunk| u32::from_str_radix(chunk, 2).unwrap()).collect();
@@ -190,10 +163,9 @@ fn get_mnemonic_from_full_entropy(final_entropy_binary: &Vec<u8>) -> Result<Stri
             "INVALID_WORD"
         }
     }).collect();
+    D3BUG!("Mnemonic numbers: {:?}", mnemonic_decimal);
 
     let final_mnemonic = mnemonic_words.join(" ");
-
-    println!("Mnemonic numbers: {:?}", mnemonic_decimal);
     println!("Mnemonic words: {:?}", final_mnemonic);
     
 
@@ -201,9 +173,12 @@ fn get_mnemonic_from_full_entropy(final_entropy_binary: &Vec<u8>) -> Result<Stri
 
 }
 
-fn create_bip39_seed(entropy: &Vec<u8>, passphrase: &str) -> Result<String, bip39::Error> {
+fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, bip39::Error> {
+    D3BUG!("----------[Seed]----------");
+
     // Parse the mnemonic phrase
-    let mnemonic_result = bip39::Mnemonic::from_entropy(&entropy);
+    let entropy_vector = convert_string_to_binary(&entropy);
+    let mnemonic_result = bip39::Mnemonic::from_entropy(&entropy_vector);
     
     // Check if the conversion was successful
     let mnemonic = mnemonic_result?;
@@ -214,14 +189,10 @@ fn create_bip39_seed(entropy: &Vec<u8>, passphrase: &str) -> Result<String, bip3
     // Convert the seed to hexadecimal
     let seed_hex = hex::encode(&seed[..]);
     println!("BIP39 Seed: {:?}", seed_hex);
+
     Ok(seed_hex)
 }
 
-// WORKING until here
-
-// Testing ...
-
-// Function to check if the provided entropy length is valid
 fn check_entropy_length(entropy_length: u32) -> Result<u32, std::io::Error> {
     if !VALID_ENTROPY_LENGTHS.contains(&entropy_length) {
         eprintln!("Error: Invalid entropy_length. Allowed values are: {:?}", VALID_ENTROPY_LENGTHS);

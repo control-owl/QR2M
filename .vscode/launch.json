@@ -19,7 +19,8 @@
                     "kind": "bin"
                 }
             },
-            // "args": ["-e", "128"],
+            "args": ["-e", "256"],
+            // "args": ["-e", "128", "--debug"],
             "cwd": "${workspaceFolder}"
         },
         {
