@@ -3,29 +3,21 @@
 // Crates
 use std::{io::{self, Read, Seek}, fs::{self, File}};
 use structopt::StructOpt;
-use thiserror::Error;
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use bip39;
 use hex;
 
+// Project files
 mod converter;
+mod debugger;
 use converter::{convert_binary_to_string, convert_string_to_binary, convert_hex_to_binary};
+
 
 // Global variables
 const ENTROPY_FILE: &str = "entropy/binary.qrn";
 const WORDLIST_FILE: &str = "lib/bip39-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-
-// Error handler
-#[derive(Debug, Error)]
-pub enum ErrorHandler {
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("Bip39 error: {0}")]
-    Bip39Error(#[from] bip39::Error),
-}
 
 // Debugging log
 macro_rules! D3BUG {
@@ -64,7 +56,7 @@ fn print_program_info() {
     println!("{} ({})\n{}\n", description, version, authors);
 }
 
-fn main() -> Result<(), ErrorHandler> {
+fn main() -> Result<(), debugger::ErrorHandler> {
     print_program_info();
 
     // Parse command-line arguments
@@ -84,10 +76,11 @@ fn main() -> Result<(), ErrorHandler> {
     let seed = create_bip39_seed(&entropy, &cli_args.password)?;
 
     let _master_key = create_master_private_key(&seed)?;
+    
     Ok(())
 }
 
-fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, ErrorHandler> {
+fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, debugger::ErrorHandler> {
     D3BUG!("----------[Entropy]----------");
 
     // Open the entropy file
@@ -100,9 +93,9 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     D3BUG!("Entropy file length: \"{:?}\"", file_length);
     
     // Check if file_length is less than entropy_length
-    // if file_length < entropy_length as u64 {
-    //     return Err("Entropy file too small, or empty");
-    // }
+    if file_length < entropy_length as u64 {
+        return Err(debugger::ErrorHandler::custom("error message bla bla"));
+    }
 
     // Randomize reading start point
     let start_point: u64 = if file_length > entropy_length as u64 {
@@ -122,7 +115,7 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     Ok(entropy_raw_binary)
 }
 
-fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, ErrorHandler> {
+fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, debugger::ErrorHandler> {
     D3BUG!("----------[Checksum]----------");
 
     let entropy_binary = convert_string_to_binary(&entropy);
@@ -139,7 +132,7 @@ fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, 
     Ok(checksum_raw_binary)
 }
 
-fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, ErrorHandler> {
+fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, debugger::ErrorHandler> {
     D3BUG!("----------[Final Entropy]----------");
 
     let full_entropy = format!("{}{}", entropy, checksum);
@@ -148,7 +141,7 @@ fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, Error
     Ok(full_entropy)
 }
 
-fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<String, ErrorHandler> {
+fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<String, debugger::ErrorHandler> {
     D3BUG!("----------[Mnemonic]----------");
 
     // Split the final entropy into groups of 11 bits
@@ -181,7 +174,7 @@ fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<Strin
 
 }
 
-fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, ErrorHandler> {
+fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, debugger::ErrorHandler> {
     D3BUG!("----------[Seed]----------");
 
     // Parse the mnemonic phrase
@@ -201,7 +194,7 @@ fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, Error
     Ok(seed_hex)
 }
 
-fn check_entropy_length(entropy_length: u32) -> Result<u32, ErrorHandler> {
+fn check_entropy_length(entropy_length: u32) -> Result<u32, debugger::ErrorHandler> {
     if !VALID_ENTROPY_LENGTHS.contains(&entropy_length) {
         eprintln!("Error: Invalid entropy_length. Allowed values are: {:?}", VALID_ENTROPY_LENGTHS);
         std::process::exit(2); // or any other non-zero exit code
@@ -210,7 +203,7 @@ fn check_entropy_length(entropy_length: u32) -> Result<u32, ErrorHandler> {
     Ok(entropy_length)
 }
 
-fn create_master_private_key(seed_hex: &str) -> Result<String, ErrorHandler> {
+fn create_master_private_key(seed_hex: &str) -> Result<String, debugger::ErrorHandler> {
 
     // Convert hex seed to binary
     let seed = convert_hex_to_binary(seed_hex);
