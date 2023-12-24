@@ -6,13 +6,13 @@ use sha2::{Digest, Sha256};
 use std::{io::{self, Read, Seek}, fs::{self, File}};
 use bip39;
 use hex;
+use structopt::StructOpt;
 
 mod converter;
 use converter::{convert_binary_to_string, convert_string_to_binary};
 
 
 // Arguments
-use structopt::StructOpt;
 #[derive(StructOpt)]
 struct Cli {
     #[structopt(short = "e", long = "esize", default_value = "256")]
@@ -39,7 +39,7 @@ macro_rules! D3BUG {
 // Global variables
 const ENTROPY_FILE: &str = "entropy/binary.qrn";
 const WORDLIST_FILE: &str = "lib/bip39-english.txt";
-const VALID_ENTROPY_LENGTHS: [u32; 7] = [128, 192, 256, 320, 384, 448, 512];
+const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 
 
 fn print_program_info() {

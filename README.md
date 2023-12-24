@@ -27,7 +27,9 @@ Beta. This is my first Rust program.
 
 The argument sets the bit size of the entropy employed by the program.
 
-Allowed values: 128, 192, 256, 320, 384, 448, 512
+> Default value: 256
+
+> Allowed values: 128, 160, 192, 224 and 256
 
 ```rust
 ./qr2m -e 256
@@ -38,6 +40,11 @@ Allowed values: 128, 192, 256, 320, 384, 448, 512
 
 Enabling debugging mode provides additional information and logs to assist in diagnosing issues or understanding the program's internal workings.
 
+> Default value: false
+
+> Allowed value: true, false
+
+
 ```rust
 ./qr2m -d
 ```
@@ -47,23 +54,13 @@ Enabling debugging mode provides additional information and logs to assist in di
 
 Adds additional layer of security by specifying a passphrase. This passphrase is used in combination with the mnemonic or seed phrase to derive cryptographic keys for the wallet.The length of a BIP39 passphrase is not explicitly defined in the BIP39 standard itself. Instead, the length of the passphrase is typically determined by the implementation of the wallet or software that supports BIP39.
  
+> Default value: ""
+
+> Allowed values: UTF-8
 
 ```rust
 ./qr2m -p Passw0rd1234
 ```
 ---
 
-## Steps
-
-- [x] Read 256 characters from a file
-- [x] Hash it and calculate a checksum
-- [x] Concenate it as a entropy
-- [x] Convert entropy to mnemonic words
-- [x] BIP39 Seed
-    - [x] Add user input as seed password
-- [ ] BIP32 Root Key (XPriv)
-- [ ] Derivation paths
-- [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
-- [ ] Show private key
-- [ ] replace select_entropy_from_file with get_entropy_from_qrng
 
