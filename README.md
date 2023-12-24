@@ -1,4 +1,4 @@
-# Quantum Random Rust Mnemonic (QRRM)
+# Quantum Random Rust Mnemonic (QR2M)
 
 ```
  ██████╗ ██████╗ ██████╗ ███╗   ███╗
