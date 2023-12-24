@@ -38,11 +38,9 @@ The argument sets the bit size of the entropy employed by the program.
 
 ### `-d, --debug`
 
-Enabling debugging mode provides additional information and logs to assist in diagnosing issues or understanding the program's internal workings.
+Enable debugging mode to provide additional information and logs to assist in diagnosing issues or understanding the program's internal workings.
 
-> Default value: false
-
-> Allowed value: true, false
+> Default value: disabled
 
 
 ```rust
