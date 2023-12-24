@@ -8,7 +8,7 @@
 - [x] Convert entropy to mnemonic words
 - [x] BIP39 Seed
     - [x] Add user input as seed password
-- [ ] BIP32 Root Key (XPriv)
+- [x] BIP32 Root Key (XPriv)
 - [ ] Derivation paths
 - [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
 - [ ] Show private key

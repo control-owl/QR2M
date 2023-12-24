@@ -21,7 +21,7 @@
             },
             // "args": ["-e", "256"],
             // "args": ["-e", "128", "--debug"],
-            "args": ["-e", "256", "--debug", "-p", "123"],
+            "args": ["-e", "256", "--debug", "-p", "qr2m"],
             "cwd": "${workspaceFolder}"
         },
         {

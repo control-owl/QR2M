@@ -1,18 +1,42 @@
 #![allow(non_snake_case)]
 
 // Crates
+use std::{io::{self, Read, Seek}, fs::{self, File}};
+use structopt::StructOpt;
+use thiserror::Error;
 use rand::Rng;
 use sha2::{Digest, Sha256};
-use std::{io::{self, Read, Seek}, fs::{self, File}};
 use bip39;
 use hex;
-use structopt::StructOpt;
 
 mod converter;
-use converter::{convert_binary_to_string, convert_string_to_binary};
+use converter::{convert_binary_to_string, convert_string_to_binary, convert_hex_to_binary};
 
+// Global variables
+const ENTROPY_FILE: &str = "entropy/binary.qrn";
+const WORDLIST_FILE: &str = "lib/bip39-english.txt";
+const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 
-// Arguments
+// Error handler
+#[derive(Debug, Error)]
+pub enum ErrorHandler {
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("Bip39 error: {0}")]
+    Bip39Error(#[from] bip39::Error),
+}
+
+// Debugging log
+macro_rules! D3BUG {
+    ($($arg:tt)*) => (
+        if Cli::from_args().debug {
+            println!($($arg)*);
+        }
+    );
+}
+
+// Program Arguments
 #[derive(StructOpt)]
 struct Cli {
     #[structopt(short = "e", long = "esize", default_value = "256")]
@@ -24,23 +48,6 @@ struct Cli {
     #[structopt(short = "p", long = "password", default_value = "")]
     password: String,
 }
-
-
-// Debugging
-macro_rules! D3BUG {
-    ($($arg:tt)*) => (
-        if Cli::from_args().debug {
-            println!($($arg)*);
-        }
-    );
-}
-
-
-// Global variables
-const ENTROPY_FILE: &str = "entropy/binary.qrn";
-const WORDLIST_FILE: &str = "lib/bip39-english.txt";
-const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-
 
 fn print_program_info() {
     let description = option_env!("CARGO_PKG_DESCRIPTION").unwrap_or_default();
@@ -57,7 +64,7 @@ fn print_program_info() {
     println!("{} ({})\n{}\n", description, version, authors);
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), ErrorHandler> {
     print_program_info();
 
     // Parse command-line arguments
@@ -74,12 +81,13 @@ fn main() -> Result<(), std::io::Error> {
 
     let _mnemonic_words = get_mnemonic_from_full_entropy(&full_entropy)?;
 
-    let _seed = create_bip39_seed(&entropy, &cli_args.password);
+    let seed = create_bip39_seed(&entropy, &cli_args.password)?;
 
+    let _master_key = create_master_private_key(&seed)?;
     Ok(())
 }
 
-fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, std::io::Error> {
+fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, ErrorHandler> {
     D3BUG!("----------[Entropy]----------");
 
     // Open the entropy file
@@ -89,15 +97,12 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     
     // Get the file length
     let file_length = reader.seek(io::SeekFrom::End(0))?;
-    D3BUG!("Entropy file length: {:?}", file_length);
+    D3BUG!("Entropy file length: \"{:?}\"", file_length);
     
     // Check if file_length is less than entropy_length
-    if file_length < entropy_length as u64 {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "Entropy file too small, or empty",
-        ));
-    }
+    // if file_length < entropy_length as u64 {
+    //     return Err("Entropy file too small, or empty");
+    // }
 
     // Randomize reading start point
     let start_point: u64 = if file_length > entropy_length as u64 {
@@ -107,7 +112,7 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
         0
     };
     reader.seek(io::SeekFrom::Start(start_point))?;
-    D3BUG!("Random start point: {:?}", start_point);
+    D3BUG!("Random start point: \"{:?}\"", start_point);
 
     // Read entropy from file
     let mut entropy_raw_binary = String::new();
@@ -117,7 +122,7 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     Ok(entropy_raw_binary)
 }
 
-fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, std::io::Error> {
+fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, ErrorHandler> {
     D3BUG!("----------[Checksum]----------");
 
     let entropy_binary = convert_string_to_binary(&entropy);
@@ -125,7 +130,7 @@ fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, 
     D3BUG!("sha256(entropy): {:?}", hash_raw_binary);
 
     let checksum_lenght = entropy_length / 32;
-    D3BUG!("Checksum length: {:?}", checksum_lenght);
+    D3BUG!("Checksum length: \"{:?}\"", checksum_lenght);
 
     // Take 1 bit for every 32 bits of the hash 
     let checksum_raw_binary: String = hash_raw_binary.chars().take(checksum_lenght.try_into().unwrap()).collect();
@@ -134,7 +139,7 @@ fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, 
     Ok(checksum_raw_binary)
 }
 
-fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, std::io::Error> {
+fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, ErrorHandler> {
     D3BUG!("----------[Final Entropy]----------");
 
     let full_entropy = format!("{}{}", entropy, checksum);
@@ -143,7 +148,7 @@ fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, std::
     Ok(full_entropy)
 }
 
-fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<String, std::io::Error> {
+fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<String, ErrorHandler> {
     D3BUG!("----------[Mnemonic]----------");
 
     // Split the final entropy into groups of 11 bits
@@ -176,7 +181,7 @@ fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<Strin
 
 }
 
-fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, bip39::Error> {
+fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, ErrorHandler> {
     D3BUG!("----------[Seed]----------");
 
     // Parse the mnemonic phrase
@@ -191,12 +196,12 @@ fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, bip39
 
     // Convert the seed to hexadecimal
     let seed_hex = hex::encode(&seed[..]);
-    println!("BIP39 Seed: {:?}", seed_hex);
+    println!("BIP39 Seed (hex): {:?}", seed_hex);
 
     Ok(seed_hex)
 }
 
-fn check_entropy_length(entropy_length: u32) -> Result<u32, std::io::Error> {
+fn check_entropy_length(entropy_length: u32) -> Result<u32, ErrorHandler> {
     if !VALID_ENTROPY_LENGTHS.contains(&entropy_length) {
         eprintln!("Error: Invalid entropy_length. Allowed values are: {:?}", VALID_ENTROPY_LENGTHS);
         std::process::exit(2); // or any other non-zero exit code
@@ -204,3 +209,17 @@ fn check_entropy_length(entropy_length: u32) -> Result<u32, std::io::Error> {
 
     Ok(entropy_length)
 }
+
+fn create_master_private_key(seed_hex: &str) -> Result<String, ErrorHandler> {
+
+    // Convert hex seed to binary
+    let seed = convert_hex_to_binary(seed_hex);
+    D3BUG!("BIP39 Seed (binary): {:?}", seed);
+
+    // Create a master key from the seed
+    let master_key = bitcoin::bip32::Xpriv::new_master(bitcoin::Network::Bitcoin, &seed).expect("Failed to derive master key");
+    println!("BIP32 Master Private Key (xpriv): \"{}\"", master_key); 
+
+    Ok(master_key.to_string())
+}
+

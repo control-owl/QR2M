@@ -1,3 +1,7 @@
+# version 0.1.2
+- new converter: hex->binary
+- BIP32 Master Private Key (xpriv) 
+
 # version 0.1.1
 - new file: src/converter.rs
 - new file: doc/Tasks.md
@@ -10,5 +14,5 @@
 - Entropy (get entropy from file)
 - Checksum (calculate checksum for entropy)
 - Mnemonic (get mnemonic from entropy+checksum)
-- Bip39 seed (calculate bip39 seed)
+- BIP39 seed (calculate bip39 seed)
 - new argument: entropy length
