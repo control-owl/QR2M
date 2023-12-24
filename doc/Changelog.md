@@ -2,6 +2,7 @@
 - new converter: hex->binary
 - BIP32 Master Private Key (xpriv) 
 - new file: src/debugger.rs
+- new file: doc/Arguments.md
 
 # version 0.1.1
 - new file: src/converter.rs
