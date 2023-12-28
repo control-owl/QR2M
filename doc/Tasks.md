@@ -20,7 +20,7 @@
 - [ ] Show private key
 - [ ] replace select_entropy_from_file with get_entropy_from_qrng
 - [ ] create GUI
-- [] check why IanColeman says BSC is coin_path 60 and slip0044 ETH
+- [ ] check why IanColeman says BSC is coin_path 60 and slip0044 ETH
 
 
 ### Features
