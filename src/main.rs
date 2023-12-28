@@ -119,7 +119,7 @@ fn main() -> Result<(), error_handler::ErrorHandler> {
 
     // Master key
     let master_key = create_master_private_key(&seed)?;
-    
+
     // Coin
     let mut coin_type: u32 = 0;
     match check_coin_type(&cli_args.coin_symbol) {

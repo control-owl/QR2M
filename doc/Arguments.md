@@ -1,4 +1,4 @@
-# `-e, --esize <ENTROPY_SIZE>`
+# `-e, --esize <NUMBER>`
 
 The argument sets the bit size of the entropy employed by the program.  
 
@@ -16,7 +16,7 @@ The argument sets the bit size of the entropy employed by the program.
 ---
 
 
-# `-v, --verbosity <verbosity_level>`
+# `-v, --verbosity <NUMBER>`
 
 
 Showing more output.
@@ -43,7 +43,7 @@ Showing more output.
 ---
 
 
-# `-p, --passphrase <passphrase_string>`
+# `-p, --passphrase <STRING>`
 
 
 Adds additional layer of security by specifying a passphrase. This passphrase is used in combination with the mnemonic or seed phrase to derive cryptographic keys for the wallet.The length of a BIP39 passphrase is not explicitly defined in the BIP39 standard itself. Instead, the length of the passphrase is typically determined by the implementation of the wallet or software that supports BIP39.
@@ -63,7 +63,7 @@ Adds additional layer of security by specifying a passphrase. This passphrase is
 ---
 
 
-# `--bip <BIP_NUMBER>`
+# `--bip <NUMBER>`
 
 
 Selects the Hierarchical Deterministic (HD) wallet path for generating keys.
@@ -95,7 +95,7 @@ Selects the Hierarchical Deterministic (HD) wallet path for generating keys.
 
 ---
 
-# `-c, --coin <COIN_NUMBER>`
+# `-c, --coin <NUMBER>`
 
 The argument sets the coin for creating a wallet. Plese select coin symbol.
 

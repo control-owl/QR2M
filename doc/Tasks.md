@@ -12,9 +12,10 @@
 - [ ] Derivation paths
     - [x] BIP32
     - [x] BIP44
-    - [ ] BIP49
-    - [ ] BIP84
-    - [ ] BIP141
+    - [ ] add new cargo: hdpaths
+        - [ ] BIP49
+        - [ ] BIP84
+        - [ ] BIP141
     - [ ] BIP341
 - [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
 - [ ] Show private key
