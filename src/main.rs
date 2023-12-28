@@ -125,7 +125,7 @@ fn main() -> Result<(), error_handler::ErrorHandler> {
     match check_coin_type(&cli_args.coin_symbol) {
         Ok(index) => {
             coin_type = index;
-            D3BUG!(output, "Coin txpe: \"{}\"", coin_type)
+            D3BUG!(log, "Coin type: \"{}\"", coin_type)
         },
         Err(err) => D3BUG!(error, "{:?}", err),
     }
@@ -193,7 +193,7 @@ fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, error
     D3BUG!(info, "Final Entropy:");
 
     let full_entropy = format!("{}{}", entropy, checksum);
-    D3BUG!(log, "Final entropy: {:?}", full_entropy);
+    D3BUG!(output, "Final entropy: {:?}", full_entropy);
 
     Ok(full_entropy)
 }
@@ -271,7 +271,7 @@ fn check_bip_entry(bip_entry: u32) -> Result<u32, error_handler::ErrorHandler> {
 }
 
 fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, error_handler::ErrorHandler> {
-    D3BUG!(info, "Master Keys:");
+    D3BUG!(info, "Master Key:");
 
     // Convert hex seed to binary
     let seed = converter::convert_hex_to_binary(seed_hex);
@@ -382,7 +382,7 @@ fn create_derivation_path(
 }
 
 fn create_account_master_key(master: &bitcoin::bip32::Xpriv, derivation: &Vec<bitcoin::bip32::ChildNumber>) -> Result<bitcoin::bip32::Xpriv, bitcoin::bip32::Error> {
-    D3BUG!(info, "Child Keys:");
+    D3BUG!(info, "Child Key:");
 
     let secp = bitcoin::secp256k1::Secp256k1::new();
 
