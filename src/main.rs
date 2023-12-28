@@ -125,7 +125,7 @@ fn main() -> Result<(), error_handler::ErrorHandler> {
     match check_coin_type(&cli_args.coin_symbol) {
         Ok(index) => {
             coin_type = index;
-            D3BUG!(output, "Coin txpe: {}", coin_type)
+            D3BUG!(output, "Coin txpe: \"{}\"", coin_type)
         },
         Err(err) => D3BUG!(error, "{:?}", err),
     }
@@ -375,7 +375,7 @@ fn create_derivation_path(
     for child_number in &derivation {
         path.push_str(&format!("/{}", child_number.to_string()));
     }
-    D3BUG!(output, "Derivation Path: {}", &path);
+    D3BUG!(output, "Derivation Path: {:?}", &path);
 
 
     Ok(derivation)
@@ -390,7 +390,7 @@ fn create_account_master_key(master: &bitcoin::bip32::Xpriv, derivation: &Vec<bi
         .derive_priv(&secp, &derivation)
         .expect("Failed to derive account key");
 
-    D3BUG!(output, "Account Extended Private Key: {}", &child_key);
+    D3BUG!(output, "Account Extended Private Key: \"{}\"", &child_key);
     Ok(child_key)
 
 }
