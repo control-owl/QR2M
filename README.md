@@ -7,7 +7,7 @@
 ██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║
 ╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
  ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
-Quantum Random Rust Mnemonic (0.1.2)
+Quantum Random Rust Mnemonic (0.1.3)
 Control Owl <qr2m[at]r-o0-t[dot]wtf>
 ```
 
@@ -23,4 +23,4 @@ Beta. This is my first Rust program.
 
 ## Documentation
 
-[Project documentation](https://github.com/control-owl/QR2M/blob/master/doc/)
+[Project documentation](master/doc/)
