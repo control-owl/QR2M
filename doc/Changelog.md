@@ -1,3 +1,12 @@
+# version 0.1.3
+- new argument: derivation_path BIP32, BIP44
+- new argument: coin_cymbol
+- new file: lib/bip44-coin_types.csv
+- Child master keys
+- rename file: src/debugger.rs -> src/error_handler.rs
+- remove argument: debugging
+- new argument: verbosity
+
 # version 0.1.2
 - new converter: hex->binary
 - BIP32 Master Private Key (xpriv) 

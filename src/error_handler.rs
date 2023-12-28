@@ -8,6 +8,9 @@ pub enum ErrorHandler {
     #[error("Bip39 error: {0}")]
     Bip39Error(#[from] bip39::Error),
 
+    #[error("Bip32 error: {0}")]
+    Bip32Error(#[from] bitcoin::bip32::Error),
+
     #[error("{0}")]
     CustomError(String),
 }
