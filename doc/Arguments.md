@@ -103,7 +103,7 @@ More info about slip 0044 can be read [here](https://github.com/satoshilabs/slip
 
 > Default value: BTC
 
-- Allowed values: BTC, LTC, XMR, ETH, SOL, and 1094 more coins (see [here](bip44-coin_types.csv)).
+- Allowed values: BTC, LTC, XMR, ETH, SOL, and 1094 more coins (see [here](lib/bip44-coin_types.csv)).
 
 ```rust
 
