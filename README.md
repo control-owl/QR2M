@@ -23,4 +23,4 @@ Beta. This is my first Rust program.
 
 ## Documentation
 
-[Project documentation](master/doc/)
+[Project documentation](doc/)
