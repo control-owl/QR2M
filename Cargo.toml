@@ -1,7 +1,7 @@
 [package]
 name = "QR2M"
 description = "Quantum Random Rust Mnemonic"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 readme = "README.md"
 edition = "2021"
@@ -16,6 +16,16 @@ bip39 = "2.0.0"
 structopt = "0.3.26"
 thiserror = "1.0.51"
 bitcoin = "0.31.0"
+csv = "1.3.0"
 
 # Testing
-csv = "1.3.0"
+
+
+[[bin]]
+name = "QR2M"
+path = "src/main.rs"
+
+[workspace]
+
+[package.metadata.docs.rs]
+targets = ["src/main.rs", "src/error_handler.rs", "src/converters.rs"]

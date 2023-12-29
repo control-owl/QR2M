@@ -1,5 +1,5 @@
 // Crates
-use std::{io::{self, Read, Seek, Write}, fs::{self, File}, path::Path};
+use std::{io::{self, Read, Seek, Write}, fs::{self, File}, path::Path, vec, str::FromStr};
 use structopt::StructOpt;
 use hex;
 use rand::Rng;
@@ -15,13 +15,13 @@ mod converter;
 
 
 // Global variables
-const ENTROPY_FILE: &str = "entropy/test.qrn";
-// const ENTROPY_FILE: &str = "entropy/binary.qrn";
+// const ENTROPY_FILE: &str = "entropy/test.qrn";
+const ENTROPY_FILE: &str = "entropy/binary.qrn";
 const WORDLIST_FILE: &str = "lib/bip39-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-// const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 341];
 const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
-
+// const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 341];
+const VALID_MNEMONIC_WORD_COUNT: [u32; 5] = [12, 15, 18, 21, 24];
 
 // Debugging log
 macro_rules! D3BUG {
@@ -74,9 +74,12 @@ struct Cli {
     #[structopt(short = "e", long = "esize", default_value = "256")]
     entropy_length: u32,
 
-    #[structopt(short = "p", long = "passphrase", default_value = "qr2m")]
+    #[structopt(short = "p", long = "passphrase", default_value = "")]
     passphrase: String,
     
+    #[structopt(short = "m", long = "import-mnemonic", default_value = "")]
+    imported_mnemonic: String,
+
     #[structopt(short = "v", long = "verbosity", default_value = "0")]
     verbosity: u32,
 
@@ -98,24 +101,35 @@ fn print_program_info() {
     println!("{} ({})\n{}\n", description, version, authors);
 }
 
+
+// use std::env;
+
 fn main() -> Result<(), error_handler::ErrorHandler> {
     print_program_info();
 
     // Parse CLI arguments
     let cli_args = Cli::from_args();
-    
     // Check provided arguments
     let entropy_length = check_entropy_length(cli_args.entropy_length.try_into().unwrap())?;
     let _bip_derivation = check_bip_entry(cli_args.derivation_path.try_into().unwrap())?;
+    
+    let mut seed  = "".to_string();
+    let mut mnemonic_words  = "".to_string();
 
-    // Get entropy
-    let entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
-    let checksum = calculate_checksum(&entropy, &entropy_length)?;
-    let full_entropy = get_full_entropy(&entropy, &checksum)?;
-
-    // Mnemonic
-    let _mnemonic_words = get_mnemonic_from_full_entropy(&full_entropy)?;
-    let seed = create_bip39_seed(&entropy, &cli_args.passphrase)?;
+    // Import mnemonic
+    if !&cli_args.imported_mnemonic.is_empty() {
+        mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
+        seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
+    } else {
+        // Get entropy
+        let entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
+        let checksum = calculate_checksum(&entropy, &entropy_length)?;
+        let full_entropy = get_full_entropy(&entropy, &checksum)?;
+        
+        // Mnemonic
+        mnemonic_words = get_mnemonic_from_entropy(&full_entropy)?;
+        seed = create_bip39_seed_from_entropy(&entropy, &cli_args.passphrase)?;
+    }
 
     // Master key
     let master_key = create_master_private_key(&seed)?;
@@ -125,7 +139,7 @@ fn main() -> Result<(), error_handler::ErrorHandler> {
     match check_coin_type(&cli_args.coin_symbol) {
         Ok(index) => {
             coin_type = index;
-            D3BUG!(log, "Coin type: \"{}\"", coin_type)
+            D3BUG!(log, "Coin type ID: \"{}\"", coin_type)
         },
         Err(err) => D3BUG!(error, "{:?}", err),
     }
@@ -133,7 +147,7 @@ fn main() -> Result<(), error_handler::ErrorHandler> {
     // Childrens
     let derivation_path = create_derivation_path(Some(cli_args.derivation_path), Some(coin_type), Some(0), None, None)?;
     let _child_key = create_account_master_key(&master_key, &derivation_path);
-    
+
     Ok(())
 }
 
@@ -151,7 +165,7 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     
     // Check if file_length is less than entropy_length
     if file_length < entropy_length as u64 {
-        return Err(error_handler::ErrorHandler::custom("error message bla bla"));
+        return Err(error_handler::ErrorHandler::FileTooSmall());
     }
 
     // Randomize reading start point
@@ -198,7 +212,7 @@ fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, error
     Ok(full_entropy)
 }
 
-fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<String, error_handler::ErrorHandler> {
+fn get_mnemonic_from_entropy(final_entropy_binary: &String) -> Result<String, error_handler::ErrorHandler> {
     D3BUG!(info, "Mnemonic:");
 
     // Split the final entropy into groups of 11 bits
@@ -231,9 +245,9 @@ fn get_mnemonic_from_full_entropy(final_entropy_binary: &String) -> Result<Strin
 
 }
 
-fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, error_handler::ErrorHandler> {
+fn create_bip39_seed_from_entropy(entropy: &String, passphrase: &str) -> Result<String, error_handler::ErrorHandler> {
     D3BUG!(info, "Seed:");
-
+    
     // Parse the mnemonic phrase
     let entropy_vector = converter::convert_string_to_binary(&entropy);
     let mnemonic_result = bip39::Mnemonic::from_entropy(&entropy_vector);
@@ -252,10 +266,25 @@ fn create_bip39_seed(entropy: &String, passphrase: &str) -> Result<String, error
     Ok(seed_hex)
 }
 
+fn create_bip39_seed_from_mnemonic(mnemonic: &String, passphrase: &str) -> Result<String, error_handler::ErrorHandler> {
+    D3BUG!(info, "BIP39 Seed:");
+
+    let mnemonic_result = bip39::Mnemonic::from_str(&mnemonic);
+    let mnemonic = mnemonic_result?;
+    let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
+
+    let seed_hex = hex::encode(&seed[..]);
+
+    D3BUG!(output, "BIP39 Passphrase: {:?}", passphrase);
+    D3BUG!(output, "BIP39 Seed (hex): {:?}", seed_hex);
+
+    Ok(seed_hex)
+}
+
 fn check_entropy_length(entropy_length: u32) -> Result<u32, error_handler::ErrorHandler> {
     if !VALID_ENTROPY_LENGTHS.contains(&entropy_length) {
-        D3BUG!(error, "Invalid entropy_length. Allowed values are: {:?}", VALID_ENTROPY_LENGTHS);
-        std::process::exit(2); // or any other non-zero exit code
+        return Err(error_handler::ErrorHandler::InvalidEntropyLength(VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect::<Vec<String>>().join(" ")));
+        // println!("Error: {}", error);
     }
 
     Ok(entropy_length)
@@ -274,7 +303,7 @@ fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, er
     D3BUG!(info, "Master Key:");
 
     // Convert hex seed to binary
-    let seed = converter::convert_hex_to_binary(seed_hex);
+    let seed = hex::decode(&seed_hex).expect("Failed to decode seed hex");
 
     // Create a master key from the seed
     let master_key = bitcoin::bip32::Xpriv::new_master(bitcoin::Network::Bitcoin, &seed).expect("Failed to derive master key");
@@ -383,14 +412,45 @@ fn create_derivation_path(
 
 fn create_account_master_key(master: &bitcoin::bip32::Xpriv, derivation: &Vec<bitcoin::bip32::ChildNumber>) -> Result<bitcoin::bip32::Xpriv, bitcoin::bip32::Error> {
     D3BUG!(info, "Child Key:");
-
+    
     let secp = bitcoin::secp256k1::Secp256k1::new();
-
+    
     let child_key = master
-        .derive_priv(&secp, &derivation)
-        .expect("Failed to derive account key");
+    .derive_priv(&secp, &derivation)
+    .expect("Failed to derive account key");
 
-    D3BUG!(output, "Account Extended Private Key: \"{}\"", &child_key);
-    Ok(child_key)
+D3BUG!(output, "Account Extended Private Key: \"{}\"", &child_key);
+Ok(child_key)
 
+}
+
+fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, error_handler::ErrorHandler> {
+    D3BUG!(info, "Importing mnemonic:");
+
+    let mnemonic_words: Vec<&str> = mnemonic.split_whitespace().collect();
+
+    // Check if the number of words is valid
+    if !VALID_MNEMONIC_WORD_COUNT.contains(&(mnemonic_words.len() as u32)) {
+        return Err(error_handler::ErrorHandler::InvalidMnemonic());
+    } else {
+        D3BUG!(log, "Imported mnemonic word count {:?}", &mnemonic_words.len());
+    }
+
+    // Load the wordlist file
+    let wordlist_content = match fs::read_to_string(wordlist_path) {
+        Ok(content) => content,
+        Err(_) => return Err(error_handler::ErrorHandler::WordlistReadError()),
+    };
+
+    // Check if every word in the mnemonic is in the wordlist
+    for word in &mnemonic_words {
+        if !wordlist_content.contains(word) {
+            return Err(error_handler::ErrorHandler::InvalidMnemonicWord(format!("Word not found in the wordlist: {}", word)));
+        }
+    }
+
+    let words: String = mnemonic_words.join(" ");
+
+    D3BUG!(log, "Imported mnemonic {:?}", &words);
+    Ok(words)
 }

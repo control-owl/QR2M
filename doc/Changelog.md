@@ -1,3 +1,6 @@
+# version 0.1.4
+- new argument: import-mnemonic
+
 # version 0.1.3
 - new argument: derivation_path BIP32, BIP44
 - new argument: coin_cymbol

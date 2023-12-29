@@ -48,7 +48,7 @@ Showing more output.
 
 Adds additional layer of security by specifying a passphrase. This passphrase is used in combination with the mnemonic or seed phrase to derive cryptographic keys for the wallet.The length of a BIP39 passphrase is not explicitly defined in the BIP39 standard itself. Instead, the length of the passphrase is typically determined by the implementation of the wallet or software that supports BIP39.
 
-> Default value: "qr2m"
+> Default value: ""
 
 > Allowed values: UTF-8 characters
 
@@ -63,7 +63,7 @@ Adds additional layer of security by specifying a passphrase. This passphrase is
 ---
 
 
-# `--bip <NUMBER>`
+# `-b, --bip <NUMBER>`
 
 
 Selects the Hierarchical Deterministic (HD) wallet path for generating keys.
@@ -114,3 +114,19 @@ More info about slip 0044 can be read [here](https://github.com/satoshilabs/slip
 
 ---
 
+# `-m, --import-mnemonic <STRING>`
+
+The argument imports your mnemonic words and generate keys for you.
+
+> Default value: ""
+
+- Allowed values: BIP39 English mnemonic words (see [here](../lib/bip39-english.txt)).
+
+```rust
+
+./qr2m -m kiwi toddler suspect talk ...
+
+```
+
+
+---

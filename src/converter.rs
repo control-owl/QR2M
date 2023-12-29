@@ -15,7 +15,3 @@ pub fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
         })
         .collect()
 }
-
-pub fn convert_hex_to_binary(input_value: &str) -> Vec<u8> {
-    hex::decode(input_value).expect("Failed to decode seed hex")
-}
