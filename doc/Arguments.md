@@ -95,6 +95,7 @@ Selects the Hierarchical Deterministic (HD) wallet path for generating keys.
 
 ---
 
+
 # `-c, --coin <NUMBER>`
 
 The argument sets the coin for creating a wallet. Plese select coin symbol.
@@ -114,6 +115,7 @@ More info about slip 0044 can be read [here](https://github.com/satoshilabs/slip
 
 ---
 
+
 # `-m, --import-mnemonic <STRING>`
 
 The argument imports your mnemonic words and generate keys for you.
@@ -124,7 +126,25 @@ The argument imports your mnemonic words and generate keys for you.
 
 ```rust
 
-./qr2m -m kiwi toddler suspect talk ...
+./qr2m -m yellow have broken ... blouse thank taste ostrich
+
+```
+
+
+---
+
+
+# `-s, --entropy-source <STRING>`
+
+The argument decides source for generating entropy.
+
+> Default value: "rng"
+
+- Allowed values: rng, file
+
+```rust
+
+./qr2m -s file
 
 ```
 

@@ -1,14 +1,18 @@
+# version 0.2.0
+- optimisation: better error handling (?)
+- new argument: entropy-source (-s, --entropy-source)
+
 # version 0.1.4
-- new argument: import-mnemonic
+- new argument: import-mnemonic (-m, --import-mnemonic)
 
 # version 0.1.3
-- new argument: derivation_path BIP32, BIP44
-- new argument: coin_cymbol
+- new argument: derivation_path BIP32, BIP44 (-b, --bip)
+- new argument: coin (-c, --coin)
 - new file: lib/bip44-coin_types.csv
 - Child master keys
 - rename file: src/debugger.rs -> src/error_handler.rs
 - remove argument: debugging
-- new argument: verbosity
+- new argument: verbosity (-v, --verbosity)
 
 # version 0.1.2
 - new converter: hex->binary
@@ -21,12 +25,12 @@
 - new file: doc/Tasks.md
 - new file: doc/Changelog.md
 - ascii art (program description)
-- new argument: debugging
-- new argument: mnemonic password
+~~- new argument: debugging~~
+- new argument: mnemonic passphrase (-p, --passphrase)
 
 # version 0.1.0
 - Entropy (get entropy from file)
 - Checksum (calculate checksum for entropy)
 - Mnemonic (get mnemonic from entropy+checksum)
 - BIP39 seed (calculate bip39 seed)
-- new argument: entropy length
+- new argument: entropy length (-e, --esize)

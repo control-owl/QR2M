@@ -20,14 +20,15 @@
 - [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
 - [ ] Show private key
 - [ ] check why IanColeman says BSC is coin_path 60 and slip0044 says ETH
-- [ ] create new error_handler
+- [x] create new error_handler
+- [x] add generate_entropy_from_rng
 
 
 ### Advance
 - [ ] create GUI
 - [ ] buy USB QRNG and make support for it
     - [ ] replace select_entropy_from_file with get_entropy_from_qrng
-- [ ] add get_entropy_from_anu
+- [ ] add get_entropy_from_anu (API)
 
 ### Features
 

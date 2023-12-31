@@ -11,6 +11,7 @@ use csv::ReaderBuilder;
 
 // Project files
 mod error_handler;
+use error_handler::CustomError;
 mod converter;
 
 
@@ -22,6 +23,7 @@ const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
 // const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 341];
 const VALID_MNEMONIC_WORD_COUNT: [u32; 5] = [12, 15, 18, 21, 24];
+const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
 
 // Debugging log
 macro_rules! D3BUG {
@@ -41,14 +43,10 @@ macro_rules! D3BUG {
         }
     );
     (error, $($arg:tt)*) => (
-        // if Cli::from_args().verbosity >= 1 {
             eprintln!("\x1b[1;31m[!! ERROR !!] {}\x1b[0m", format_args!($($arg)*))
-        // }
     );
     (output, $($arg:tt)*) => (
-        // if Cli::from_args().verbosity >= 0 {
             println!("{}", format_args!($($arg)*))
-        // }
     );
 }
 
@@ -79,6 +77,9 @@ struct Cli {
     
     #[structopt(short = "m", long = "import-mnemonic", default_value = "")]
     imported_mnemonic: String,
+    
+    #[structopt(short = "s", long = "entropy-source", default_value = "rng")]
+    entropy_source: String,
 
     #[structopt(short = "v", long = "verbosity", default_value = "0")]
     verbosity: u32,
@@ -104,7 +105,7 @@ fn print_program_info() {
 
 // use std::env;
 
-fn main() -> Result<(), error_handler::ErrorHandler> {
+fn main() -> Result<(), CustomError> {
     print_program_info();
 
     // Parse CLI arguments
@@ -115,14 +116,24 @@ fn main() -> Result<(), error_handler::ErrorHandler> {
     
     let mut seed  = "".to_string();
     let mut mnemonic_words  = "".to_string();
+    let mut entropy  = "".to_string();
 
     // Import mnemonic
     if !&cli_args.imported_mnemonic.is_empty() {
         mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
         seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
     } else {
+        match cli_args.entropy_source.as_str() {
+            "file" => {
+                entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
+            },
+            "rng" => {
+                entropy = generate_entropy_from_rng(cli_args.entropy_length)
+            },
+            _ => println!("error"),
+        }
+        
         // Get entropy
-        let entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
         let checksum = calculate_checksum(&entropy, &entropy_length)?;
         let full_entropy = get_full_entropy(&entropy, &checksum)?;
         
@@ -151,7 +162,18 @@ fn main() -> Result<(), error_handler::ErrorHandler> {
     Ok(())
 }
 
-fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, error_handler::ErrorHandler> {
+fn generate_entropy_from_rng(length: u32) -> String {
+    let mut rng = rand::thread_rng();
+
+    let binary_string: String = (0..length)
+        .map(|_| rng.gen_range(0..=1))
+        .map(|bit| char::from_digit(bit, 10).unwrap())
+        .collect();
+    D3BUG!(output, "RNG entropy: {:?}", binary_string.to_string());
+    binary_string
+}
+
+fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, CustomError> {
     D3BUG!(info, "Entropy:");
 
     // Open the entropy file
@@ -165,7 +187,9 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     
     // Check if file_length is less than entropy_length
     if file_length < entropy_length as u64 {
-        return Err(error_handler::ErrorHandler::FileTooSmall());
+        let error_msg: CustomError = CustomError::FileTooSmall(entropy_length.to_string());
+        D3BUG!(error, "{}", error_msg);
+        return Err(CustomError::InvalidEntropyLength(file_length.to_string()))
     }
 
     // Randomize reading start point
@@ -186,7 +210,7 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     Ok(entropy_raw_binary)
 }
 
-fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, error_handler::ErrorHandler> {
+fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, CustomError> {
     D3BUG!(info, "Checksum:");
 
     let entropy_binary = converter::convert_string_to_binary(&entropy);
@@ -203,7 +227,7 @@ fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, 
     Ok(checksum_raw_binary)
 }
 
-fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, error_handler::ErrorHandler> {
+fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, CustomError> {
     D3BUG!(info, "Final Entropy:");
 
     let full_entropy = format!("{}{}", entropy, checksum);
@@ -212,7 +236,7 @@ fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, error
     Ok(full_entropy)
 }
 
-fn get_mnemonic_from_entropy(final_entropy_binary: &String) -> Result<String, error_handler::ErrorHandler> {
+fn get_mnemonic_from_entropy(final_entropy_binary: &String) -> Result<String, CustomError> {
     D3BUG!(info, "Mnemonic:");
 
     // Split the final entropy into groups of 11 bits
@@ -245,7 +269,7 @@ fn get_mnemonic_from_entropy(final_entropy_binary: &String) -> Result<String, er
 
 }
 
-fn create_bip39_seed_from_entropy(entropy: &String, passphrase: &str) -> Result<String, error_handler::ErrorHandler> {
+fn create_bip39_seed_from_entropy(entropy: &String, passphrase: &str) -> Result<String, CustomError> {
     D3BUG!(info, "Seed:");
     
     // Parse the mnemonic phrase
@@ -266,7 +290,7 @@ fn create_bip39_seed_from_entropy(entropy: &String, passphrase: &str) -> Result<
     Ok(seed_hex)
 }
 
-fn create_bip39_seed_from_mnemonic(mnemonic: &String, passphrase: &str) -> Result<String, error_handler::ErrorHandler> {
+fn create_bip39_seed_from_mnemonic(mnemonic: &String, passphrase: &str) -> Result<String, CustomError> {
     D3BUG!(info, "BIP39 Seed:");
 
     let mnemonic_result = bip39::Mnemonic::from_str(&mnemonic);
@@ -281,25 +305,40 @@ fn create_bip39_seed_from_mnemonic(mnemonic: &String, passphrase: &str) -> Resul
     Ok(seed_hex)
 }
 
-fn check_entropy_length(entropy_length: u32) -> Result<u32, error_handler::ErrorHandler> {
+fn check_entropy_length(entropy_length: u32) -> Result<u32, CustomError> {
     if !VALID_ENTROPY_LENGTHS.contains(&entropy_length) {
-        return Err(error_handler::ErrorHandler::InvalidEntropyLength(VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect::<Vec<String>>().join(" ")));
-        // println!("Error: {}", error);
+        let allowed_values = VALID_ENTROPY_LENGTHS
+            .iter()
+            .map(|&x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        let error_msg: CustomError = CustomError::InvalidEntropyLength(allowed_values);
+        D3BUG!(error, "{}", error_msg);
+        return Err(CustomError::InvalidEntropyLength(entropy_length.to_string()))
     }
 
     Ok(entropy_length)
 }
 
-fn check_bip_entry(bip_entry: u32) -> Result<u32, error_handler::ErrorHandler> {
+fn check_bip_entry(bip_entry: u32) -> Result<u32, CustomError> {
     if !VALID_BIP_DERIVATIONS.contains(&bip_entry) {
-        D3BUG!(error, "Invalid BIP. Allowed values are: {:?}", VALID_BIP_DERIVATIONS);
-        std::process::exit(2); // or any other non-zero exit code
+        // D3BUG!(error, "Invalid BIP. Allowed values are: {:?}", VALID_BIP_DERIVATIONS);
+        // std::process::exit(2); // or any other non-zero exit code
+
+        let allowed_values = VALID_BIP_DERIVATIONS
+            .iter()
+            .map(|&x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        let error_msg: CustomError = CustomError::InvalidBipEntry(allowed_values);
+        D3BUG!(error, "{}", error_msg);
+        return Err(CustomError::InvalidBipEntry(bip_entry.to_string()))
     }
 
     Ok(bip_entry)
 }
 
-fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, error_handler::ErrorHandler> {
+fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, CustomError> {
     D3BUG!(info, "Master Key:");
 
     // Convert hex seed to binary
@@ -424,14 +463,24 @@ Ok(child_key)
 
 }
 
-fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, error_handler::ErrorHandler> {
+fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, CustomError> {
     D3BUG!(info, "Importing mnemonic:");
 
     let mnemonic_words: Vec<&str> = mnemonic.split_whitespace().collect();
 
     // Check if the number of words is valid
     if !VALID_MNEMONIC_WORD_COUNT.contains(&(mnemonic_words.len() as u32)) {
-        return Err(error_handler::ErrorHandler::InvalidMnemonic());
+        let allowed_values = VALID_MNEMONIC_WORD_COUNT
+            .iter()
+            .map(|&x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        let error_msg: CustomError = CustomError::InvalidMnemonicWordCount(allowed_values);
+        D3BUG!(error, "{}", error_msg);
+        return Err(CustomError::InvalidMnemonicWordCount(mnemonic_words.len().to_string()))
+        // call_error(error_msg, mnemonic_words.len().to_string())?;
+
     } else {
         D3BUG!(log, "Imported mnemonic word count {:?}", &mnemonic_words.len());
     }
@@ -439,13 +488,19 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
     // Load the wordlist file
     let wordlist_content = match fs::read_to_string(wordlist_path) {
         Ok(content) => content,
-        Err(_) => return Err(error_handler::ErrorHandler::WordlistReadError()),
+        Err(_) => {
+            let error_msg: CustomError = CustomError::WordlistReadError;
+            D3BUG!(error, "{}", error_msg);
+            return Err(CustomError::WordlistReadError)
+        }
     };
 
     // Check if every word in the mnemonic is in the wordlist
     for word in &mnemonic_words {
         if !wordlist_content.contains(word) {
-            return Err(error_handler::ErrorHandler::InvalidMnemonicWord(format!("Word not found in the wordlist: {}", word)));
+            let error_msg: CustomError = CustomError::InvalidMnemonicWord(word.to_string());
+            D3BUG!(error, "{}", error_msg);
+            return Err(CustomError::InvalidMnemonicWord(word.to_string()))
         }
     }
 
@@ -453,4 +508,30 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
 
     D3BUG!(log, "Imported mnemonic {:?}", &words);
     Ok(words)
+}
+use rand::RngCore;
+fn get_entropy_from_rng(entropy_size: &u32) -> Result<String, CustomError>{
+
+    // Create a vector to store random bytes
+    let mut entropy_bytes = vec![0; *entropy_size as usize];
+
+    // Generate random bytes
+    rand::thread_rng().fill_bytes(&mut entropy_bytes);
+
+    // Convert bytes to a hexadecimal string
+    let entropy_string = entropy_bytes
+        .iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect::<String>();
+
+    Ok(entropy_string)
+
+}
+
+fn call_error<T>(error_type: CustomError, _value: T) -> Result<(), CustomError>
+where
+    T: std::fmt::Display,
+{
+    D3BUG!(error, "{}", error_type);
+    Err(error_type)
 }

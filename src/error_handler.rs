@@ -1,51 +1,53 @@
-use thiserror::Error;
+use std::fmt;
+use std::io;
+use bip39;
+use bitcoin::bip32;
 
-#[derive(Debug, Error)]
-pub enum ErrorHandler {
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("Bip39 error: {0}")]
-    Bip39Error(#[from] bip39::Error),
-
-    #[error("Bip32 error: {0}")]
-    Bip32Error(#[from] bitcoin::bip32::Error),
-
-    #[error("Custom error: {0}")]
-    CustomError(String),
-
-    #[error("Invalid entropy length. Allowed values are: {0}")]
-    InvalidEntropyLength(String),
-
-    #[error("Provied mnemonic has invalid word(s): {0}")]
-    InvalidMnemonicWord(String),
-
-    #[error("Problem with wordlist file")]
-    WordlistReadError(),
-
-    #[error("Provided file is too small compared with what is needed")]
-    FileTooSmall(),
-
-    #[error("Provided mnemonic is invalid")]
-    InvalidMnemonic(),
-}
-
-impl From<&str> for ErrorHandler {
-    fn from(message: &str) -> Self {
-        ErrorHandler::CustomError(message.to_string())
-    }
-}
-
-impl From<&str> for CustomError {
-    fn from(message: &str) -> Self {
-        CustomError(message.to_string())
-    }
-}
 
 #[derive(Debug)]
-struct CustomError(String);
+pub enum CustomError {
+    IOError(io::Error),
+    Bip39Error(bip39::Error),
+    Bip32Error(bip32::Error),
+    FileTooSmall(String),
+    InvalidEntropyLength(String),
+    InvalidBipEntry(String),
+    InvalidMnemonicWord(String),
+    WordlistReadError,
+    InvalidMnemonicWordCount(String),
+}
 
+impl fmt::Display for CustomError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CustomError::IOError(err) => write!(f, "IO Error: {}", err),
+            CustomError::Bip39Error(err) => write!(f, "Bip39 Error: {}", err),
+            CustomError::Bip32Error(err) => write!(f, "Bip32 Error: {}", err),
 
-// Example usage:
-// let error: ErrorHandler = "This is a custom error message".into();
-// println!("{:?}", error);
+            CustomError::WordlistReadError => write!(f, "There was a problem with reading wordlist file"),
+            CustomError::FileTooSmall(value) => write!(f, "The provided file is too small: {}", value),
+            CustomError::InvalidEntropyLength(value) => write!(f, "Invalid entropy length.\nAllowed values are: {}", value),
+            CustomError::InvalidBipEntry(value) => write!(f, "The provided BIP is invalid.\nAllowed values are: {}", value),
+            CustomError::InvalidMnemonicWord(value) => write!(f, "The provided mnemonic has invalid word: {}", value),
+            CustomError::InvalidMnemonicWordCount(value) => write!(f, "Unfortunately, the entered mnemonic is not valid. \nThis program supports only specific word counts: {}", value),
+        }
+    }
+}
+
+impl From<io::Error> for CustomError {
+    fn from(err: io::Error) -> Self {
+        CustomError::IOError(err)
+    }
+}
+
+impl From<bip39::Error> for CustomError {
+    fn from(err: bip39::Error) -> Self {
+        CustomError::Bip39Error(err)
+    }
+}
+
+impl From<bip32::Error> for CustomError {
+    fn from(err: bip32::Error) -> Self {
+        CustomError::Bip32Error(err)
+    }
+}
