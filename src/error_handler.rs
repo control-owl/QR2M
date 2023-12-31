@@ -6,6 +6,8 @@ use bitcoin::bip32;
 
 #[derive(Debug)]
 pub enum CustomError {
+    CSVError(csv::Error),
+    ParseError(std::num::ParseIntError),
     IOError(io::Error),
     Bip39Error(bip39::Error),
     Bip32Error(bip32::Error),
@@ -15,11 +17,15 @@ pub enum CustomError {
     InvalidMnemonicWord(String),
     WordlistReadError,
     InvalidMnemonicWordCount(String),
+    InvalidSourceEntry(String),
+    InvalidCoinSymbol(String),
 }
 
 impl fmt::Display for CustomError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            CustomError::CSVError(err) => write!(f, "CSV Error: {}", err),
+            CustomError::ParseError(err) => write!(f, "Parse Error: {}", err),
             CustomError::IOError(err) => write!(f, "IO Error: {}", err),
             CustomError::Bip39Error(err) => write!(f, "Bip39 Error: {}", err),
             CustomError::Bip32Error(err) => write!(f, "Bip32 Error: {}", err),
@@ -30,6 +36,8 @@ impl fmt::Display for CustomError {
             CustomError::InvalidBipEntry(value) => write!(f, "The provided BIP is invalid.\nAllowed values are: {}", value),
             CustomError::InvalidMnemonicWord(value) => write!(f, "The provided mnemonic has invalid word: {}", value),
             CustomError::InvalidMnemonicWordCount(value) => write!(f, "Unfortunately, the entered mnemonic is not valid. \nThis program supports only specific word counts: {}", value),
+            CustomError::InvalidSourceEntry(value) => write!(f, "Source for entropy invalid. \nThis program supports only: {} as arguments", value),
+            CustomError::InvalidCoinSymbol(value) => write!(f, "The provided coin is not supported: {}", value),
         }
     }
 }
@@ -49,5 +57,17 @@ impl From<bip39::Error> for CustomError {
 impl From<bip32::Error> for CustomError {
     fn from(err: bip32::Error) -> Self {
         CustomError::Bip32Error(err)
+    }
+}
+
+impl From<csv::Error> for CustomError {
+    fn from(err: csv::Error) -> Self {
+        CustomError::CSVError(err)
+    }
+}
+
+impl From<std::num::ParseIntError> for CustomError {
+    fn from(err: std::num::ParseIntError) -> Self {
+        CustomError::ParseError(err)
     }
 }

@@ -1,8 +1,8 @@
 // Crates
-use std::{io::{self, Read, Seek, Write}, fs::{self, File}, path::Path, vec, str::FromStr};
+use std::{io::{self, Read, Seek, Write}, fs::{self, File}, path::Path, vec, str::FromStr, ops::Index};
 use structopt::StructOpt;
 use hex;
-use rand::Rng;
+use rand::{Rng, RngCore};
 use sha2::{Digest, Sha256};
 use bitcoin;
 use bip39;
@@ -17,8 +17,8 @@ mod converter;
 
 // Global variables
 // const ENTROPY_FILE: &str = "entropy/test.qrn";
-const ENTROPY_FILE: &str = "entropy/binary.qrn";
-const WORDLIST_FILE: &str = "lib/bip39-english.txt";
+const ENTROPY_FILE: &str = "./entropy/binary.qrn";
+const WORDLIST_FILE: &str = "./lib/bip39-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
 // const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 341];
@@ -123,6 +123,8 @@ fn main() -> Result<(), CustomError> {
         mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
         seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
     } else {
+        D3BUG!(info, "Entropy:");
+        check_source_entry(&cli_args.entropy_source);
         match cli_args.entropy_source.as_str() {
             "file" => {
                 entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
@@ -146,19 +148,13 @@ fn main() -> Result<(), CustomError> {
     let master_key = create_master_private_key(&seed)?;
 
     // Coin
-    let mut coin_type: u32 = 0;
-    match check_coin_type(&cli_args.coin_symbol) {
-        Ok(index) => {
-            coin_type = index;
-            D3BUG!(log, "Coin type ID: \"{}\"", coin_type)
-        },
-        Err(err) => D3BUG!(error, "{:?}", err),
-    }
+    let coin_type = check_coin_type(&cli_args.coin_symbol)?;
+    D3BUG!(log, "Coin index: {:?}", &coin_type);
 
     // Childrens
     let derivation_path = create_derivation_path(Some(cli_args.derivation_path), Some(coin_type), Some(0), None, None)?;
     let _child_key = create_account_master_key(&master_key, &derivation_path);
-
+    
     Ok(())
 }
 
@@ -174,8 +170,6 @@ fn generate_entropy_from_rng(length: u32) -> String {
 }
 
 fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, CustomError> {
-    D3BUG!(info, "Entropy:");
-
     // Open the entropy file
     let file = File::open(file_path)?;
     let mut reader = io::BufReader::new(file);
@@ -322,9 +316,6 @@ fn check_entropy_length(entropy_length: u32) -> Result<u32, CustomError> {
 
 fn check_bip_entry(bip_entry: u32) -> Result<u32, CustomError> {
     if !VALID_BIP_DERIVATIONS.contains(&bip_entry) {
-        // D3BUG!(error, "Invalid BIP. Allowed values are: {:?}", VALID_BIP_DERIVATIONS);
-        // std::process::exit(2); // or any other non-zero exit code
-
         let allowed_values = VALID_BIP_DERIVATIONS
             .iter()
             .map(|&x| x.to_string())
@@ -336,6 +327,21 @@ fn check_bip_entry(bip_entry: u32) -> Result<u32, CustomError> {
     }
 
     Ok(bip_entry)
+}
+
+fn check_source_entry(source_entry: &str) -> Result<String, CustomError> {
+    if !VALID_ENTROPY_SOURCES.contains(&source_entry) {
+        let allowed_values = VALID_ENTROPY_SOURCES
+            .iter()
+            .map(|&x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        let error_msg: CustomError = CustomError::InvalidSourceEntry(allowed_values);
+        D3BUG!(error, "{}", error_msg);
+        return Err(CustomError::InvalidSourceEntry(source_entry.to_string()))
+    }
+
+    Ok(source_entry.to_string())
 }
 
 fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, CustomError> {
@@ -351,10 +357,10 @@ fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, Cu
     Ok(master_key)
 }
 
-fn check_coin_type(coin_symbol: &str) -> Result<u32, Box<dyn std::error::Error>> {
+fn check_coin_type(coin_symbol: &str) -> Result<u32, CustomError> {
     D3BUG!(info, "Coin:");
 
-    D3BUG!(output, "Desired coin: {:?}", &coin_symbol);
+    D3BUG!(output, "Coin: {:?}", &coin_symbol.to_uppercase());
     let path = Path::new("lib/bip44-coin_type.csv");
     let file = File::open(path)?;
     
@@ -369,7 +375,7 @@ fn check_coin_type(coin_symbol: &str) -> Result<u32, Box<dyn std::error::Error>>
         let symbol = record[2].to_string();
         let coin_name = record[3].to_string();
         
-        if symbol == coin_symbol {
+        if symbol.to_lowercase() == coin_symbol.to_lowercase() {
             let coin_type = CoinType {
                 index,
                 path,
@@ -381,34 +387,36 @@ fn check_coin_type(coin_symbol: &str) -> Result<u32, Box<dyn std::error::Error>>
     }
 
     if matching_entries.is_empty() {
-        return Ok(0);
-    
-    }
-    
-    // If there are multiple matching entries, prompt the user to choose
-    if matching_entries.len() > 1 {
-        println!("Multiple entries found for symbol {:?}. Please choose one:", coin_symbol);
-        for (i, entry) in matching_entries.iter().enumerate() {
-            D3BUG!(output, "{}: {:?}", i + 1, entry);
-        }
-        
-        print!("Enter the index of the desired entry: ");
-        io::stdout().flush()?;
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        
-        let chosen_index: usize = input.trim().parse()?;
-        if chosen_index > 0 && chosen_index <= matching_entries.len() {
-            return Ok(matching_entries[chosen_index - 1].index);
-        } else {
-            return Ok(0);
-        }
+        let error_msg: CustomError = CustomError::InvalidCoinSymbol(coin_symbol.to_string());
+        D3BUG!(error, "{}", error_msg);
+        return Err(CustomError::InvalidCoinSymbol(coin_symbol.to_string()));
     } else {
-        D3BUG!(log, "Coin {:?} found", &coin_symbol);
+        // If there are multiple matching entries, prompt the user to choose
+        if matching_entries.len() > 1 {
+            println!("Multiple entries found for symbol {:?}. Please choose one:", coin_symbol.to_uppercase());
+            for (i, entry) in matching_entries.iter().enumerate() {
+                D3BUG!(output, "{}: {:?}", i + 1, entry);
+            }
+            
+            print!("Enter the index of the desired coin: ");
+            io::stdout().flush()?;
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            
+            let chosen_index: usize = input.trim().parse()?;
+            if chosen_index > 0 && chosen_index <= matching_entries.len() {
+                return Ok(matching_entries[chosen_index - 1].index);
+            } else {
+                return Ok(0);
+            }
+        } else {
+            D3BUG!(log, "Coin found");
+        }
     }
-
-    // If there is only one matching entry, return its index
+    
+    
     Ok(matching_entries[0].index)
+    // If there is only one matching entry, return its index
 }
 
 fn create_derivation_path(
@@ -508,30 +516,4 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
 
     D3BUG!(log, "Imported mnemonic {:?}", &words);
     Ok(words)
-}
-use rand::RngCore;
-fn get_entropy_from_rng(entropy_size: &u32) -> Result<String, CustomError>{
-
-    // Create a vector to store random bytes
-    let mut entropy_bytes = vec![0; *entropy_size as usize];
-
-    // Generate random bytes
-    rand::thread_rng().fill_bytes(&mut entropy_bytes);
-
-    // Convert bytes to a hexadecimal string
-    let entropy_string = entropy_bytes
-        .iter()
-        .map(|byte| format!("{:02x}", byte))
-        .collect::<String>();
-
-    Ok(entropy_string)
-
-}
-
-fn call_error<T>(error_type: CustomError, _value: T) -> Result<(), CustomError>
-where
-    T: std::fmt::Display,
-{
-    D3BUG!(error, "{}", error_type);
-    Err(error_type)
 }

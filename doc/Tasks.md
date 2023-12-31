@@ -22,6 +22,7 @@
 - [ ] check why IanColeman says BSC is coin_path 60 and slip0044 says ETH
 - [x] create new error_handler
 - [x] add generate_entropy_from_rng
+- [ ] import account
 
 
 ### Advance

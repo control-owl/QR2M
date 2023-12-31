@@ -16,8 +16,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["-v", "1", "-s", "rng"],
-            // "args": ["-v", "3", "-e", "128", "-m", "horn cream enable swear water knife magnet lift jacket early expand throw neither empower wage"],
+            "args": ["-v", "3", "-s", "rng", "-c", "onerrrr"],
             "cwd": "${workspaceFolder}"
         }
     ]
