@@ -70,7 +70,10 @@ struct Cli {
     #[structopt(short = "c", long = "coin", default_value = "BTC")]
     coin_symbol: String,
 
-    #[structopt(short = "e", long = "esize", default_value = "256")]
+    #[structopt(short = "e", long = "entropy-source", default_value = "rng")]
+    entropy_source: String,
+
+    #[structopt(short = "l", long = "entropy-length", default_value = "256")]
     entropy_length: u32,
 
     #[structopt(short = "p", long = "passphrase", default_value = "")]
@@ -79,11 +82,11 @@ struct Cli {
     #[structopt(short = "m", long = "import-mnemonic", default_value = "")]
     imported_mnemonic: String,
     
-    #[structopt(short = "s", long = "entropy-source", default_value = "rng")]
-    entropy_source: String,
-
     #[structopt(short = "v", long = "verbosity", default_value = "0")]
     verbosity: u32,
+
+    #[structopt(short = "s", long = "import-seed", default_value = "")]
+    imported_seed: String,
 
 }
 
@@ -118,32 +121,37 @@ fn main() -> Result<(), CustomError> {
     let mut mnemonic_words  = "".to_string();
     let mut entropy  = "".to_string();
 
-    // Import Mnemonic
-    if !&cli_args.imported_mnemonic.is_empty() {
-        mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
-        seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
+    if !&cli_args.imported_seed.is_empty() {
+        seed = import_seed(&cli_args.imported_seed.to_string())?; 
     } else {
-        let _entropy_source = check_source_entry(&cli_args.entropy_source)?;
-        
-        // Generate entropy
-        match cli_args.entropy_source.as_str() {
-            "file" => {
-                entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
-            },
-            "rng" => {
-                entropy = generate_entropy_from_rng(cli_args.entropy_length)?;
-            },
-            _ => println!("error"),
+        // Import Mnemonic
+        if !&cli_args.imported_mnemonic.is_empty() {
+            mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
+            // seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
+        } else {
+            let _entropy_source = check_source_entry(&cli_args.entropy_source)?;
+            
+            // Generate entropy
+            match cli_args.entropy_source.as_str() {
+                "file" => {
+                    entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
+                },
+                "rng" => {
+                    entropy = generate_entropy_from_rng(cli_args.entropy_length)?;
+                },
+                _ => println!("error"),
+            }
+            
+            // Create full entropy
+            let checksum = calculate_checksum(&entropy, &entropy_length)?;
+            let full_entropy = get_full_entropy(&entropy, &checksum)?;
+            
+            // Mnemonic and seed
+            mnemonic_words = get_mnemonic_from_entropy(&full_entropy)?;
+            seed = create_bip39_seed_from_entropy(&entropy, &cli_args.passphrase)?;
         }
-        
-        // Create full entropy
-        let checksum = calculate_checksum(&entropy, &entropy_length)?;
-        let full_entropy = get_full_entropy(&entropy, &checksum)?;
-        
-        // Mnemonic and seed
-        mnemonic_words = get_mnemonic_from_entropy(&full_entropy)?;
-        seed = create_bip39_seed_from_entropy(&entropy, &cli_args.passphrase)?;
     }
+
 
     // Master key
     let master_key = create_master_private_key(&seed)?;
@@ -160,7 +168,7 @@ fn main() -> Result<(), CustomError> {
 }
 
 fn generate_entropy_from_rng(length: u32) -> Result<String, CustomError> {
-    D3BUG!(info, "RNG Entropy:");
+    D3BUG!(info, "Entropy (RNG):");
     
     let mut rng = rand::thread_rng();
     let binary_string: String = (0..length)
@@ -174,7 +182,7 @@ fn generate_entropy_from_rng(length: u32) -> Result<String, CustomError> {
 }
 
 fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, CustomError> {
-    D3BUG!(info, "File Entropy:");
+    D3BUG!(info, "Entropy (file):");
     
     let file = File::open(file_path)?;
     let mut reader = io::BufReader::new(file);
@@ -278,7 +286,7 @@ fn create_bip39_seed_from_entropy(entropy: &String, passphrase: &str) -> Result<
 }
 
 fn create_bip39_seed_from_mnemonic(mnemonic: &String, passphrase: &str) -> Result<String, CustomError> {
-    D3BUG!(info, "BIP39 Seed:");
+    D3BUG!(info, "BIP39 seed:");
 
     let mnemonic_result = bip39::Mnemonic::from_str(&mnemonic);
     let mnemonic = mnemonic_result?;
@@ -339,6 +347,15 @@ fn check_source_entry(source_entry: &str) -> Result<String, CustomError> {
 fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, CustomError> {
     D3BUG!(info, "Master Key:");
 
+    // Error handling
+    // 
+    // 
+    // 
+    // 
+    // 
+    // 
+    // 
+    // 
     let seed = hex::decode(&seed_hex).expect("Failed to decode seed hex");
     let master_key = bitcoin::bip32::Xpriv::new_master(bitcoin::Network::Bitcoin, &seed).expect("Failed to derive master key");
 
@@ -412,7 +429,7 @@ fn create_derivation_path(
     change: Option<u32>,
     address_index: Option<u32>,
 ) -> Result<Vec<bitcoin::bip32::ChildNumber>, bitcoin::bip32::Error> {
-    D3BUG!(info, "Derivation Path:");
+    D3BUG!(info, "Derivation path:");
 
     let bip = purpose;
     let purpose = bitcoin::bip32::ChildNumber::from_hardened_idx(purpose.unwrap()).expect("Invalid child number");
@@ -441,7 +458,7 @@ fn create_derivation_path(
 }
 
 fn create_account_master_key(master: &bitcoin::bip32::Xpriv, derivation: &Vec<bitcoin::bip32::ChildNumber>) -> Result<bitcoin::bip32::Xpriv, bitcoin::bip32::Error> {
-    D3BUG!(info, "Child Key:");
+    D3BUG!(info, "Child key:");
     
     let secp = bitcoin::secp256k1::Secp256k1::new();
     let child_key = master
@@ -466,7 +483,6 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
             .join(", ");
 
         let error_msg: CustomError = CustomError::InvalidMnemonicWordCount(allowed_values);
-
         D3BUG!(error, "{}", error_msg);
         return Err(CustomError::InvalidMnemonicWordCount(mnemonic_words.len().to_string()))
     } else {
@@ -495,4 +511,18 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
     D3BUG!(log, "Imported mnemonic {:?}", &words);
 
     Ok(words)
+}
+
+fn import_seed(imported_seed: &str) -> Result<String, CustomError>{
+    D3BUG!(info, "Importing seed:");
+
+    if imported_seed.chars().all(|c| c.is_ascii_hexdigit()) {
+        D3BUG!(log, "Provided seed is a valid hex string: {}", imported_seed);
+        Ok(imported_seed.to_string())
+    } else {
+        let error_msg: CustomError = CustomError::InvalidSeed(imported_seed.to_string());
+        D3BUG!(error, "{}", error_msg);
+        return Err(CustomError::InvalidSeed(imported_seed.to_string()))
+    }
+
 }

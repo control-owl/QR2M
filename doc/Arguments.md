@@ -1,6 +1,6 @@
-# `-e, --esize <NUMBER>`
+# `-l, --entropy-length <NUMBER>`
 
-The argument sets the bit size of the entropy employed by the program.  
+The argument sets the bit size of the entropy lenght employed by the program.  
 
 > Default value: 256
 
@@ -8,7 +8,7 @@ The argument sets the bit size of the entropy employed by the program.
 
 ```rust
 
-./qr2m -e 256
+./qr2m -l 256
 
 ```
 
@@ -52,7 +52,6 @@ Adds additional layer of security by specifying a passphrase. This passphrase is
 
 > Allowed values: UTF-8 characters
 
-
 ```rust
 
 ./qr2m -p Passw0rd1234
@@ -70,7 +69,13 @@ Selects the Hierarchical Deterministic (HD) wallet path for generating keys.
 
 > Default value: 44
 
-> Allowed value: 32, 44~~, 49, 84 or 341~~
+> Allowed value: 32, 44
+
+```rust
+
+./qr2m -b 32
+
+```
 
 
 ## BIP Options:
@@ -104,7 +109,7 @@ More info about slip 0044 can be read [here](https://github.com/satoshilabs/slip
 
 > Default value: BTC
 
-- Allowed values: BTC, LTC, XMR, ETH, SOL, and 1094 more coins (see [here](../lib/bip44-coin_type.csv)).
+> Allowed values: BTC, LTC, XMR, ETH, SOL, and 1094 more coins (see [here](../lib/bip44-coin_type.csv)).
 
 ```rust
 
@@ -122,7 +127,7 @@ The argument imports your mnemonic words and generate keys for you.
 
 > Default value: ""
 
-- Allowed values: BIP39 English mnemonic words (see [here](../lib/bip39-english.txt)).
+> Allowed values: BIP39 English mnemonic words (see [here](../lib/bip39-english.txt)).
 
 ```rust
 
@@ -134,13 +139,13 @@ The argument imports your mnemonic words and generate keys for you.
 ---
 
 
-# `-s, --entropy-source <STRING>`
+# `-e, --entropy-source <STRING>`
 
 The argument decides source for generating entropy.
 
 > Default value: "rng"
 
-- Allowed values: rng, file
+> Allowed values: rng, file
 
 ```rust
 
@@ -150,3 +155,18 @@ The argument decides source for generating entropy.
 
 
 ---
+
+
+# `-s, --import-seed <STRING>`
+
+The argument imports your seed and generate keys for you.
+
+> Default value: ""
+
+> Allowed values: hex [A-Fa-f0-9]
+
+```rust
+
+./qr2m -s db18991eac20e...bfa540121fcb4ad8ce77
+
+```

@@ -19,6 +19,7 @@ pub enum CustomError {
     InvalidMnemonicWordCount(String),
     InvalidSourceEntry(String),
     InvalidCoinSymbol(String),
+    InvalidSeed(String),
 }
 
 impl fmt::Display for CustomError {
@@ -38,6 +39,7 @@ impl fmt::Display for CustomError {
             CustomError::InvalidMnemonicWordCount(value) => write!(f, "Unfortunately, the entered mnemonic is not valid. \nThis program supports only specific word counts: {}", value),
             CustomError::InvalidSourceEntry(value) => write!(f, "Source for entropy invalid. \nThis program supports only: {} as arguments", value),
             CustomError::InvalidCoinSymbol(value) => write!(f, "The provided coin is not supported: {}", value),
+            CustomError::InvalidSeed(value) => write!(f, "The provided seed is not valid.\nstring contains non hexadecimal characters: {}", value),
         }
     }
 }
