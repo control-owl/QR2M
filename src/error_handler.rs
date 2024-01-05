@@ -20,6 +20,7 @@ pub enum CustomError {
     InvalidSourceEntry(String),
     InvalidCoinSymbol(String),
     InvalidSeed(String),
+    DecodingError(String),
 }
 
 impl fmt::Display for CustomError {
@@ -40,6 +41,7 @@ impl fmt::Display for CustomError {
             CustomError::InvalidSourceEntry(value) => write!(f, "Source for entropy invalid. \nThis program supports only: {} as arguments", value),
             CustomError::InvalidCoinSymbol(value) => write!(f, "The provided coin is not supported: {}", value),
             CustomError::InvalidSeed(value) => write!(f, "The provided seed is not valid.\nstring contains non hexadecimal characters: {}", value),
+            CustomError::DecodingError(value) => write!(f, "The provided seed could not be decoded: {}", value),
         }
     }
 }

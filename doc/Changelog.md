@@ -1,6 +1,9 @@
+# version 0.2.1
+- new argument: import-seed (-s, --import-seed)
+
 # version 0.2.0
 - optimisation: better error handling (?)
-- new argument: entropy-source (-s, --entropy-source)
+- new argument: entropy-source (-3, --entropy-source)
 
 # version 0.1.4
 - new argument: import-mnemonic (-m, --import-mnemonic)
@@ -33,4 +36,4 @@
 - Checksum (calculate checksum for entropy)
 - Mnemonic (get mnemonic from entropy+checksum)
 - BIP39 seed (calculate bip39 seed)
-- new argument: entropy length (-e, --esize)
+- new argument: entropy length (-l, --entropy-length)

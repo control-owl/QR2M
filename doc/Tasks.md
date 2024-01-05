@@ -34,6 +34,6 @@
 ### Features
 
 - [x] new CLI argument: input-mnemonic (input your mnemonic and get addresses)
-- [ ] new CLI argument: input-seed (input your seed and get addresses)
+- [x] new CLI argument: input-seed (input your seed and get addresses)
 - [ ] new CLI argument: log (enable logging)
 - [ ] new CLI argument: log-file (change default log file location)

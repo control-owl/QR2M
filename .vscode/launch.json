@@ -16,7 +16,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["-v", "3", "-e", "rng", "-c", "one", "-s", "b18991ea62d0c06c20e302ecb96a6b473e81939a32898fcf5a4ef660c00af5383b55b6d15cc03fd05f019d7f26e1f055962b35875bfa540121fc0bb4ad8ce77"],
+            "args": ["-v", "3", "-e", "rng", "-c", "one"],
             "cwd": "${workspaceFolder}"
         }
     ]

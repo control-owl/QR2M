@@ -352,6 +352,14 @@ fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, Cu
     // 
     // 
     // 
+    // let seed = match hex::decode(&seed_hex) {
+    //     Ok(decoded) => decoded,
+    //     Err(err) => {
+    //         let error_msg: CustomError = CustomError::InvalidImportedSeed(coin_symbol.to_string());
+    //         D3BUG!(error, "{}", error_msg);
+    //         return Err(CustomError::InvalidImportedSeed(coin_symbol.to_string()));
+    //     }
+    // };
     // 
     // 
     // 
@@ -513,16 +521,23 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
     Ok(words)
 }
 
-fn import_seed(imported_seed: &str) -> Result<String, CustomError>{
+fn import_seed(imported_seed: &str) -> Result<String, CustomError> {
     D3BUG!(info, "Importing seed:");
 
-    if imported_seed.chars().all(|c| c.is_ascii_hexdigit()) {
-        D3BUG!(log, "Provided seed is a valid hex string: {}", imported_seed);
-        Ok(imported_seed.to_string())
-    } else {
+    if !imported_seed.chars().all(|c| c.is_ascii_hexdigit()) {
         let error_msg: CustomError = CustomError::InvalidSeed(imported_seed.to_string());
         D3BUG!(error, "{}", error_msg);
-        return Err(CustomError::InvalidSeed(imported_seed.to_string()))
+        return Err(error_msg);
     }
 
+    match hex::decode(imported_seed) {
+        Ok(decoded) => Ok(hex::encode(decoded)),
+        Err(err) => {
+            // eprintln!("Error decoding seed: {}", err);
+            // Err(CustomError::DecodingError(err.to_string()))
+            let error_msg: CustomError = CustomError::DecodingError(imported_seed.to_string());
+            D3BUG!(error, "{}", error_msg);
+            return Err(CustomError::DecodingError(imported_seed.to_string()))
+        }
+    }
 }
