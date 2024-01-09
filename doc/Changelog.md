@@ -1,3 +1,6 @@
+# version 0.2.2
+- new argument: address-count (-a, --address-count)
+
 # version 0.2.1
 - new argument: import-seed (-s, --import-seed)
 

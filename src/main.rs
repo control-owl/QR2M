@@ -20,7 +20,7 @@ mod converter;
 const ENTROPY_FILE: &str = "./entropy/binary.qrn";
 const WORDLIST_FILE: &str = "./lib/bip39-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
+const VALID_BIP_DERIVATIONS: [u32; 3] = [32, 44, 84];
 // const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 341];
 const VALID_MNEMONIC_WORD_COUNT: [u32; 5] = [12, 15, 18, 21, 24];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
@@ -29,27 +29,28 @@ const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
 // Debugging log
 macro_rules! D3BUG {
     (info, $($arg:tt)*) => (
-        if Cli::from_args().verbosity >= 3 {
+        if Cli::from_args().app_verbosity >= 3 {
             println!("\x1b[1;31m{}\x1b[0m", format_args!($($arg)*));
         }
     );
     (log, $($arg:tt)*) => (
-        if Cli::from_args().verbosity >= 2 {
+        if Cli::from_args().app_verbosity >= 2 {
             println!("[LOG] {}", format_args!($($arg)*));
         }
     );
     (warning, $($arg:tt)*) => (
-        if Cli::from_args().verbosity >= 1 {
-            eprintln!("[! WARNING !] {}", format_args!($($arg)*));
+        if Cli::from_args().app_verbosity >= 1 {
+            eprintln!("ε(๏_๏)з Gobbledygook ٩(͡๏̯͡๏)۶\n{}", format_args!($($arg)*));
         }
     );
     (error, $($arg:tt)*) => (
-            eprintln!("\x1b[1;31m[!! ERROR !!] {}\x1b[0m", format_args!($($arg)*))
+            eprintln!("\x1b[1;31m ,_,\n(O,O)\n(   )\n-\"-\"---ERROR-\n\n{}\x1b[0m", format_args!($($arg)*))
     );
     (output, $($arg:tt)*) => (
             println!("{}", format_args!($($arg)*))
     );
 }
+
 
 
 #[derive(Debug)]
@@ -64,6 +65,9 @@ struct CoinType {
 // CLI Arguments
 #[derive(StructOpt)]
 struct Cli {
+    #[structopt(short = "a", long = "address-count", default_value = "1")]
+    address_count: String,
+
     #[structopt(short = "b", long = "bip", default_value = "44")]
     derivation_path: u32,
 
@@ -77,13 +81,13 @@ struct Cli {
     entropy_length: u32,
 
     #[structopt(short = "p", long = "passphrase", default_value = "")]
-    passphrase: String,
+    seed_passphrase: String,
     
     #[structopt(short = "m", long = "import-mnemonic", default_value = "")]
     imported_mnemonic: String,
     
     #[structopt(short = "v", long = "verbosity", default_value = "0")]
-    verbosity: u32,
+    app_verbosity: u32,
 
     #[structopt(short = "s", long = "import-seed", default_value = "")]
     imported_seed: String,
@@ -114,8 +118,10 @@ fn main() -> Result<(), CustomError> {
 
     // Pre check
     let entropy_length = check_entropy_length(cli_args.entropy_length.try_into().unwrap())?;
-    let _bip_derivation = check_bip_entry(cli_args.derivation_path.try_into().unwrap())?;
+    let bip_derivation = check_bip_entry(cli_args.derivation_path.try_into().unwrap())?;
+    let address_count = check_address_count_input(&cli_args.address_count)?;
     
+
     // Preparing
     let mut seed  = "".to_string();
     let mut mnemonic_words  = "".to_string();
@@ -129,12 +135,17 @@ fn main() -> Result<(), CustomError> {
             mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
             // seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
         } else {
-            let _entropy_source = check_source_entry(&cli_args.entropy_source)?;
             
+            let _entropy_source = check_source_entry(&cli_args.entropy_source)?;
+
             // Generate entropy
             match cli_args.entropy_source.as_str() {
                 "file" => {
-                    entropy = read_entropy_from_file(ENTROPY_FILE, cli_args.entropy_length.try_into().unwrap())?;
+                    entropy = read_entropy_from_file(
+                        ENTROPY_FILE,
+                        cli_args.entropy_length.try_into().unwrap(),
+
+                    )?;
                 },
                 "rng" => {
                     entropy = generate_entropy_from_rng(cli_args.entropy_length)?;
@@ -148,7 +159,7 @@ fn main() -> Result<(), CustomError> {
             
             // Mnemonic and seed
             mnemonic_words = get_mnemonic_from_entropy(&full_entropy)?;
-            seed = create_bip39_seed_from_entropy(&entropy, &cli_args.passphrase)?;
+            seed = create_bip39_seed_from_entropy(&entropy, &cli_args.seed_passphrase)?;
         }
     }
 
@@ -159,11 +170,21 @@ fn main() -> Result<(), CustomError> {
     // Coin
     let coin_type = check_coin_type(&cli_args.coin_symbol)?;
     D3BUG!(log, "Coin index: {:?}", &coin_type);
-
-    // Childrens
-    let derivation_path = create_derivation_path(Some(cli_args.derivation_path), Some(coin_type), Some(0), None, None)?;
-    let _child_key = create_account_master_key(&master_key, &derivation_path);
     
+    // Extended private keys
+
+    let derivation_path = create_derivation_path(
+        bip_derivation,
+        coin_type,
+        Some(0),
+        Some(0),
+    )?;
+
+    let xprivkey = create_extended_private_key(&master_key, &derivation_path)?;
+
+    let xpubkey = create_extended_public_key(&xprivkey, None)?;
+
+    let address = create_p2pkh_address(xprivkey, &derivation_path, &address_count)?;
     Ok(())
 }
 
@@ -177,12 +198,27 @@ fn generate_entropy_from_rng(length: u32) -> Result<String, CustomError> {
         .collect();
 
     D3BUG!(output, "RNG entropy: {:?}", binary_string.to_string());
-    
     Ok(binary_string)
 }
 
+fn check_address_count_input(count: &str) -> Result<u32, CustomError> {
+    D3BUG!(info, "Checking address count input:");
+
+    match count.parse::<u32>() {
+        Ok(parsed_value) => {
+            D3BUG!(log, "Desired addresses: {:?}", &count);
+            Ok(parsed_value)
+        },
+        Err(_) => {
+            let error_msg: CustomError = CustomError::InputNotValidNumber(count.to_string());
+            D3BUG!(error, "{}", error_msg);
+            Err(CustomError::InputNotValidNumber(count.to_string()))
+        }
+    }
+}
+
 fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<String, CustomError> {
-    D3BUG!(info, "Entropy (file):");
+    D3BUG!(info, "Entropy from file:");
     
     let file = File::open(file_path)?;
     let mut reader = io::BufReader::new(file);
@@ -196,13 +232,13 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
         D3BUG!(error, "{}", error_msg);
         return Err(CustomError::InvalidEntropyLength(file_length.to_string()))
     }
+    
+    let mut start_point: u64 = 0;
 
-    let start_point: u64 = if file_length > entropy_length as u64 {
+    if file_length > entropy_length as u64 {
         let max_start = file_length.saturating_sub(entropy_length as u64);
-        rand::thread_rng().gen_range(0..max_start)
-    } else {
-        0
-    };
+        start_point = rand::thread_rng().gen_range(0..=max_start);
+    }
 
     reader.seek(io::SeekFrom::Start(start_point))?;
     D3BUG!(log, "Random start point: \"{:?}\"", start_point);
@@ -211,7 +247,6 @@ fn read_entropy_from_file(file_path: &str, entropy_length: usize) -> Result<Stri
     reader.take(entropy_length as u64).read_to_string(&mut entropy_raw_binary)?;
     
     D3BUG!(output, "Entropy: {:?}", entropy_raw_binary);
-
     Ok(entropy_raw_binary)
 }
 
@@ -227,8 +262,8 @@ fn calculate_checksum(entropy: &String, entropy_length: &u32) -> Result<String, 
 
     // Take 1 bit for every 32 bits of the hash 
     let checksum_raw_binary: String = hash_raw_binary.chars().take(checksum_lenght.try_into().unwrap()).collect();
-    D3BUG!(output, "Checksum: {:?}", checksum_raw_binary);
 
+    D3BUG!(output, "Checksum: {:?}", checksum_raw_binary);
     Ok(checksum_raw_binary)
 }
 
@@ -236,8 +271,8 @@ fn get_full_entropy(entropy: &String, checksum: &String) -> Result<String, Custo
     D3BUG!(info, "Final Entropy:");
 
     let full_entropy = format!("{}{}", entropy, checksum);
+    
     D3BUG!(output, "Final entropy: {:?}", full_entropy);
-
     Ok(full_entropy)
 }
 
@@ -264,8 +299,8 @@ fn get_mnemonic_from_entropy(final_entropy_binary: &String) -> Result<String, Cu
     D3BUG!(log, "Mnemonic numbers: {:?}", mnemonic_decimal);
 
     let final_mnemonic = mnemonic_words.join(" ");
+    
     D3BUG!(output, "Mnemonic words: {:?}", final_mnemonic);
-
     Ok(final_mnemonic)
 
 }
@@ -279,8 +314,8 @@ fn create_bip39_seed_from_entropy(entropy: &String, passphrase: &str) -> Result<
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
     let seed_hex = hex::encode(&seed[..]);
 
-    D3BUG!(output, "BIP39 Passphrase: {:?}", passphrase);
-    D3BUG!(output, "BIP39 Seed (hex): {:?}", seed_hex);
+    D3BUG!(output, "BIP39 passphrase: {:?}", passphrase);
+    D3BUG!(output, "BIP39 seed: {:?}", seed_hex);
 
     Ok(seed_hex)
 }
@@ -300,6 +335,8 @@ fn create_bip39_seed_from_mnemonic(mnemonic: &String, passphrase: &str) -> Resul
 }
 
 fn check_entropy_length(entropy_length: u32) -> Result<u32, CustomError> {
+    D3BUG!(info, "Checking entropy length input:");
+    
     if !VALID_ENTROPY_LENGTHS.contains(&entropy_length) {
         let allowed_values = VALID_ENTROPY_LENGTHS
             .iter()
@@ -311,10 +348,13 @@ fn check_entropy_length(entropy_length: u32) -> Result<u32, CustomError> {
         return Err(CustomError::InvalidEntropyLength(entropy_length.to_string()))
     }
 
+    D3BUG!(log, "CLI argument: {:?}", &entropy_length);
     Ok(entropy_length)
 }
 
 fn check_bip_entry(bip_entry: u32) -> Result<u32, CustomError> {
+    D3BUG!(info, "Checking BIP input:");
+    
     if !VALID_BIP_DERIVATIONS.contains(&bip_entry) {
         let allowed_values = VALID_BIP_DERIVATIONS
             .iter()
@@ -325,11 +365,14 @@ fn check_bip_entry(bip_entry: u32) -> Result<u32, CustomError> {
         D3BUG!(error, "{}", error_msg);
         return Err(CustomError::InvalidBipEntry(bip_entry.to_string()))
     }
-
+    
+    D3BUG!(log, "CLI argument: {:?}", &bip_entry);
     Ok(bip_entry)
 }
 
 fn check_source_entry(source_entry: &str) -> Result<String, CustomError> {
+    D3BUG!(info, "Checking entropy source input:");
+
     if !VALID_ENTROPY_SOURCES.contains(&source_entry) {
         let allowed_values = VALID_ENTROPY_SOURCES
             .iter()
@@ -341,34 +384,17 @@ fn check_source_entry(source_entry: &str) -> Result<String, CustomError> {
         return Err(CustomError::InvalidSourceEntry(source_entry.to_string()))
     }
 
+    D3BUG!(log, "CLI argument: {:?}", &source_entry);
     Ok(source_entry.to_string())
 }
 
 fn create_master_private_key(seed_hex: &str) -> Result<bitcoin::bip32::Xpriv, CustomError> {
-    D3BUG!(info, "Master Key:");
+    D3BUG!(info, "Master key:");
 
-    // Error handling
-    // 
-    // 
-    // 
-    // 
-    // let seed = match hex::decode(&seed_hex) {
-    //     Ok(decoded) => decoded,
-    //     Err(err) => {
-    //         let error_msg: CustomError = CustomError::InvalidImportedSeed(coin_symbol.to_string());
-    //         D3BUG!(error, "{}", error_msg);
-    //         return Err(CustomError::InvalidImportedSeed(coin_symbol.to_string()));
-    //     }
-    // };
-    // 
-    // 
-    // 
-    // 
     let seed = hex::decode(&seed_hex).expect("Failed to decode seed hex");
     let master_key = bitcoin::bip32::Xpriv::new_master(bitcoin::Network::Bitcoin, &seed).expect("Failed to derive master key");
 
-    D3BUG!(output, "BIP32 Master Private Key (xpriv): \"{}\"", master_key); 
-
+    D3BUG!(output, "BIP32 Master private key: \"{}\"", master_key); 
     Ok(master_key)
 }
 
@@ -422,60 +448,10 @@ fn check_coin_type(coin_symbol: &str) -> Result<u32, CustomError> {
             } else {
                 return Ok(0);
             }
-        } else {
-            D3BUG!(log, "Coin found");
         }
     }
     
     Ok(matching_entries[0].index)
-}
-
-fn create_derivation_path(
-    purpose: Option<u32>,
-    coin_type: Option<u32>,
-    account: Option<u32>,
-    change: Option<u32>,
-    address_index: Option<u32>,
-) -> Result<Vec<bitcoin::bip32::ChildNumber>, bitcoin::bip32::Error> {
-    D3BUG!(info, "Derivation path:");
-
-    let bip = purpose;
-    let purpose = bitcoin::bip32::ChildNumber::from_hardened_idx(purpose.unwrap()).expect("Invalid child number");
-    let coin_type = bitcoin::bip32::ChildNumber::from_hardened_idx(coin_type.unwrap()).expect("Invalid child number"); // 1 for Bitcoin, 0 for Bitcoin Testnet
-    let account = bitcoin::bip32::ChildNumber::from_hardened_idx(account.unwrap_or(0)).expect("Invalid child number");
-    let change = bitcoin::bip32::ChildNumber::from_hardened_idx(change.unwrap_or(0)).expect("Invalid child number"); // 0 for external addresses (receive), 1 for internal addresses (change)
-    let _address_index = bitcoin::bip32::ChildNumber::from_normal_idx(address_index.unwrap_or(0)).expect("Invalid child number");
-    
-    let derivation = match bip {
-        Some(32) => vec![account, change],
-        Some(44) => vec![purpose, coin_type, account],
-        // Some(49) => vec![purpose, coin_type, account],
-        _ => {
-            vec![]
-        }
-    };
-
-    let mut path = String::from("m");
-
-    for child_number in &derivation {
-        path.push_str(&format!("/{}", child_number.to_string()));
-    }
-    D3BUG!(output, "Derivation Path: {:?}", &path);
-
-    Ok(derivation)
-}
-
-fn create_account_master_key(master: &bitcoin::bip32::Xpriv, derivation: &Vec<bitcoin::bip32::ChildNumber>) -> Result<bitcoin::bip32::Xpriv, bitcoin::bip32::Error> {
-    D3BUG!(info, "Child key:");
-    
-    let secp = bitcoin::secp256k1::Secp256k1::new();
-    let child_key = master
-        .derive_priv(&secp, &derivation)
-        .expect("Failed to derive account key");
-
-    D3BUG!(output, "Account Extended Private Key: \"{}\"", &child_key);
-
-    Ok(child_key)
 }
 
 fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, CustomError> {
@@ -505,7 +481,7 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
             return Err(CustomError::WordlistReadError)
         }
     };
-
+    
     for word in &mnemonic_words {
         if !wordlist_content.contains(word) {
             let error_msg: CustomError = CustomError::InvalidMnemonicWord(word.to_string());
@@ -513,11 +489,9 @@ fn import_mnemonic_words(mnemonic: &str, wordlist_path: &str) -> Result<String, 
             return Err(CustomError::InvalidMnemonicWord(word.to_string()))
         }
     }
-
     let words: String = mnemonic_words.join(" ");
 
     D3BUG!(log, "Imported mnemonic {:?}", &words);
-
     Ok(words)
 }
 
@@ -531,13 +505,109 @@ fn import_seed(imported_seed: &str) -> Result<String, CustomError> {
     }
 
     match hex::decode(imported_seed) {
-        Ok(decoded) => Ok(hex::encode(decoded)),
+        Ok(decoded) => {
+            D3BUG!(output, "Imported seed: {:?}", imported_seed);
+            Ok(hex::encode(decoded))
+        },
         Err(err) => {
             // eprintln!("Error decoding seed: {}", err);
             // Err(CustomError::DecodingError(err.to_string()))
             let error_msg: CustomError = CustomError::DecodingError(imported_seed.to_string());
             D3BUG!(error, "{}", error_msg);
-            return Err(CustomError::DecodingError(imported_seed.to_string()))
+            return Err(CustomError::DecodingError(err.to_string()))
         }
     }
+}
+
+fn create_derivation_path(
+    cli_bip: u32,
+    coin_type: u32,
+    account: Option<u32>,
+    change: Option<u32>,
+) -> Result<Vec<bitcoin::bip32::ChildNumber>, bitcoin::bip32::Error> {
+    D3BUG!(info, "Derivation path:");
+    
+    let purpose = bitcoin::bip32::ChildNumber::from_hardened_idx(cli_bip)?;
+    let coin_type = bitcoin::bip32::ChildNumber::from_hardened_idx(coin_type)?;
+    let account = bitcoin::bip32::ChildNumber::from_hardened_idx(account.unwrap_or(0)).expect("Invalid child number");
+    let change = bitcoin::bip32::ChildNumber::from_hardened_idx(change.unwrap_or(0)).expect("Invalid child number");
+    
+    let derivation = match cli_bip {
+        32 => vec![account, change],
+        44 => vec![purpose, coin_type, account, change],
+        84 => vec![purpose, coin_type, account, change],
+        // Some(49) => vec![purpose, coin_type, account],
+        _ => vec![], // You may want to handle the case where bip is None
+    };
+    
+    let mut path = String::from("m");
+    
+    for child_number in &derivation {
+        path.push_str(&format!("/{}", child_number.to_string()));
+    }
+
+    D3BUG!(output, "BIP: {:?}", &cli_bip);
+    D3BUG!(output, "Derivation path: {:?}", &path);
+    Ok(derivation)
+}
+
+fn create_extended_private_key(
+    master: &bitcoin::bip32::Xpriv,
+    derivation: &Vec<bitcoin::bip32::ChildNumber>,
+) -> Result<bitcoin::bip32::Xpriv, bitcoin::bip32::Error> {
+    D3BUG!(info, "Extended private key");
+
+    let secp = bitcoin::secp256k1::Secp256k1::new();
+    let extended_key = master
+        .derive_priv(&secp, derivation)
+        .expect("Failed to derive extended private key");
+
+    D3BUG!(output, "Extended private key: \"{}\"", extended_key);
+    Ok(extended_key)
+}
+
+fn create_extended_public_key(
+    xprv: &bitcoin::bip32::Xpriv,
+    index: Option<&u32>
+) -> Result<bitcoin::bip32::Xpub, CustomError> {
+    D3BUG!(info, "Extended public key");
+
+    let secp = bitcoin::secp256k1::Secp256k1::new();
+    let xpubkey = bitcoin::bip32::Xpub::from_priv(&secp, &xprv);
+    
+    D3BUG!(output, "Extended public key: {:?}", xpubkey.to_string());
+    Ok(xpubkey)
+}
+
+
+fn create_p2pkh_address(
+    xprv: bitcoin::bip32::Xpriv,
+    derivation: &Vec<bitcoin::bip32::ChildNumber>,
+    count: &u32
+) -> Result<Vec<bitcoin::Address>, CustomError> {
+    D3BUG!(info, "p2pkh addresses:");
+
+    let secp = bitcoin::secp256k1::Secp256k1::new();
+
+    let mut addresses = Vec::new();
+
+    for index in 0..*count {
+        let child = bitcoin::bip32::ChildNumber::from_hardened_idx(index)?;
+
+        let child_xprv = xprv.derive_priv(&secp, &child)?;
+        let child_pubkey = child_xprv.to_priv().public_key(&secp);
+
+        let address = bitcoin::Address::p2pkh(&child_pubkey, bitcoin::Network::Bitcoin);
+
+        let mut path = String::from("m");
+        for child_number in derivation {
+            path.push_str(&format!("/{}", child_number.to_string()));
+        }
+        
+        D3BUG!(output, "{}/{}: {:?}", &path, child, address.to_string());
+        
+        addresses.push(address);
+    }
+
+    Ok(addresses)
 }

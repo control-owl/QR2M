@@ -23,6 +23,7 @@
 - [x] create new error_handler
 - [x] add generate_entropy_from_rng
 - [ ] import account
+- [ ] create new function: inspect_cli_arguments
 
 
 ### Advance

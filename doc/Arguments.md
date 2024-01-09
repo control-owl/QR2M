@@ -153,11 +153,10 @@ The argument decides source for generating entropy.
 
 ```
 
-
 ---
 
 
-# `-s, --import-seed <STRING>`
+# `-a, --address <STRING>`
 
 The argument imports your seed and generate keys for you.
 
@@ -168,5 +167,22 @@ The argument imports your seed and generate keys for you.
 ```rust
 
 ./qr2m -s db18991eac20e...bfa540121fcb4ad8ce77
+
+```
+
+---
+
+
+# `-a, --address-count <NUMBER>`
+
+How many addresses to create.
+
+> Default value: 1
+
+> Allowed values: 1-999999
+
+```rust
+
+./qr2m -a 20
 
 ```

@@ -21,6 +21,7 @@ pub enum CustomError {
     InvalidCoinSymbol(String),
     InvalidSeed(String),
     DecodingError(String),
+    InputNotValidNumber(String),
 }
 
 impl fmt::Display for CustomError {
@@ -42,6 +43,7 @@ impl fmt::Display for CustomError {
             CustomError::InvalidCoinSymbol(value) => write!(f, "The provided coin is not supported: {}", value),
             CustomError::InvalidSeed(value) => write!(f, "The provided seed is not valid.\nstring contains non hexadecimal characters: {}", value),
             CustomError::DecodingError(value) => write!(f, "The provided seed could not be decoded: {}", value),
+            CustomError::InputNotValidNumber(value) => write!(f, "This is not a valid number.\nPlease provide a whole number greater than or equal to 1.\nYour input was: {}", value),
         }
     }
 }
