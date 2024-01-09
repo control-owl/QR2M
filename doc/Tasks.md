@@ -17,7 +17,7 @@
         - [ ] BIP84
         - [ ] BIP141
     - [ ] BIP341
-- [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
+- [/] Show addresses in all forms: 1, 3, bc1q, bc1p
 - [ ] Show private key
 - [ ] check why IanColeman says BSC is coin_path 60 and slip0044 says ETH
 - [x] create new error_handler

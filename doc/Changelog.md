@@ -31,7 +31,7 @@
 - new file: doc/Tasks.md
 - new file: doc/Changelog.md
 - ascii art (program description)
-~~- new argument: debugging~~
+- new argument: debugging
 - new argument: mnemonic passphrase (-p, --passphrase)
 
 # version 0.1.0

@@ -577,10 +577,9 @@ fn create_extended_public_key(
     
     D3BUG!(output, "Extended public key: {:?}", xpubkey.to_string());
 
-    
+
     Ok(xpubkey)
 }
-
 
 fn create_p2pkh_address(
     xprv: bitcoin::bip32::Xpriv,

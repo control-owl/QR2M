@@ -186,3 +186,6 @@ How many addresses to create.
 ./qr2m -a 20
 
 ```
+
+---
+
