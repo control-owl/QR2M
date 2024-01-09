@@ -576,6 +576,8 @@ fn create_extended_public_key(
     let xpubkey = bitcoin::bip32::Xpub::from_priv(&secp, &xprv);
     
     D3BUG!(output, "Extended public key: {:?}", xpubkey.to_string());
+
+    
     Ok(xpubkey)
 }
 
