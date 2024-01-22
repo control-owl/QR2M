@@ -11,6 +11,7 @@ pub enum CustomError {
     IOError(io::Error),
     Bip39Error(bip39::Error),
     Bip32Error(bip32::Error),
+    BitcoinAddressError(bitcoin::address::Error),
     FileTooSmall(String),
     InvalidEntropyLength(String),
     InvalidBipEntry(String),
@@ -22,6 +23,7 @@ pub enum CustomError {
     InvalidSeed(String),
     DecodingError(String),
     InputNotValidNumber(String),
+    New(String),
 }
 
 impl fmt::Display for CustomError {
@@ -32,6 +34,7 @@ impl fmt::Display for CustomError {
             CustomError::IOError(err) => write!(f, "IO Error: {}", err),
             CustomError::Bip39Error(err) => write!(f, "Bip39 Error: {}", err),
             CustomError::Bip32Error(err) => write!(f, "Bip32 Error: {}", err),
+            CustomError::BitcoinAddressError(err) => write!(f, "Bitcoin Address Error: {}", err),
 
             CustomError::WordlistReadError => write!(f, "There was a problem with reading wordlist file"),
             CustomError::FileTooSmall(value) => write!(f, "The provided file is too small: {}", value),
@@ -44,6 +47,7 @@ impl fmt::Display for CustomError {
             CustomError::InvalidSeed(value) => write!(f, "The provided seed is not valid.\nstring contains non hexadecimal characters: {}", value),
             CustomError::DecodingError(value) => write!(f, "The provided seed could not be decoded: {}", value),
             CustomError::InputNotValidNumber(value) => write!(f, "This is not a valid number.\nPlease provide a whole number greater than or equal to 1.\nYour input was: {}", value),
+            CustomError::New(value) => write!(f, "NEW ERROR: {}", value),
         }
     }
 }
@@ -63,6 +67,12 @@ impl From<bip39::Error> for CustomError {
 impl From<bip32::Error> for CustomError {
     fn from(err: bip32::Error) -> Self {
         CustomError::Bip32Error(err)
+    }
+}
+
+impl From<bitcoin::address::Error> for CustomError {
+    fn from(err: bitcoin::address::Error) -> Self {
+        CustomError::BitcoinAddressError(err)
     }
 }
 

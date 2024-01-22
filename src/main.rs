@@ -4,7 +4,7 @@ use structopt::StructOpt;
 use hex;
 use rand::{Rng, RngCore};
 use sha2::{Digest, Sha256};
-use bitcoin;
+use bitcoin::{self, hashes::sha256, Script};
 use bip39;
 use csv::ReaderBuilder;
 
@@ -16,11 +16,11 @@ mod converter;
 
 
 // Global variables
-// const ENTROPY_FILE: &str = "entropy/test.qrn";
-const ENTROPY_FILE: &str = "./entropy/binary.qrn";
+const ENTROPY_FILE: &str = "entropy/test.qrn";
+// const ENTROPY_FILE: &str = "./entropy/binary.qrn";
 const WORDLIST_FILE: &str = "./lib/bip39-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-const VALID_BIP_DERIVATIONS: [u32; 3] = [32, 44, 84];
+const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
 // const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 341];
 const VALID_MNEMONIC_WORD_COUNT: [u32; 5] = [12, 15, 18, 21, 24];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
@@ -66,7 +66,7 @@ struct CoinType {
 #[derive(StructOpt)]
 struct Cli {
     #[structopt(short = "a", long = "address-count", default_value = "1")]
-    address_count: String,
+    address_count: u32,
 
     #[structopt(short = "b", long = "bip", default_value = "44")]
     derivation_path: u32,
@@ -76,6 +76,9 @@ struct Cli {
 
     #[structopt(short = "e", long = "entropy-source", default_value = "rng")]
     entropy_source: String,
+
+    #[structopt(short = "h", long = "hardened-address")]
+    hardened_address: bool,
 
     #[structopt(short = "l", long = "entropy-length", default_value = "256")]
     entropy_length: u32,
@@ -94,6 +97,20 @@ struct Cli {
 
 }
 
+fn process_arguments(cli_args: &Cli) {
+    D3BUG!(info, "Program arguments:");
+
+    D3BUG!(log, "App verbosity: {}", cli_args.app_verbosity);
+    D3BUG!(log, "Entropy source: {}", cli_args.entropy_source);
+    D3BUG!(log, "Entropy length: {}", cli_args.entropy_length);
+    D3BUG!(log, "Seed passphrase: {}", cli_args.seed_passphrase);
+    D3BUG!(log, "Coin Symbol: {}", cli_args.coin_symbol);
+    D3BUG!(log, "Derivation Path: {}", cli_args.derivation_path);
+    D3BUG!(log, "Address Count: {}", cli_args.address_count);
+    D3BUG!(log, "Imported mnemonic: {}", cli_args.imported_mnemonic);
+    D3BUG!(log, "Imported seed: {}", cli_args.imported_seed);
+    // D3BUG!(log, ": {}", cli_args.);
+}
 
 fn print_program_info() {
     let description = option_env!("CARGO_PKG_DESCRIPTION").unwrap_or_default();
@@ -112,17 +129,15 @@ fn print_program_info() {
 
 fn main() -> Result<(), CustomError> {
     print_program_info();
-
+    
     // CLI arguments
     let cli_args = Cli::from_args();
+    process_arguments(&cli_args);
 
     // Pre check
     let entropy_length = check_entropy_length(cli_args.entropy_length.try_into().unwrap())?;
     let bip_derivation = check_bip_entry(cli_args.derivation_path.try_into().unwrap())?;
-    let address_count = check_address_count_input(&cli_args.address_count)?;
-    
-
-    // Preparing
+    let address_count = check_address_count_input(&cli_args.address_count.try_into().unwrap())?;
     let mut seed  = "".to_string();
     let mut mnemonic_words  = "".to_string();
     let mut entropy  = "".to_string();
@@ -135,7 +150,6 @@ fn main() -> Result<(), CustomError> {
             mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
             // seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
         } else {
-            
             let _entropy_source = check_source_entry(&cli_args.entropy_source)?;
 
             // Generate entropy
@@ -144,7 +158,6 @@ fn main() -> Result<(), CustomError> {
                     entropy = read_entropy_from_file(
                         ENTROPY_FILE,
                         cli_args.entropy_length.try_into().unwrap(),
-
                     )?;
                 },
                 "rng" => {
@@ -163,7 +176,6 @@ fn main() -> Result<(), CustomError> {
         }
     }
 
-
     // Master key
     let master_key = create_master_private_key(&seed)?;
 
@@ -171,20 +183,24 @@ fn main() -> Result<(), CustomError> {
     let coin_type = check_coin_type(&cli_args.coin_symbol)?;
     D3BUG!(log, "Coin index: {:?}", &coin_type);
     
-    // Extended private keys
-
+    
     let derivation_path = create_derivation_path(
         bip_derivation,
         coin_type,
-        Some(0),
-        Some(0),
+        None,
+        None,
+        // Some(0),
     )?;
+    
 
+
+    // Extended private keys
     let xprivkey = create_extended_private_key(&master_key, &derivation_path)?;
-
     let xpubkey = create_extended_public_key(&xprivkey, None)?;
 
-    let address = create_p2pkh_address(xprivkey, &derivation_path, &address_count)?;
+    let address = create_bitcoin_address(xprivkey, &derivation_path, &address_count)?;
+    // derive_key(&xprivkey, &derivation_path);
+
     Ok(())
 }
 
@@ -201,10 +217,10 @@ fn generate_entropy_from_rng(length: u32) -> Result<String, CustomError> {
     Ok(binary_string)
 }
 
-fn check_address_count_input(count: &str) -> Result<u32, CustomError> {
+fn check_address_count_input(count: &u32) -> Result<u32, CustomError> {
     D3BUG!(info, "Checking address count input:");
 
-    match count.parse::<u32>() {
+    match count.to_string().parse::<u32>() {
         Ok(parsed_value) => {
             D3BUG!(log, "Desired addresses: {:?}", &count);
             Ok(parsed_value)
@@ -524,19 +540,20 @@ fn create_derivation_path(
     coin_type: u32,
     account: Option<u32>,
     change: Option<u32>,
+    // index: Option<u32>,
 ) -> Result<Vec<bitcoin::bip32::ChildNumber>, bitcoin::bip32::Error> {
     D3BUG!(info, "Derivation path:");
     
     let purpose = bitcoin::bip32::ChildNumber::from_hardened_idx(cli_bip)?;
     let coin_type = bitcoin::bip32::ChildNumber::from_hardened_idx(coin_type)?;
     let account = bitcoin::bip32::ChildNumber::from_hardened_idx(account.unwrap_or(0)).expect("Invalid child number");
-    let change = bitcoin::bip32::ChildNumber::from_hardened_idx(change.unwrap_or(0)).expect("Invalid child number");
+    let change = bitcoin::bip32::ChildNumber::from_normal_idx(change.unwrap_or(0)).expect("Invalid child number");
+    // let index = bitcoin::bip32::ChildNumber::from_normal_idx(index.unwrap_or(0)).expect("Invalid child number");
     
     let derivation = match cli_bip {
         32 => vec![account, change],
+        // 44 => vec![purpose, coin_type, account],
         44 => vec![purpose, coin_type, account, change],
-        84 => vec![purpose, coin_type, account, change],
-        // Some(49) => vec![purpose, coin_type, account],
         _ => vec![], // You may want to handle the case where bip is None
     };
     
@@ -555,59 +572,90 @@ fn create_extended_private_key(
     master: &bitcoin::bip32::Xpriv,
     derivation: &Vec<bitcoin::bip32::ChildNumber>,
 ) -> Result<bitcoin::bip32::Xpriv, bitcoin::bip32::Error> {
-    D3BUG!(info, "Extended private key");
+    D3BUG!(info, "Extended private keys:");
 
     let secp = bitcoin::secp256k1::Secp256k1::new();
-    let extended_key = master
-        .derive_priv(&secp, derivation)
-        .expect("Failed to derive extended private key");
+    
+    let bip32_xprv = master
+        .derive_priv(&secp, &derivation)
+        .expect("Failed to derive derivation private key");
+    D3BUG!(output, "BIP32 xprv: \"{}\"", bip32_xprv);
 
-    D3BUG!(output, "Extended private key: \"{}\"", extended_key);
-    Ok(extended_key)
+
+    let mut modified_derivation = derivation.clone();
+    modified_derivation.pop();
+    let extended_key = master
+        .derive_priv(&secp, &modified_derivation)
+        .expect("Failed to derive extended private key");
+    D3BUG!(output, "Account xprv : \"{}\"", extended_key);
+
+
+    Ok(bip32_xprv)
 }
 
 fn create_extended_public_key(
     xprv: &bitcoin::bip32::Xpriv,
     index: Option<&u32>
 ) -> Result<bitcoin::bip32::Xpub, CustomError> {
-    D3BUG!(info, "Extended public key");
+    D3BUG!(info, "Account extended public key");
 
     let secp = bitcoin::secp256k1::Secp256k1::new();
     let xpubkey = bitcoin::bip32::Xpub::from_priv(&secp, &xprv);
     
-    D3BUG!(output, "Extended public key: {:?}", xpubkey.to_string());
+    D3BUG!(output, "xpub: {:?}", xpubkey.to_string());
 
 
     Ok(xpubkey)
 }
 
-fn create_p2pkh_address(
+fn create_bitcoin_address(
     xprv: bitcoin::bip32::Xpriv,
     derivation: &Vec<bitcoin::bip32::ChildNumber>,
-    count: &u32
+    count: &u32,
 ) -> Result<Vec<bitcoin::Address>, CustomError> {
-    D3BUG!(info, "p2pkh addresses:");
+    D3BUG!(info, "Bitcoin addresses:");
 
     let secp = bitcoin::secp256k1::Secp256k1::new();
-
     let mut addresses = Vec::new();
 
-    for index in 0..*count {
-        let child = bitcoin::bip32::ChildNumber::from_hardened_idx(index)?;
+    // for &format in ["p2pkh", "p2wpkh", "p2tr"].iter() {
+    for &format in ["p2pkh", "p2wpkh"].iter() {
+        for index in 0..*count {
+            let child = bitcoin::bip32::ChildNumber::from_hardened_idx(index)?;
+            let child_xprv = xprv.derive_priv(&secp, &child)?;
+            let child_pubkey = child_xprv.to_priv().public_key(&secp);
 
-        let child_xprv = xprv.derive_priv(&secp, &child)?;
-        let child_pubkey = child_xprv.to_priv().public_key(&secp);
+            let address = match format {
+                "p2pkh" => bitcoin::Address::p2pkh(&child_pubkey, bitcoin::Network::Bitcoin),
+                "p2wpkh" => bitcoin::Address::p2wpkh(&child_pubkey, bitcoin::Network::Bitcoin)?,
+                "p2tr" => {
+                    // Create a Secp256k1 context
+                    let mut rng = rand::thread_rng();
+                    let seckey_bytes: [u8; 32] = rng.gen();
+                    let seckey =
+                        secp256k1::SecretKey::from_slice(&seckey_bytes).expect("Invalid secret key");
+                    let keypair = seckey.keypair(&secp);
+                    let (xonly_public_key, parity) = bitcoin::XOnlyPublicKey::from_keypair(&keypair);
 
-        let address = bitcoin::Address::p2pkh(&child_pubkey, bitcoin::Network::Bitcoin);
+                    bitcoin::Address::p2tr(
+                        &secp,
+                        xonly_public_key,
+                        None,
+                        bitcoin::Network::Bitcoin,
+                    )
+                }
+                _ => return Err(CustomError::New(format.to_string())),
+            };
 
-        let mut path = String::from("m");
-        for child_number in derivation {
-            path.push_str(&format!("/{}", child_number.to_string()));
+            let mut path = String::from("m");
+            for child_number in derivation {
+                path.push_str(&format!("/{}", child_number.to_string()));
+            }
+
+            D3BUG!(output, "{}/{} [{}]: {:?}", &path, child, &format, address);
+
+            addresses.push(address);
         }
-        
-        D3BUG!(output, "{}/{}: {:?}", &path, child, address.to_string());
-        
-        addresses.push(address);
     }
 
     Ok(addresses)

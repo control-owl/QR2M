@@ -189,3 +189,17 @@ How many addresses to create.
 
 ---
 
+
+# `-h, --hardened-address <true|false>`
+
+Create hardened addresses
+
+> Default value: true
+
+```rust
+
+./qr2m -h false
+
+```
+
+---

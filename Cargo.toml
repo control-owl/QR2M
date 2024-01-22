@@ -17,8 +17,12 @@ structopt = "0.3.26"
 thiserror = "1.0.51"
 bitcoin = "0.31.0"
 csv = "1.3.0"
+secp256k1 = "0.28.1"
 
 # Testing
+gtk = "0.18.1"
+glib = "0.18.5"
+
 
 [[bin]]
 name = "QR2M"
