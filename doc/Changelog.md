@@ -1,3 +1,6 @@
+# version 0.3.0
+- GUI - gtk4-rs
+
 # version 0.2.2
 - new argument: address-count (-a, --address-count)
 

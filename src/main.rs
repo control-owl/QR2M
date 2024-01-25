@@ -24,7 +24,9 @@ const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
 // const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 341];
 const VALID_MNEMONIC_WORD_COUNT: [u32; 5] = [12, 15, 18, 21, 24];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
-
+const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
+const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
 
 // Debugging log
 macro_rules! D3BUG {
@@ -50,7 +52,6 @@ macro_rules! D3BUG {
             println!("{}", format_args!($($arg)*))
     );
 }
-
 
 
 #[derive(Debug)]
@@ -113,9 +114,7 @@ fn process_arguments(cli_args: &Cli) {
 }
 
 fn print_program_info() {
-    let description = option_env!("CARGO_PKG_DESCRIPTION").unwrap_or_default();
-    let version = option_env!("CARGO_PKG_VERSION").unwrap_or_default();
-    let authors = option_env!("CARGO_PKG_AUTHORS").unwrap_or_default();
+
     
     
     println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
@@ -124,84 +123,7 @@ fn print_program_info() {
     println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
     println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
-    println!("{} ({})\n{}\n", description, version, authors);
-}
-
-fn main() -> Result<(), CustomError> {
-    print_program_info();
-    
-    // CLI arguments
-    let cli_args = Cli::from_args();
-    process_arguments(&cli_args);
-
-    // Pre check
-    let entropy_length = check_entropy_length(cli_args.entropy_length.try_into().unwrap())?;
-    let bip_derivation = check_bip_entry(cli_args.derivation_path.try_into().unwrap())?;
-    let address_count = check_address_count_input(&cli_args.address_count.try_into().unwrap())?;
-    let mut seed  = "".to_string();
-    let mut mnemonic_words  = "".to_string();
-    let mut entropy  = "".to_string();
-
-    if !&cli_args.imported_seed.is_empty() {
-        seed = import_seed(&cli_args.imported_seed.to_string())?; 
-    } else {
-        // Import Mnemonic
-        if !&cli_args.imported_mnemonic.is_empty() {
-            mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
-            // seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
-        } else {
-            let _entropy_source = check_source_entry(&cli_args.entropy_source)?;
-
-            // Generate entropy
-            match cli_args.entropy_source.as_str() {
-                "file" => {
-                    entropy = read_entropy_from_file(
-                        ENTROPY_FILE,
-                        cli_args.entropy_length.try_into().unwrap(),
-                    )?;
-                },
-                "rng" => {
-                    entropy = generate_entropy_from_rng(cli_args.entropy_length)?;
-                },
-                _ => println!("error"),
-            }
-            
-            // Create full entropy
-            let checksum = calculate_checksum(&entropy, &entropy_length)?;
-            let full_entropy = get_full_entropy(&entropy, &checksum)?;
-            
-            // Mnemonic and seed
-            mnemonic_words = get_mnemonic_from_entropy(&full_entropy)?;
-            seed = create_bip39_seed_from_entropy(&entropy, &cli_args.seed_passphrase)?;
-        }
-    }
-
-    // Master key
-    let master_key = create_master_private_key(&seed)?;
-
-    // Coin
-    let coin_type = check_coin_type(&cli_args.coin_symbol)?;
-    D3BUG!(log, "Coin index: {:?}", &coin_type);
-    
-    
-    let derivation_path = create_derivation_path(
-        bip_derivation,
-        coin_type,
-        None,
-        None,
-        // Some(0),
-    )?;
-    
-
-
-    // Extended private keys
-    let xprivkey = create_extended_private_key(&master_key, &derivation_path)?;
-    let xpubkey = create_extended_public_key(&xprivkey, None)?;
-
-    let address = create_bitcoin_address(xprivkey, &derivation_path, &address_count)?;
-    // derive_key(&xprivkey, &derivation_path);
-
-    Ok(())
+    println!("{} ({})\n{}\n", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap(), &APP_AUTHOR.unwrap());
 }
 
 fn generate_entropy_from_rng(length: u32) -> Result<String, CustomError> {
@@ -660,3 +582,365 @@ fn create_bitcoin_address(
 
     Ok(addresses)
 }
+
+
+
+
+
+
+
+
+
+// -----------------------------------------------------------------------------------------
+
+// GTK4
+use gtk4 as gtk;
+use gtk::{
+        ffi::GtkCenterLayoutClass, gdk::BUTTON_MIDDLE, gio::{
+            self, MenuItem, Menu}, glib::{self, clone}, prelude::*, Stack, StackSidebar, StackTransitionType
+    };
+
+
+fn gtk4_create_main_menu(app: &gtk::Application) {
+    let about = gio::ActionEntry::builder("about")
+        .activate(|_, _, _| println!("About was pressed"))
+        .build();
+
+    let quit = gio::ActionEntry::builder("quit")
+        .activate(|app: &gtk::Application, _, _| app.quit())
+        .build();
+
+    app.add_action_entries([about, quit]);
+
+    let menubar = {
+        let wallet_menu = {
+            let open_menu_item = MenuItem::new(Some("Open"), Some("app.open"));
+            let save_menu_item = MenuItem::new(Some("Save"), Some("app.save"));
+            let quit_menu_item = MenuItem::new(Some("Quit"), Some("app.quit"));
+            
+            let wallet_menu = Menu::new();
+            wallet_menu.append_item(&open_menu_item);
+            wallet_menu.append_item(&save_menu_item);
+            wallet_menu.append_item(&quit_menu_item);
+            wallet_menu
+        };
+
+        let entropy_menu = {
+            let new_menu_item = MenuItem::new(Some("New"), Some("app.new_entropy"));
+
+            let entropy_menu = Menu::new();
+            entropy_menu.append_item(&new_menu_item);
+            entropy_menu
+        };
+
+        let help_menu = {
+            let about_menu_item = MenuItem::new(Some("About"), Some("app.about"));
+
+            let help_menu = Menu::new();
+            help_menu.append_item(&about_menu_item);
+            help_menu
+        };
+
+
+        let menubar = Menu::new();
+        menubar.append_submenu(Some("Wallet"), &wallet_menu);
+        menubar.append_submenu(Some("Entropy"), &entropy_menu);
+        menubar.append_submenu(Some("Help"), &help_menu);
+
+        menubar
+    };
+
+    app.set_menubar(Some(&menubar));
+}
+
+
+fn create_GUI(application: &gtk::Application) {
+    let title = format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap());
+
+    let window = gtk::ApplicationWindow::builder()
+        .application(application)
+        .title(&title)
+        .default_width(800)
+        .default_height(600)
+        .show_menubar(true)
+        .build();
+
+    let header_bar = gtk::HeaderBar::new();
+    window.set_titlebar(Some(&header_bar));
+
+    let new_wallet_button = gtk::Button::new();
+    new_wallet_button.set_icon_name("tab-new-symbolic");
+    header_bar.pack_start(&new_wallet_button);
+
+    let open_wallet_button = gtk::Button::new();
+    open_wallet_button.set_icon_name("document-open-symbolic");
+    header_bar.pack_start(&open_wallet_button);
+
+    let save_wallet_button = gtk::Button::new();
+    save_wallet_button.set_icon_name("document-save-symbolic");
+    header_bar.pack_start(&save_wallet_button);
+
+    let settings_button = gtk::Button::new();
+    settings_button.set_icon_name("org.gnome.Settings-symbolic");
+    header_bar.pack_end(&settings_button);
+
+    // Create a Stack and a StackSidebar
+    let stack = Stack::new();
+    let stack_sidebar = StackSidebar::new();
+    stack_sidebar.set_stack(&stack);
+
+    // SEED SIDEBAR
+    let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    entropy_main_box.set_margin_top(10);
+    entropy_main_box.set_margin_start(10);
+    entropy_main_box.set_margin_end(10);
+    entropy_main_box.set_margin_bottom(10);
+
+    // Header
+    let entropy_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let entropy_header_first_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+
+    // Entropy source
+    let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let entropy_source_frame = gtk::Frame::new(Some("Entropy source"));
+    let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+    entropy_source_box.set_hexpand(true);
+    entropy_source_frame.set_hexpand(true);
+    
+    // Entropy length
+    let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let entropy_length_frame = gtk::Frame::new(Some("Entropy length"));
+    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    entropy_length_box.set_hexpand(true);
+    entropy_length_frame.set_hexpand(true);
+    
+    // Mnemonic passphrase
+    let mnemonic_passphrase_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let mnemonic_passphrase_frame = gtk::Frame::new(Some("Mnemonic passphrase"));
+    let mnemonic_passphrase_text = gtk::Entry::new();
+    mnemonic_passphrase_box.set_hexpand(true);
+    mnemonic_passphrase_text.set_hexpand(true);
+    
+    // Generate button
+    let generate_wallet_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let generate_wallet_button = gtk::Button::new();
+    generate_wallet_button.set_label("Generate");
+    generate_wallet_box.set_halign(gtk::Align::Center);
+
+    // Connections
+    entropy_source_frame.set_child(Some(&entropy_source_dropdown));
+    entropy_length_frame.set_child(Some(&entropy_length_dropdown));
+
+    generate_wallet_box.append(&generate_wallet_button);
+    entropy_source_box.append(&entropy_source_frame);
+    entropy_length_box.append(&entropy_length_frame);
+    entropy_header_first_box.append(&entropy_source_box);
+    entropy_header_first_box.append(&entropy_length_box);
+    entropy_header_second_box.append(&mnemonic_passphrase_box);
+    entropy_header_box.append(&entropy_header_first_box);
+    entropy_header_box.append(&entropy_header_second_box);
+    entropy_header_box.append(&generate_wallet_box);
+
+    // Body
+    let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    
+    // Entropy string
+    let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let entropy_frame = gtk::Frame::new(Some("Entropy"));
+    let entropy_text = gtk::TextView::new();
+    entropy_text.set_vexpand(true);
+    entropy_text.set_hexpand(true);
+    entropy_text.set_wrap_mode(gtk::WrapMode::Char);
+    entropy_frame.set_child(Some(&entropy_text));
+    entropy_box.append(&entropy_frame);
+    entropy_text.set_editable(false);
+    
+    // Mnemonic words
+    let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let mnemonic_words_frame = gtk::Frame::new(Some("Mnemonic words"));
+    let mnemonic_words_text = gtk::TextView::new();
+    mnemonic_words_box.set_hexpand(true);
+    mnemonic_words_text.set_vexpand(true);
+    mnemonic_words_text.set_hexpand(true);
+    mnemonic_words_text.set_editable(false);
+
+    // Seed
+    let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let seed_frame = gtk::Frame::new(Some("Seed"));
+    let seed_text = gtk::Entry::new();
+    seed_text.set_editable(false);
+
+    // Connections
+    mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
+    mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_text));
+    seed_frame.set_child(Some(&seed_text));
+
+    mnemonic_words_box.append(&mnemonic_words_frame);
+    mnemonic_passphrase_box.append(&mnemonic_passphrase_frame);
+    seed_box.append(&seed_frame);
+
+    body_box.append(&entropy_box);
+    body_box.append(&mnemonic_words_box);
+    body_box.append(&seed_box);
+    entropy_main_box.append(&entropy_header_box);
+    entropy_main_box.append(&body_box);
+    
+    stack.add_titled(&entropy_main_box, Some("sidebar-seed"), "Seed");
+    // stack.add_titled(&entropy_main_box, Some("sidebar-coin"), "Coin");
+    // stack.add_titled(&entropy_main_box, Some("sidebar-address"), "Address");
+
+
+
+
+
+    // // MNEMONIC SIDEBAR
+    // let mnemonic_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    // // mnemonic_main_box.set_margin_top(10);
+    // // mnemonic_main_box.set_margin_start(10);
+    // // mnemonic_main_box.set_margin_end(10);
+    // // mnemonic_main_box.set_margin_bottom(10);
+
+    
+    
+   
+
+    // mnemonic_main_box.append(&mnemonic_words_box);
+    // mnemonic_main_box.append(&mnemonic_passphrase_box);
+    // stack.add_titled(&mnemonic_main_box, Some("sidebar-mnemonic"), "Mnemonic");
+
+    // // // Create and add sidebar 3
+    // // let sidebar3 = gtk::Label::new(Some("Sidebar 3"));
+    // // stack.add_titled(&sidebar3, Some("sidebar3"), "Sidebar 3");
+
+    // // // Create and add sidebar 4
+    // // let sidebar4 = gtk::Label::new(Some("Sidebar 4"));
+    // // stack.add_titled(&sidebar4, Some("sidebar4"), "Sidebar 4");
+
+
+
+
+
+    // Create a Box to hold the main content and sidebar
+    let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+
+    // Add the StackSidebar to the main content box
+    main_content_box.append(&stack_sidebar);
+
+    // Add the Stack to the main content box
+    main_content_box.append(&stack);
+
+    // Set the main content box as the content of the window
+    window.set_child(Some(&main_content_box));
+
+
+
+
+
+
+// Show the window
+window.present();
+
+    
+}
+
+
+
+fn main() {
+    // Create a new application
+    let application = gtk::Application::builder()
+        .application_id("com.github.qr2m")
+        .build();
+    // application.connect_startup(gtk4_create_main_menu);
+    application.connect_activate(create_GUI);
+    application.run();
+}
+
+
+
+
+
+
+
+
+// fn main() -> Result<(), CustomError> {
+//     print_program_info();
+    
+//     // CLI arguments
+//     let cli_args = Cli::from_args();
+//     process_arguments(&cli_args);
+
+//     // Pre check
+//     let entropy_length = check_entropy_length(cli_args.entropy_length.try_into().unwrap())?;
+//     let bip_derivation = check_bip_entry(cli_args.derivation_path.try_into().unwrap())?;
+//     let address_count = check_address_count_input(&cli_args.address_count.try_into().unwrap())?;
+//     let mut seed  = "".to_string();
+//     let mut mnemonic_words  = "".to_string();
+//     let mut entropy  = "".to_string();
+
+//     if !&cli_args.imported_seed.is_empty() {
+//         seed = import_seed(&cli_args.imported_seed.to_string())?; 
+//     } else {
+//         // Import Mnemonic
+//         if !&cli_args.imported_mnemonic.is_empty() {
+//             mnemonic_words = import_mnemonic_words(&cli_args.imported_mnemonic, &WORDLIST_FILE)?;
+//             // seed = create_bip39_seed_from_mnemonic(&mnemonic_words, &cli_args.passphrase)?;
+//         } else {
+//             let _entropy_source = check_source_entry(&cli_args.entropy_source)?;
+
+//             // Generate entropy
+//             match cli_args.entropy_source.as_str() {
+//                 "file" => {
+//                     entropy = read_entropy_from_file(
+//                         ENTROPY_FILE,
+//                         cli_args.entropy_length.try_into().unwrap(),
+//                     )?;
+//                 },
+//                 "rng" => {
+//                     entropy = generate_entropy_from_rng(cli_args.entropy_length)?;
+//                 },
+//                 _ => println!("error"),
+//             }
+            
+//             // Create full entropy
+//             let checksum = calculate_checksum(&entropy, &entropy_length)?;
+//             let full_entropy = get_full_entropy(&entropy, &checksum)?;
+            
+//             // Mnemonic and seed
+//             mnemonic_words = get_mnemonic_from_entropy(&full_entropy)?;
+//             seed = create_bip39_seed_from_entropy(&entropy, &cli_args.seed_passphrase)?;
+//         }
+//     }
+
+//     // Master key
+//     let master_key = create_master_private_key(&seed)?;
+
+//     // Coin
+//     let coin_type = check_coin_type(&cli_args.coin_symbol)?;
+//     D3BUG!(log, "Coin index: {:?}", &coin_type);
+    
+    
+//     let derivation_path = create_derivation_path(
+//         bip_derivation,
+//         coin_type,
+//         None,
+//         None,
+//         // Some(0),
+//     )?;
+    
+
+
+//     // Extended private keys
+//     let xprivkey = create_extended_private_key(&master_key, &derivation_path)?;
+//     let xpubkey = create_extended_public_key(&xprivkey, None)?;
+
+//     let address = create_bitcoin_address(xprivkey, &derivation_path, &address_count)?;
+//     // derive_key(&xprivkey, &derivation_path);
+
+//     Ok(())
+// }
+

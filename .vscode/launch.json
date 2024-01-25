@@ -18,7 +18,7 @@
             },
             // "args": ["--bip", "32", "-v", "1", "-e", "rng", "-c", "btc", "-s", "95a3585da93b438e965de1d48d31d37460fc370d0db7975fe7580e0d499554b2dcc9e92a0e41f0a137a69c37cd349bea9af8412ede4d29523f006b2155b20fa4"],
             // "args": ["-v", "3", "-e", "file", "--bip", "84"],
-            "args": ["-v", "3", "-e", "file"],
+            // "args": ["-v", "3", "-e", "file"],
             "cwd": "${workspaceFolder}"
         }
     ]
