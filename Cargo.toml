@@ -22,7 +22,7 @@ secp256k1 = "0.28.1"
 # Testing
 gtk4 = "0.7.3"
 glib = "0.18.5"
-
+bip32 = "0.5.1"
 
 [[bin]]
 name = "QR2M"
