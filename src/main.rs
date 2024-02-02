@@ -1,6 +1,6 @@
 // Crates
 use std::{io::{self, Read, Seek, Write}, fs::{self, File}, path::Path, vec, str::FromStr, ops::Index};
-use glib::{value::ValueType, PropertyGet};
+use glib::{value::ValueType, PropertyGet, PropertySet};
 use structopt::StructOpt;
 use hex;
 use rand::{Rng, RngCore};
@@ -667,11 +667,12 @@ fn create_GUI(application: &gtk::Application) {
         .css_classes(["large-title"])
         .build();
 
+
+    // Coins
     let coins = gtk::Box::new(gtk::Orientation::Vertical, 20);
     coins.append(&coin_search);
     coins.append(&coin_label);
     coins.append(&coin_treeview);
-
     coin_frame.set_child(Some(&coins));
 
     // Derivation path
@@ -682,7 +683,7 @@ fn create_GUI(application: &gtk::Application) {
     let derivation_dropdown = gtk::DropDown::from_strings(&valid_derivation_path_as_str_refs);
     derivation_frame.set_child(Some(&derivation_dropdown));
     derivation_frame.set_hexpand(true);
-    
+    derivation_dropdown.set_selected(1);
     
     
     // Hardened path
@@ -713,35 +714,47 @@ fn create_GUI(application: &gtk::Application) {
     coin_main_box.append(&derivation_box);
     coin_main_box.append(&master_private_key_box);
     
-    create_coin_store();
-    
     let coin_store = create_coin_store();
     coin_search.connect_search_changed(clone!(@weak coin_label => move |coin_search| {
         if coin_search.text() != "" {
 
-            let target_symbol = coin_search.text().to_string();
+            let target_symbol = coin_search.text().to_uppercase().to_string();
         
-            // Ensure target_symbol is a &str, and pass it by reference to search_coin_in_store
             if let Some(found_coin) = search_coin_in_store(&coin_store, &target_symbol) {
                 println!("Coin found: {:?}", found_coin);
-                // let label_text = format!("Coin found: {}", &valid_coin_type.to_string());
                 coin_label.set_text("Coin found");
 
-
-            // Refresh the TreeView
-            // coin_treeview.set_model(Some(&coin_list_store));
-            
-            } else {
-                let msg = format!("Coin with symbol {} not found in the store.", target_symbol);
-                coin_label.set_text(&msg);
                 let master_priv = create_master_private_key(cloned_seed_text.text().to_string());
                 master_private_key_text.buffer().set_text(&master_priv.to_string());
+                
+                // Refresh the TreeView
+                let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 4]);
+                coin_treeview.set_model(Some(&treestore));
+            
+                // Add some sample data to the TreeStore
+                let data = vec![
+                    ("11","0x8000000b","NSR","NuShares"),
+                ];
+            
+                for item in data {
+                    let iter = treestore.append(None);
+                    treestore.set(&iter, &[(0, &item.0), (1, &item.1), (2, &item.2), (3, &item.3)]);
+                }
+
+            } else {
+                let msg = format!("Coin with symbol {} not found.", target_symbol);
+                coin_label.set_text(&msg);
+                master_private_key_text.buffer().set_text("");
+                // treestore.set
             }
         } else {
             coin_label.set_text("Search for a coin symbol");
         }
     }));
-
+    
+    
+    
+    
     // Start: Coins
     stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
 
@@ -809,3 +822,4 @@ fn main() {
 
     application.run();
 }
+
