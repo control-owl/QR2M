@@ -1,3 +1,7 @@
+#[allow(dead_code)]
+struct SemanticDirection;
+
+use core::panic;
 // Crates
 use std::{io::{self, Read, Seek, Write}, fs::{self, File}, path::Path, vec, str::FromStr, ops::Index};
 use glib::{value::ValueType, PropertyGet, PropertySet};
@@ -71,30 +75,23 @@ fn generate_entropy_from_rng(length: &u32) -> String {
 }
 
 fn generate_entropy_from_file(file_path: &str, entropy_length: usize) -> String {
-    let file = File::open(file_path);
-    let mut reader = match file {
-        Ok(file) => io::BufReader::new(file),
-        Err(err) => {
-            let error_msg = format!("Can not read entropy file: {}", err);
-            // D3BUG!(error, "{}", error_msg);
-            return String::new(); // Return default value or handle as appropriate
-        }
-    };
+    // Attempt to open the file and handle errors
+    let file = File::open(ENTROPY_FILE).expect("Can not open entropy file.");
+
+    // Continue with the successful result
+    let mut reader = io::BufReader::new(file);
 
     let file_length = reader.seek(io::SeekFrom::End(0));
     let file_length = match file_length {
         Ok(length) => length,
         Err(err) => {
-            let error_msg = format!("Error getting file length: {}", err);
-            // D3BUG!(error, "{}", error_msg);
-            return String::new(); // Return default value or handle as appropriate
+            eprintln!("Error getting file length: {}", err);
+            panic!();
         }
     };
 
     if file_length < entropy_length as u64 {
-        let error_msg = format!("File too small for requested entropy length: {}", entropy_length);
-        // D3BUG!(error, "{}", error_msg);
-        return String::new(); // Return default value or handle as appropriate
+        eprintln!("File too small for requested entropy length: {}", entropy_length);
     }
 
     let max_start = file_length.saturating_sub(entropy_length as u64);
@@ -197,7 +194,7 @@ fn create_coin_store() -> Vec<CoinType> {
         let coin_type = CoinType { index, path, symbol, coin };
 
         // Use the coin_type as needed (print or store in a collection, etc.)
-        println!("{:?}", coin_type);
+        // println!("{:?}", coin_type);
 
         // Add the CoinType to the vector
         coin_store.push(coin_type);
@@ -207,14 +204,14 @@ fn create_coin_store() -> Vec<CoinType> {
     coin_store
 }
 
-fn search_coin_in_store<'a>(coin_store: &'a Vec<CoinType>, target_symbol: &'a str) -> Option<&'a CoinType> {
-    for coin_type in coin_store {
-        if coin_type.symbol == target_symbol {
-            return Some(coin_type);
-        }
-    }
-    None
-}
+// fn search_coin_in_store<'a>(coin_store: &'a Vec<CoinType>, target_symbol: &'a str) -> Option<&'a CoinType> {
+//     for coin_type in coin_store {
+//         if coin_type.symbol == target_symbol {
+//             return Some(coin_type);
+//         }
+//     }
+//     None
+// }
 
 fn create_derivation_path(
     cli_bip: u32,
@@ -337,11 +334,9 @@ fn create_coin_completion_model() -> gtk::ListStore {
 
 // fn create_tree_view() -> (gtk::TreeView, gtk::ListStore) {
 //     let store = create_coin_completion_model();
-
 //     let tree_view = gtk::TreeView::with_model(&store);
 //     tree_view.set_vexpand(true);
 //     tree_view.set_headers_visible(true);
-
 //     // Add columns to the TreeView
 //     let columns = ["Index", "Path", "Symbol", "Coin"];
 //     for (i, column_title) in columns.iter().enumerate() {
@@ -352,64 +347,50 @@ fn create_coin_completion_model() -> gtk::ListStore {
 //         column.add_attribute(&cell, "text", i as i32);
 //         tree_view.append_column(&column);
 //     }
-
 //     (tree_view, store)
 // }
-
-fn gtk4_create_main_menu(app: &gtk::Application) {
-    let about = gio::ActionEntry::builder("about")
-        .activate(|_, _, _| println!("About was pressed"))
-        .build();
-
-    let quit = gio::ActionEntry::builder("quit")
-        .activate(|app: &gtk::Application, _, _| app.quit())
-        .build();
-
-    app.add_action_entries([about, quit]);
-
-    let menubar = {
-        let wallet_menu = {
-            let open_menu_item = MenuItem::new(Some("Open"), Some("app.open"));
-            let save_menu_item = MenuItem::new(Some("Save"), Some("app.save"));
-            let quit_menu_item = MenuItem::new(Some("Quit"), Some("app.quit"));
-            
-            let wallet_menu = Menu::new();
-            wallet_menu.append_item(&open_menu_item);
-            wallet_menu.append_item(&save_menu_item);
-            wallet_menu.append_item(&quit_menu_item);
-            wallet_menu
-        };
-
-        let entropy_menu = {
-            let new_menu_item = MenuItem::new(Some("New"), Some("app.new_entropy"));
-
-            let entropy_menu = Menu::new();
-            entropy_menu.append_item(&new_menu_item);
-            entropy_menu
-        };
-
-        let help_menu = {
-            let about_menu_item = MenuItem::new(Some("About"), Some("app.about"));
-
-            let help_menu = Menu::new();
-            help_menu.append_item(&about_menu_item);
-            help_menu
-        };
-
-
-        let menubar = Menu::new();
-        menubar.append_submenu(Some("Wallet"), &wallet_menu);
-        menubar.append_submenu(Some("Entropy"), &entropy_menu);
-        menubar.append_submenu(Some("Help"), &help_menu);
-
-        menubar
-    };
-
-    app.set_menubar(Some(&menubar));
-}
+// fn gtk4_create_main_menu(app: &gtk::Application) {
+//     let about = gio::ActionEntry::builder("about")
+//         .activate(|_, _, _| println!("About was pressed"))
+//         .build();
+//     let quit = gio::ActionEntry::builder("quit")
+//         .activate(|app: &gtk::Application, _, _| app.quit())
+//         .build();
+//     app.add_action_entries([about, quit]);
+//     let menubar = {
+//         let wallet_menu = {
+//             let open_menu_item = MenuItem::new(Some("Open"), Some("app.open"));
+//             let save_menu_item = MenuItem::new(Some("Save"), Some("app.save"));
+//             let quit_menu_item = MenuItem::new(Some("Quit"), Some("app.quit"));
+//             let wallet_menu = Menu::new();
+//             wallet_menu.append_item(&open_menu_item);
+//             wallet_menu.append_item(&save_menu_item);
+//             wallet_menu.append_item(&quit_menu_item);
+//             wallet_menu
+//         };
+//         let entropy_menu = {
+//             let new_menu_item = MenuItem::new(Some("New"), Some("app.new_entropy"));
+//             let entropy_menu = Menu::new();
+//             entropy_menu.append_item(&new_menu_item);
+//             entropy_menu
+//         };
+//         let help_menu = {
+//             let about_menu_item = MenuItem::new(Some("About"), Some("app.about"));
+//             let help_menu = Menu::new();
+//             help_menu.append_item(&about_menu_item);
+//             help_menu
+//         };
+//         let menubar = Menu::new();
+//         menubar.append_submenu(Some("Wallet"), &wallet_menu);
+//         menubar.append_submenu(Some("Entropy"), &entropy_menu);
+//         menubar.append_submenu(Some("Help"), &help_menu);
+//         menubar
+//     };
+//     app.set_menubar(Some(&menubar));
+// }
 
 
-fn create_GUI(application: &gtk::Application) {
+fn create_gui(application: &gtk::Application) {
     let title = format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap());
 
     let window = gtk::ApplicationWindow::builder()
@@ -632,19 +613,16 @@ fn create_GUI(application: &gtk::Application) {
     coin_main_box.set_margin_start(10);
     coin_main_box.set_margin_end(10);
     coin_main_box.set_margin_bottom(10);
-
     
     let coin_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_frame = gtk::Frame::new(Some("Coin"));
-    
-    // Coin section
-    // let coin_tree_view = create_tree_view();
-    let store = create_coin_completion_model();
 
-    // let coin_treeview = gtk::TreeView::with_model(&store);
+    create_coin_completion_model();
+
     let coin_treeview = gtk::TreeView::new();
     coin_treeview.set_vexpand(true);
     coin_treeview.set_headers_visible(true);
+    // coin_treeview.set_;
 
     // Add columns to the TreeView
     let columns = ["Index", "Path", "Symbol", "Coin"];
@@ -657,21 +635,12 @@ fn create_GUI(application: &gtk::Application) {
         coin_treeview.append_column(&column);
     }
 
-
     let coin_search = gtk::SearchEntry::new();
-    let coin_label = gtk4::Label::builder()
-        .label("Type coin symbol to start")
-        // .vexpand(true)
-        .halign(gtk::Align::Center)
-        .valign(gtk::Align::Center)
-        .css_classes(["large-title"])
-        .build();
-
+    coin_search.set_placeholder_text(Some("Find a coin by entering its symbol (BTC, LTC, ETH...)"));
 
     // Coins
-    let coins = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let coins = gtk::Box::new(gtk::Orientation::Vertical, 10);
     coins.append(&coin_search);
-    coins.append(&coin_label);
     coins.append(&coin_treeview);
     coin_frame.set_child(Some(&coins));
 
@@ -685,17 +654,11 @@ fn create_GUI(application: &gtk::Application) {
     derivation_frame.set_hexpand(true);
     derivation_dropdown.set_selected(1);
     
-    
     // Hardened path
     let hardened_frame = gtk::Frame::new(Some("Hardened path"));
     let hardened_checkbox = gtk4::CheckButton::new();
     hardened_frame.set_child(Some(&hardened_checkbox));
     hardened_frame.set_hexpand(true);
-    
-
-    
-    
-    
     
     // Master private key
     let master_private_key_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
@@ -703,7 +666,6 @@ fn create_GUI(application: &gtk::Application) {
     let master_private_key_text = gtk::TextView::new();
     master_private_key_text.set_editable(false);
     master_private_key_frame.set_child(Some(&master_private_key_text));
-
 
     // Connections 
     coin_box.append(&coin_frame);
@@ -715,50 +677,46 @@ fn create_GUI(application: &gtk::Application) {
     coin_main_box.append(&master_private_key_box);
     
     let coin_store = create_coin_store();
-    coin_search.connect_search_changed(clone!(@weak coin_label => move |coin_search| {
-        if coin_search.text() != "" {
-
-            let target_symbol = coin_search.text().to_uppercase().to_string();
-        
-            if let Some(found_coin) = search_coin_in_store(&coin_store, &target_symbol) {
-                println!("Coin found: {:?}", found_coin);
-                coin_label.set_text("Coin found");
-
-                let master_priv = create_master_private_key(cloned_seed_text.text().to_string());
-                master_private_key_text.buffer().set_text(&master_priv.to_string());
-                
-                // Refresh the TreeView
-                let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 4]);
-                coin_treeview.set_model(Some(&treestore));
-            
-                // Add some sample data to the TreeStore
-                let data = vec![
-                    ("11","0x8000000b","NSR","NuShares"),
-                ];
-            
-                for item in data {
+    let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 4]);
+    
+    coin_search.connect_search_changed(move|coin_search| {
+        let search_text = coin_search.text().to_uppercase();
+    
+        if search_text.len() >= 2 {
+            let matching_coins = get_coins_starting_with(&coin_store, &search_text);
+    
+            if !matching_coins.is_empty() {
+                let text = format!("{} found", &search_text);
+    
+                // let master_priv = create_master_private_key(cloned_seed_text.text().to_string());
+                // master_private_key_text.buffer().set_text(&master_priv.to_string());
+    
+                treestore.clear();
+    
+                for found_coin in matching_coins {
                     let iter = treestore.append(None);
-                    treestore.set(&iter, &[(0, &item.0), (1, &item.1), (2, &item.2), (3, &item.3)]);
+                    treestore.set(&iter, &[
+                        (0, &found_coin.index.to_string()),
+                        (1, &format!("0x{:X}", found_coin.path)), // Format as hexadecimal
+                        (2, &found_coin.symbol),
+                        (3, &found_coin.coin),
+                    ]);
                 }
-
+    
+                coin_treeview.set_model(Some(&treestore));
             } else {
-                let msg = format!("Coin with symbol {} not found.", target_symbol);
-                coin_label.set_text(&msg);
-                master_private_key_text.buffer().set_text("");
-                // treestore.set
+                let msg = format!("No coins found starting with {}.", search_text);
+                // master_private_key_text.buffer().set_text("");
+                treestore.clear();
             }
         } else {
-            coin_label.set_text("Search for a coin symbol");
+            // master_private_key_text.buffer().set_text("");
+            treestore.clear();
         }
-    }));
-    
-    
-    
+    });
     
     // Start: Coins
     stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
-
-
 
     // Create a Box to hold the main content and sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -769,6 +727,19 @@ fn create_GUI(application: &gtk::Application) {
     window.present();
 }
 
+fn get_all_coins_with_symbol<'a>(coin_store: &'a Vec<CoinType>, target_symbol: &'a str) -> Vec<&'a CoinType> {
+    coin_store
+        .iter()
+        .filter(|&coin_type| coin_type.symbol == target_symbol)
+        .collect()
+}
+
+fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinType>, target_prefix: &'a str) -> Vec<&'a CoinType> {
+    coin_store
+        .iter()
+        .filter(|&coin_type| coin_type.symbol.starts_with(target_prefix))
+        .collect()
+}
 
 impl std::fmt::Display for CoinType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -808,7 +779,7 @@ fn main() {
     let application = gtk::Application::builder()
         .application_id("com.github.qr2m")
         .build();
-    application.connect_activate(create_GUI);
+    application.connect_activate(create_gui);
 
     // Create quit
     let quit = gio::SimpleAction::new("quit", None);
