@@ -202,6 +202,11 @@ fn create_gui(application: &gtk::Application) {
     let new_wallet_button = gtk::Button::new();
     new_wallet_button.set_icon_name("tab-new-symbolic");
     header_bar.pack_start(&new_wallet_button);
+    
+    // new_wallet_button.connect_clicked(move) {
+
+
+    // }
 
     let open_wallet_button = gtk::Button::new();
     open_wallet_button.set_icon_name("document-open-symbolic");
@@ -610,14 +615,27 @@ fn main() {
     application.connect_activate(create_gui);
 
     let quit = gio::SimpleAction::new("quit", None);
+    let new = gio::SimpleAction::new("new", None);
+    
+    
     quit.connect_activate(
         glib::clone!(@weak application => move |_action, _parameter| {
             application.quit();
         }),
     );
-    
+
+    // new.connect_activate(
+    //     glib::clone!(@weak application => move |_action, _parameter| {
+    //         let clone = application.clone();
+    //     }),
+    // );
+
+
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
     application.add_action(&quit);
+
+    application.set_accels_for_action("app.new", &["<Primary>N"]);
+    application.add_action(&new);
 
     application.run();
 }
