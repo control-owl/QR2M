@@ -7,22 +7,21 @@ readme = "README.md"
 edition = "2021"
 
 
+# Crate                 # Internal function
 [dependencies]
-# Default
-rand = "0.8.5"
-sha2 = "0.10.8"
-hex = "0.4.3"
-bip39 = "2.0.0"
-structopt = "0.3.26"
-thiserror = "1.0.51"
-bitcoin = "0.31.0"
-csv = "1.3.0"
-secp256k1 = "0.28.1"
+rand = "0.8.5"          # Random number generator   
+sha2 = "0.10.8"         # Entropy checksum          
+hex = "0.4.3"           # Seed                      
+csv = "1.3.0"           # BIP44 coin_types          
+bip39 = "2.0.0"         # Mnemonic                  
+bitcoin = "0.31.0"      # Derivation path           
+gtk4 = "0.8.0"          # GUI GTK4                  
+glib = "0.19.0"         # GUI                       
 
-# Testing
-gtk4 = "0.7.3"
-glib = "0.18.5"
-bip32 = "0.5.1"
+
+# TESTING
+
+
 
 [[bin]]
 name = "QR2M"
