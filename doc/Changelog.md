@@ -1,3 +1,6 @@
+# version 0.3.1
+- cleaning code and trying to understand gtk4
+
 # version 0.3.0
 - GUI - gtk4-rs
 

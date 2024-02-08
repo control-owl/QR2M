@@ -203,11 +203,6 @@ fn create_gui(application: &gtk::Application) {
     new_wallet_button.set_icon_name("tab-new-symbolic");
     header_bar.pack_start(&new_wallet_button);
     
-    // new_wallet_button.connect_clicked(move) {
-
-
-    // }
-
     let open_wallet_button = gtk::Button::new();
     open_wallet_button.set_icon_name("document-open-symbolic");
     header_bar.pack_start(&open_wallet_button);
@@ -216,9 +211,12 @@ fn create_gui(application: &gtk::Application) {
     save_wallet_button.set_icon_name("document-save-symbolic");
     header_bar.pack_start(&save_wallet_button);
 
+    // let image_settings = gtk::Image::new();
+    // image_settings.set_file(Some("/lib/icon.png"));
     let settings_button = gtk::Button::new();
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
     header_bar.pack_end(&settings_button);
+
 
     // Create a Stack and a StackSidebar
     let stack = Stack::new();
@@ -387,6 +385,12 @@ fn create_gui(application: &gtk::Application) {
     coin_main_box.set_margin_end(10);
     coin_main_box.set_margin_bottom(10);
 
+    // Create scrolled window
+    let scrolled_window = gtk::ScrolledWindow::new();
+    scrolled_window.set_max_content_height(400); // Set maximum height
+    // window.set_child(Some(&scrolled_window));
+
+
     // Coin treeview
     create_coin_completion_model();
     let coins = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -409,9 +413,17 @@ fn create_gui(application: &gtk::Application) {
     coin_search.set_placeholder_text(Some("Find a coin by entering its symbol (BTC, LTC, ETH...)"));
 
     coins.append(&coin_search);
-    coins.append(&coin_treeview);
+    scrolled_window.set_child(Some(&coin_treeview));
+    coins.append(&scrolled_window);
     coin_frame.set_child(Some(&coins));
-    
+    coin_box.append(&coin_frame);
+
+    // Hidden label
+    let hidden_label_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let hidden_label_text = gtk::Label::new(Some("/'"));
+    hidden_label_box.append(&hidden_label_text);
+    hidden_label_box.set_visible(false);
+
     // Derivation path
     let main_derivation_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
@@ -459,13 +471,13 @@ fn create_gui(application: &gtk::Application) {
     master_private_key_frame.set_child(Some(&master_private_key_text));
 
     // Connections 
-    coin_box.append(&coin_frame);
     main_derivation_box.append(&bip_box);
     main_derivation_box.append(&derivation_label_frame);
     bip_box.append(&bip_frame);
     bip_box.append(&hardened_frame);
     master_private_key_box.append(&master_private_key_frame);
     coin_main_box.append(&coin_box);
+    coin_main_box.append(&hidden_label_box);
     coin_main_box.append(&main_derivation_box);
     coin_main_box.append(&generate_master_pk_button_box);
     coin_main_box.append(&master_private_key_box);
@@ -473,36 +485,108 @@ fn create_gui(application: &gtk::Application) {
     // Actions
     let coin_store = create_coin_store();
     let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 4]);
-    let bip_dropdown_clone = bip_dropdown.clone();
-    let hardened_checkbox_clone = hardened_checkbox.clone();
-    let derivation_label_text_clone = derivation_label_text.clone();
 
-    bip_dropdown.connect_selected_notify(move |_| {
-        let selected_index = bip_dropdown_clone.selected();
-        // if let selected_index = selected_index {
-            if let Some(value_from_array) = VALID_BIP_DERIVATIONS.get(selected_index as usize) {
-                let hard = if hardened_checkbox_clone.is_active() { "'" } else { "" };
-                let text = format!("m/{}{}", value_from_array, hard);
-                derivation_label_text.set_text(&text);
-            // }
+    let bip_dropdown_clone = bip_dropdown.clone();
+    let hidden_label_text_clone = hidden_label_text.clone();
+    let derivation_label_text_clone = derivation_label_text.clone();
+    let hardened_checkbox_clone = hardened_checkbox.clone();
+    let coin_treeview_clone = coin_treeview.clone();
+    
+    
+    
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+    let hardened_checkbox_clone3 = hardened_checkbox.clone();
+
+
+ 
+
+
+    fn update_derivation_label_text(
+        bip_dropdown_clone: &gtk::DropDown,
+        hardened_checkbox_clone: &gtk::CheckButton,
+        hidden_label_text_clone: &gtk::Label,
+        derivation_label_text_clone: &gtk::Label,
+        tree_coin: &gtk::TreeView,
+    ) {
+        let selected_bip_index = bip_dropdown_clone.selected() as usize;
+        let selected_bip_value = VALID_BIP_DERIVATIONS.get(selected_bip_index);
+        let bip = selected_bip_value.unwrap().to_string();
+        let hard_path = hardened_checkbox_clone.is_active();
+        let mut coin = "".to_string();
+        let mut path = "".to_string();
+
+        if let Some((model,  iter)) = tree_coin.selection().selected() {
+            coin = model.get_value(&iter, 0).get::<String>().expect("problem with treeview");
+        };
+        
+        if hard_path == true {
+            path = "'".to_string();
         }
+        
+        let derivation = format!("m/{}{}/{}{}", bip, path, coin, path);
+        
+        println!("derivation: {}", derivation);
+        derivation_label_text_clone.set_text(&derivation);
+    }
+
+    let bip_dropdown_clone2 = bip_dropdown_clone.clone();
+    let hidden_label_text_clone2 = hidden_label_text_clone.clone();
+    let derivation_label_text_clone2 = derivation_label_text_clone.clone();
+    let hardened_checkbox_clone2 = hardened_checkbox_clone.clone();
+    let coin_treeview_clone2 = coin_treeview_clone.clone();
+    
+    bip_dropdown.connect_selected_notify(move |_| {    
+        update_derivation_label_text(
+            &bip_dropdown_clone2,
+            &hardened_checkbox_clone2,
+            &hidden_label_text_clone2,
+            &derivation_label_text_clone2,
+            &coin_treeview_clone2
+        );
     });
     
-    let hardened_checkbox_clone2 = hardened_checkbox.clone();
-    let derivation_label_text_clone2 = derivation_label_text_clone.clone();
-
+    let bip_dropdown_clone3 = bip_dropdown_clone.clone();
+    let hidden_label_text_clone3 = hidden_label_text_clone.clone();
+    let derivation_label_text_clone3 = derivation_label_text_clone.clone();
+    let hardened_checkbox_clone3 = hardened_checkbox_clone.clone();
+    let coin_treeview_clone3 = coin_treeview_clone.clone();
+    
     hardened_checkbox.connect_active_notify(move |_| {
-        let bip_dropdown_clone = bip_dropdown.clone(); // Clone again here
-
-        let selected_index = bip_dropdown_clone.selected();
-        // if let selected_index = selected_index {
-            if let Some(value_from_array) = VALID_BIP_DERIVATIONS.get(selected_index as usize) {
-                let hard = if hardened_checkbox_clone2.is_active() { "'" } else { "" };
-                let text = format!("m/{}{}", value_from_array, hard);
-            derivation_label_text_clone2.set_text(&text);
-            }
-        // }
+        update_derivation_label_text(
+            &bip_dropdown_clone3,
+            &hardened_checkbox_clone3,
+            &hidden_label_text_clone3,
+            &derivation_label_text_clone3,
+            &coin_treeview_clone3
+        );
     });
+
+    
+    let bip_dropdown_clone4 = bip_dropdown_clone.clone();
+    let hidden_label_text_clone4 = hidden_label_text_clone.clone();
+    let derivation_label_text_clone4 = derivation_label_text_clone.clone();
+    let hardened_checkbox_clone4 = hardened_checkbox_clone.clone();
+    let coin_treeview_clone4 = coin_treeview_clone.clone();
 
     coin_treeview.connect_cursor_changed(move |tree_view| {
         if let Some((model, iter)) = tree_view.selection().selected() {
@@ -528,7 +612,17 @@ fn create_gui(application: &gtk::Application) {
                     println!("coin_symbol: {}", coin_symbol);
                     println!("coin_name: {}", coin_name);
                     println!("Starting deriving keys:");
+                    let hard = if hardened_checkbox_clone4.is_active() { "'" } else { "" };
+                    let string = format!("/{}{}", coin_type, hard);
+                    hidden_label_text.set_text(&string);
                 }
+            update_derivation_label_text(
+                &bip_dropdown_clone4,
+                &hardened_checkbox_clone4,
+                &hidden_label_text_clone4,
+                &derivation_label_text_clone4,
+                &coin_treeview_clone4
+            );
         }
     });
 
@@ -540,11 +634,6 @@ fn create_gui(application: &gtk::Application) {
             let matching_coins = get_coins_starting_with(&coin_store, &search_text);
     
             if !matching_coins.is_empty() {
-                // let text = format!("{} found", &search_text);
-    
-                // let master_priv = create_master_private_key(cloned_seed_text.text().to_string());
-                // master_private_key_text.buffer().set_text(&master_priv.to_string());
-    
                 treestore.clear();
     
                 for found_coin in matching_coins {
@@ -556,18 +645,18 @@ fn create_gui(application: &gtk::Application) {
                         (3, &found_coin.coin),
                     ]);
                 }
-    
                 coin_treeview.set_model(Some(&treestore));
             } else {
-                // let msg = format!("No coins found starting with {}.", search_text);
                 treestore.clear();
             }
         } else {
-            // master_private_key_text.buffer().set_text("");
             treestore.clear();
         }
     });
-    
+
+
+
+
     // Start: Coins
     stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
