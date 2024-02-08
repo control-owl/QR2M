@@ -185,11 +185,9 @@ fn create_coin_completion_model() -> gtk::ListStore {
 }
 
 fn create_gui(application: &gtk::Application) {
-    let title = format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap());
-
     let window = gtk::ApplicationWindow::builder()
         .application(application)
-        .title(&title)
+        .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
         .default_width(800)
         .default_height(600)
         .show_menubar(true)
@@ -211,12 +209,9 @@ fn create_gui(application: &gtk::Application) {
     save_wallet_button.set_icon_name("document-save-symbolic");
     header_bar.pack_start(&save_wallet_button);
 
-    // let image_settings = gtk::Image::new();
-    // image_settings.set_file(Some("/lib/icon.png"));
     let settings_button = gtk::Button::new();
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
     header_bar.pack_end(&settings_button);
-
 
     // Create a Stack and a StackSidebar
     let stack = Stack::new();
@@ -388,8 +383,6 @@ fn create_gui(application: &gtk::Application) {
     // Create scrolled window
     let scrolled_window = gtk::ScrolledWindow::new();
     scrolled_window.set_max_content_height(400); // Set maximum height
-    // window.set_child(Some(&scrolled_window));
-
 
     // Coin treeview
     create_coin_completion_model();
@@ -397,7 +390,6 @@ fn create_gui(application: &gtk::Application) {
     let coin_treeview = gtk::TreeView::new();
     coin_treeview.set_vexpand(true);
     coin_treeview.set_headers_visible(true);
-
     let columns = ["Index", "Path", "Symbol", "Coin"];
     for (i, column_title) in columns.iter().enumerate() {
         let column = gtk::TreeViewColumn::new();
@@ -487,7 +479,7 @@ fn create_gui(application: &gtk::Application) {
     let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 4]);
 
     let bip_dropdown_clone = bip_dropdown.clone();
-    let hidden_label_text_clone = hidden_label_text.clone();
+    // let hidden_label_text_clone = hidden_label_text.clone();
     let derivation_label_text_clone = derivation_label_text.clone();
     let hardened_checkbox_clone = hardened_checkbox.clone();
     let coin_treeview_clone = coin_treeview.clone();
@@ -515,16 +507,10 @@ fn create_gui(application: &gtk::Application) {
 
     
 
-    let hardened_checkbox_clone3 = hardened_checkbox.clone();
-
-
- 
-
 
     fn update_derivation_label_text(
         bip_dropdown_clone: &gtk::DropDown,
         hardened_checkbox_clone: &gtk::CheckButton,
-        hidden_label_text_clone: &gtk::Label,
         derivation_label_text_clone: &gtk::Label,
         tree_coin: &gtk::TreeView,
     ) {
@@ -550,7 +536,7 @@ fn create_gui(application: &gtk::Application) {
     }
 
     let bip_dropdown_clone2 = bip_dropdown_clone.clone();
-    let hidden_label_text_clone2 = hidden_label_text_clone.clone();
+    // let hidden_label_text_clone2 = hidden_label_text_clone.clone();
     let derivation_label_text_clone2 = derivation_label_text_clone.clone();
     let hardened_checkbox_clone2 = hardened_checkbox_clone.clone();
     let coin_treeview_clone2 = coin_treeview_clone.clone();
@@ -559,14 +545,13 @@ fn create_gui(application: &gtk::Application) {
         update_derivation_label_text(
             &bip_dropdown_clone2,
             &hardened_checkbox_clone2,
-            &hidden_label_text_clone2,
             &derivation_label_text_clone2,
             &coin_treeview_clone2
         );
     });
     
     let bip_dropdown_clone3 = bip_dropdown_clone.clone();
-    let hidden_label_text_clone3 = hidden_label_text_clone.clone();
+    // let hidden_label_text_clone3 = hidden_label_text_clone.clone();
     let derivation_label_text_clone3 = derivation_label_text_clone.clone();
     let hardened_checkbox_clone3 = hardened_checkbox_clone.clone();
     let coin_treeview_clone3 = coin_treeview_clone.clone();
@@ -575,7 +560,6 @@ fn create_gui(application: &gtk::Application) {
         update_derivation_label_text(
             &bip_dropdown_clone3,
             &hardened_checkbox_clone3,
-            &hidden_label_text_clone3,
             &derivation_label_text_clone3,
             &coin_treeview_clone3
         );
@@ -583,7 +567,7 @@ fn create_gui(application: &gtk::Application) {
 
     
     let bip_dropdown_clone4 = bip_dropdown_clone.clone();
-    let hidden_label_text_clone4 = hidden_label_text_clone.clone();
+    // let hidden_label_text_clone4 = hidden_label_text_clone.clone();
     let derivation_label_text_clone4 = derivation_label_text_clone.clone();
     let hardened_checkbox_clone4 = hardened_checkbox_clone.clone();
     let coin_treeview_clone4 = coin_treeview_clone.clone();
@@ -619,7 +603,6 @@ fn create_gui(application: &gtk::Application) {
             update_derivation_label_text(
                 &bip_dropdown_clone4,
                 &hardened_checkbox_clone4,
-                &hidden_label_text_clone4,
                 &derivation_label_text_clone4,
                 &coin_treeview_clone4
             );
@@ -759,7 +742,7 @@ fn main() {
 // Generating master private key
 
 
-fn create_derivation_path(
+fn _create_derivation_path(
     purpose: u32,
     coin_type: u32,
     account: u32,
@@ -785,108 +768,3 @@ fn create_derivation_path(
     path_bytes
 
 }
-
-
-
-
-
-
-
-// Working bellow, but wrong output
-
-// fn generate_xprv_from_seed(
-//     coin_type: u32,
-//     derivation_path: Vec<u32>,
-//     seed: [u8; 64],
-// ) -> String {
-//     // Parse coin_header from hexadecimal string
-//     // let parsed_coin_header = u32::from_str_radix(&coin_header[2..], 16).expect("Invalid coin_header");
-    
-//     // Concatenate the coin header and coin type into a 32-byte array
-//     // let coin_header_bytes: [u8; 4] = parsed_coin_header.to_be_bytes();
-//     // let mut extended_key_header = [0u8; 32];
-//     extended_key_header[..4].copy_from_slice(&coin_header_bytes);
-//     extended_key_header[4..8].copy_from_slice(&coin_type.to_be_bytes());
-    
-//     // Compute HMAC-SHA512 hash
-//     let mut mac = Hmac::<Sha512>::new_from_slice(&seed).expect("HMAC can take key of any size");
-//     mac.update(&extended_key_header);
-//     let hmac_result = mac.finalize().into_bytes();
-
-//     let seed_left = &hmac_result[..32]; // Take the first 32 bytes
-//     let seed_right = &hmac_result[32..]; // Take the last 32 bytes
-    
-//     // Construct secret key from left part
-//     let secret_key = SecretKey::from_slice(seed_left)
-//         .expect("Invalid secret key bytes");
-
-//     // Construct public key from secret key
-//     let secp = Secp256k1::new();
-//     let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-
-//     // Construct the extended private key
-//     let mut extended_private_key = Vec::new();
-//     extended_private_key.extend_from_slice(seed_left);
-//     extended_private_key.extend_from_slice(&public_key.serialize());
-
-//     // Derive extended private key for each derivation path element
-//     for index in derivation_path {
-//         let index_bytes = if index >= 0x80000000 {
-//             let mut index_bytes = index.to_be_bytes();
-//             index_bytes[0] |= 0x80; // Set the first bit to indicate a hardened path
-//             index_bytes
-//         } else {
-//             index.to_be_bytes()
-//         };
-
-//         // HMAC the extended private key with the index
-//         let mut mac = Hmac::<Sha512>::new_from_slice(seed_right).expect("HMAC can take key of any size");
-//         mac.update(&extended_private_key);
-//         mac.update(&index_bytes);
-//         let hmac_result = mac.finalize().into_bytes();
-
-//         let hmac_left = &hmac_result[..32]; // Take the first 32 bytes
-
-//         // Update extended private key with left part of HMAC result
-//         extended_private_key.clear();
-//         extended_private_key.extend_from_slice(hmac_left);
-//         extended_private_key.extend_from_slice(&public_key.serialize());
-//     }
-    
-//     // Convert extended private key to base58
-//     let xprv = base58_encode(&extended_private_key);
-//     println!("XPRV: {:?}", xprv);
-//     xprv
-// }
-
-
-
-// use sha2::Sha512;
-// use hmac::{Hmac, Mac};
-// use num_bigint::BigUint;
-// use num_traits::{Zero, Num, ToPrimitive};
-
-// fn base58_encode(data: &[u8]) -> String {
-//     const BASE58_ALPHABET: &[u8] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-//     const BASE: usize = 58;
-
-//     // Convert the input data to a big integer
-//     let num = BigUint::from_bytes_be(data);
-
-//     let mut result = Vec::new();
-//     let mut num = num.clone(); // Create a mutable copy of num
-
-//     while !num.is_zero() {
-//         let (div, rem) = (num.clone() / BASE as u64, (num % BASE as u64).to_u8().unwrap());
-//         result.push(BASE58_ALPHABET[rem as usize]);
-//         num = div;
-//     }
-
-//     // Add leading '1's for each leading zero byte in the original data
-//     for byte in data.iter().take_while(|&&b| b == 0) {
-//         result.push(BASE58_ALPHABET[0]);
-//     }
-
-//     result.reverse();
-//     String::from_utf8(result).unwrap()
-// }
