@@ -19,8 +19,17 @@ glib = "0.19.0"         # GUI
 
 
 # TESTING
-# bitcoin = "0.31.0"      # Derivation path           
+# rust-crypto = "0.2.36"
+regex = "1.10.3"
+bip32 = "0.5.1"
+hmac = "0.12.1"
 
+
+secp256k1 = "0.28.2"
+ecdsa = "0.16.9"
+# hmac = "0.12.1"
+# bitcoin = "0.31.0"      # Derivation path           
+bs58 = "0.5.0"
 
 
 [[bin]]
