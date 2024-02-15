@@ -30,17 +30,20 @@ use gtk::{
     };
 
 // Project files
-mod converter;
+// mod converter;
 
 
 // Global variables
-const ENTROPY_FILE: &str = "entropy/test.qrn";
 // const ENTROPY_FILE: &str = "./entropy/binary.qrn";
-const WORDLIST_FILE: &str = "./lib/bip39-english.txt";
-const COINLIST_FILE: &str = "./lib/bip44-coin_type.csv";
+// const COINLIST_FILE: &str = "./lib/bip44-coin_type.csv";
+const ENTROPY_FILE: &str = "./entropy/test.qrn";
+const WORDLIST_FILE: &str = "./lib/bip39-mnemonic-words-english.txt";
+const COINLIST_FILE: &str = "./lib/bip44-extended-coin-list.csv";
+
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
+
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
@@ -62,14 +65,36 @@ struct CoinDatabase {
     index: u32,
     path: u32,
     symbol: String,
-    coin: String,
-    // message_prefix: &'static str,
-    // bip32_public: u32,
-    // bip32_private: u32,
-    // pub_key_hash: u8,
-    // script_hash: u8,
-    // wif: u8,
+    name: String,
+    key_derivation: String,
+    private_version: String,
+    public_version: String,
+    pubKeyHash: String,
+    scriptHash: String,
+    wif: String,
+    comment: String,
 }
+
+
+
+fn convert_binary_to_string(input_value: &[u8]) -> String {
+    input_value
+        .iter()
+        .flat_map(|byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
+        .collect()
+}
+
+fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
+    input_value
+        .chars()
+        .collect::<Vec<char>>()
+        .chunks(8)
+        .map(|chunk| {
+            chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - '0' as u8))
+        })
+        .collect()
+}
+
 
 
 fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> String {
@@ -114,8 +139,8 @@ fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> Strin
 }
 
 fn generate_checksum(entropy: &str, entropy_length: &u32) -> String {
-    let entropy_binary = converter::convert_string_to_binary(&entropy);
-    let hash_raw_binary: String = converter::convert_binary_to_string(&Sha256::digest(&entropy_binary));
+    let entropy_binary = convert_string_to_binary(&entropy);
+    let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
     let checksum_lenght = entropy_length / 32;
     let checksum: String = hash_raw_binary.chars().take(checksum_lenght.try_into().unwrap()).collect();
 
@@ -141,7 +166,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 }
 
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-    let entropy_vector = converter::convert_string_to_binary(&entropy);
+    let entropy_vector = convert_string_to_binary(&entropy);
     let mnemonic_result = bip39::Mnemonic::from_entropy(&entropy_vector).expect("Can not create mnemomic words");
     let mnemonic = mnemonic_result;
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
@@ -151,23 +176,33 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
 
 fn create_coin_store() -> Vec<CoinDatabase> {
     let file = File::open(&COINLIST_FILE).expect("can not open bip44 coin file");
-    let mut rdr = ReaderBuilder::new().has_headers(false).from_reader(file);
+    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
     let mut coin_store = Vec::new();
 
-    // Iterate over the CSV records and populate CoinDatabase
     for result in rdr.records() {
         let record = result.expect("error reading CSV record");
-        let index = record[0].parse().expect("error parsing index");
-        let path = u32::from_str_radix(&record[1][2..], 16).expect("error parsing path");
-        let symbol = record[2].to_string();
-        let coin = record[3].to_string();
-        let coin_type = CoinDatabase { index, path, symbol, coin };
+
+        let index: u32 = record[0].parse().expect("error parsing index");
+        let path: u32 = u32::from_str_radix(&record[1][2..], 16).expect("error parsing path");
+        let symbol: String = if record[2].is_empty() {"".to_string()} else {record[2].to_string()};
+        let name: String = if record[3].is_empty() {"".to_string()} else {record[3].to_string()};
+        let key_derivation:String = if record[4].is_empty() {"".to_string()} else {record[4].to_string()};
+        let private_version: String = if record[5].is_empty() {"".to_string()} else {record[5].to_string()};
+        let public_version: String = if record[6].is_empty() {"".to_string()} else {record[6].to_string()};
+        let pubKeyHash: String = if record[7].is_empty() {"".to_string()} else {record[7].to_string()};
+        let scriptHash: String = if record[8].is_empty() {"".to_string()} else {record[8].to_string()};
+        let wif: String = if record[9].is_empty() {"".to_string()} else {record[9].to_string()};
+        let comment: String = if record[10].is_empty() {"".to_string()} else {record[10].to_string()};
+        
+        
+        let coin_type = CoinDatabase { index, path, symbol, name, key_derivation, private_version, public_version, pubKeyHash, scriptHash, wif, comment };
 
         coin_store.push(coin_type);
     }
 
     coin_store
 }
+
 
 fn create_coin_completion_model() -> gtk::ListStore {
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
@@ -176,12 +211,31 @@ fn create_coin_completion_model() -> gtk::ListStore {
         glib::Type::U32, // Index
         glib::Type::U32, // Path
         glib::Type::STRING, // Symbol
-        glib::Type::STRING, // Coin
+        glib::Type::STRING, // Name
+        glib::Type::STRING, // key_derivation
+        glib::Type::STRING, // private_version
+        glib::Type::STRING, // public_version
+        glib::Type::STRING, // pubKeyHash
+        glib::Type::STRING, // scriptHash
+        glib::Type::STRING, // Wif
+        glib::Type::STRING, // Comment
     ]);
 
     for coin_symbol in valid_coin_symbols.iter() {
         let iter = store.append();
-        store.set(&iter, &[(0, &coin_symbol.index), (1, &coin_symbol.path), (2, &coin_symbol.symbol), (3, &coin_symbol.coin)]);
+        store.set(&iter, &[
+            (0, &coin_symbol.index), 
+            (1, &coin_symbol.path), 
+            (2, &coin_symbol.symbol), 
+            (3, &coin_symbol.name),
+            (4, &coin_symbol.key_derivation),
+            (5, &coin_symbol.private_version),
+            (6, &coin_symbol.public_version),
+            (7, &coin_symbol.pubKeyHash),
+            (8, &coin_symbol.scriptHash),
+            (9, &coin_symbol.wif),
+            (10, &coin_symbol.comment),
+        ]);
     }
 
     store
@@ -260,16 +314,16 @@ fn create_gui(application: &gtk::Application) {
     mnemonic_passphrase_text.set_hexpand(true);
     
     // Generate button
-    let generate_wallet_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let generate_seed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_seed_button = gtk::Button::new();
-    generate_seed_button.set_label("Generate");
-    generate_wallet_box.set_halign(gtk::Align::Center);
+    generate_seed_button.set_label("Generate seed");
+    generate_seed_box.set_halign(gtk::Align::Center);
 
     // Connections
     entropy_source_frame.set_child(Some(&entropy_source_dropdown));
     entropy_length_frame.set_child(Some(&entropy_length_dropdown));
 
-    generate_wallet_box.append(&generate_seed_button);
+    generate_seed_box.append(&generate_seed_button);
     entropy_source_box.append(&entropy_source_frame);
     entropy_length_box.append(&entropy_length_frame);
     entropy_header_first_box.append(&entropy_source_box);
@@ -277,7 +331,7 @@ fn create_gui(application: &gtk::Application) {
     entropy_header_second_box.append(&mnemonic_passphrase_box);
     entropy_header_box.append(&entropy_header_first_box);
     entropy_header_box.append(&entropy_header_second_box);
-    entropy_header_box.append(&generate_wallet_box);
+    entropy_header_box.append(&generate_seed_box);
 
     // Body
     let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -393,7 +447,8 @@ fn create_gui(application: &gtk::Application) {
     let coin_treeview = gtk::TreeView::new();
     coin_treeview.set_vexpand(true);
     coin_treeview.set_headers_visible(true);
-    let columns = ["Index", "Path", "Symbol", "Coin"];
+
+    let columns = ["Index", "Path", "Symbol", "Name", "Key derivation", "Private version", "Public version", "pubKeyHash", "scriptHash", "Wif", "Comment"];
     for (i, column_title) in columns.iter().enumerate() {
         let column = gtk::TreeViewColumn::new();
         let cell = gtk::CellRendererText::new();
@@ -445,51 +500,55 @@ fn create_gui(application: &gtk::Application) {
 
     derivation_label_frame.set_child(Some(&derivation_label_text));
 
-    // Generate XPRV button
-    let generate_master_pk_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let generate_master_pk_button = gtk::Button::new();
-    generate_master_pk_button.set_label("Generate");
-    generate_master_pk_button_box.append(&generate_master_pk_button);
-    generate_master_pk_button_box.set_halign(gtk::Align::Center);
-    generate_master_pk_button.set_sensitive(false);
+    // Generate extended keys button
+    let generate_extended_keys_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let generate_extended_keys_button = gtk::Button::new();
+    generate_extended_keys_button.set_label("Generate extended keys");
+    generate_extended_keys_button_box.append(&generate_extended_keys_button);
+    generate_extended_keys_button_box.set_halign(gtk::Align::Center);
+    // generate_extended_keys_button.set_sensitive(false);
 
     // Master private key
-    let master_private_key_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let master_private_key_frame = gtk::Frame::new(Some("Master private key"));
-    let master_private_key_text = gtk::TextView::new();
-    master_private_key_text.set_editable(false);
-    master_private_key_frame.set_child(Some(&master_private_key_text));
+    let extended_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let master_xprv_frame = gtk::Frame::new(Some("Extended master private key"));
+    let master_xpub_frame = gtk::Frame::new(Some("Extended master public key"));
+    
+    let extened_master_private_key_text = gtk::TextView::new();
+    let extened_master_public_key_text = gtk::TextView::new();
 
+    extened_master_private_key_text.set_editable(false);
+    extened_master_public_key_text.set_editable(false);
+    
+    master_xprv_frame.set_child(Some(&extened_master_private_key_text));
+    master_xpub_frame.set_child(Some(&extened_master_public_key_text));
 
+    extened_master_private_key_text.set_wrap_mode(gtk::WrapMode::Char);
+    extened_master_private_key_text.set_editable(false);
+    extened_master_private_key_text.set_left_margin(5);
+    extened_master_private_key_text.set_top_margin(5);
 
-    master_private_key_text.set_vexpand(true);
-    master_private_key_text.set_hexpand(true);
-    master_private_key_text.set_wrap_mode(gtk::WrapMode::Char);
-    master_private_key_text.set_editable(false);
-    master_private_key_text.set_left_margin(5);
-    master_private_key_text.set_top_margin(5);
-
-
-
+    extened_master_public_key_text.set_wrap_mode(gtk::WrapMode::Char);
+    extened_master_public_key_text.set_editable(false);
+    extened_master_public_key_text.set_left_margin(5);
+    extened_master_public_key_text.set_top_margin(5);
 
     // Connections 
     main_derivation_box.append(&bip_box);
     main_derivation_box.append(&derivation_label_frame);
     bip_box.append(&bip_frame);
     bip_box.append(&hardened_frame);
-    master_private_key_box.append(&master_private_key_frame);
+    extended_keys_box.append(&master_xprv_frame);
+    extended_keys_box.append(&master_xpub_frame);
     coin_main_box.append(&coin_box);
-    // coin_main_box.append(&hidden_label_box);
     coin_main_box.append(&main_derivation_box);
-    coin_main_box.append(&generate_master_pk_button_box);
-    coin_main_box.append(&master_private_key_box);
+    coin_main_box.append(&generate_extended_keys_button_box);
+    coin_main_box.append(&extended_keys_box);
     
     // Actions
     let coin_store = create_coin_store();
-    let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 4]);
+    let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 11]);
 
     let bip_dropdown_clone = bip_dropdown.clone();
-    // let hidden_label_text_clone = hidden_label_text.clone();
     let derivation_label_text_clone = derivation_label_text.clone();
     let hardened_checkbox_clone = hardened_checkbox.clone();
     let coin_treeview_clone = coin_treeview.clone();
@@ -522,7 +581,6 @@ fn create_gui(application: &gtk::Application) {
     }
 
     let bip_dropdown_clone2 = bip_dropdown_clone.clone();
-    // let hidden_label_text_clone2 = hidden_label_text_clone.clone();
     let derivation_label_text_clone2 = derivation_label_text_clone.clone();
     let hardened_checkbox_clone2 = hardened_checkbox_clone.clone();
     let coin_treeview_clone2 = coin_treeview_clone.clone();
@@ -537,7 +595,6 @@ fn create_gui(application: &gtk::Application) {
     });
     
     let bip_dropdown_clone3 = bip_dropdown_clone.clone();
-    // let hidden_label_text_clone3 = hidden_label_text_clone.clone();
     let derivation_label_text_clone3 = derivation_label_text_clone.clone();
     let hardened_checkbox_clone3 = hardened_checkbox_clone.clone();
     let coin_treeview_clone3 = coin_treeview_clone.clone();
@@ -562,23 +619,52 @@ fn create_gui(application: &gtk::Application) {
             let header = model.get_value(&iter, 1);
             let symbol = model.get_value(&iter, 2);
             let name = model.get_value(&iter, 3);
+            let key_derivation = model.get_value(&iter, 4);
+            let private_version = model.get_value(&iter, 5);
+            let public_version = model.get_value(&iter, 6);
+            let pubKeyHash = model.get_value(&iter, 7);
+            let scriptHash = model.get_value(&iter, 8);
+            let wif = model.get_value(&iter, 9);
+            let comment = model.get_value(&iter, 10);
 
             if let (
                 Ok(coin_type),
                 Ok(coin_header),
                 Ok(coin_symbol),
-                Ok(coin_name)
+                Ok(coin_name),
+                Ok(key_derivation),
+                Ok(private_version),
+                Ok(public_version),
+                Ok(pubKeyHash),
+                Ok(scriptHash),
+                Ok(wif),
+                Ok(comment),
             ) = (
                 coin.get::<String>(), 
                 header.get::<String>(), 
                 symbol.get::<String>(), 
-                name.get::<String>()
+                name.get::<String>(),
+                key_derivation.get::<String>(),
+                private_version.get::<String>(),
+                public_version.get::<String>(),
+                pubKeyHash.get::<String>(),
+                scriptHash.get::<String>(),
+                wif.get::<String>(),
+                comment.get::<String>(),
             ) 
                 {
                     println!("coin_type: {}", coin_type);
                     println!("coin_header: {}", coin_header);
                     println!("coin_symbol: {}", coin_symbol);
                     println!("coin_name: {}", coin_name);
+                    println!("key_derivation: {}", key_derivation);
+                    println!("private_version: {}", private_version);
+                    println!("public_version: {}", public_version);
+                    println!("pubKeyHash: {}", pubKeyHash);
+                    println!("scriptHash: {}", scriptHash);
+                    println!("wif: {}", wif);
+                    println!("comment: {}", comment);
+                    
                     println!("Starting deriving keys:");
                 }
 
@@ -607,7 +693,14 @@ fn create_gui(application: &gtk::Application) {
                         (0, &found_coin.index.to_string()),
                         (1, &format!("0x{:X}", found_coin.path)),
                         (2, &found_coin.symbol),
-                        (3, &found_coin.coin),
+                        (3, &found_coin.name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.private_version),
+                        (6, &found_coin.public_version),
+                        (7, &found_coin.pubKeyHash),
+                        (8, &found_coin.scriptHash),
+                        (9, &found_coin.wif),
+                        (10, &found_coin.comment),
                     ]);
                 }
                 coin_treeview.set_model(Some(&treestore));
@@ -622,11 +715,9 @@ fn create_gui(application: &gtk::Application) {
     derivation_label_text.connect_label_notify(move |label| {
         let re = regex::Regex::new(r"m/(\d{1,2}|[1-9]\d')/(\d{1,8}|[1-9]\d')").unwrap();
         if re.is_match(&label.text()) {
-            // let bip32_master_key = derive_xprv(seed_text.text().to_string(), label.text().to_string());
-            // mute.buffer().set_text(&bip32_master_key);
             let coin = "BTC";
-            match derive_xprv(&seed_text.text().to_string(), coin) {
-                Ok(xprv) => master_private_key_text.buffer().set_text(&xprv),
+            match derive_xprv(&seed_text.text().to_string(), coin, false) {
+                Ok(xprv) => extened_master_private_key_text.buffer().set_text(&xprv),
                 Err(err) => println!("Error: {}", err),
             }
         } else {
@@ -661,18 +752,27 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
         .filter_map(|record| record.ok())
         .enumerate()
         .map(|(index, record)| {
-            let path = index as u32;
-            let index = index.try_into().expect("Conversion from usize to u32 failed");
-            let symbol = record.get(2).unwrap_or_default().to_string();
-            let coin = record.get(3).unwrap_or_default().to_string();
-            CoinDatabase { index, path, symbol, coin }
+            
+            let path: u32 = index as u32;
+            let index: u32 = index.try_into().expect("Conversion from usize to u32 failed");
+            let symbol: String = record.get(2).unwrap_or_default().to_string();
+            let name: String = record.get(3).unwrap_or_default().to_string();
+            let key_derivation: String = record.get(4).unwrap_or_default().to_string();
+            let private_version: String = record.get(5).unwrap_or_default().to_string();
+            let public_version: String = record.get(6).unwrap_or_default().to_string();
+            let pubKeyHash: String = record.get(7).unwrap_or_default().to_string();
+            let scriptHash: String = record.get(8).unwrap_or_default().to_string();
+            let wif: String = record.get(9).unwrap_or_default().to_string();
+            let comment: String = record.get(10).unwrap_or_default().to_string();
+
+            CoinDatabase { index, path, symbol, name, key_derivation, private_version, public_version, pubKeyHash, scriptHash, wif, comment }
             }
         )
         .collect();
 
     coin_types
 }
-
+        
 
 fn main() {
     print_program_info();
@@ -746,89 +846,56 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
     Sha512::digest(&opad_inner).to_vec()
 }
 
-fn verify_checksum(data: &[u8]) -> bool {
-    const CHECKSUM_SIZE: usize = 4;
-
-    // Ensure data is at least the size of the checksum
-    if data.len() < CHECKSUM_SIZE {
-        eprintln!("Error: Data is too short to contain a checksum");
-        return false;
-    }
-
-    // Extract the expected checksum from the last CHECKSUM_SIZE bytes of the data
-    let expected_checksum = &data[data.len() - CHECKSUM_SIZE..];
-
-    // Extract the data without the checksum
-    let data_without_checksum = &data[..data.len() - CHECKSUM_SIZE];
-
-    // Calculate the checksum for the extracted data
-    let computed_checksum = hmac_sha512(&[], data_without_checksum);
-
-    // Debug print the lengths of computed and expected checksums
-    println!("Computed checksum length: {}", computed_checksum.len());
-    println!("Expected checksum length: {}", CHECKSUM_SIZE);
-
-    // Compare the computed checksum with the expected checksum
-    if computed_checksum.len() != CHECKSUM_SIZE {
-        eprintln!("Error: Computed checksum length is incorrect");
-        return false;
-    }
-
-    if computed_checksum != expected_checksum {
-        println!("Warning: Computed checksum {:?} does not match expected checksum {:?}.", computed_checksum, expected_checksum);
-        return false;
-    }
-
-    true
-}
-
-
-
-fn derive_xprv(seed: &str, coin: &str) -> Result<String, String> {
+fn derive_xprv(seed: &str, coin: &str, public: bool) -> Result<String, String> {
     // Define version bytes for different cryptocurrencies
-    let version: (u32, u32) = match coin {
-        "BTC" => (0x0488ade4, 0x0488b21e),
+    let header: (u32, u32) = match coin {
+        // Coin      Private     Public
+        "BTC" =>    (0x0488ade4, 0x0488b21e),
         "SHADOW" => (0xEE8031E8, 0xEE80286A),
-        "DASH" => (0x0488ade4, 0x0488b21e),
-        "LTC" => (0x0488ade4, 0x0488b21e),
+        "DASH" =>   (0x0488ade4, 0x0488b21e),
+        "LTC" =>    (0x0488ade4, 0x0488b21e),
         _ => return Err(String::from("Unsupported coin")),
     };
 
     let seed_bytes = hex::decode(seed).map_err(|_| String::from("Invalid seed hex"))?;
-
-    // Calculate HMAC-SHA512 with "Bitcoin seed" as key and the seed bytes as data
     let hmac_result = hmac_sha512(b"Bitcoin seed", &seed_bytes);
-
-    // Split the HMAC result into master private key and chain code
     let (master_private_key_bytes, chain_code_bytes) = hmac_result.split_at(32);
 
-    // Construct the extended private key
-    let mut extended_private_key = Vec::new();
-    extended_private_key.extend_from_slice(&u32::to_be_bytes(version.0)); // Version 4 bytes (big-endian)
-    extended_private_key.push(0x00); // Depth 1 byte
-    extended_private_key.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]); // Parent fingerprint 4 bytes
-    extended_private_key.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]); // Index/child 4 bytes
-    extended_private_key.extend_from_slice(chain_code_bytes); // Chain code 32 bytes
-    extended_private_key.push(0x00); // Key prefix 1 byte
-    extended_private_key.extend_from_slice(master_private_key_bytes); // Master key 32 bytes
+    // Construct the extended key
+    let mut extended_key = Vec::new();
 
-    let checksum: [u8; 4] = calculate_checksum(&extended_private_key);
+    // Choose the header based on whether it's public or private key derivation
+    let header_bytes = if public { header.1 } else { header.0 };
+    extended_key.extend_from_slice(&u32::to_be_bytes(header_bytes)); // Version        4 bytes
+    extended_key.push(0x00);                                          // Depth          1 byte
+    extended_key.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);        // Parent finger  4 bytes
+    extended_key.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);        // Index/child    4 bytes
+    extended_key.extend_from_slice(chain_code_bytes);                 // Chain code     32 bytes
+    extended_key.push(0x00);                                          // Key prefix     1 byte
 
-    // let checksum = &hmac_sha512(&[], &hmac_result)[..4];
-
-    // Append the checksum to the extended private key
-    extended_private_key.extend_from_slice(&checksum);
-
-    // Encode the extended private key in Base58Check format
-    let xprv_base58check = bs58::encode(&extended_private_key).into_string();
-
-    // Validate the checksum
-    if verify_checksum(&extended_private_key) {
-        println!("valid checksum");
+    if public {
+        // Derive and serialize the public key
+        let secp = secp256k1::Secp256k1::new();
+        let sk = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
+            .map_err(|e| format!("Error converting private key: {:?}", e))?;
+        let pk = secp256k1::PublicKey::from_secret_key(&secp, &sk);
+        let pk_bytes = pk.serialize_uncompressed();
+        extended_key.extend_from_slice(&pk_bytes);
+    } else {
+        // Append the master private key bytes
+        extended_key.extend_from_slice(master_private_key_bytes);
     }
+
+    // Calculate checksum and append
+    let checksum: [u8; 4] = calculate_checksum(&extended_key);  // Checksum       4 bytes
+    extended_key.extend_from_slice(&checksum);
+
+    // Encode the extended key in Base58Check format
+    let xprv_base58check = bs58::encode(&extended_key).into_string();
 
     Ok(xprv_base58check)
 }
+
 
 
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {

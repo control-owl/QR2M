@@ -7,13 +7,17 @@
 ██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║
 ╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
  ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
-Quantum Random Rust Mnemonic (0.3.0)
+Quantum Random Rust Mnemonic (0.4.0)
 Control Owl <qr2m[at]r-o0-t[dot]wtf>
 ```
 
-## Still writing and testing
+## Beta
 
-Beta. This is my first Rust program + first time GUI-ing in Gnome with GTK4. 
+This is my first Rust/GTK4 program.
+
+
+![Screenshot](./doc/preview/Screenshot%20from%202024-02-15%2020-38-18.png "Preview")
+![Screenshot](./doc/preview/Screenshot%20from%202024-02-15%2020-37-44.png "Preview")
 
 
 ## Abstract

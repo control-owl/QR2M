@@ -1,3 +1,7 @@
+# version 0.4.0
+- extended-coin-list.csv
+- first extended master private key
+
 # version 0.3.1
 - cleaning code and trying to understand gtk4
 

@@ -1,6 +1,19 @@
-## Tasks
+## Active tasks
 
-### Basic 
+- [ ] extended master private key
+- [ ] xpub
+- [ ] address tab
+- [ ] buy USB QRNG and make support for it
+- [ ] add get_entropy_from_anu (API)
+- [ ] add get_entropy_from_image
+- [ ] add get_entropy_from_sound
+- [ ] add get_entropy_from_video
+- [ ] scripts for addresses:
+    - [ ] public_key (basic)
+    - [ ] time-lock
+    - [ ] multi-sig
+
+## Old tasks (deprecated) 
 
 - [x] Read 256 characters from a file
 - [x] Hash it and calculate a checksum
@@ -14,7 +27,6 @@
     - [x] BIP44
 - [ ] Show addresses in all forms: 1, 3, bc1q, bc1p
 - [ ] Show private key
-- [ ] check why IanColeman says BSC is coin_path 60 and slip0044 says ETH
 - [x] create new error_handler
 - [x] add generate_entropy_from_rng
 - [ ] import account
@@ -22,18 +34,6 @@
 - [ ] hardened or normal address
 
 
-### Advance
-- [x] create GUI
-- [ ] buy USB QRNG and make support for it
-    - [ ] replace select_entropy_from_file with get_entropy_from_qrng
-- [ ] add get_entropy_from_anu (API)
-- [ ] add get_entropy_from_image
-- [ ] add get_entropy_from_sound
-- [ ] add get_entropy_from_video
-- [ ] scripts for addresses:
-    - [ ] public_key (basic)
-    - [ ] time-lock
-    - [ ] multi-sig
 
 
 ### Features
