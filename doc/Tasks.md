@@ -1,13 +1,14 @@
 ## Active tasks
 
-- [ ] extended master private key
-- [ ] xpub
-- [ ] address tab
+- [x] master private key (xprv)
+- [x] master public key (xpub)
+- [x] address tab
+- [ ] multimedia as entropy
+    - [ ] add get_entropy_from_image
+    - [ ] add get_entropy_from_sound
+    - [ ] add get_entropy_from_video
+- [ ] add get_entropy_from_anu (API) (they are migrating ...)
 - [ ] buy USB QRNG and make support for it
-- [ ] add get_entropy_from_anu (API)
-- [ ] add get_entropy_from_image
-- [ ] add get_entropy_from_sound
-- [ ] add get_entropy_from_video
 - [ ] scripts for addresses:
     - [ ] public_key (basic)
     - [ ] time-lock

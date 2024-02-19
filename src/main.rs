@@ -29,9 +29,6 @@ use gtk::{
         StackSidebar, 
     };
 
-// Project files
-// mod converter;
-
 
 // Global variables
 // const ENTROPY_FILE: &str = "./entropy/binary.qrn";
@@ -41,12 +38,15 @@ const WORDLIST_FILE: &str = "./lib/bip39-mnemonic-words-english.txt";
 const COINLIST_FILE: &str = "./lib/bip44-extended-coin-list.csv";
 
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
+const _VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
 
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
+
+const GUI_HEIGHT: i32 = 800;
+const GUI_WIDTH: i32 = 1200;
 
 
 fn print_program_info() {
@@ -76,7 +76,6 @@ struct CoinDatabase {
 }
 
 
-
 fn convert_binary_to_string(input_value: &[u8]) -> String {
     input_value
         .iter()
@@ -94,8 +93,6 @@ fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
         })
         .collect()
 }
-
-
 
 fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> String {
     match source {
@@ -194,7 +191,6 @@ fn create_coin_store() -> Vec<CoinDatabase> {
         let wif: String = if record[9].is_empty() {"".to_string()} else {record[9].to_string()};
         let comment: String = if record[10].is_empty() {"".to_string()} else {record[10].to_string()};
         
-        
         let coin_type = CoinDatabase { index, path, symbol, name, key_derivation, private_version, public_version, pubKeyHash, scriptHash, wif, comment };
 
         coin_store.push(coin_type);
@@ -202,7 +198,6 @@ fn create_coin_store() -> Vec<CoinDatabase> {
 
     coin_store
 }
-
 
 fn create_coin_completion_model() -> gtk::ListStore {
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
@@ -245,8 +240,8 @@ fn create_gui(application: &gtk::Application) {
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
-        .default_width(800)
-        .default_height(600)
+        .default_width(GUI_WIDTH)
+        .default_height(GUI_HEIGHT)
         .show_menubar(true)
         .icon_name("help-about-symbolic")
         .build();
@@ -360,12 +355,19 @@ fn create_gui(application: &gtk::Application) {
     mnemonic_words_text.set_left_margin(5);
     mnemonic_words_text.set_top_margin(5);
     mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
-
+    
     // Seed
     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let seed_frame = gtk::Frame::new(Some("Seed"));
-    let seed_text = gtk::Entry::new();
+    let seed_text = gtk::TextView::new();
+    seed_box.set_hexpand(true);
     seed_text.set_editable(false);
+    seed_text.set_vexpand(true);
+    seed_text.set_hexpand(true);
+    seed_text.set_left_margin(5);
+    seed_text.set_top_margin(5);
+    seed_text.set_wrap_mode(gtk::WrapMode::Char);
+
 
     // Connections
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
@@ -426,7 +428,9 @@ fn create_gui(application: &gtk::Application) {
 
     // Start Seed sidebar
     stack.add_titled(&entropy_main_box, Some("sidebar-seed"), "Seed");
- 
+
+    // 
+    //  
     // SIDEBAR 2
     // Sidebar Coin
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
@@ -468,153 +472,44 @@ fn create_gui(application: &gtk::Application) {
     coin_frame.set_child(Some(&coins));
     coin_box.append(&coin_frame);
 
-    // Derivation path
-    let main_derivation_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-
-    // BIP
-    let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let bip_frame = gtk::Frame::new(Some("BIP"));
-    let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
-    let valid_bip_as_string_refs: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
-    let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_string_refs);
-    bip_frame.set_child(Some(&bip_dropdown));
-    bip_frame.set_hexpand(true);
-    bip_dropdown.set_selected(1);
     
-    // Hardened path
-    let hardened_frame = gtk::Frame::new(Some("Hardened path"));
-    let hardened_checkbox = gtk4::CheckButton::new();
-    hardened_checkbox.set_active(true);
-    hardened_checkbox.set_margin_start(10);
-    hardened_frame.set_child(Some(&hardened_checkbox));
-    hardened_frame.set_hexpand(true);
-
-    // Derivation label
-    let derivation_label_frame = gtk::Frame::new(Some("Derivation path"));
-    let derivation_label_text = gtk4::Label::builder()
-        .label("m/44'/")
-        .halign(gtk::Align::Center)
-        .valign(gtk::Align::Center)
-        .css_classes(["large-title"])
-        .build();
-
-    derivation_label_frame.set_child(Some(&derivation_label_text));
-
-    // Generate extended keys button
-    let generate_extended_keys_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let generate_extended_keys_button = gtk::Button::new();
-    generate_extended_keys_button.set_label("Generate extended keys");
-    generate_extended_keys_button_box.append(&generate_extended_keys_button);
-    generate_extended_keys_button_box.set_halign(gtk::Align::Center);
-    // generate_extended_keys_button.set_sensitive(false);
-
     // Master private key
-    let extended_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let master_xprv_frame = gtk::Frame::new(Some("Extended master private key"));
-    let master_xpub_frame = gtk::Frame::new(Some("Extended master public key"));
+    let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let master_xprv_frame = gtk::Frame::new(Some("Master private key"));
+    let master_xpub_frame = gtk::Frame::new(Some("Master public key"));
     
-    let extened_master_private_key_text = gtk::TextView::new();
-    let extened_master_public_key_text = gtk::TextView::new();
+    let master_private_key_text = gtk::TextView::new();
+    let master_public_key_text = gtk::TextView::new();
 
-    extened_master_private_key_text.set_editable(false);
-    extened_master_public_key_text.set_editable(false);
+    master_private_key_text.set_editable(false);
+    master_public_key_text.set_editable(false);
     
-    master_xprv_frame.set_child(Some(&extened_master_private_key_text));
-    master_xpub_frame.set_child(Some(&extened_master_public_key_text));
+    master_xprv_frame.set_child(Some(&master_private_key_text));
+    master_xpub_frame.set_child(Some(&master_public_key_text));
 
-    extened_master_private_key_text.set_wrap_mode(gtk::WrapMode::Char);
-    extened_master_private_key_text.set_editable(false);
-    extened_master_private_key_text.set_left_margin(5);
-    extened_master_private_key_text.set_top_margin(5);
+    master_private_key_text.set_wrap_mode(gtk::WrapMode::Char);
+    master_private_key_text.set_editable(false);
+    master_private_key_text.set_left_margin(5);
+    master_private_key_text.set_top_margin(5);
 
-    extened_master_public_key_text.set_wrap_mode(gtk::WrapMode::Char);
-    extened_master_public_key_text.set_editable(false);
-    extened_master_public_key_text.set_left_margin(5);
-    extened_master_public_key_text.set_top_margin(5);
+    master_public_key_text.set_wrap_mode(gtk::WrapMode::Char);
+    master_public_key_text.set_editable(false);
+    master_public_key_text.set_left_margin(5);
+    master_public_key_text.set_top_margin(5);
 
     // Connections 
-    main_derivation_box.append(&bip_box);
-    main_derivation_box.append(&derivation_label_frame);
-    bip_box.append(&bip_frame);
-    bip_box.append(&hardened_frame);
-    extended_keys_box.append(&master_xprv_frame);
-    extended_keys_box.append(&master_xpub_frame);
+    master_keys_box.append(&master_xprv_frame);
+    master_keys_box.append(&master_xpub_frame);
     coin_main_box.append(&coin_box);
-    coin_main_box.append(&main_derivation_box);
-    coin_main_box.append(&generate_extended_keys_button_box);
-    coin_main_box.append(&extended_keys_box);
+    coin_main_box.append(&master_keys_box);
     
     // Actions
     let coin_store = create_coin_store();
     let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 11]);
-
-    let bip_dropdown_clone = bip_dropdown.clone();
-    let derivation_label_text_clone = derivation_label_text.clone();
-    let hardened_checkbox_clone = hardened_checkbox.clone();
     let coin_treeview_clone = coin_treeview.clone();
-    
-    fn update_derivation_label_text(
-        bip_dropdown_clone: &gtk::DropDown,
-        hardened_checkbox_clone: &gtk::CheckButton,
-        derivation_label_text_clone: &gtk::Label,
-        tree_coin: &gtk::TreeView,
-    ) {
-        let selected_bip_index = bip_dropdown_clone.selected() as usize;
-        let selected_bip_value = VALID_BIP_DERIVATIONS.get(selected_bip_index);
-        let bip = selected_bip_value.unwrap().to_string();
-        let hard_path = hardened_checkbox_clone.is_active();
-        let mut coin = "".to_string();
-        let mut path = "".to_string();
 
-        if let Some((model,  iter)) = tree_coin.selection().selected() {
-            coin = model.get_value(&iter, 0).get::<String>().expect("problem with treeview");
-        };
-        
-        if hard_path == true {
-            path = "'".to_string();
-        }
-        
-        let derivation = format!("m/{}{}/{}{}", bip, path, coin, path);
-        
-        println!("derivation: {}", derivation);
-        derivation_label_text_clone.set_text(&derivation);
-    }
-
-    let bip_dropdown_clone2 = bip_dropdown_clone.clone();
-    let derivation_label_text_clone2 = derivation_label_text_clone.clone();
-    let hardened_checkbox_clone2 = hardened_checkbox_clone.clone();
-    let coin_treeview_clone2 = coin_treeview_clone.clone();
-    
-    bip_dropdown.connect_selected_notify(move |_| {    
-        update_derivation_label_text(
-            &bip_dropdown_clone2,
-            &hardened_checkbox_clone2,
-            &derivation_label_text_clone2,
-            &coin_treeview_clone2
-        );
-    });
-    
-    let bip_dropdown_clone3 = bip_dropdown_clone.clone();
-    let derivation_label_text_clone3 = derivation_label_text_clone.clone();
-    let hardened_checkbox_clone3 = hardened_checkbox_clone.clone();
-    let coin_treeview_clone3 = coin_treeview_clone.clone();
-    
-    hardened_checkbox.connect_active_notify(move |_| {
-        update_derivation_label_text(
-            &bip_dropdown_clone3,
-            &hardened_checkbox_clone3,
-            &derivation_label_text_clone3,
-            &coin_treeview_clone3
-        );
-    });
-
-    let bip_dropdown_clone4 = bip_dropdown_clone.clone();
-    let derivation_label_text_clone4 = derivation_label_text_clone.clone();
-    let hardened_checkbox_clone4 = hardened_checkbox_clone.clone();
-    let coin_treeview_clone4 = coin_treeview_clone.clone();
-
-    coin_treeview.connect_cursor_changed(move |tree_view| {
-        if let Some((model, iter)) = tree_view.selection().selected() {
+    coin_treeview.connect_cursor_changed(move |_| {
+        if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
             let coin = model.get_value(&iter, 0);
             let header = model.get_value(&iter, 1);
             let symbol = model.get_value(&iter, 2);
@@ -664,22 +559,33 @@ fn create_gui(application: &gtk::Application) {
                     println!("scriptHash: {}", scriptHash);
                     println!("wif: {}", wif);
                     println!("comment: {}", comment);
+                    let buffer = seed_text.buffer();
+                    let start_iter = buffer.start_iter();
+                    let end_iter = buffer.end_iter();
+                    let seed_string = buffer.text(&start_iter, &end_iter, true);
+                    println!("Seed: {}", seed_string);
                     
-                    println!("Starting deriving keys:");
+                    match derive_master_keys(
+                        &seed_string, 
+                        // &coin_symbol,
+                        &private_version,
+                        &public_version,
+                        // false,
+                    ) {
+                        Ok(xprv) => {
+                            master_private_key_text.buffer().set_text(&xprv.0);
+                            master_public_key_text.buffer().set_text(&xprv.1);
+                        },
+                        Err(err) => println!("Can not derive master keys: {}", err),
+                    }
                 }
-
-                update_derivation_label_text(
-                &bip_dropdown_clone4,
-                &hardened_checkbox_clone4,
-                &derivation_label_text_clone4,
-                &coin_treeview_clone4
-            );
+                
         }
     });
-
-
+    
     coin_search.connect_search_changed(move|coin_search| {
         let search_text = coin_search.text().to_uppercase();
+        treestore.clear();
     
         if search_text.len() >= 2 {
             let matching_coins = get_coins_starting_with(&coin_store, &search_text);
@@ -712,22 +618,78 @@ fn create_gui(application: &gtk::Application) {
         }
     });
 
-    derivation_label_text.connect_label_notify(move |label| {
-        let re = regex::Regex::new(r"m/(\d{1,2}|[1-9]\d')/(\d{1,8}|[1-9]\d')").unwrap();
-        if re.is_match(&label.text()) {
-            let coin = "BTC";
-            match derive_xprv(&seed_text.text().to_string(), coin, false) {
-                Ok(xprv) => extened_master_private_key_text.buffer().set_text(&xprv),
-                Err(err) => println!("Error: {}", err),
-            }
-        } else {
-            println!("Label text does not match the expected format.");
-        }
-    });
-
-
-    // Start: Coins
     stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
+
+    
+
+
+
+
+
+
+
+
+
+
+    // 
+    // SIDEBAR 3
+    // Sidebar Address
+    let address_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    address_main_box.append(&address_box);
+
+    // let address_frame = gtk::Frame::new(Some("Coin"));
+    // coin_main_box.set_margin_top(10);
+    // coin_main_box.set_margin_start(10);
+    // coin_main_box.set_margin_end(10);
+    // coin_main_box.set_margin_bottom(10);
+    // // Derivation path
+    // let main_derivation_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+    // // BIP
+    // let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    // let bip_frame = gtk::Frame::new(Some("BIP"));
+    // let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
+    // let valid_bip_as_string_refs: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
+    // let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_string_refs);
+    // bip_frame.set_child(Some(&bip_dropdown));
+    // bip_frame.set_hexpand(true);
+    // bip_dropdown.set_selected(1);
+    
+    // // Hardened path
+    // let hardened_frame = gtk::Frame::new(Some("Hardened path"));
+    // let hardened_checkbox = gtk4::CheckButton::new();
+    // hardened_checkbox.set_active(true);
+    // hardened_checkbox.set_margin_start(10);
+    // hardened_frame.set_child(Some(&hardened_checkbox));
+    // hardened_frame.set_hexpand(true);
+
+    // // Derivation label
+    // let derivation_label_frame = gtk::Frame::new(Some("Derivation path"));
+    // let derivation_label_text = gtk4::Label::builder()
+    //     .label("m/44'/")
+    //     .halign(gtk::Align::Center)
+    //     .valign(gtk::Align::Center)
+    //     .css_classes(["large-title"])
+    //     .build();
+
+    // derivation_label_frame.set_child(Some(&derivation_label_text));
+
+    // Generate extended keys button
+    // let generate_extended_keys_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    // let generate_extended_keys_button = gtk::Button::new();
+    // generate_extended_keys_button.set_label("Generate extended keys");
+    // generate_extended_keys_button_box.append(&generate_extended_keys_button);
+    // generate_extended_keys_button_box.set_halign(gtk::Align::Center);
+    // generate_extended_keys_button.set_sensitive(false);
+
+    
+    
+    
+    // Start Seed sidebar
+    stack.add_titled(&address_main_box, Some("sidebar-address"), "Address");
+ 
+    
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
     main_content_box.append(&stack);
@@ -773,7 +735,6 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
     coin_types
 }
         
-
 fn main() {
     print_program_info();
     
@@ -840,63 +801,69 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
     let mut opad_inner = vec![0x00; BLOCK_SIZE + HASH_SIZE];
     opad_inner[..BLOCK_SIZE].copy_from_slice(&opad);
     opad_inner[BLOCK_SIZE..].copy_from_slice(&inner_hash);
-    println!("opad_inner length: {}", opad_inner.len());
-    println!("inner_hash length: {}", inner_hash.len());
+    // println!("opad_inner length: {}", opad_inner.len());
+    // println!("inner_hash length: {}", inner_hash.len());
     // Calculate outer hash
-    Sha512::digest(&opad_inner).to_vec()
+    Sha512::digest(&opad_inner).to_vec() 
 }
 
-fn derive_xprv(seed: &str, coin: &str, public: bool) -> Result<String, String> {
-    // Define version bytes for different cryptocurrencies
-    let header: (u32, u32) = match coin {
-        // Coin      Private     Public
-        "BTC" =>    (0x0488ade4, 0x0488b21e),
-        "SHADOW" => (0xEE8031E8, 0xEE80286A),
-        "DASH" =>   (0x0488ade4, 0x0488b21e),
-        "LTC" =>    (0x0488ade4, 0x0488b21e),
-        _ => return Err(String::from("Unsupported coin")),
-    };
+fn derive_master_keys(
+    seed: &str, 
+    mut private_header: &str,
+    mut public_header: &str,
+) -> Result<(String, String), String> {
+    
+    // Reverting to Bitcoin in case that coin is undefined
+    if private_header.is_empty() {private_header = "0x0488ADE4";}
+    if public_header.is_empty() {public_header = "0x0488B21E";}
+    // Default message for all blockchains
+    let message = "Bitcoin seed";
 
-    let seed_bytes = hex::decode(seed).map_err(|_| String::from("Invalid seed hex"))?;
-    let hmac_result = hmac_sha512(b"Bitcoin seed", &seed_bytes);
+    let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
+        .expect("Can not parse private header");
+    let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
+        .expect("Can not parse public header");
+
+    let seed_bytes = hex::decode(seed).expect("Can not decode seed");
+    let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
     let (master_private_key_bytes, chain_code_bytes) = hmac_result.split_at(32);
 
-    // Construct the extended key
-    let mut extended_key = Vec::new();
+    // Private construct
+    let mut master_private_key = Vec::new();
+    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));     // Version        4 bytes
+    master_private_key.push(0x00);                                                    // Depth          1 byte
+    master_private_key.extend([0x00; 4].iter());                                      // Parent finger  4 bytes
+    master_private_key.extend([0x00; 4].iter());                                      // Index/child    4 bytes
+    master_private_key.extend_from_slice(chain_code_bytes);                           // Chain code     32 bytes
+    master_private_key.push(0x00);                                                    // Key prefix     1 byte
+    master_private_key.extend_from_slice(master_private_key_bytes);                   // Key            32 bytes
+    let checksum: [u8; 4] = calculate_checksum(&master_private_key);            // Checksum       4 bytes
+    master_private_key.extend_from_slice(&checksum);
+    
+    let master_xprv = bs58::encode(&master_private_key).into_string(); // Total      82 bytes
+    println!("Master private key: {}", master_xprv);
 
-    // Choose the header based on whether it's public or private key derivation
-    let header_bytes = if public { header.1 } else { header.0 };
-    extended_key.extend_from_slice(&u32::to_be_bytes(header_bytes)); // Version        4 bytes
-    extended_key.push(0x00);                                          // Depth          1 byte
-    extended_key.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);        // Parent finger  4 bytes
-    extended_key.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);        // Index/child    4 bytes
-    extended_key.extend_from_slice(chain_code_bytes);                 // Chain code     32 bytes
-    extended_key.push(0x00);                                          // Key prefix     1 byte
+    // Public construct
+    let secp = secp256k1::Secp256k1::new();
+    let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
+        .map_err(|e| format!("Error creating private key: {:?}", e))?;
+    let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
 
-    if public {
-        // Derive and serialize the public key
-        let secp = secp256k1::Secp256k1::new();
-        let sk = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
-            .map_err(|e| format!("Error converting private key: {:?}", e))?;
-        let pk = secp256k1::PublicKey::from_secret_key(&secp, &sk);
-        let pk_bytes = pk.serialize_uncompressed();
-        extended_key.extend_from_slice(&pk_bytes);
-    } else {
-        // Append the master private key bytes
-        extended_key.extend_from_slice(master_private_key_bytes);
-    }
+    let mut master_public_key = Vec::new();
+    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));      // Version        4 bytes
+    master_public_key.push(0x00);                                                     // Depth          1 byte
+    master_public_key.extend([0x00; 4].iter());                                       // Parent finger  4 bytes
+    master_public_key.extend([0x00; 4].iter());                                       // Index/child    4 bytes
+    master_public_key.extend_from_slice(chain_code_bytes);                            // Chain code     32 bytes
+    master_public_key.extend_from_slice(&master_public_key_bytes);                    // Key            33 bytes (compressed)
+    let checksum: [u8; 4] = calculate_checksum(&master_public_key);              // Checksum       4 bytes
+    master_public_key.extend_from_slice(&checksum);
+    
+    let master_xpub = bs58::encode(&master_public_key).into_string();   // Total      82 bytes
+    println!("Master public key: {}", master_xpub);
 
-    // Calculate checksum and append
-    let checksum: [u8; 4] = calculate_checksum(&extended_key);  // Checksum       4 bytes
-    extended_key.extend_from_slice(&checksum);
-
-    // Encode the extended key in Base58Check format
-    let xprv_base58check = bs58::encode(&extended_key).into_string();
-
-    Ok(xprv_base58check)
+    Ok((master_xprv, master_xpub))
 }
-
-
 
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
     let hash1 = Sha256::digest(data);

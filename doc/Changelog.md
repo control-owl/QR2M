@@ -1,6 +1,11 @@
+# version 0.5.0
+- correct master private key
+- correct master public key
+- new file: bip44-extended-coin-list.csv
+
 # version 0.4.0
 - extended-coin-list.csv
-- first extended master private key
+- first master private key
 
 # version 0.3.1
 - cleaning code and trying to understand gtk4
