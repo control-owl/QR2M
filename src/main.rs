@@ -1,15 +1,16 @@
 // #![allow(dead_code)]
 // #![allow(unused_variables)]
 // #![allow(unused_imports)]
-#![allow(non_snake_case)]
+// #![allow(non_snake_case)]
 
 
-// Crates
+// Dependencies
 use std::{
     fs::{
         self, 
         File
-    }, io::{
+    }, 
+    io::{
         self, 
         Read, 
         Seek
@@ -28,23 +29,27 @@ use gtk::{
         Stack, 
         StackSidebar, 
     };
+use qr2m_converters;
 
 
 // Global variables
-// const ENTROPY_FILE: &str = "./entropy/binary.qrn";
-// const COINLIST_FILE: &str = "./lib/bip44-coin_type.csv";
-const ENTROPY_FILE: &str = "./entropy/test.qrn";
-const WORDLIST_FILE: &str = "./lib/bip39-mnemonic-words-english.txt";
-const COINLIST_FILE: &str = "./lib/bip44-extended-coin-list.csv";
-
+const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
+const COINLIST_FILE: &str = "lib/bip44-extended-coin-list.csv";
+const ENTROPY_FILE: &str = "entropy/test.qrn";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-const _VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
-const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["rng", "file"];
-
+const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
+const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
+    "RNG", 
+    "File", 
+    "ANU API",
+];
+const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
+    "Internal", 
+    "External", 
+];
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-
 const GUI_HEIGHT: i32 = 800;
 const GUI_WIDTH: i32 = 1200;
 
@@ -67,77 +72,54 @@ struct CoinDatabase {
     symbol: String,
     name: String,
     key_derivation: String,
-    private_version: String,
-    public_version: String,
-    pubKeyHash: String,
-    scriptHash: String,
+    private_header: String,
+    public_header: String,
+    public_key_hash: String,
+    script_hash: String,
     wif: String,
     comment: String,
 }
 
 
-fn convert_binary_to_string(input_value: &[u8]) -> String {
-    input_value
-        .iter()
-        .flat_map(|byte| (0..8).rev().map(move |i| ((byte >> i) & 1).to_string()))
-        .collect()
-}
-
-fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
-    input_value
-        .chars()
-        .collect::<Vec<char>>()
-        .chunks(8)
-        .map(|chunk| {
-            chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - '0' as u8))
-        })
-        .collect()
-}
-
-fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> String {
+fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
     match source {
-        "rng" => {
+        "RNG" => {
             let mut rng = rand::thread_rng();
             let binary_string: String = (0..length)
                 .map(|_| rng.gen_range(0..=1))
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 
-            binary_string
+            Ok(binary_string)
         },
-        "file" => {
-            let file = File::open(&file_name.unwrap()).expect("Can not open entropy file.");
+        "File" => {
+            let file = File::open(file_name.unwrap())?;
             let mut reader = io::BufReader::new(file);
             
-            let file_length = reader.seek(io::SeekFrom::End(0)).unwrap_or_else(|err| {
-                eprintln!("Error getting file length: {}", err);
-                panic!();
-            });
+            let file_length = reader.seek(io::SeekFrom::End(0))?;
             
             if file_length < length {
-                eprintln!("File too small for requested entropy length: {}", length);
+                eprintln!("Entropy file too small for requested entropy length: {}", length);
+                return Err("Insufficient entropy in file".into());
             }
 
-            let max_start = file_length.saturating_sub(length as u64);
+            let max_start = file_length.saturating_sub(length);
             let start_point = rand::thread_rng().gen_range(0..=max_start);
 
-            if let Err(err) = reader.seek(io::SeekFrom::Start(start_point)) {
-                eprintln!("Error seeking in file: {}", err);
-            }
+            reader.seek(io::SeekFrom::Start(start_point))?;
 
             let mut entropy_raw_binary = String::new();
-            if let Err(err) = reader.take(length as u64).read_to_string(&mut entropy_raw_binary) {
-                eprintln!("Error reading from file: {}", err);
-            }
-            entropy_raw_binary
+            reader.take(length).read_to_string(&mut entropy_raw_binary)?;
+
+            Ok(entropy_raw_binary)
         },
-        _ => panic!("Invalid source specified"), // Handle any other cases
+        _ => Err("Invalid entropy source specified".into()),
     }
 }
 
 fn generate_checksum(entropy: &str, entropy_length: &u32) -> String {
-    let entropy_binary = convert_string_to_binary(&entropy);
-    let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
+    let entropy_binary = qr2m_converters::convert_string_to_binary(&entropy);
+    let hash_raw_binary: String = qr2m_converters::convert_binary_to_string(&Sha256::digest(&entropy_binary));
     let checksum_lenght = entropy_length / 32;
     let checksum: String = hash_raw_binary.chars().take(checksum_lenght.try_into().unwrap()).collect();
 
@@ -147,7 +129,15 @@ fn generate_checksum(entropy: &str, entropy_length: &u32) -> String {
 fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     let chunks: Vec<String> = final_entropy_binary.chars().collect::<Vec<char>>().chunks(11).map(|chunk| chunk.iter().collect()).collect();
     let mnemonic_decimal: Vec<u32> = chunks.iter().map(|chunk| u32::from_str_radix(chunk, 2).unwrap()).collect();
-    let mnemonic_file_content = fs::read_to_string(WORDLIST_FILE).expect("Can not read entropy file");
+    
+    let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
+        Ok(content) => content,
+        Err(err) => {
+            eprintln!("Error reading wordlist file: {}", err);
+            return String::new();
+        }
+    };
+    
     let mnemonic_words: Vec<&str> = mnemonic_file_content.lines().collect();
     let mnemonic_words: Vec<&str> = mnemonic_decimal.iter().map(|&decimal| {
         if (decimal as usize) < mnemonic_words.len() {
@@ -163,7 +153,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 }
 
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-    let entropy_vector = convert_string_to_binary(&entropy);
+    let entropy_vector = qr2m_converters::convert_string_to_binary(&entropy);
     let mnemonic_result = bip39::Mnemonic::from_entropy(&entropy_vector).expect("Can not create mnemomic words");
     let mnemonic = mnemonic_result;
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
@@ -181,17 +171,29 @@ fn create_coin_store() -> Vec<CoinDatabase> {
 
         let index: u32 = record[0].parse().expect("error parsing index");
         let path: u32 = u32::from_str_radix(&record[1][2..], 16).expect("error parsing path");
-        let symbol: String = if record[2].is_empty() {"".to_string()} else {record[2].to_string()};
-        let name: String = if record[3].is_empty() {"".to_string()} else {record[3].to_string()};
-        let key_derivation:String = if record[4].is_empty() {"".to_string()} else {record[4].to_string()};
-        let private_version: String = if record[5].is_empty() {"".to_string()} else {record[5].to_string()};
-        let public_version: String = if record[6].is_empty() {"".to_string()} else {record[6].to_string()};
-        let pubKeyHash: String = if record[7].is_empty() {"".to_string()} else {record[7].to_string()};
-        let scriptHash: String = if record[8].is_empty() {"".to_string()} else {record[8].to_string()};
-        let wif: String = if record[9].is_empty() {"".to_string()} else {record[9].to_string()};
-        let comment: String = if record[10].is_empty() {"".to_string()} else {record[10].to_string()};
+        let symbol: String = if record[2].is_empty()            {"".to_string()} else {record[2].to_string()};
+        let name: String = if record[3].is_empty()              {"".to_string()} else {record[3].to_string()};
+        let key_derivation:String = if record[4].is_empty()     {"".to_string()} else {record[4].to_string()};
+        let private_header: String = if record[5].is_empty()    {"".to_string()} else {record[5].to_string()};
+        let public_header: String = if record[6].is_empty()     {"".to_string()} else {record[6].to_string()};
+        let public_key_hash: String = if record[7].is_empty()   {"".to_string()} else {record[7].to_string()};
+        let script_hash: String = if record[8].is_empty()       {"".to_string()} else {record[8].to_string()};
+        let wif: String = if record[9].is_empty()               {"".to_string()} else {record[9].to_string()};
+        let comment: String = if record[10].is_empty()          {"".to_string()} else {record[10].to_string()};
         
-        let coin_type = CoinDatabase { index, path, symbol, name, key_derivation, private_version, public_version, pubKeyHash, scriptHash, wif, comment };
+        let coin_type = CoinDatabase { 
+            index, 
+            path, 
+            symbol, 
+            name, 
+            key_derivation, 
+            private_header, 
+            public_header, 
+            public_key_hash, 
+            script_hash, 
+            wif, 
+            comment 
+        };
 
         coin_store.push(coin_type);
     }
@@ -203,15 +205,15 @@ fn create_coin_completion_model() -> gtk::ListStore {
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
 
     let store = gtk::ListStore::new(&[
-        glib::Type::U32, // Index
-        glib::Type::U32, // Path
+        glib::Type::U32,    // Index
+        glib::Type::U32,    // Path
         glib::Type::STRING, // Symbol
         glib::Type::STRING, // Name
         glib::Type::STRING, // key_derivation
-        glib::Type::STRING, // private_version
-        glib::Type::STRING, // public_version
-        glib::Type::STRING, // pubKeyHash
-        glib::Type::STRING, // scriptHash
+        glib::Type::STRING, // private_header
+        glib::Type::STRING, // public_header
+        glib::Type::STRING, // public_key_hash
+        glib::Type::STRING, // script_hash
         glib::Type::STRING, // Wif
         glib::Type::STRING, // Comment
     ]);
@@ -224,10 +226,10 @@ fn create_coin_completion_model() -> gtk::ListStore {
             (2, &coin_symbol.symbol), 
             (3, &coin_symbol.name),
             (4, &coin_symbol.key_derivation),
-            (5, &coin_symbol.private_version),
-            (6, &coin_symbol.public_version),
-            (7, &coin_symbol.pubKeyHash),
-            (8, &coin_symbol.scriptHash),
+            (5, &coin_symbol.private_header),
+            (6, &coin_symbol.public_header),
+            (7, &coin_symbol.public_key_hash),
+            (8, &coin_symbol.script_hash),
             (9, &coin_symbol.wif),
             (10, &coin_symbol.comment),
         ]);
@@ -243,7 +245,6 @@ fn create_gui(application: &gtk::Application) {
         .default_width(GUI_WIDTH)
         .default_height(GUI_HEIGHT)
         .show_menubar(true)
-        .icon_name("help-about-symbolic")
         .build();
 
     let header_bar = gtk::HeaderBar::new();
@@ -368,7 +369,6 @@ fn create_gui(application: &gtk::Application) {
     seed_text.set_top_margin(5);
     seed_text.set_wrap_mode(gtk::WrapMode::Char);
 
-
     // Connections
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_text));
@@ -398,14 +398,14 @@ fn create_gui(application: &gtk::Application) {
             println!("Entropy length: {:?}", length);
 
             let entropy_length = selected_entropy_length_value;
-
+            
             let pre_entropy = generate_entropy(
                 &source,
                 *length as u64,
                 Some(&ENTROPY_FILE)
-            );
+            ).unwrap();
             
-            let checksum = generate_checksum(&pre_entropy, &entropy_length.unwrap());
+            let checksum = generate_checksum(&pre_entropy, entropy_length.unwrap());
             println!("Entropy: {:?}", &pre_entropy);
             println!("Checksum: {:?}", &checksum);
             let full_entropy = format!("{}{}", &pre_entropy, &checksum);
@@ -452,7 +452,7 @@ fn create_gui(application: &gtk::Application) {
     coin_treeview.set_vexpand(true);
     coin_treeview.set_headers_visible(true);
 
-    let columns = ["Index", "Path", "Symbol", "Name", "Key derivation", "Private version", "Public version", "pubKeyHash", "scriptHash", "Wif", "Comment"];
+    let columns = ["Index", "Path", "Symbol", "Name", "Key derivation", "Private header", "Public header", "public_key_hash", "script_hash", "Wif", "Comment"];
     for (i, column_title) in columns.iter().enumerate() {
         let column = gtk::TreeViewColumn::new();
         let cell = gtk::CellRendererText::new();
@@ -515,10 +515,10 @@ fn create_gui(application: &gtk::Application) {
             let symbol = model.get_value(&iter, 2);
             let name = model.get_value(&iter, 3);
             let key_derivation = model.get_value(&iter, 4);
-            let private_version = model.get_value(&iter, 5);
-            let public_version = model.get_value(&iter, 6);
-            let pubKeyHash = model.get_value(&iter, 7);
-            let scriptHash = model.get_value(&iter, 8);
+            let private_header = model.get_value(&iter, 5);
+            let public_header = model.get_value(&iter, 6);
+            let public_key_hash = model.get_value(&iter, 7);
+            let script_hash = model.get_value(&iter, 8);
             let wif = model.get_value(&iter, 9);
             let comment = model.get_value(&iter, 10);
 
@@ -528,10 +528,10 @@ fn create_gui(application: &gtk::Application) {
                 Ok(coin_symbol),
                 Ok(coin_name),
                 Ok(key_derivation),
-                Ok(private_version),
-                Ok(public_version),
-                Ok(pubKeyHash),
-                Ok(scriptHash),
+                Ok(private_header),
+                Ok(public_header),
+                Ok(public_key_hash),
+                Ok(script_hash),
                 Ok(wif),
                 Ok(comment),
             ) = (
@@ -540,10 +540,10 @@ fn create_gui(application: &gtk::Application) {
                 symbol.get::<String>(), 
                 name.get::<String>(),
                 key_derivation.get::<String>(),
-                private_version.get::<String>(),
-                public_version.get::<String>(),
-                pubKeyHash.get::<String>(),
-                scriptHash.get::<String>(),
+                private_header.get::<String>(),
+                public_header.get::<String>(),
+                public_key_hash.get::<String>(),
+                script_hash.get::<String>(),
                 wif.get::<String>(),
                 comment.get::<String>(),
             ) 
@@ -553,10 +553,10 @@ fn create_gui(application: &gtk::Application) {
                     println!("coin_symbol: {}", coin_symbol);
                     println!("coin_name: {}", coin_name);
                     println!("key_derivation: {}", key_derivation);
-                    println!("private_version: {}", private_version);
-                    println!("public_version: {}", public_version);
-                    println!("pubKeyHash: {}", pubKeyHash);
-                    println!("scriptHash: {}", scriptHash);
+                    println!("private_header: {}", private_header);
+                    println!("public_header: {}", public_header);
+                    println!("public_key_hash: {}", public_key_hash);
+                    println!("script_hash: {}", script_hash);
                     println!("wif: {}", wif);
                     println!("comment: {}", comment);
                     let buffer = seed_text.buffer();
@@ -568,8 +568,8 @@ fn create_gui(application: &gtk::Application) {
                     match derive_master_keys(
                         &seed_string, 
                         // &coin_symbol,
-                        &private_version,
-                        &public_version,
+                        &private_header,
+                        &public_header,
                         // false,
                     ) {
                         Ok(xprv) => {
@@ -601,10 +601,10 @@ fn create_gui(application: &gtk::Application) {
                         (2, &found_coin.symbol),
                         (3, &found_coin.name),
                         (4, &found_coin.key_derivation),
-                        (5, &found_coin.private_version),
-                        (6, &found_coin.public_version),
-                        (7, &found_coin.pubKeyHash),
-                        (8, &found_coin.scriptHash),
+                        (5, &found_coin.private_header),
+                        (6, &found_coin.public_header),
+                        (7, &found_coin.public_key_hash),
+                        (8, &found_coin.script_hash),
                         (9, &found_coin.wif),
                         (10, &found_coin.comment),
                     ]);
@@ -629,42 +629,268 @@ fn create_gui(application: &gtk::Application) {
 
 
 
+    // ----------------------------------------------------------------------
+    //  S I D E B A R   3   -   A D D R E S S 
+    //
+    let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    main_address_box.set_hexpand(true);
+    main_address_box.set_vexpand(true);
 
+    let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    
+    let main_bip_frame = gtk::Frame::new(Some("BIP"));
+    main_bip_frame.set_hexpand(true);
+    // main_bip_frame.set_vexpand(true);
+    
+    let main_coin_frame = gtk::Frame::new(Some("Coin"));
+    main_coin_frame.set_hexpand(true);
+    // main_coin_frame.set_vexpand(true);
+
+    let main_address_frame = gtk::Frame::new(Some("Address"));
+    main_address_frame.set_hexpand(true);
+    // main_address_frame.set_vexpand(true);
+    
+    let main_purpose_frame = gtk::Frame::new(Some("Purpose"));
+    main_purpose_frame.set_hexpand(true);
+    // main_purpose_frame.set_vexpand(true);
+
+    let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    purpose_box.set_hexpand(true);
+    // purpose_box.set_vexpand(true);
+
+    let bip_frame = gtk::Frame::new(Some("BIP"));
+    bip_frame.set_hexpand(true);
+    // bip_frame.set_vexpand(true);
+
+    let bip_hardened_frame = gtk::Frame::new(Some("Hardened?"));
+    bip_hardened_frame.set_hexpand(true);
+    // bip_hardened_frame.set_vexpand(true);
+    
+    let coin_frame = gtk::Frame::new(Some("Coin"));
+    coin_frame.set_hexpand(true);
+    // coin_frame.set_vexpand(true);
+    
+    let coin_hardened_frame = gtk::Frame::new(Some("Hardened?"));
+    coin_hardened_frame.set_hexpand(true);
+    // coin_hardened_frame.set_vexpand(true);
+    
+    let address_frame = gtk::Frame::new(Some("Address"));
+    address_frame.set_hexpand(true);
+    // address_frame.set_vexpand(true);
+
+    let address_hardened_frame = gtk::Frame::new(Some("Hardened?"));
+    address_hardened_frame.set_hexpand(true);
+    // address_hardened_frame.set_vexpand(true);
+
+    let purpose_frame = gtk::Frame::new(Some("Purpose"));
+    purpose_frame.set_hexpand(true);
+    // purpose_frame.set_vexpand(true);
+
+
+    let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
+    let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
+    let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
+    bip_dropdown.set_selected(1); // BIP44
+
+    let bip_hardened_checkbox = gtk::CheckButton::new();
+    bip_hardened_checkbox.set_active(true);
+    
+    let coin_entry = gtk::Entry::new();
+    coin_entry.set_editable(false);
+    
+    let coin_hardened_checkbox = gtk::CheckButton::new();
+    coin_hardened_checkbox.set_active(true);
+    
+    let adjustment = gtk::Adjustment::new(
+        0.0, // initial value
+        0.0, // minimum value
+        100.0, // maximum value
+        1.0, // step increment
+        10.0, // page increment
+        0.0, // page size
+    );
+    let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
+    
+    let address_hardened_checkbox = gtk::CheckButton::new();
+    address_hardened_checkbox.set_active(true);
+    
+    let valid_wallet_pupose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
+    let valid_wallet_pupose_as_ref: Vec<&str> = valid_wallet_pupose_as_strings.iter().map(|s| s.as_ref()).collect();
+    let purpose_dropbox = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
+    purpose_dropbox.set_selected(1); // External
+
+    bip_frame.set_child(Some(&bip_dropdown));
+    bip_hardened_frame.set_child(Some(&bip_hardened_checkbox));
+    coin_frame.set_child(Some(&coin_entry));
+    coin_hardened_frame.set_child(Some(&coin_hardened_checkbox));
+    address_frame.set_child(Some(&address_spinbutton));
+    address_hardened_frame.set_child(Some(&address_hardened_checkbox));
+    purpose_frame.set_child(Some(&purpose_dropbox));
+
+    bip_box.append(&bip_frame);
+    bip_box.append(&bip_hardened_frame);
+
+    coin_box.append(&coin_frame);
+    coin_box.append(&coin_hardened_frame);
+
+    address_box.append(&address_frame);
+    address_box.append(&address_hardened_frame);
+    
+    purpose_box.append(&purpose_frame);
+
+
+    main_bip_frame.set_child(Some(&bip_box));
+    main_coin_frame.set_child(Some(&coin_box));
+    main_address_frame.set_child(Some(&address_box));
+    main_purpose_frame.set_child(Some(&purpose_box));
+
+    derivation_box.append(&main_bip_frame);
+    derivation_box.append(&main_coin_frame);
+    derivation_box.append(&main_address_frame);
+    derivation_box.append(&main_purpose_frame);
+
+
+    // ----------------------------------------------------------------------
+    //  D e r i v a t i o n   l a b e l
+    // 
+    let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let derivation_label_frame = gtk::Frame::new(Some("Derivation path"));
+    derivation_label_frame.set_hexpand(true);
+    // derivation_label_frame.set_vexpand(true);
+    
+    let derivation_label_text = gtk4::Label::builder()
+    .label("m/44'/")
+    .halign(gtk::Align::Center)
+    .valign(gtk::Align::Center)
+    .css_classes(["large-title"])
+    .build();
+
+    derivation_label_box.append(&derivation_label_frame);
+    derivation_label_frame.set_child(Some(&derivation_label_text));
 
     // 
-    // SIDEBAR 3
-    // Sidebar Address
-    let address_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    address_main_box.append(&address_box);
+    // ----------------------------------------------------------------------
+    //  A d d r e s s   t r e e v i e w 
+    let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_treeview_frame = gtk::Frame::new(Some("Addresses"));
+    address_treeview_frame.set_hexpand(true);
+    address_treeview_frame.set_vexpand(true);
 
-    // let address_frame = gtk::Frame::new(Some("Coin"));
-    // coin_main_box.set_margin_top(10);
-    // coin_main_box.set_margin_start(10);
-    // coin_main_box.set_margin_end(10);
-    // coin_main_box.set_margin_bottom(10);
-    // // Derivation path
+    let address_treeview = gtk::TreeView::new();
+    address_treeview.set_headers_visible(true);
+    let columns = ["Path", "Address", "Public key", "Private key"];
+    for (i, column_title) in columns.iter().enumerate() {
+        let column = gtk::TreeViewColumn::new();
+        let cell = gtk::CellRendererText::new();
+        column.set_title(column_title);
+        column.pack_start(&cell, true);
+        column.add_attribute(&cell, "text", i as i32);
+        address_treeview.append_column(&column);
+    }
+
+    address_treeview_frame.set_child(Some(&address_treeview));
+    address_treeview_box.append(&address_treeview_frame);
+    // 
+    // ----------------------------------------------------------------------
+    
+    
+    main_address_box.append(&derivation_box);
+    main_address_box.append(&derivation_label_box);
+    main_address_box.append(&address_treeview_box);
+    
+    
+    
+    
+    
+    
+    
+    // derivation_frame.set_child(Some(&derivation_box));
+
+
+    // let address_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     // let main_derivation_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    // // BIP
-    // let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    // let bip_frame = gtk::Frame::new(Some("BIP"));
-    // let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
-    // let valid_bip_as_string_refs: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
-    // let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_string_refs);
-    // bip_frame.set_child(Some(&bip_dropdown));
-    // bip_frame.set_hexpand(true);
-    // bip_dropdown.set_selected(1);
+    // // Derivation
+    // let derivation_box_input = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    // let derivation_box_bip = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    // // Hardened path
-    // let hardened_frame = gtk::Frame::new(Some("Hardened path"));
-    // let hardened_checkbox = gtk4::CheckButton::new();
-    // hardened_checkbox.set_active(true);
-    // hardened_checkbox.set_margin_start(10);
-    // hardened_frame.set_child(Some(&hardened_checkbox));
-    // hardened_frame.set_hexpand(true);
+
+
+
+
+    // // BIP
+    // let purpose_frame = gtk::Frame::new(Some("Purpose"));
+    // let main_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    // let bip_frame = gtk::Frame::new(Some("BIP"));
+    // let hard_bip_frame = gtk::Frame::new(Some("Hardened"));
+    // main_bip_box.append(&bip_frame);
+    // main_bip_box.append(&hard_bip_frame);
+    // let valid_bip_as_string: Vec<String> = _VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
+    // let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
+    // let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
+    // bip_dropdown.set_selected(1); // BIP44    
+    // bip_frame.set_child(Some(&bip_dropdown));
+    // let hard_bip_checkbox = gtk::CheckButton::new();
+    // hard_bip_frame.set_child(Some(&hard_bip_checkbox));
+    // purpose_frame.set_child(Some(&main_bip_box));
+    
+    // derivation_box_bip.append(&purpose_frame);
+    
+
+
+
+
+
+    // let coin_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    // let coin_main_frame = gtk::Frame::new(Some("Coin"));
+
+    // let coin_main_index_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    // let main_coin_index_frame = gtk::Frame::new(Some("Coin index"));
+    
+    // let coin_main_index_hardened_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    // let main_coin_index_hardened_frame = gtk::Frame::new(Some("Hardened"));
+
+    
+
+    // coin_box.append(&main_coin_frame);
+    // coin_hard_box.append(&main_coin_hardened_frame);
+    // // main_coin_frame.set_child(Some(&))
+    
+    // // main_coin_box.append(&main_coin_frame);
+
+
+
+
+
+
+
+
+    // let derivation_box_coin = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    // let derivation_box_account = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    // let derivation_box_internal = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    
+    // derivation_box_input.append(&derivation_box_bip);
+    // derivation_box_input.append(&derivation_box_coin);
+    // derivation_box_input.append(&derivation_box_account);
+    // derivation_box_input.append(&derivation_box_internal);
+    
+
+
+
+
+
+
+
+
+
+
+
 
     // // Derivation label
+    // let derivation_box_label = gtk::Box::new(gtk::Orientation::Vertical, 20);
     // let derivation_label_frame = gtk::Frame::new(Some("Derivation path"));
     // let derivation_label_text = gtk4::Label::builder()
     //     .label("m/44'/")
@@ -672,22 +898,24 @@ fn create_gui(application: &gtk::Application) {
     //     .valign(gtk::Align::Center)
     //     .css_classes(["large-title"])
     //     .build();
-
     // derivation_label_frame.set_child(Some(&derivation_label_text));
+    // derivation_box_label.append(&derivation_label_frame);
 
-    // Generate extended keys button
-    // let generate_extended_keys_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    // let generate_extended_keys_button = gtk::Button::new();
-    // generate_extended_keys_button.set_label("Generate extended keys");
-    // generate_extended_keys_button_box.append(&generate_extended_keys_button);
-    // generate_extended_keys_button_box.set_halign(gtk::Align::Center);
-    // generate_extended_keys_button.set_sensitive(false);
+    // main_derivation_box.append(&derivation_box_input);
+    // main_derivation_box.append(&derivation_box_label);
 
-    
-    
+    // address_main_box.append(&main_derivation_box);
+
+    // // // Hardened path
+    // // let hardened_frame = gtk::Frame::new(Some("Hardened path"));
+    // // let hardened_checkbox = gtk4::CheckButton::new();
+    // // hardened_checkbox.set_active(true);
+    // // hardened_checkbox.set_margin_start(10);
+    // // hardened_frame.set_child(Some(&hardened_checkbox));
+    // // hardened_frame.set_hexpand(true);
     
     // Start Seed sidebar
-    stack.add_titled(&address_main_box, Some("sidebar-address"), "Address");
+    stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
  
     
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -698,7 +926,10 @@ fn create_gui(application: &gtk::Application) {
     window.present();
 }
 
-fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix: &'a str) -> Vec<&'a CoinDatabase> {
+fn get_coins_starting_with<'a>(
+    coin_store: &'a Vec<CoinDatabase>, 
+    target_prefix: &'a str
+) -> Vec<&'a CoinDatabase> {
     coin_store
         .iter()
         .filter(|&coin_type| coin_type.symbol.starts_with(target_prefix))
@@ -720,14 +951,14 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
             let symbol: String = record.get(2).unwrap_or_default().to_string();
             let name: String = record.get(3).unwrap_or_default().to_string();
             let key_derivation: String = record.get(4).unwrap_or_default().to_string();
-            let private_version: String = record.get(5).unwrap_or_default().to_string();
-            let public_version: String = record.get(6).unwrap_or_default().to_string();
-            let pubKeyHash: String = record.get(7).unwrap_or_default().to_string();
-            let scriptHash: String = record.get(8).unwrap_or_default().to_string();
+            let private_header: String = record.get(5).unwrap_or_default().to_string();
+            let public_header: String = record.get(6).unwrap_or_default().to_string();
+            let public_key_hash: String = record.get(7).unwrap_or_default().to_string();
+            let script_hash: String = record.get(8).unwrap_or_default().to_string();
             let wif: String = record.get(9).unwrap_or_default().to_string();
             let comment: String = record.get(10).unwrap_or_default().to_string();
 
-            CoinDatabase { index, path, symbol, name, key_derivation, private_version, public_version, pubKeyHash, scriptHash, wif, comment }
+            CoinDatabase { index, path, symbol, name, key_derivation, private_header, public_header, public_key_hash, script_hash, wif, comment }
             }
         )
         .collect();
@@ -737,7 +968,7 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
         
 fn main() {
     print_program_info();
-    
+
     let application = gtk::Application::builder()
         .application_id("com.github.qr2m")
         .build();
@@ -752,12 +983,6 @@ fn main() {
             application.quit();
         }),
     );
-
-    // new.connect_activate(
-    //     glib::clone!(@weak application => move |_action, _parameter| {
-    //         let clone = application.clone();
-    //     }),
-    // );
 
 
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
@@ -873,3 +1098,17 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
     result.copy_from_slice(checksum);
     result
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

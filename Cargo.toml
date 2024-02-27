@@ -3,7 +3,10 @@ name = "QR2M"
 description = "Quantum Random Rust Mnemonic"
 version = "0.5.0"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+# copyright = "Copyright © 2023-2024 D3BUG"
+repository = "https://github.com/control-owl/qr2m"
 readme = "README.md"
+license-file = "LICENSE.txt"
 edition = "2021"
 
 
@@ -18,22 +21,14 @@ gtk4 = "0.8.0"          # GUI GTK4
 glib = "0.19.0"         # GUI                       
 regex = "1.10.3"        # Parsing derivation path   
 secp256k1 = "0.28.2"    # Extended keys             
-# ecdsa = "0.16.9"        # Extended keys             
 bs58 = "0.5.0"          # Extended keys             
-
-
-# TESTING
-# rust-crypto = "0.2.36"
-# bip32 = "0.5.1"
-# hmac = "0.12.1"
-# bitcoin = "0.31.0"      # Derivation path           
 
 
 [[bin]]
 name = "QR2M"
 path = "src/main.rs"
 
-[workspace]
 
-[package.metadata.docs.rs]
-targets = ["src/main.rs", "src/error_handler.rs", "src/converters.rs"]
+[lib]
+name = "qr2m_converters"
+path = "src/lib.rs"

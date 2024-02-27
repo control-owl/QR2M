@@ -3,6 +3,7 @@
 - [x] master private key (xprv)
 - [x] master public key (xpub)
 - [x] address tab
+- [ ] get keccak256 support (Ethereum)
 - [ ] multimedia as entropy
     - [ ] add get_entropy_from_image
     - [ ] add get_entropy_from_sound
@@ -13,6 +14,7 @@
     - [ ] public_key (basic)
     - [ ] time-lock
     - [ ] multi-sig
+- [ ] tokio
 
 ## Old tasks (deprecated) 
 
