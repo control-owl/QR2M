@@ -1,19 +1,29 @@
-// #![allow(dead_code)]
-// #![allow(unused_variables)]
-// #![allow(unused_imports)]
-// #![allow(non_snake_case)]
+#![allow(non_snake_case)]
 
 
 // Dependencies
 use std::{
     fs::{
-        self, 
-        File
+        self,
+        File,
+        OpenOptions
     }, 
     io::{
         self, 
         Read, 
-        Seek
+        Seek,
+        prelude::*,
+        BufReader,
+        BufRead
+    },
+    net::{
+        TcpStream,
+        ToSocketAddrs
+    },
+    path::Path,
+    time::{
+        Duration, 
+        SystemTime
     }
 };
 use hex;
@@ -41,7 +51,7 @@ const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
     "RNG", 
     "File", 
-    "ANU API",
+    "ANU QRNG",
 ];
 const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
     "Internal", 
@@ -53,16 +63,13 @@ const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
 const GUI_HEIGHT: i32 = 800;
 const GUI_WIDTH: i32 = 1200;
 
+const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
+const ANU_QRNG_FILE: &str = "tmp/anu";
+const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 
-fn print_program_info() {
-    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
-    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
-    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
-    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
-    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
-    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
-    println!("{} ({})\n{}\n", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap(), &APP_AUTHOR.unwrap());
-}
+
+const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
+const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
 
 
 #[derive(Debug)]
@@ -80,6 +87,15 @@ struct CoinDatabase {
     comment: String,
 }
 
+fn print_program_info() {
+    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
+    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
+    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
+    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
+    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
+    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
+    println!("{} ({})\n{}\n", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap(), &APP_AUTHOR.unwrap());
+}
 
 fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
     match source {
@@ -112,6 +128,10 @@ fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> Resul
             reader.take(length).read_to_string(&mut entropy_raw_binary)?;
 
             Ok(entropy_raw_binary)
+        },
+        "ANU QRNG" => {
+            let qrng = generate_anu_qrng("uint16", 1024, 1024);
+            Ok(qrng)
         },
         _ => Err("Invalid entropy source specified".into()),
     }
@@ -271,7 +291,10 @@ fn create_gui(application: &gtk::Application) {
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
 
-    // SEED SIDEBAR
+
+    // ----------------------------------------------------------------------
+    //  S I D E B A R   1   -   S E E D
+    //
     let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     entropy_main_box.set_margin_top(10);
     entropy_main_box.set_margin_start(10);
@@ -429,10 +452,10 @@ fn create_gui(application: &gtk::Application) {
     // Start Seed sidebar
     stack.add_titled(&entropy_main_box, Some("sidebar-seed"), "Seed");
 
-    // 
-    //  
-    // SIDEBAR 2
-    // Sidebar Coin
+
+    // ----------------------------------------------------------------------
+    //  S I D E B A R   2   -   C O I N
+    //
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_frame = gtk::Frame::new(Some("Coin"));
@@ -472,7 +495,6 @@ fn create_gui(application: &gtk::Application) {
     coin_frame.set_child(Some(&coins));
     coin_box.append(&coin_frame);
 
-    
     // Master private key
     let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let master_xprv_frame = gtk::Frame::new(Some("Master private key"));
@@ -620,14 +642,6 @@ fn create_gui(application: &gtk::Application) {
 
     stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
 
-    
-
-
-
-
-
-
-
 
     // ----------------------------------------------------------------------
     //  S I D E B A R   3   -   A D D R E S S 
@@ -635,6 +649,10 @@ fn create_gui(application: &gtk::Application) {
     let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     main_address_box.set_hexpand(true);
     main_address_box.set_vexpand(true);
+    main_address_box.set_margin_top(10);
+    main_address_box.set_margin_start(10);
+    main_address_box.set_margin_end(10);
+    main_address_box.set_margin_bottom(10);
 
     let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     
@@ -732,15 +750,11 @@ fn create_gui(application: &gtk::Application) {
 
     bip_box.append(&bip_frame);
     bip_box.append(&bip_hardened_frame);
-
     coin_box.append(&coin_frame);
     coin_box.append(&coin_hardened_frame);
-
     address_box.append(&address_frame);
     address_box.append(&address_hardened_frame);
-    
     purpose_box.append(&purpose_frame);
-
 
     main_bip_frame.set_child(Some(&bip_box));
     main_coin_frame.set_child(Some(&coin_box));
@@ -753,16 +767,13 @@ fn create_gui(application: &gtk::Application) {
     derivation_box.append(&main_purpose_frame);
 
 
-    // ----------------------------------------------------------------------
-    //  D e r i v a t i o n   l a b e l
-    // 
     let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let derivation_label_frame = gtk::Frame::new(Some("Derivation path"));
     derivation_label_frame.set_hexpand(true);
     // derivation_label_frame.set_vexpand(true);
     
     let derivation_label_text = gtk4::Label::builder()
-    .label("m/44'/")
+    .label("m/44'/0'/0")
     .halign(gtk::Align::Center)
     .valign(gtk::Align::Center)
     .css_classes(["large-title"])
@@ -771,9 +782,6 @@ fn create_gui(application: &gtk::Application) {
     derivation_label_box.append(&derivation_label_frame);
     derivation_label_frame.set_child(Some(&derivation_label_text));
 
-    // 
-    // ----------------------------------------------------------------------
-    //  A d d r e s s   t r e e v i e w 
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_treeview_frame = gtk::Frame::new(Some("Addresses"));
     address_treeview_frame.set_hexpand(true);
@@ -793,131 +801,15 @@ fn create_gui(application: &gtk::Application) {
 
     address_treeview_frame.set_child(Some(&address_treeview));
     address_treeview_box.append(&address_treeview_frame);
-    // 
-    // ----------------------------------------------------------------------
     
     
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
     main_address_box.append(&address_treeview_box);
     
-    
-    
-    
-    
-    
-    
-    // derivation_frame.set_child(Some(&derivation_box));
-
-
-    // let address_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    // let main_derivation_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-
-    // // Derivation
-    // let derivation_box_input = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    // let derivation_box_bip = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
-
-
-
-
-    // // BIP
-    // let purpose_frame = gtk::Frame::new(Some("Purpose"));
-    // let main_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    // let bip_frame = gtk::Frame::new(Some("BIP"));
-    // let hard_bip_frame = gtk::Frame::new(Some("Hardened"));
-    // main_bip_box.append(&bip_frame);
-    // main_bip_box.append(&hard_bip_frame);
-    // let valid_bip_as_string: Vec<String> = _VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
-    // let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
-    // let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
-    // bip_dropdown.set_selected(1); // BIP44    
-    // bip_frame.set_child(Some(&bip_dropdown));
-    // let hard_bip_checkbox = gtk::CheckButton::new();
-    // hard_bip_frame.set_child(Some(&hard_bip_checkbox));
-    // purpose_frame.set_child(Some(&main_bip_box));
-    
-    // derivation_box_bip.append(&purpose_frame);
-    
-
-
-
-
-
-    // let coin_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    // let coin_main_frame = gtk::Frame::new(Some("Coin"));
-
-    // let coin_main_index_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    // let main_coin_index_frame = gtk::Frame::new(Some("Coin index"));
-    
-    // let coin_main_index_hardened_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    // let main_coin_index_hardened_frame = gtk::Frame::new(Some("Hardened"));
-
-    
-
-    // coin_box.append(&main_coin_frame);
-    // coin_hard_box.append(&main_coin_hardened_frame);
-    // // main_coin_frame.set_child(Some(&))
-    
-    // // main_coin_box.append(&main_coin_frame);
-
-
-
-
-
-
-
-
-    // let derivation_box_coin = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    // let derivation_box_account = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    // let derivation_box_internal = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
-    // derivation_box_input.append(&derivation_box_bip);
-    // derivation_box_input.append(&derivation_box_coin);
-    // derivation_box_input.append(&derivation_box_account);
-    // derivation_box_input.append(&derivation_box_internal);
-    
-
-
-
-
-
-
-
-
-
-
-
-
-    // // Derivation label
-    // let derivation_box_label = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    // let derivation_label_frame = gtk::Frame::new(Some("Derivation path"));
-    // let derivation_label_text = gtk4::Label::builder()
-    //     .label("m/44'/")
-    //     .halign(gtk::Align::Center)
-    //     .valign(gtk::Align::Center)
-    //     .css_classes(["large-title"])
-    //     .build();
-    // derivation_label_frame.set_child(Some(&derivation_label_text));
-    // derivation_box_label.append(&derivation_label_frame);
-
-    // main_derivation_box.append(&derivation_box_input);
-    // main_derivation_box.append(&derivation_box_label);
-
-    // address_main_box.append(&main_derivation_box);
-
-    // // // Hardened path
-    // // let hardened_frame = gtk::Frame::new(Some("Hardened path"));
-    // // let hardened_checkbox = gtk4::CheckButton::new();
-    // // hardened_checkbox.set_active(true);
-    // // hardened_checkbox.set_margin_start(10);
-    // // hardened_frame.set_child(Some(&hardened_checkbox));
-    // // hardened_frame.set_hexpand(true);
-    
-    // Start Seed sidebar
     stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
  
-    
+
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
     main_content_box.append(&stack);
@@ -965,9 +857,11 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
 
     coin_types
 }
-        
+
 fn main() {
     print_program_info();
+
+    get_entropy_fron_anu();
 
     let application = gtk::Application::builder()
         .application_id("com.github.qr2m")
@@ -1106,9 +1000,165 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
 
 
 
+// 
+// T E S T I N G   Z O N E
+// 
+// 
+
+const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
+    "uint8", 
+    "uint16", 
+    "hex16",
+];
+
+fn get_entropy_fron_anu() {
+
+    // ANU API Options
+    let data_format = "uint16";  // uint8, uint16, hex16
+    let array_length = 1024;     // 1-1024
+    let hex_block_size = 1;       // 1-1024 (only for hex16)
+
+    let anu_data = fetch_anu_qrng_data(data_format, array_length, hex_block_size);
+
+    println!("ANU data: \"{}\"", anu_data);
+
+}
+
+
+fn generate_anu_qrng(anu_data: &str, array_length: u32, block_size: u32) -> String {
+    let mut socket_addr = ANU_API_URL.to_socket_addrs()
+        .map_err(|e| format!("Socket address parsing error: {}", e))
+        .unwrap();
+
+    let socket_addr = socket_addr
+        .next()
+        .ok_or("No socket addresses found for ANU API URL")
+        .unwrap();
+
+    let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
+        .map_err(|e| format!("Connection error: {}", e))
+        .unwrap();
+
+    let anu_request = format!("GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n", anu_data, array_length, block_size).into_bytes();
+
+    stream.write_all(&anu_request)
+        .map_err(|e| format!("Write error: {}", e))
+        .unwrap();
+
+    stream.flush()
+        .map_err(|e| format!("Flush error: {}", e))
+        .unwrap();
+
+    let mut response = String::new();
+    let mut reader = BufReader::new(&stream);
+
+    reader.read_to_string(&mut response)
+        .map_err(|e| format!("Read error: {}", e))
+        .unwrap();
+
+    if response.contains("HTTP/1.1 500 Internal Server Error") {
+        println!("ANU QRNG API is temporarily unavailable: {:?}", response);
+        return String::new();
+    }
+
+    let json_start = response.find('{').ok_or("JSON start delimiter not found").unwrap();
+    let json_end = response.rfind('}').ok_or("JSON end delimiter not found").unwrap() + 1;
+    let json_str = &response[json_start..json_end];
+
+    let json: Result<serde_json::Value, serde_json::Error> = serde_json::from_str(json_str);
+    let json = match json {
+        Ok(parsed_json) => parsed_json,
+        Err(e) => {
+            eprintln!("JSON parsing error: {}", e);
+            return String::new()
+        }
+    };
+
+    if !json["success"].as_bool().unwrap_or(false) {
+        eprint!("ANU QRNG API response indicates failure");
+        return String::new();
+    }
+
+    let data = json["data"].as_array().ok_or("Data array not found in JSON").unwrap();
+    let result = data.iter()
+        // .filter_map(|num| num.as_u64())
+        .map(|num| num.to_string())
+        .collect::<Vec<String>>()
+        .concat()
+        .replace("\"", "");
+
+    result
+}
+
+
+fn fetch_anu_qrng_data(anu_data: &str, array_length: u32, block_size: u32) -> String {
+    let current_time = SystemTime::now();
+    println!("New request: {:?}", current_time);
+    
+    let last_request_time = load_last_anu_request().unwrap();
+    println!("Last request: {:?}", last_request_time);
+
+    let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
+    let wait_duration = Duration::from_secs(TCP_REQUEST_INTERVAL_SECONDS as u64);
+    if elapsed < wait_duration {
+        let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
+        println!("One request per 2 minutes. You have to wait {} seconds more", remaining_seconds);
+        return String::new();
+    }
+    
+    let response = generate_anu_qrng(anu_data, array_length, block_size);
+
+    if let Err(err) = save_last_anu_request(current_time) {
+        eprintln!("Error saving last request time: {}", err);
+    }
+
+    let file = format!("{}.{}", ANU_QRNG_FILE, anu_data);
+    append_to_file(&file, &response)
+        .map_err(|e| format!("Error appending to file: {}", e))
+        .map(|_| response)
+        .unwrap_or_else(|e| {
+            eprintln!("Can not append to a file: {}", e);
+            String::new()
+        })
+}
 
 
 
+fn load_last_anu_request() -> Option<SystemTime> {
+    let path = Path::new(ANU_TIMESTAMP_FILE);
+    if path.exists() {
+        if let Ok(file) = File::open(path) {
+            let reader = BufReader::new(file);
+            if let Some(Ok(timestamp_str)) = reader.lines().next() {
+                if let Ok(timestamp) = timestamp_str.trim().parse::<i64>() {
+                    return Some(SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp as u64));
+                }
+            }
+        }
+    }
+    Some(SystemTime::UNIX_EPOCH)
+}
 
+fn save_last_anu_request(time: SystemTime) -> Result<(), io::Error> {
+    let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
 
+    if let Some(parent) = Path::new(ANU_TIMESTAMP_FILE).parent() {
+        fs::create_dir_all(parent)?;
+    }
 
+    let mut file = File::create(ANU_TIMESTAMP_FILE)?;
+
+    file.write_all(timestamp.as_bytes())?;
+
+    Ok(())
+}
+
+fn append_to_file(file_path: &str, data: &str) -> std::io::Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open(file_path)?;
+    file.write_all(data.as_bytes())?;
+    Ok(())
+}
