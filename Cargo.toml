@@ -1,12 +1,12 @@
 [package]
 name = "QR2M"
 description = "Quantum Random Rust Mnemonic"
-version = "0.5.1"
+version = "0.6.2"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 # copyright = "Copyright © 2023-2024 D3BUG"
+license-file = "LICENSE.txt"
 repository = "https://github.com/control-owl/qr2m"
 readme = "README.md"
-license-file = "LICENSE.txt"
 edition = "2021"
 
 
@@ -23,8 +23,6 @@ regex = "1.10.3"        # Parsing derivation path
 secp256k1 = "0.28.2"    # Extended keys             
 bs58 = "0.5.0"          # Extended keys             
 serde_json = "1.0.114"  # ANU API                   
-
-
 
 [[bin]]
 name = "QR2M"

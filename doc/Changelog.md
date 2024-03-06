@@ -1,3 +1,9 @@
+# version 0.6.2
+- better API handling
+
+# version 0.6.1
+- ANU API 
+
 # version 0.5.0
 - correct master private key
 - correct master public key

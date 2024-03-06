@@ -63,13 +63,7 @@ const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
 const GUI_HEIGHT: i32 = 800;
 const GUI_WIDTH: i32 = 1200;
 
-const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
-const ANU_QRNG_FILE: &str = "tmp/anu";
-const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 
-
-const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
-const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
 
 
 #[derive(Debug)]
@@ -1005,28 +999,43 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
 // 
 // 
 
-const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
-    "uint8", 
-    "uint16", 
-    "hex16",
-];
+// const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
+//     "uint8", 
+//     "uint16", 
+//     "hex16",
+// ];
+const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
+const ANU_QRNG_FILE: &str = "tmp/anu";
+const ANU_LOG_FILE: &str = "log/anu-session";
+const ANU_API_URL: &str = "qrng.anu.edu.au:80";
+const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
+const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
+
 
 fn get_entropy_fron_anu() {
 
     // ANU API Options
-    let data_format = "uint16";  // uint8, uint16, hex16
-    let array_length = 1024;     // 1-1024
-    let hex_block_size = 1;       // 1-1024 (only for hex16)
+    let data_format = "hex16"; // uint8, uint16, hex16
+    let array_length = 200;       // 1-1024
+    let hex_block_size = 128;  // 1-1024
 
     let anu_data = fetch_anu_qrng_data(data_format, array_length, hex_block_size);
 
     println!("ANU data: \"{}\"", anu_data);
 
+    let hex_strings = extract_hex_strings(&anu_data, hex_block_size.try_into().unwrap());
+
+    // Process hex strings as needed
+    for hex_string in hex_strings {
+        println!("Hex string: {}", hex_string);
+    }
+
 }
 
-
 fn generate_anu_qrng(anu_data: &str, array_length: u32, block_size: u32) -> String {
-    let mut socket_addr = ANU_API_URL.to_socket_addrs()
+    println!("Connecting to ANU API...");
+    let mut socket_addr = ANU_API_URL
+        .to_socket_addrs()
         .map_err(|e| format!("Socket address parsing error: {}", e))
         .unwrap();
 
@@ -1039,7 +1048,11 @@ fn generate_anu_qrng(anu_data: &str, array_length: u32, block_size: u32) -> Stri
         .map_err(|e| format!("Connection error: {}", e))
         .unwrap();
 
-    let anu_request = format!("GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n", anu_data, array_length, block_size).into_bytes();
+    let anu_request = format!(
+        "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
+        anu_data, array_length, block_size
+    )
+    .into_bytes();
 
     stream.write_all(&anu_request)
         .map_err(|e| format!("Write error: {}", e))
@@ -1049,46 +1062,42 @@ fn generate_anu_qrng(anu_data: &str, array_length: u32, block_size: u32) -> Stri
         .map_err(|e| format!("Flush error: {}", e))
         .unwrap();
 
+    println!("Waiting for response from ANU API...");
     let mut response = String::new();
-    let mut reader = BufReader::new(&stream);
+    let mut buffer = [0; 256];
+    let mut chunks = Vec::new(); // Store received chunks
 
-    reader.read_to_string(&mut response)
-        .map_err(|e| format!("Read error: {}", e))
-        .unwrap();
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(bytes_read) if bytes_read > 0 => {
+                let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+                print!("{}", chunk);
+                response.push_str(&chunk);
+                chunks.push(chunk.to_string());
 
-    if response.contains("HTTP/1.1 500 Internal Server Error") {
-        println!("ANU QRNG API is temporarily unavailable: {:?}", response);
-        return String::new();
-    }
-
-    let json_start = response.find('{').ok_or("JSON start delimiter not found").unwrap();
-    let json_end = response.rfind('}').ok_or("JSON end delimiter not found").unwrap() + 1;
-    let json_str = &response[json_start..json_end];
-
-    let json: Result<serde_json::Value, serde_json::Error> = serde_json::from_str(json_str);
-    let json = match json {
-        Ok(parsed_json) => parsed_json,
-        Err(e) => {
-            eprintln!("JSON parsing error: {}", e);
-            return String::new()
+                // Check if chunk ends with empty line indicating end of chunk
+                if chunk.ends_with("\r\n\r\n") {
+                    break; // End of response
+                }
+            }
+            Ok(_) | Err(_) => break, // No more data or error occurred, break the loop
         }
-    };
-
-    if !json["success"].as_bool().unwrap_or(false) {
-        eprint!("ANU QRNG API response indicates failure");
-        return String::new();
     }
 
-    let data = json["data"].as_array().ok_or("Data array not found in JSON").unwrap();
-    let result = data.iter()
-        // .filter_map(|num| num.as_u64())
-        .map(|num| num.to_string())
-        .collect::<Vec<String>>()
-        .concat()
-        .replace("\"", "");
+    println!("\nANU response done\n");
 
-    result
+    // Combine chunks into single string
+    let combined_response = chunks.concat();
+
+    // Create log
+    write_api_response_to_log(&combined_response, ANU_LOG_FILE);
+
+    // Remove chunked encoding
+    let response = combined_response.replace("\r\n", "");
+
+    response
 }
+
 
 
 fn fetch_anu_qrng_data(anu_data: &str, array_length: u32, block_size: u32) -> String {
@@ -1161,4 +1170,71 @@ fn append_to_file(file_path: &str, data: &str) -> std::io::Result<()> {
         .open(file_path)?;
     file.write_all(data.as_bytes())?;
     Ok(())
+}
+
+fn extract_hex_strings(response: &str, hex_block_size: usize) -> Vec<String> {
+    let hex_block_size = hex_block_size * 2; // Adjust for byte format for ANU
+    let mut hex_strings = Vec::new();
+    let mut current_string = String::new();
+    let mut in_hex_string = false;
+
+    for c in response.chars() {
+        if !in_hex_string {
+            if c == '"' {
+                // Start of a potential hex string
+                in_hex_string = true;
+                current_string.clear();
+            }
+        } else {
+            if c == '"' {
+                // End of hex string found, check if it's of expected length and contains valid hex characters
+                if current_string.len() == hex_block_size && current_string.chars().all(|c| c.is_ascii_hexdigit()) {
+                    hex_strings.push(current_string.clone());
+                }
+                current_string.clear();
+                in_hex_string = false;
+            } else if c == '\r' || c == '\n' || c == '\t' {
+                // Ignore control characters within the hex string
+                current_string.clear();
+                in_hex_string = false;
+            } else {
+                // Character is part of hex string, add to current string
+                current_string.push(c);
+            }
+        }
+    }
+
+    hex_strings
+}
+
+fn write_api_response_to_log(response: &str, log_file: &str) {
+    // Get the current system time
+    let current_time = SystemTime::now();
+    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+
+    // Create a file to save the response
+    let log_file = format!("{}-{}", log_file, timestamp);
+
+    if let Some(parent) = Path::new(log_file.as_str()).parent() {
+        match fs::create_dir_all(parent) {
+            Ok(_) => {
+                let mut file = match File::create(&log_file) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        eprintln!("Error creating file: {}", e);
+                        return;
+                    }
+                };
+                // Write the response to the file
+                if let Err(e) = file.write_all(response.as_bytes()) {
+                    eprintln!("Error writing to file: {}", e);
+                } else {
+                    println!("API response saved to file: {}", log_file);
+                }
+            }
+            Err(err) => {
+                eprintln!("Error creating directory {}: {}", parent.display(), err);
+            }
+        }
+    }
 }

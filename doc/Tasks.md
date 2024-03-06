@@ -8,13 +8,22 @@
     - [ ] add get_entropy_from_image
     - [ ] add get_entropy_from_sound
     - [ ] add get_entropy_from_video
-- [ ] add get_entropy_from_anu (API) (they are migrating ...)
+- [x] add get_entropy_from_anu (API)
+    - they are migrating to AWS, and then it's pay per request
+    - [ ] find alternative
 - [ ] buy USB QRNG and make support for it
 - [ ] scripts for addresses:
     - [ ] public_key (basic)
     - [ ] time-lock
     - [ ] multi-sig
 - [ ] tokio
+- [ ] new tab: active coins
+- [ ] open, save, new
+- [ ] settings
+- [ ] theme (auto)
+
+---
+
 
 ## Old tasks (deprecated) 
 
