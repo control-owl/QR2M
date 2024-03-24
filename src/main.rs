@@ -3,7 +3,7 @@
 #![allow(unused_variables)]
 
 
-// Requirements
+// REQUIREMENTS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 // Crates
@@ -44,7 +44,7 @@ const GUI_HEIGHT: i32 = 800;
 const GUI_WIDTH: i32 = 1200;
 
 
-// Basic
+// BASIC
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 fn print_program_info() {
@@ -260,7 +260,7 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 }
 
 
-// Coins
+// COINS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 struct CoinDatabase {
@@ -399,6 +399,9 @@ struct AppSettings {
     entropy_source: String,
     entropy_length: u32,
     bip: u32,
+    gui_save_window_size: bool,
+    gui_last_width: u32,
+    gui_last_height: u32,
 
 }
 
@@ -456,9 +459,8 @@ fn create_gui(application: &gtk4::Application) {
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
     header_bar.pack_end(&settings_button);
 
-    let window_clone = window.clone();
     settings_button.connect_clicked(move |_| {
-        create_settings_window(&window_clone);
+        create_settings_window();
     });
 
 
@@ -995,7 +997,7 @@ fn create_gui(application: &gtk4::Application) {
     window.present();
 }
 
-fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
+fn create_settings_window() {
     let settings_window = gtk::ApplicationWindow::builder()
         // .application(application)
         .title("Settings")
@@ -1112,6 +1114,12 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
     settings_window.show();
 }
 
+// TODO: Create settings logic
+// 1. Check if local config file exists
+    // FALSE: Create new config file
+// 2. Update AppSettings
+// 3. Rewrite code to use new AppSettings values
+// 4. Settings window gets velue from AppSettings
 
 
 
@@ -1122,12 +1130,12 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 
 
 
+
+
+// T E S T I N G   Z O N E
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 // 
-// T E S T I N G   Z O N E
 // 
-// 
-
 // const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
 //     "uint8", 
 //     "uint16", 
@@ -1139,25 +1147,24 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 // const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 // const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 // const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
-
-
-
+// 
+// 
 // fn get_anu_response(anu_format: &str, array_length: u32, hex_block_size: u32) -> String {
 //     println!("Connecting to ANU API...");
 //     let mut socket_addr = ANU_API_URL
 //         .to_socket_addrs()
 //         .map_err(|e| format!("Socket address parsing error: {}", e))
 //         .unwrap();
-
+// 
 //     let socket_addr = socket_addr
 //         .next()
 //         .ok_or("No socket addresses found for ANU API URL")
 //         .unwrap();
-
+// 
 //     let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
 //         .map_err(|e| format!("Connection error: {}", e))
 //         .unwrap();
-
+// 
 //     let anu_request = format!(
 //         "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
 //             anu_format, 
@@ -1165,19 +1172,19 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //             hex_block_size
 //     )
 //     .into_bytes();
-
+// 
 //     stream.write_all(&anu_request)
 //         .map_err(|e| format!("Write error: {}", e))
 //         .unwrap();
-
+// 
 //     stream.flush()
 //         .map_err(|e| format!("Flush error: {}", e))
 //         .unwrap();
-
+// 
 //     let mut response = String::new();
 //     let mut buffer = [0; 256];
 //     let mut chunks = Vec::new(); // Store received chunks
-
+// 
 //     loop {
 //         match stream.read(&mut buffer) {
 //             Ok(bytes_read) if bytes_read > 0 => {
@@ -1185,7 +1192,7 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //                 print!("{}", chunk);
 //                 response.push_str(&chunk);
 //                 chunks.push(chunk.to_string());
-
+// 
 //                 if chunk.ends_with("\r\n\r\n") {
 //                     break; // End of response
 //                 }
@@ -1193,28 +1200,28 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //             Ok(_) | Err(_) => break, // No more data or error occurred, break the loop
 //         }
 //     }
-
+// 
 //     println!("ANU API response done");
-
+// 
 //     // Combine chunks into single string
 //     let combined_response = chunks.concat();
-
+// 
 //     // Create log
 //     write_api_response_to_log(&combined_response, ANU_LOG_FILE);
-
+// 
 //     // Remove chunked encoding
 //     let response = combined_response.replace("\r\n", "");
-
+// 
 //     response
 // }
-
-
-
+// 
+// 
+// 
 // fn write_api_response_to_log(response: &str, log_file: &str) {
 //     let current_time = SystemTime::now();
 //     let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
 //     let log_file = format!("{}-{}", log_file, timestamp);
-
+// 
 //     if let Some(parent) = Path::new(log_file.as_str()).parent() {
 //         match fs::create_dir_all(parent) {
 //             Ok(_) => {
@@ -1235,26 +1242,26 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //         }
 //     }
 // }
-
-
-
+// 
+// 
+// 
 // fn get_entropy_from_anu(
 //     entropy_length: usize,
 //     data_format: &str,
 //     array_length: u32,
 //     hex_block_size: Option<u32>
 // ) -> Result<String, Box<dyn std::error::Error>> {
-
+// 
 //         let anu_data = fetch_anu_qrng_data(data_format, array_length, hex_block_size.unwrap());
 //         let mut entropy_raw_binary: String = String::new();
-
+// 
 //         match data_format {
 //             "uint8" => {
 //                 let bytes = anu_data
 //                     .split_whitespace()
 //                     .map(|byte_str| byte_str.parse::<u8>().unwrap())
 //                     .collect::<Vec<u8>>();
-                
+//              
 //                 // Convert bytes to binary strings
 //                 for byte in bytes {
 //                     entropy_raw_binary.push_str(&format!("{:08b}", byte));
@@ -1268,56 +1275,56 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //                     &anu_data, 
 //                     hex_block_size.unwrap().try_into().unwrap()
 //                 );
-            
+// 
 //                 let mut anu_qrng_binary = String::new();
-            
+//  
 //                 for hex_string in hex_strings {
 //                     // println!("Hex string: {}", hex_string);
 //                     let bytes = hex::decode(hex_string).expect("Failed to decode hex string");
 //                     let binary_string: String = bytes.iter()
 //                         .map(|byte| format!("{:08b}", byte))
 //                         .collect();
-                    
+// 
 //                     // println!("Binary string: {:?}", binary_string);
 //                     anu_qrng_binary.push_str(&binary_string);
 //                 }
-            
+// 
 //                 // Write all binary strings to a file
 //                 let qrng_file = format!("{}.binary", ANU_QRNG_FILE);
 //                 let mut file = File::create(&qrng_file)?;
 //                 file.write_all(anu_qrng_binary.as_bytes())?;
-            
+// 
 //                 if anu_qrng_binary.len() < entropy_length {
 //                     return Err(format!(
 //                         "Entropy string too short for requested entropy length: {}",
 //                         entropy_length
 //                     ).into());
 //                 }
-            
+// 
 //                 let max_start = anu_qrng_binary.len() - entropy_length;
 //                 let start_point = rand::thread_rng().gen_range(0..=max_start);
-            
+// 
 //                 entropy_raw_binary = anu_qrng_binary
 //                     .chars()
 //                     .skip(start_point)
 //                     .take(entropy_length)
 //                     .collect();
-            
+// 
 //                 println!("Final entropy string: {}", entropy_raw_binary);
 //             },
 //             &_ => eprint!("Unknown ANU format")
 //         }
-    
+// 
 //     Ok(entropy_raw_binary)
 // }
-
+// 
 // fn fetch_anu_qrng_data(anu_data: &str, array_length: u32, block_size: u32) -> String {
 //     let current_time = SystemTime::now();
 //     // println!("New request: {:?}", current_time);
-    
+// 
 //     let last_request_time = load_last_anu_request().unwrap();
 //     // println!("Last request: {:?}", last_request_time);
-
+// 
 //     let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
 //     let wait_duration = Duration::from_secs(TCP_REQUEST_INTERVAL_SECONDS as u64);
 //     if elapsed < wait_duration {
@@ -1325,15 +1332,15 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //         eprintln!("One request per 2 minutes. You have to wait {} seconds more", remaining_seconds);
 //         return String::new();
 //     }
-    
+// 
 //     let response = generate_anu_qrng(anu_data, array_length, block_size);
-
+// 
 //     if let Err(err) = create_anu_timestamp(current_time) {
 //         eprintln!("Error saving last request time: {}", err);
 //     }
-
+// 
 //     let file = format!("{}.{}", ANU_QRNG_FILE, anu_data);
-    
+// 
 //     append_to_file(&file, &response)
 //         .map_err(|e| format!("Error appending to file: {}", e))
 //         .map(|_| response)
@@ -1342,43 +1349,43 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //             String::new()
 //         })
 // }
-
-
-
+// 
+// 
+// 
 // fn generate_anu_qrng(anu_data: &str, array_length: u32, block_size: u32) -> String {
 //     println!("Connecting to ANU API...");
 //     let mut socket_addr = ANU_API_URL
 //         .to_socket_addrs()
 //         .map_err(|e| format!("Socket address parsing error: {}", e))
 //         .unwrap();
-
+// 
 //     let socket_addr = socket_addr
 //         .next()
 //         .ok_or("No socket addresses found for ANU API URL")
 //         .unwrap();
-
+// 
 //     let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
 //         .map_err(|e| format!("Connection error: {}", e))
 //         .unwrap();
-
+// 
 //     let anu_request = format!(
 //         "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
 //         anu_data, array_length, block_size
 //     )
 //     .into_bytes();
-
+// 
 //     stream.write_all(&anu_request)
 //         .map_err(|e| format!("Write error: {}", e))
 //         .unwrap();
-
+// 
 //     stream.flush()
 //         .map_err(|e| format!("Flush error: {}", e))
 //         .unwrap();
-
+// 
 //     let mut response = String::new();
 //     let mut buffer = [0; 256];
 //     let mut chunks = Vec::new(); // Store received chunks
-
+// 
 //     loop {
 //         match stream.read(&mut buffer) {
 //             Ok(bytes_read) if bytes_read > 0 => {
@@ -1386,7 +1393,7 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //                 print!("{}", chunk);
 //                 response.push_str(&chunk);
 //                 chunks.push(chunk.to_string());
-
+// 
 //                 if chunk.ends_with("\r\n\r\n") {
 //                     break; // End of response
 //                 }
@@ -1394,25 +1401,25 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //             Ok(_) | Err(_) => break, // No more data or error occurred, break the loop
 //         }
 //     }
-
+// 
 //     println!("ANU API response done");
-
+// 
 //     // Combine chunks into single string
 //     let combined_response = chunks.concat();
-
+// 
 //     // Create log
 //     write_api_response_to_log(&combined_response, ANU_LOG_FILE);
-
+// 
 //     // Remove chunked encoding
 //     let response = combined_response.replace("\r\n", "");
-
+// 
 //     response
 // }
-
-
-
-
-
+// 
+// 
+// 
+// 
+// 
 // fn load_last_anu_request() -> Option<SystemTime> {
 //     let path = Path::new(ANU_TIMESTAMP_FILE);
 //     if path.exists() {
@@ -1427,39 +1434,39 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //     }
 //     Some(SystemTime::UNIX_EPOCH)
 // }
-
+// 
 // fn create_anu_timestamp(time: SystemTime) -> Result<(), io::Error> {
 //     let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
-
+// 
 //     if let Some(parent) = Path::new(ANU_TIMESTAMP_FILE).parent() {
 //         fs::create_dir_all(parent)?;
 //     }
-
+// 
 //     let mut file = File::create(ANU_TIMESTAMP_FILE)?;
-
+// 
 //     file.write_all(timestamp.as_bytes())?;
-
+// 
 //     Ok(())
 // }
-
+// 
 // fn append_to_file(file_path: &str, data: &str) -> std::io::Result<()> {
 //     let mut file = OpenOptions::new()
 //         .write(true)
 //         .create(true)
 //         .append(true)
 //         .open(file_path)?;
-
+// 
 //     file.write_all(data.as_bytes())?;
-    
+// 
 //     Ok(())
 // }
-
+// 
 // fn extract_hex_strings(response: &str, hex_block_size: usize) -> Vec<String> {
 //     let hex_block_size = hex_block_size * 2; // Adjust for byte format for ANU
 //     let mut hex_strings = Vec::new();
 //     let mut current_string = String::new();
 //     let mut in_hex_string = false;
-
+// 
 //     for c in response.chars() {
 //         if !in_hex_string {
 //             if c == '"' {
@@ -1485,179 +1492,11 @@ fn create_settings_window(_parent_window: &gtk4::ApplicationWindow) {
 //             }
 //         }
 //     }
-
+// 
 //     hex_strings
 // }
-
-// fn write_api_response_to_log(response: &str, log_file: &str) {
-//     // Get the current system time
-//     let current_time = SystemTime::now();
-//     let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-
-//     // Create a file to save the response
-//     let log_file = format!("{}-{}", log_file, timestamp);
-
-//     if let Some(parent) = Path::new(log_file.as_str()).parent() {
-//         match fs::create_dir_all(parent) {
-//             Ok(_) => {
-//                 let mut file = match File::create(&log_file) {
-//                     Ok(file) => file,
-//                     Err(e) => {
-//                         eprintln!("Error creating file: {}", e);
-//                         return;
-//                     }
-//                 };
-//                 // Write the response to the file
-//                 if let Err(e) = file.write_all(response.as_bytes()) {
-//                     eprintln!("Error writing to file: {}", e);
-//                 // } else {
-//                     // println!("API response saved to file: {}", log_file);
-//                 }
-//             }
-//             Err(err) => {
-//                 eprintln!("Error creating directory {}: {}", parent.display(), err);
-//             }
-//         }
-//     }
-// }
-
-
+// 
+// 
+// 
 // // WORKING but uint8 can be done better
 // // 
-
-
-
-
-
-
-
-
-
-
-
-// // 
-// // 
-// // 
-// // TESTING
-// // 
-// #[derive(Debug)]
-// struct AppConfig {
-//     seed: SeedConfig,
-//     master: MasterKeyConfig,
-//     coin: CoinConfig,
-// }
-
-// #[derive(Debug)]
-// struct SeedConfig {
-//     host: String,
-//     port: u16,
-// }
-
-// #[derive(Debug)]
-// struct MasterKeyConfig {
-//     name: String,
-//     username: String,
-//     password: String,
-// }
-
-// #[derive(Debug)]
-// struct CoinConfig {
-//     level: String,
-//     file_path: String,
-// }
-
-// fn parse_config(json_str: &str) -> Result<AppConfig, String> {
-//     let json_data: serde_json::Value = match serde_json::from_str(json_str) {
-//         Ok(data) => data,
-//         Err(err) => return Err(err.to_string()),
-//     };
-
-//     let seed = match json_data["server"].as_object() {
-//         Some(server_obj) => SeedConfig {
-//             host: match server_obj["host"].as_str() {
-//                 Some(host) => host.to_string(),
-//                 None => return Err("Missing or invalid 'host' field in server config".to_string()),
-//             },
-//             port: match server_obj["port"].as_u64() {
-//                 Some(port) => port as u16,
-//                 None => return Err("Missing or invalid 'port' field in server config".to_string()),
-//             },
-//         },
-//         None => return Err("Missing 'server' object in config".to_string()),
-//     };
-
-//     let master = match json_data["database"].as_object() {
-//         Some(database_obj) => MasterKeyConfig {
-//             name: match database_obj["name"].as_str() {
-//                 Some(name) => name.to_string(),
-//                 None => return Err("Missing or invalid 'name' field in database config".to_string()),
-//             },
-//             username: match database_obj["username"].as_str() {
-//                 Some(username) => username.to_string(),
-//                 None => return Err("Missing or invalid 'username' field in database config".to_string()),
-//             },
-//             password: match database_obj["password"].as_str() {
-//                 Some(password) => password.to_string(),
-//                 None => return Err("Missing or invalid 'password' field in database config".to_string()),
-//             },
-//         },
-//         None => return Err("Missing 'database' object in config".to_string()),
-//     };
-
-//     let coin = match json_data["logging"].as_object() {
-//         Some(logging_obj) => CoinConfig {
-//             level: match logging_obj["level"].as_str() {
-//                 Some(level) => level.to_string(),
-//                 None => return Err("Missing or invalid 'level' field in logging config".to_string()),
-//             },
-//             file_path: match logging_obj["file_path"].as_str() {
-//                 Some(file_path) => file_path.to_string(),
-//                 None => return Err("Missing or invalid 'file_path' field in logging config".to_string()),
-//             },
-//         },
-//         None => return Err("Missing 'logging' object in config".to_string()),
-//     };
-
-//     Ok(AppConfig {
-//         seed,
-//         master,
-//         coin,
-//     })
-// }
-
-
-// fn get_configuration() {
-//     let mut file = match File::open("config.json") {
-//         Ok(file) => file,
-//         Err(err) => {
-//             eprintln!("Error opening config file: {}", err);
-//             return;
-//         }
-//     };
-
-//     let mut contents = String::new();
-//     if let Err(err) = file.read_to_string(&mut contents) {
-//         eprintln!("Error reading config file: {}", err);
-//         return;
-//     }
-
-//     match parse_config(&contents) {
-//         Ok(config) => {
-//             println!("Server host: {}", config.seed.host);
-//             println!("Server port: {}", config.seed.port);
-//             println!("Database name: {}", config.master.name);
-//             println!("Database username: {}", config.master.username);
-//             println!("Database password: {}", config.master.password);
-//             println!("Logging level: {}", config.coin.level);
-//             println!("Logging file path: {}", config.coin.file_path);
-//         }
-//         Err(err) => eprintln!("Error parsing config: {}", err),
-//     }
-// }
-
-
-// // 1. get config from file if exist, if not create
-// // 2. validate config values
-// // 3. set them active
-
-
