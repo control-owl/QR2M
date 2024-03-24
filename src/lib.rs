@@ -54,3 +54,36 @@ pub fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
         .map(|chunk| chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - '0' as u8)))
         .collect()
 }
+
+
+pub fn shannon_entropy(binary_string: &str) -> f64 {
+    let mut frequency_map: std::collections::HashMap<char, usize> = std::collections::HashMap::new();
+    let mut entropy: f64 = 0.0;
+    let length = binary_string.len() as f64;
+
+    for c in binary_string.chars() {
+        *frequency_map.entry(c).or_insert(0) += 1;
+    }
+
+    for (_, &frequency) in frequency_map.iter() {
+        let probability = frequency as f64 / length;
+        entropy -= probability * probability.log2();
+    }
+
+    entropy
+}
+
+pub fn find_best_entropy(entropy_strings: &[&str]) -> Option<(usize, f64)> {
+    let mut best_index: Option<usize> = None;
+    let mut best_entropy: f64 = std::f64::NEG_INFINITY;
+
+    for (index, &entropy_string) in entropy_strings.iter().enumerate() {
+        let entropy = shannon_entropy(entropy_string);
+        if entropy > best_entropy {
+            best_entropy = entropy;
+            best_index = Some(index);
+        }
+    }
+
+    best_index.map(|index| (index, best_entropy))
+}

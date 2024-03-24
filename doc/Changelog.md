@@ -1,3 +1,6 @@
+# version 0.7.0.
+- settings window
+
 # version 0.6.2
 - better API handling
 
