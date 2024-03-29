@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
-#![allow(unused_variables)]
+// #![allow(unused_variables)]
 
 
 // REQUIREMENTS
@@ -19,7 +19,10 @@ use sha2::{Digest, Sha256, Sha512};
 use bip39;
 use csv::ReaderBuilder;
 use gtk4 as gtk;
+use libadwaita as adw;
+use adw::prelude::*;
 use gtk::{gio, glib::clone, prelude::*, BaselinePosition, Stack, StackSidebar};
+use toml::Value;
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 
 // Default settings
@@ -27,11 +30,11 @@ use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
 const COINLIST_FILE: &str = "lib/bip44-extended-coin-list.csv";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-const VALID_BIP_DERIVATIONS: [u32; 2] = [32, 44];
+const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
     "RNG", 
-    "QRNG (ANU)",
-    "Test file",
+    "QRNG",
+    "Test",
 ];
 const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
     "Internal", 
@@ -40,8 +43,7 @@ const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-const GUI_HEIGHT: i32 = 800;
-const GUI_WIDTH: i32 = 1200;
+
 
 
 // BASIC
@@ -54,10 +56,11 @@ fn print_program_info() {
     println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
     println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
-    println!("{} ({})\n{}\n", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap(), &APP_AUTHOR.unwrap());
+    println!("{} ({})\n{}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap(), &APP_AUTHOR.unwrap());
+    println!("-.-. --- .--. -.-- .-. .. --. .... -\n")
 }
 
-fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+fn generate_entropy(source: &str, length: u64, _file_name: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
     match source {
         "RNG" => {
             let mut rng = rand::thread_rng();
@@ -68,12 +71,12 @@ fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> Resul
 
             Ok(binary_string)
         },
-        "QRNG (ANU)" => {
+        "QRNG" => {
             // ANU API Options
             // TODO: Get velues from settings
-            let anu_format = "uint8"; // uint8, uint16, hex16
-            let array_length = 1024;       // 1-1024
-            let hex_block_size = 16;   // 1-1024
+            // let anu_format = "uint8"; // uint8, uint16, hex16
+            // let array_length = 1024;       // 1-1024
+            // let hex_block_size = 16;   // 1-1024
 
             // TODO: Re-create ANU
             // let qrng = get_anu_response(
@@ -81,11 +84,11 @@ fn generate_entropy(source: &str, length: u64, file_name: Option<&str>) -> Resul
             //     array_length, 
             //     hex_block_size
             // );
-            let qrng = String::from("value");
+            let qrng = String::from("1000010101111101011101001100000011111101100111000011110010001100111011111111001110111100110011011101011000101100101001001000011101001000001010100010111111100111100101110001100001011110000110001001101110100000111100101111101111110101111111011111100100011111");
             
             Ok(qrng)
         },
-        "Test file" => {
+        "Test" => {
             // let file = File::open(file_name.unwrap())?;
             let file = File::open("entropy/test.qrn").expect("Can not open test entropy file");
             let mut reader = io::BufReader::new(file);
@@ -260,9 +263,9 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 }
 
 
+
 // COINS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 struct CoinDatabase {
     index: u32,
     path: u32,
@@ -392,9 +395,9 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
 }
 
 
+
 // GUI
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 struct AppSettings {
     entropy_source: String,
     entropy_length: u32,
@@ -402,77 +405,365 @@ struct AppSettings {
     gui_save_window_size: bool,
     gui_last_width: u32,
     gui_last_height: u32,
+    anu_data_format: String,
+    anu_array_length: u32,
+    anu_hex_block_size: u32,
 
 }
 
-fn main() {
-    print_program_info();
+impl AppSettings {
+    fn load_settings() -> io::Result<Self> {
+        let config_file = "config/custom.conf";
+        let default_config_file = "config/default.conf";
 
-    let application = gtk::Application::builder()
-        .application_id("com.github.qr2m")
+        if !Path::new(config_file).exists() {
+            fs::copy(default_config_file, config_file)?;
+        }
+
+        let config_str = fs::read_to_string(config_file)?;
+        let config: toml::Value = config_str.parse().expect("Failed to parse config file");
+
+        // APP settings
+        let app_section = config.get("app").expect("Missing 'app' section");
+        let gui_save_window_size = app_section.get("save_window")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+
+        let gui_last_width = app_section.get("window_width")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(800);
+
+        let gui_last_height = app_section.get("window_height")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(1024);
+
+        // Wallet settings
+        let wallet_section = config.get("wallet").expect("Missing 'wallet' section");
+        let entropy_source = wallet_section.get("entropy_source")
+            .and_then(|v| v.as_str())
+            .unwrap_or("rng")
+            .to_string();
+
+        let entropy_length = wallet_section.get("entropy_length")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(256);
+
+        let bip = wallet_section.get("bip")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(44);
+
+        
+        // ANU settings
+        let anu_section = config.get("anu").expect("Missing 'anu' section");
+        let anu_data_format = anu_section.get("data_format")
+            .and_then(|v| v.as_str())
+            .unwrap_or("uint8")
+            .to_string();
+
+        let anu_array_length = anu_section.get("array_length")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(1024);
+        
+        let anu_hex_block_size = anu_section.get("hex_block_size")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(24);
+
+
+        // Create and return AppSettings instance
+        Ok(AppSettings {
+            entropy_source,
+            entropy_length,
+            bip,
+            gui_save_window_size,
+            gui_last_width,
+            gui_last_height,
+            anu_data_format,
+            anu_array_length,
+            anu_hex_block_size,
+        })
+    }
+
+    fn get_value(&self, name: &str) -> Option<String> {
+        match name {
+            "entropy_source" => Some(self.entropy_source.clone()),
+            "entropy_length" => Some(self.entropy_length.to_string()),
+            "bip" => Some(self.bip.to_string()),
+            "gui_save_window_size" => Some(self.gui_save_window_size.to_string()),
+            "gui_last_width" => Some(self.gui_last_width.to_string()),
+            "gui_last_height" => Some(self.gui_last_height.to_string()),
+            "anu_data_format" => Some(self.anu_data_format.clone()),
+            "anu_array_length" => Some(self.anu_array_length.to_string()),
+            "anu_hex_block_size" => Some(self.anu_hex_block_size.to_string()),
+            _ => None,
+        }
+    }
+}
+
+fn create_settings_window() {
+    let settings = AppSettings::load_settings().expect("Can not read settings");
+
+    let settings_window = gtk::ApplicationWindow::builder()
+        .title("Settings")
+        .default_width(600)
+        .default_height(400)
+        .resizable(false)
         .build();
-    application.connect_activate(create_gui);
 
-    let quit = gio::SimpleAction::new("quit", None);
-    let new = gio::SimpleAction::new("new", None);
+    // TODO: Create settings icon
+    // settings_window.set_icon_name(Some("org.gnome.Settings"));
+
+    let stack = Stack::new();
+    let stack_sidebar = StackSidebar::new();
+    stack_sidebar.set_stack(&stack);
     
-    quit.connect_activate(
-        glib::clone!(@weak application => move |_action, _parameter| {
-            application.quit();
-        }),
-    );
+    // Sidebar 1: General settings
+    let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let general_settings_frame = gtk::Frame::new(Some(" App settings"));
 
-    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
-    application.add_action(&quit);
+    general_settings_box.set_margin_bottom(10);
+    general_settings_box.set_margin_top(10);
+    general_settings_box.set_margin_start(10);
+    general_settings_box.set_margin_end(10);
+    content_general_box.set_margin_start(20);
+    general_settings_box.append(&general_settings_frame);
+    general_settings_frame.set_child(Some(&content_general_box));
+    general_settings_frame.set_hexpand(true);
+    general_settings_frame.set_vexpand(true);
 
-    application.set_accels_for_action("app.new", &["<Primary>N"]);
-    application.add_action(&new);
+    stack.add_titled(&general_settings_box, Some("sidebar-settings-general"), "General");
+ 
 
-    application.run();
+    // Sidebar 2: Wallet settings
+    let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let wallet_settings_frame = gtk::Frame::new(Some(" Wallet settings"));
+    
+    wallet_settings_box.set_margin_bottom(10);
+    wallet_settings_box.set_margin_top(10);
+    wallet_settings_box.set_margin_start(10);
+    wallet_settings_box.set_margin_end(10);
+    content_wallet_box.set_margin_start(20);
+    wallet_settings_box.append(&wallet_settings_frame);
+    wallet_settings_frame.set_child(Some(&content_wallet_box));
+    wallet_settings_frame.set_hexpand(true);
+    wallet_settings_frame.set_vexpand(true);
+
+    // Default entropy source
+    let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_source_label = gtk::Label::new(Some("Entropy source:"));
+    let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+    let default_entropy_source = valid_entropy_source_as_strings
+        .iter()
+        .position(|s| *s == settings.entropy_source) 
+        .unwrap_or(0);
+
+    entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
+    entropy_source_dropdown.set_size_request(200, 10);
+    default_entropy_source_box.set_hexpand(true);
+    default_entropy_source_item_box.set_hexpand(true);
+    default_entropy_source_item_box.set_margin_end(20);
+    default_entropy_source_item_box.set_halign(gtk::Align::End);
+    
+    default_entropy_source_label_box.append(&default_entropy_source_label);
+    default_entropy_source_item_box.append(&entropy_source_dropdown);
+    default_entropy_source_box.append(&default_entropy_source_label_box);
+    default_entropy_source_box.append(&default_entropy_source_item_box);
+    content_wallet_box.append(&default_entropy_source_box);
+    
+    // Default entropy length
+    let default_entropy_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_length_label = gtk::Label::new(Some("Entropy length:"));
+    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    let default_entropy_length = valid_entropy_lengths_as_strings
+        .iter()
+        .position(|x| x.parse::<u32>().unwrap() == settings.entropy_length)
+        .unwrap_or(0);
+
+    entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
+    entropy_length_dropdown.set_size_request(200, 10);
+    default_entropy_length_box.set_hexpand(true);
+    default_entropy_length_item_box.set_hexpand(true);
+    default_entropy_length_item_box.set_margin_end(20);
+    default_entropy_length_item_box.set_halign(gtk::Align::End);
+    
+    default_entropy_length_label_box.append(&default_entropy_length_label);
+    default_entropy_length_item_box.append(&entropy_length_dropdown);
+    default_entropy_length_box.append(&default_entropy_length_label_box);
+    default_entropy_length_box.append(&default_entropy_length_item_box);
+    content_wallet_box.append(&default_entropy_length_box);
+    
+    // Default BIP
+    let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_bip_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_bip_label = gtk::Label::new(Some("BIP:"));
+    let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
+    let valid_bips_as_str_refs: Vec<&str> = valid_bips_as_strings.iter().map(|s| s.as_ref()).collect();
+    let bip_dropdown = gtk::DropDown::from_strings(&valid_bips_as_str_refs);
+    let default_bip = valid_bips_as_strings
+        .iter()
+        .position(|x| x.parse::<u32>().unwrap() == settings.bip)
+        .unwrap_or(0);
+
+    bip_dropdown.set_selected(default_bip.try_into().unwrap());
+    bip_dropdown.set_size_request(200, 10);
+    default_bip_box.set_hexpand(true);
+    default_bip_item_box.set_hexpand(true);
+    default_bip_item_box.set_margin_end(20);
+    default_bip_item_box.set_halign(gtk::Align::End);
+    
+    default_bip_label_box.append(&default_bip_label);
+    default_bip_item_box.append(&bip_dropdown);
+    default_bip_box.append(&default_bip_label_box);
+    default_bip_box.append(&default_bip_item_box);
+    content_wallet_box.append(&default_bip_box);
+
+    stack.add_titled(&wallet_settings_box, Some("sidebar-settings-wallet"), "Wallet");
+
+
+    // Sidebar 3: ANU settings
+    let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let anu_settings_frame = gtk::Frame::new(Some(" App settings"));
+
+    anu_settings_box.set_margin_bottom(10);
+    anu_settings_box.set_margin_top(10);
+    anu_settings_box.set_margin_start(10);
+    anu_settings_box.set_margin_end(10);
+    content_anu_box.set_margin_start(20);
+    anu_settings_box.append(&anu_settings_frame);
+    anu_settings_frame.set_child(Some(&content_anu_box));
+    anu_settings_frame.set_hexpand(true);
+    anu_settings_frame.set_vexpand(true);
+
+    stack.add_titled(&anu_settings_box, Some("sidebar-settings-anu"), "ANU");
+
+
+
+    // Compose settings window
+    let main_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    main_content_box.append(&stack_sidebar);
+    main_content_box.append(&stack);
+    
+    // Buttons
+    let buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let save_button = gtk::Button::with_label("Save");
+    let cancel_button = gtk::Button::with_label("Cancel");
+
+    cancel_button.connect_clicked(clone!(
+        @weak settings_window => move |_| {
+            settings_window.close()
+        }
+    ));
+
+    buttons_box.append(&save_button);
+    buttons_box.append(&cancel_button);
+    buttons_box.set_margin_bottom(10);
+    buttons_box.set_margin_top(10);
+    buttons_box.set_margin_start(10);
+    buttons_box.set_margin_end(10);
+    buttons_box.set_direction(gtk::TextDirection::Rtl);
+    main_settings_box.append(&main_content_box);
+    main_settings_box.append(&buttons_box);
+    settings_window.set_child(Some(&main_settings_box));
+
+    settings_window.show();
 }
 
-fn create_gui(application: &gtk4::Application) {
+fn create_main_window(application: &adw::Application) {
+    let settings = AppSettings::load_settings().expect("Can not read settings");
+
+    let window_width = match settings.get_value("gui_last_width") {
+        Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
+            eprintln!("Failed to parse default window width value: {}", width_str);
+            1200
+        }),
+        None => {
+            eprintln!("'gui_last_width' not found in settings");
+            1200
+        }
+    };
+
+    let window_height = match settings.get_value("gui_last_height") {
+        Some(height_str) => height_str.parse::<i32>().unwrap_or_else(|_| {
+            eprintln!("Failed to parse default window height value: {}", height_str);
+            800
+        }),
+        None => {
+            eprintln!("'gui_last_height' not found in settings");
+            800
+        }
+    };
+
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
-        .default_width(GUI_WIDTH)
-        .default_height(GUI_HEIGHT)
+        .default_width(window_width)
+        .default_height(window_height)
         .show_menubar(true)
         .build();
+
+    // TODO: Set main window icon
+    window.set_icon_name(Some("org.gnome.Settings"));
 
     let header_bar = gtk::HeaderBar::new();
     window.set_titlebar(Some(&header_bar));
 
     let new_wallet_button = gtk::Button::new();
-    new_wallet_button.set_icon_name("tab-new-symbolic");
-    header_bar.pack_start(&new_wallet_button);
-    
     let open_wallet_button = gtk::Button::new();
-    open_wallet_button.set_icon_name("document-open-symbolic");
-    header_bar.pack_start(&open_wallet_button);
-
     let save_wallet_button = gtk::Button::new();
-    save_wallet_button.set_icon_name("document-save-symbolic");
-    header_bar.pack_start(&save_wallet_button);
-
     let settings_button = gtk::Button::new();
+
+    new_wallet_button.set_icon_name("tab-new-symbolic");
+    open_wallet_button.set_icon_name("document-open-symbolic");
+    save_wallet_button.set_icon_name("document-save-symbolic");
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
+    
+    header_bar.pack_start(&new_wallet_button);
+    header_bar.pack_start(&open_wallet_button);
+    header_bar.pack_start(&save_wallet_button);
     header_bar.pack_end(&settings_button);
 
     settings_button.connect_clicked(move |_| {
         create_settings_window();
     });
 
+    // New wallet (window) CTRL+N
+    let new_window = application.clone();
+    new_wallet_button.connect_clicked(move |_| {
+        create_main_window(&new_window);
+    });
 
-    // Create a Stack and a StackSidebar
+    // Headerbar button tooltips
+    new_wallet_button.set_tooltip_text(Some("New wallet (Ctrl+N)"));
+    open_wallet_button.set_tooltip_text(Some("Open wallet (Ctrl+O)"));
+    save_wallet_button.set_tooltip_text(Some("Save wallet (Ctrl+S)"));
+    settings_button.set_tooltip_text(Some("Settings (F5)"));
+
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
 
 
-    // ----------------------------------------------------------------------
-    //  S I D E B A R   1   -   S E E D
-    //
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // Sidebar 1: Seed
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     entropy_main_box.set_margin_top(10);
     entropy_main_box.set_margin_start(10);
@@ -490,6 +781,12 @@ fn create_gui(application: &gtk4::Application) {
     let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+    let default_entropy_source = valid_entropy_source_as_strings
+        .iter()
+        .position(|s| *s == settings.entropy_source) 
+        .unwrap_or(0);
+
+    entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
     entropy_source_box.set_hexpand(true);
     entropy_source_frame.set_hexpand(true);
     
@@ -499,9 +796,14 @@ fn create_gui(application: &gtk4::Application) {
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    let default_entropy_length = valid_entropy_lengths_as_strings
+        .iter()
+        .position(|x| x.parse::<u32>().unwrap() == settings.entropy_length)
+        .unwrap_or(0);
+
+    entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
     entropy_length_box.set_hexpand(true);
     entropy_length_frame.set_hexpand(true);
-    entropy_length_dropdown.set_selected(4);
 
     // Mnemonic passphrase
     let mnemonic_passphrase_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -584,10 +886,10 @@ fn create_gui(application: &gtk4::Application) {
     entropy_main_box.append(&body_box);
     
     generate_seed_button.connect_clicked(clone!(
-        @strong entropy_source_dropdown,
-        @strong entropy_length_dropdown,
-        @strong mnemonic_words_text,
-        @strong seed_text => move |_| {
+        @weak entropy_source_dropdown,
+        @weak entropy_length_dropdown,
+        @weak mnemonic_words_text,
+        @weak seed_text => move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
@@ -631,9 +933,9 @@ fn create_gui(application: &gtk4::Application) {
     stack.add_titled(&entropy_main_box, Some("sidebar-seed"), "Seed");
 
 
-    // ----------------------------------------------------------------------
-    //  S I D E B A R   2   -   C O I N
-    //
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // Sidebar 2: Coin
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_frame = gtk::Frame::new(Some("Coin"));
@@ -821,9 +1123,9 @@ fn create_gui(application: &gtk4::Application) {
     stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
 
 
-    // ----------------------------------------------------------------------
-    //  S I D E B A R   3   -   A D D R E S S 
-    //
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // Sidebar 3 
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     main_address_box.set_hexpand(true);
     main_address_box.set_vexpand(true);
@@ -903,9 +1205,9 @@ fn create_gui(application: &gtk4::Application) {
     let adjustment = gtk::Adjustment::new(
         0.0, // initial value
         0.0, // minimum value
-        100.0, // maximum value
+        2147483647.0, // maximum value
         1.0, // step increment
-        10.0, // page increment
+        100.0, // page increment
         0.0, // page size
     );
     let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
@@ -997,131 +1299,65 @@ fn create_gui(application: &gtk4::Application) {
     window.present();
 }
 
-fn create_settings_window() {
-    let settings_window = gtk::ApplicationWindow::builder()
-        // .application(application)
-        .title("Settings")
-        .default_width(GUI_WIDTH/2)
-        .default_height(GUI_HEIGHT/2)
-        .resizable(false)
-        // .show_menubar(true)
+fn main() {
+    print_program_info();
+
+    let application = adw::Application::builder()
+        .application_id("com.github.qr2m")
         .build();
 
-    
-    // Create a Stack and a StackSidebar
-    let stack = Stack::new();
-    let stack_sidebar = StackSidebar::new();
-    stack_sidebar.set_stack(&stack);
-    
+    application.connect_activate(|app| {
+        create_main_window(app);
+    });
 
-    // General settings
-    let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let default_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let default_seetings_frame = gtk::Frame::new(Some("Default settings"));
+    let quit = gio::SimpleAction::new("quit", None);
+    let new = gio::SimpleAction::new("new", None);
+    let open = gio::SimpleAction::new("open", None);
+    let save = gio::SimpleAction::new("save", None);
+    let settings = gio::SimpleAction::new("settings", None);
     
-    general_settings_box.set_margin_bottom(10);
-    general_settings_box.set_margin_top(10);
-    general_settings_box.set_margin_start(10);
-    general_settings_box.set_margin_end(10);
-    default_settings_box.set_margin_start(20);
-    general_settings_box.append(&default_seetings_frame);
-    default_seetings_frame.set_child(Some(&default_settings_box));
-    default_seetings_frame.set_hexpand(true);
-    default_seetings_frame.set_vexpand(true);
-
-    // 
-    // S E T T I N G S
-    // Default entropy source
-    let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_source_label = gtk::Label::new(Some("Entropy source:"));
-    let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
-    let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
-
-    entropy_source_dropdown.set_size_request(200, 10);
-    default_entropy_source_box.set_hexpand(true);
-    default_entropy_source_item_box.set_hexpand(true);
-    default_entropy_source_item_box.set_margin_end(20);
-    default_entropy_source_item_box.set_halign(gtk::Align::End);
-    
-    default_entropy_source_label_box.append(&default_entropy_source_label);
-    default_entropy_source_item_box.append(&entropy_source_dropdown);
-    default_entropy_source_box.append(&default_entropy_source_label_box);
-    default_entropy_source_box.append(&default_entropy_source_item_box);
-    default_settings_box.append(&default_entropy_source_box);
-    
-    
-    // Default entropy length
-    let default_entropy_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_length_label = gtk::Label::new(Some("Entropy length:"));
-    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
-    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
-    
-    entropy_length_dropdown.set_size_request(200, 10);
-    default_entropy_length_box.set_hexpand(true);
-    default_entropy_length_item_box.set_hexpand(true);
-    default_entropy_length_item_box.set_margin_end(20);
-    default_entropy_length_item_box.set_halign(gtk::Align::End);
-    
-    default_entropy_length_label_box.append(&default_entropy_length_label);
-    default_entropy_length_item_box.append(&entropy_length_dropdown);
-    default_entropy_length_box.append(&default_entropy_length_label_box);
-    default_entropy_length_box.append(&default_entropy_length_item_box);
-    default_settings_box.append(&default_entropy_length_box);
-
-
+    quit.connect_activate(
+        glib::clone!(@weak application => move |_action, _parameter| {
+            application.quit();
+        }),
+    );
 
     
-    
-    // Default BIP
+    let new_window = application.clone();
+    new.connect_activate(move |_action, _parameter| {
+        create_main_window(&new_window);
+    });
+
+    settings.connect_activate(move |_action, _parameter| {
+        create_settings_window();
+    });
+
+    open.connect_activate(|_action, _parameter| {
+        todo!() // Open wallet action activated
+    });
+
+    save.connect_activate(|_action, _parameter| {
+        todo!() // Save wallet action activated
+    });
 
 
-    stack.add_titled(&general_settings_box, Some("sidebar-settings-general"), "General");
- 
+    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    application.add_action(&quit);
 
+    application.set_accels_for_action("app.new", &["<Primary>N"]);
+    application.add_action(&new);
 
+    application.set_accels_for_action("app.open", &["<Primary>O"]);
+    application.add_action(&open);
 
+    application.set_accels_for_action("app.save", &["<Primary>S"]);
+    application.add_action(&save);
 
+    application.set_accels_for_action("app.settings", &["F5"]);
+    application.add_action(&settings);
 
-    
-    let main_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    main_content_box.append(&stack_sidebar);
-    main_content_box.append(&stack);
-    
-
-    let buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let save_button = gtk::Button::with_label("Save");
-    let cancel_button = gtk::Button::with_label("Cancel");
-    buttons_box.append(&save_button);
-    buttons_box.append(&cancel_button);
-    buttons_box.set_margin_bottom(10);
-    buttons_box.set_margin_top(10);
-    buttons_box.set_margin_start(10);
-    buttons_box.set_margin_end(10);
-    buttons_box.set_direction(gtk::TextDirection::Rtl);
-    main_settings_box.append(&main_content_box);
-    main_settings_box.append(&buttons_box);
-
-    settings_window.set_child(Some(&main_settings_box));
-
-    
-    settings_window.show();
+    application.run();
 }
-
-// TODO: Create settings logic
-// 1. Check if local config file exists
-    // FALSE: Create new config file
-// 2. Update AppSettings
-// 3. Rewrite code to use new AppSettings values
-// 4. Settings window gets velue from AppSettings
-
-
 
 
 
@@ -1500,3 +1736,4 @@ fn create_settings_window() {
 // 
 // // WORKING but uint8 can be done better
 // // 
+

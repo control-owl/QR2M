@@ -1,4 +1,17 @@
-# version 0.7.0.
+# version 0.8.1
+- GUI: keyboard shortcuts
+    - Ctrl+N    New wallet
+    - Ctrl+O    Open
+    - Ctrl+S    Save
+    - Ctrl+Q    Quit
+    - F5        Settings
+- New wallet (window)
+
+
+# version 0.8.0
+- libadwaita
+
+# version 0.7.0
 - settings window
 
 # version 0.6.2
