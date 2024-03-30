@@ -1,10 +1,11 @@
-# version 0.8.1
+# version 0.8.2
 - GUI: keyboard shortcuts
     - Ctrl+N    New wallet
     - Ctrl+O    Open
     - Ctrl+S    Save
     - Ctrl+Q    Quit
     - F5        Settings
+    - F1        About
 - New wallet (window)
 
 

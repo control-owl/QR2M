@@ -1,23 +1,13 @@
-Copyright [2023-2024] [D3BUG]
+Copyright [2023-2024] Control Owl
 
-Permission is hereby granted, free of charge, to any person obtaining a copy 
-of this software and associated documentation files (the "Software"), to use 
-the Software for personal use only. This includes running the Software, 
-examining its source code, and making modifications for personal experimentation 
-and learning purposes.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the Software for personal use only. 
 
-This permission explicitly does not include the right to modify, adapt, 
-or create derivative works based on the Software for any purpose other 
-than personal use.
+This includes running the Software, examining its source code, and making modifications for personal experimentation and learning purposes.
 
-Any distribution or publication of the Software, modified or unmodified, 
-for commercial purposes, without the explicit written permission of 
-the copyright holder, is strictly prohibited.
+This permission explicitly does not include the right to modify, adapt, or create derivative works based on the Software for any purpose other than personal use. 
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
-THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
-IN THE SOFTWARE.
+Any distribution or publication of the Software, modified or unmodified, for commercial purposes, without the explicit written permission of the copyright holder, is strictly prohibited.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+

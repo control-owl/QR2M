@@ -15,11 +15,12 @@
     - [ ] time-lock
     - [ ] multi-sig
 - [ ] new tab: active coins
-- [ ] Headerbar buttons
-    - [x] New
-    - [ ] Open
-    - [ ] Save
-- [x] settings
+- [ ] menubar buttons
+    - [x] new
+    - [ ] open
+    - [ ] save
+    - [x] settings
+    - [x] about
 - [x] theme (auto)
 
 ---

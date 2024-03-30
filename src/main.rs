@@ -164,8 +164,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     let entropy_vector = convert_string_to_binary(&entropy);
-    let mnemonic_result = bip39::Mnemonic::from_entropy(&entropy_vector).expect("Can not create mnemomic words");
-    let mnemonic = mnemonic_result;
+    let mnemonic = bip39::Mnemonic::from_entropy(&entropy_vector).expect("Can not create mnemomic words");
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
 
     seed
@@ -686,6 +685,30 @@ fn create_settings_window() {
     settings_window.show();
 }
 
+fn create_about_window() {
+    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.svg")).expect("msg");
+    let license = fs::read_to_string("LICENSE.txt").unwrap();
+
+    let help_window = gtk::AboutDialog::builder()
+        .modal(true)
+        // .default_width(600)
+        .default_height(400)
+        .program_name(APP_DESCRIPTION.unwrap())
+        .version(APP_VERSION.unwrap())
+        .website("https://www.github.com/control-owl/qr2m")
+        .website_label("GitHub project")
+        .authors([APP_AUTHOR.unwrap()])
+        .copyright("Copyright [2023-2024] Control Owl")
+        .license(license)
+        .wrap_license(true)
+        .comments("(Q)RNG crypto key generator")
+        .logo(&logo)
+        .build();
+
+    help_window.show();
+
+}
+
 fn create_main_window(application: &adw::Application) {
     let settings = AppSettings::load_settings().expect("Can not read settings");
 
@@ -729,19 +752,26 @@ fn create_main_window(application: &adw::Application) {
     let open_wallet_button = gtk::Button::new();
     let save_wallet_button = gtk::Button::new();
     let settings_button = gtk::Button::new();
+    let about_button = gtk::Button::new();
 
     new_wallet_button.set_icon_name("tab-new-symbolic");
     open_wallet_button.set_icon_name("document-open-symbolic");
     save_wallet_button.set_icon_name("document-save-symbolic");
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
+    about_button.set_icon_name("help-about-symbolic");
     
     header_bar.pack_start(&new_wallet_button);
     header_bar.pack_start(&open_wallet_button);
     header_bar.pack_start(&save_wallet_button);
     header_bar.pack_end(&settings_button);
+    header_bar.pack_end(&about_button);
 
     settings_button.connect_clicked(move |_| {
         create_settings_window();
+    });
+
+    about_button.connect_clicked(move |_| {
+        create_about_window();
     });
 
     // New wallet (window) CTRL+N
@@ -755,6 +785,7 @@ fn create_main_window(application: &adw::Application) {
     open_wallet_button.set_tooltip_text(Some("Open wallet (Ctrl+O)"));
     save_wallet_button.set_tooltip_text(Some("Save wallet (Ctrl+S)"));
     settings_button.set_tooltip_text(Some("Settings (F5)"));
+    about_button.set_tooltip_text(Some("About (F1)"));
 
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
@@ -1315,6 +1346,7 @@ fn main() {
     let open = gio::SimpleAction::new("open", None);
     let save = gio::SimpleAction::new("save", None);
     let settings = gio::SimpleAction::new("settings", None);
+    let about = gio::SimpleAction::new("about", None);
     
     quit.connect_activate(
         glib::clone!(@weak application => move |_action, _parameter| {
@@ -1330,6 +1362,10 @@ fn main() {
 
     settings.connect_activate(move |_action, _parameter| {
         create_settings_window();
+    });
+
+    about.connect_activate(move |_action, _parameter| {
+        create_about_window();
     });
 
     open.connect_activate(|_action, _parameter| {
@@ -1355,6 +1391,9 @@ fn main() {
 
     application.set_accels_for_action("app.settings", &["F5"]);
     application.add_action(&settings);
+
+    application.set_accels_for_action("app.about", &["F1"]);
+    application.add_action(&about);
 
     application.run();
 }
