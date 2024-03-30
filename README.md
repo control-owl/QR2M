@@ -7,7 +7,7 @@
 ██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║
 ╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
  ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
-Quantum Random Rust Mnemonic (0.7.0)
+Quantum Random Rust Mnemonic (0.8.2)
 Copyright    [2023-2024]     [D3BUG]
 Control Owl <qr2m[at]r-o0-t[dot]wtf>
 ```
