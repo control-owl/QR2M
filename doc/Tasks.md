@@ -38,9 +38,9 @@
 ### ANU
 - [x] add get_entropy_from_anu (API)
     - [ ] find alternative (they are migrating to AWS, and then it's pay per request)
-- [x] hex16 parsing
-- [ ] uint8 parsing
+- [x] uint8 parsing
 - [ ] uint16 parsing
+- [ ] hex16 parsing
 
 ---
 

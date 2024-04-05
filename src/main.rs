@@ -1,5 +1,5 @@
-#![allow(non_snake_case)]
-#![allow(unused_imports)]
+// #![allow(non_snake_case)]
+// #![allow(unused_imports)]
 // #![allow(unused_variables)]
 
 
@@ -8,7 +8,7 @@
 
 // Crates
 use std::{
-    fs::{self, File, OpenOptions}, 
+    fs::{self, File}, 
     io::{self, Read, Seek, prelude::*, BufReader, BufRead},
     net::{TcpStream,ToSocketAddrs},
     path::Path,time::{Duration, SystemTime}
@@ -21,12 +21,11 @@ use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
-use gtk::{gio, glib::clone, prelude::*, BaselinePosition, Stack, StackSidebar};
-use toml::Value;
+use gtk::{gio, glib::clone, Stack, StackSidebar};
+// use toml::Value;
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 
 // Default settings
-// TODO: Replace with new settings
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
 const COINLIST_FILE: &str = "lib/bip44-extended-coin-list.csv";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
@@ -34,12 +33,21 @@ const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
     "RNG", 
     "QRNG",
-    "Test",
 ];
 const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
     "Internal", 
     "External", 
 ];
+const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
+const ANU_LOG_FILE: &str = "log/anu";
+const ANU_API_URL: &str = "qrng.anu.edu.au:80";
+// const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
+//     "uint8", 
+//     "uint16", 
+//     "hex16",
+// ];
+const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
+const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
@@ -60,11 +68,11 @@ fn print_program_info() {
     println!("-.-. --- .--. -.-- .-. .. --. .... -\n")
 }
 
-fn generate_entropy(source: &str, length: u64, _file_name: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+fn generate_entropy(source: &str, entropy_length: u64, _file_name: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
     match source {
         "RNG" => {
             let mut rng = rand::thread_rng();
-            let binary_string: String = (0..length)
+            let binary_string: String = (0..entropy_length)
                 .map(|_| rng.gen_range(0..=1))
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
@@ -72,20 +80,48 @@ fn generate_entropy(source: &str, length: u64, _file_name: Option<&str>) -> Resu
             Ok(binary_string)
         },
         "QRNG" => {
-            // ANU API Options
-            // TODO: Get velues from settings
-            // let anu_format = "uint8"; // uint8, uint16, hex16
-            // let array_length = 1024;       // 1-1024
-            // let hex_block_size = 16;   // 1-1024
+            let settings = AppSettings::load_settings().expect("Can not read settings");
 
-            // TODO: Re-create ANU
-            // let qrng = get_anu_response(
-            //     anu_format, 
-            //     array_length, 
-            //     hex_block_size
-            // );
-            let qrng = String::from("1000010101111101011101001100000011111101100111000011110010001100111011111111001110111100110011011101011000101100101001001000011101001000001010100010111111100111100101110001100001011110000110001001101110100000111100101111101111110101111111011111100100011111");
-            
+            let anu_format = match settings.get_value("anu_data_format") {
+                Some(format) => format.parse::<String>().unwrap_or_else(|_| {
+                    eprintln!("Failed to load ANU data format: {}", format);
+                    String::from("uint8")
+                }),
+                None => {
+                    eprintln!("'anu_data_format' not found in settings");
+                    String::from("uint8")
+                }
+            };
+
+            let array_length = match settings.get_value("anu_array_length") {
+                Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
+                    eprintln!("Failed to parse ANU array length: {}", array_length);
+                    1024
+                }),
+                None => {
+                    eprintln!("'anu_array_length' not found in settings");
+                    1024
+                }
+            };
+
+            let hex_block_size = match settings.get_value("hex_block_size") {
+                Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
+                    eprintln!("Failed to parse ANU hex block size: {}", hex_block_size);
+                    1024
+                }),
+                None => {
+                    eprintln!("'hex_block_size' not found in settings");
+                    1024
+                }
+            };
+
+            let qrng = get_entropy_from_anu(
+                entropy_length.try_into().unwrap(),
+                &anu_format, 
+                array_length, 
+                Some(hex_block_size)
+            );
+
             Ok(qrng)
         },
         "Test" => {
@@ -95,18 +131,18 @@ fn generate_entropy(source: &str, length: u64, _file_name: Option<&str>) -> Resu
             
             let file_length = reader.seek(io::SeekFrom::End(0))?;
             
-            if file_length < length {
-                eprintln!("Entropy file too small for requested entropy length: {}", length);
+            if file_length < entropy_length {
+                eprintln!("Entropy file too small for requested entropy length: {}", entropy_length);
                 return Err("Insufficient entropy in file".into());
             }
 
-            let max_start = file_length.saturating_sub(length);
+            let max_start = file_length.saturating_sub(entropy_length);
             let start_point = rand::thread_rng().gen_range(0..=max_start);
 
             reader.seek(io::SeekFrom::Start(start_point))?;
 
             let mut entropy_raw_binary = String::new();
-            reader.take(length).read_to_string(&mut entropy_raw_binary)?;
+            reader.take(entropy_length).read_to_string(&mut entropy_raw_binary)?;
 
             Ok(entropy_raw_binary)
         },
@@ -404,13 +440,17 @@ struct AppSettings {
     gui_save_window_size: bool,
     gui_last_width: u32,
     gui_last_height: u32,
+    anu_enabled: bool,
     anu_data_format: String,
     anu_array_length: u32,
     anu_hex_block_size: u32,
-
+    anu_log: bool,
+    
 }
 
 impl AppSettings {
+    // TODO: create verify_settings function
+
     fn load_settings() -> io::Result<Self> {
         let config_file = "config/custom.conf";
         let default_config_file = "config/default.conf";
@@ -458,6 +498,11 @@ impl AppSettings {
         
         // ANU settings
         let anu_section = config.get("anu").expect("Missing 'anu' section");
+        
+        let anu_enabled = anu_section.get("anu_enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+
         let anu_data_format = anu_section.get("data_format")
             .and_then(|v| v.as_str())
             .unwrap_or("uint8")
@@ -473,6 +518,9 @@ impl AppSettings {
             .map(|v| v as u32)
             .unwrap_or(24);
 
+        let anu_log = anu_section.get("anu_log")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
 
         // Create and return AppSettings instance
         Ok(AppSettings {
@@ -482,9 +530,11 @@ impl AppSettings {
             gui_save_window_size,
             gui_last_width,
             gui_last_height,
+            anu_enabled,
             anu_data_format,
             anu_array_length,
             anu_hex_block_size,
+            anu_log,
         })
     }
 
@@ -496,9 +546,11 @@ impl AppSettings {
             "gui_save_window_size" => Some(self.gui_save_window_size.to_string()),
             "gui_last_width" => Some(self.gui_last_width.to_string()),
             "gui_last_height" => Some(self.gui_last_height.to_string()),
+            "anu_enabled" => Some(self.anu_enabled.to_string()),
             "anu_data_format" => Some(self.anu_data_format.clone()),
             "anu_array_length" => Some(self.anu_array_length.to_string()),
             "anu_hex_block_size" => Some(self.anu_hex_block_size.to_string()),
+            "anu_log" => Some(self.anu_log.to_string()),
             _ => None,
         }
     }
@@ -513,9 +565,6 @@ fn create_settings_window() {
         .default_height(400)
         .resizable(false)
         .build();
-
-    // TODO: Create settings icon
-    // settings_window.set_icon_name(Some("org.gnome.Settings"));
 
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
@@ -649,6 +698,11 @@ fn create_settings_window() {
     anu_settings_frame.set_child(Some(&content_anu_box));
     anu_settings_frame.set_hexpand(true);
     anu_settings_frame.set_vexpand(true);
+
+    // ANU objects
+
+
+
 
     stack.add_titled(&anu_settings_box, Some("sidebar-settings-anu"), "ANU");
 
@@ -808,7 +862,7 @@ fn create_main_window(application: &adw::Application) {
 
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let entropy_source_frame = gtk::Frame::new(Some("Entropy source"));
+    let entropy_source_frame = gtk::Frame::new(Some(" Entropy source"));
     let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
@@ -823,7 +877,7 @@ fn create_main_window(application: &adw::Application) {
     
     // Entropy length
     let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let entropy_length_frame = gtk::Frame::new(Some("Entropy length"));
+    let entropy_length_frame = gtk::Frame::new(Some(" Entropy length"));
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
@@ -838,7 +892,7 @@ fn create_main_window(application: &adw::Application) {
 
     // Mnemonic passphrase
     let mnemonic_passphrase_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let mnemonic_passphrase_frame = gtk::Frame::new(Some("Mnemonic passphrase"));
+    let mnemonic_passphrase_frame = gtk::Frame::new(Some(" Mnemonic passphrase"));
     let mnemonic_passphrase_text = gtk::Entry::new();
     mnemonic_passphrase_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
@@ -868,7 +922,7 @@ fn create_main_window(application: &adw::Application) {
     
     // Entropy string
     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let entropy_frame = gtk::Frame::new(Some("Entropy"));
+    let entropy_frame = gtk::Frame::new(Some(" Entropy"));
     let entropy_text = gtk::TextView::new();
     entropy_text.set_vexpand(true);
     entropy_text.set_hexpand(true);
@@ -881,7 +935,7 @@ fn create_main_window(application: &adw::Application) {
     
     // Mnemonic words
     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let mnemonic_words_frame = gtk::Frame::new(Some("Mnemonic words"));
+    let mnemonic_words_frame = gtk::Frame::new(Some(" Mnemonic words"));
     let mnemonic_words_text = gtk::TextView::new();
     mnemonic_words_box.set_hexpand(true);
     mnemonic_words_text.set_vexpand(true);
@@ -893,7 +947,7 @@ fn create_main_window(application: &adw::Application) {
     
     // Seed
     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let seed_frame = gtk::Frame::new(Some("Seed"));
+    let seed_frame = gtk::Frame::new(Some(" Seed"));
     let seed_text = gtk::TextView::new();
     seed_box.set_hexpand(true);
     seed_text.set_editable(false);
@@ -939,23 +993,30 @@ fn create_main_window(application: &adw::Application) {
                 None // Some(&ENTROPY_FILE)
             ).unwrap();
             
-            let checksum = generate_checksum(&pre_entropy, entropy_length.unwrap());
-            println!("Entropy: {:?}", &pre_entropy);
-            println!("Checksum: {:?}", &checksum);
-            let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-            entropy_text.buffer().set_text(&full_entropy);
-            
-            let mnemonic_words = generate_mnemonic_words(&full_entropy);
-            mnemonic_words_text.buffer().set_text(&mnemonic_words);
-            println!("Mnemonic words: {:?}", mnemonic_words);
 
-            let passphrase_text = mnemonic_passphrase_text.text().to_string();
-            println!("Mnemonic passphrase: {:?}", &passphrase_text);
+            if !pre_entropy.is_empty() {
+                let checksum = generate_checksum(&pre_entropy, entropy_length.unwrap());
+                println!("Entropy: {:?}", &pre_entropy);
+                println!("Checksum: {:?}", &checksum);
+                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+                entropy_text.buffer().set_text(&full_entropy);
+                
+                let mnemonic_words = generate_mnemonic_words(&full_entropy);
+                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                println!("Mnemonic words: {:?}", mnemonic_words);
+
+                let passphrase_text = mnemonic_passphrase_text.text().to_string();
+                println!("Mnemonic passphrase: {:?}", &passphrase_text);
+                
+                let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+                println!("Seed: {:?}", &seed_hex.to_string());
+            } else {
+                // TODO: If entropy is empty show error dialog
+                eprintln!("Entropy is empty");
+            }
             
-            let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
-            let seed_hex = hex::encode(&seed[..]);
-            seed_text.buffer().set_text(&seed_hex.to_string());
-            println!("Seed: {:?}", &seed_hex.to_string());
             
         }
     ));
@@ -969,7 +1030,7 @@ fn create_main_window(application: &adw::Application) {
     // -.-. --- .--. -.-- .-. .. --. .... -
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let coin_frame = gtk::Frame::new(Some("Coin"));
+    let coin_frame = gtk::Frame::new(Some(" Coin"));
     coin_main_box.set_margin_top(10);
     coin_main_box.set_margin_start(10);
     coin_main_box.set_margin_end(10);
@@ -1008,8 +1069,8 @@ fn create_main_window(application: &adw::Application) {
 
     // Master private key
     let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let master_xprv_frame = gtk::Frame::new(Some("Master private key"));
-    let master_xpub_frame = gtk::Frame::new(Some("Master public key"));
+    let master_xprv_frame = gtk::Frame::new(Some(" Master private key"));
+    let master_xpub_frame = gtk::Frame::new(Some(" Master public key"));
     
     let master_private_key_text = gtk::TextView::new();
     let master_public_key_text = gtk::TextView::new();
@@ -1166,72 +1227,42 @@ fn create_main_window(application: &adw::Application) {
     main_address_box.set_margin_bottom(10);
 
     let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    
-    let main_bip_frame = gtk::Frame::new(Some("BIP"));
+    let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+
+    let main_bip_frame = gtk::Frame::new(Some(" BIP"));
+    let main_coin_frame = gtk::Frame::new(Some(" Coin"));
+    let main_address_frame = gtk::Frame::new(Some(" Address"));
+    let main_purpose_frame = gtk::Frame::new(Some(" Purpose"));
+
     main_bip_frame.set_hexpand(true);
-    // main_bip_frame.set_vexpand(true);
-    
-    let main_coin_frame = gtk::Frame::new(Some("Coin"));
     main_coin_frame.set_hexpand(true);
-    // main_coin_frame.set_vexpand(true);
-
-    let main_address_frame = gtk::Frame::new(Some("Address"));
     main_address_frame.set_hexpand(true);
-    // main_address_frame.set_vexpand(true);
-    
-    let main_purpose_frame = gtk::Frame::new(Some("Purpose"));
     main_purpose_frame.set_hexpand(true);
-    // main_purpose_frame.set_vexpand(true);
-
-    let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    purpose_box.set_hexpand(true);
-    // purpose_box.set_vexpand(true);
-
-    let bip_frame = gtk::Frame::new(Some("BIP"));
-    bip_frame.set_hexpand(true);
-    // bip_frame.set_vexpand(true);
-
-    let bip_hardened_frame = gtk::Frame::new(Some("Hardened?"));
-    bip_hardened_frame.set_hexpand(true);
-    // bip_hardened_frame.set_vexpand(true);
     
-    let coin_frame = gtk::Frame::new(Some("Coin"));
-    coin_frame.set_hexpand(true);
-    // coin_frame.set_vexpand(true);
-    
-    let coin_hardened_frame = gtk::Frame::new(Some("Hardened?"));
-    coin_hardened_frame.set_hexpand(true);
-    // coin_hardened_frame.set_vexpand(true);
-    
-    let address_frame = gtk::Frame::new(Some("Address"));
-    address_frame.set_hexpand(true);
-    // address_frame.set_vexpand(true);
-
-    let address_hardened_frame = gtk::Frame::new(Some("Hardened?"));
-    address_hardened_frame.set_hexpand(true);
-    // address_hardened_frame.set_vexpand(true);
-
-    let purpose_frame = gtk::Frame::new(Some("Purpose"));
-    purpose_frame.set_hexpand(true);
-    // purpose_frame.set_vexpand(true);
-
+    let bip_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
+    let coin_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
+    let address_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
 
     let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
-    bip_dropdown.set_selected(1); // BIP44
-
+    bip_dropdown.set_selected(1); // TODO: Get value from settings
+    bip_dropdown.set_hexpand(true);
+    
     let bip_hardened_checkbox = gtk::CheckButton::new();
     bip_hardened_checkbox.set_active(true);
+    bip_hardened_checkbox.set_halign(gtk::Align::Center);
     
     let coin_entry = gtk::Entry::new();
     coin_entry.set_editable(false);
+    coin_entry.set_hexpand(true);
     
     let coin_hardened_checkbox = gtk::CheckButton::new();
     coin_hardened_checkbox.set_active(true);
+    coin_hardened_checkbox.set_halign(gtk::Align::Center);
     
     let adjustment = gtk::Adjustment::new(
         0.0, // initial value
@@ -1241,31 +1272,31 @@ fn create_main_window(application: &adw::Application) {
         100.0, // page increment
         0.0, // page size
     );
+    
     let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
+    address_spinbutton.set_hexpand(true);
     
     let address_hardened_checkbox = gtk::CheckButton::new();
     address_hardened_checkbox.set_active(true);
+    address_hardened_checkbox.set_halign(gtk::Align::Center);
     
     let valid_wallet_pupose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
     let valid_wallet_pupose_as_ref: Vec<&str> = valid_wallet_pupose_as_strings.iter().map(|s| s.as_ref()).collect();
     let purpose_dropbox = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
     purpose_dropbox.set_selected(1); // External
+    purpose_dropbox.set_hexpand(true);
 
-    bip_frame.set_child(Some(&bip_dropdown));
     bip_hardened_frame.set_child(Some(&bip_hardened_checkbox));
-    coin_frame.set_child(Some(&coin_entry));
     coin_hardened_frame.set_child(Some(&coin_hardened_checkbox));
-    address_frame.set_child(Some(&address_spinbutton));
     address_hardened_frame.set_child(Some(&address_hardened_checkbox));
-    purpose_frame.set_child(Some(&purpose_dropbox));
 
-    bip_box.append(&bip_frame);
+    bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
-    coin_box.append(&coin_frame);
+    coin_box.append(&coin_entry);
     coin_box.append(&coin_hardened_frame);
-    address_box.append(&address_frame);
+    address_box.append(&address_spinbutton);
     address_box.append(&address_hardened_frame);
-    purpose_box.append(&purpose_frame);
+    purpose_box.append(&purpose_dropbox);
 
     main_bip_frame.set_child(Some(&bip_box));
     main_coin_frame.set_child(Some(&coin_box));
@@ -1277,15 +1308,29 @@ fn create_main_window(application: &adw::Application) {
     derivation_box.append(&main_address_frame);
     derivation_box.append(&main_purpose_frame);
 
-
     let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let derivation_label_frame = gtk::Frame::new(Some("Derivation path"));
+    let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
     derivation_label_frame.set_hexpand(true);
-    // derivation_label_frame.set_vexpand(true);
     
+    let bip_number = match settings.get_value("gui_last_width") {
+        Some(bip_number) => bip_number.parse::<u32>().unwrap_or_else(|_| {
+            eprintln!("Failed to parse default BIP number: {}", bip_number);
+            44
+        }),
+        None => {
+            eprintln!("'bip' not found in settings");
+            44
+        }
+    };
+
+    let default_bip_label = if bip_number == 32 {
+        format!("m/{}'/0'/0'", bip_number)
+    } else {
+        format!("m/{}'/0'/0'/0", bip_number)
+    };
     
     let derivation_label_text = gtk4::Label::builder()
-        .label("m/44'/0'/0")            // TODO: get value from config file
+        .label(&default_bip_label)
         .halign(gtk::Align::Center)
         .valign(gtk::Align::Center)
         .css_classes(["large-title"])
@@ -1295,7 +1340,7 @@ fn create_main_window(application: &adw::Application) {
     derivation_label_frame.set_child(Some(&derivation_label_text));
 
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let address_treeview_frame = gtk::Frame::new(Some("Addresses"));
+    let address_treeview_frame = gtk::Frame::new(Some(" Addresses"));
     address_treeview_frame.set_hexpand(true);
     address_treeview_frame.set_vexpand(true);
 
@@ -1314,13 +1359,11 @@ fn create_main_window(application: &adw::Application) {
     address_treeview_frame.set_child(Some(&address_treeview));
     address_treeview_box.append(&address_treeview_frame);
     
-    
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
     main_address_box.append(&address_treeview_box);
     
     stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
- 
 
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
@@ -1400,348 +1443,333 @@ fn main() {
 
 
 
-
-
-
-
-
-
-
-// T E S T I N G   Z O N E
+// ANU QRNG
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-// 
-// 
-// const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
-//     "uint8", 
-//     "uint16", 
-//     "hex16",
-// ];
-// const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
-// const ANU_QRNG_FILE: &str = "tmp/anu";
-// const ANU_LOG_FILE: &str = "log/anu-session";
-// const ANU_API_URL: &str = "qrng.anu.edu.au:80";
-// const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
-// const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
-// 
-// 
-// fn get_anu_response(anu_format: &str, array_length: u32, hex_block_size: u32) -> String {
-//     println!("Connecting to ANU API...");
-//     let mut socket_addr = ANU_API_URL
-//         .to_socket_addrs()
-//         .map_err(|e| format!("Socket address parsing error: {}", e))
-//         .unwrap();
-// 
-//     let socket_addr = socket_addr
-//         .next()
-//         .ok_or("No socket addresses found for ANU API URL")
-//         .unwrap();
-// 
-//     let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
-//         .map_err(|e| format!("Connection error: {}", e))
-//         .unwrap();
-// 
-//     let anu_request = format!(
-//         "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
-//             anu_format, 
-//             array_length, 
-//             hex_block_size
-//     )
-//     .into_bytes();
-// 
-//     stream.write_all(&anu_request)
-//         .map_err(|e| format!("Write error: {}", e))
-//         .unwrap();
-// 
-//     stream.flush()
-//         .map_err(|e| format!("Flush error: {}", e))
-//         .unwrap();
-// 
-//     let mut response = String::new();
-//     let mut buffer = [0; 256];
-//     let mut chunks = Vec::new(); // Store received chunks
-// 
-//     loop {
-//         match stream.read(&mut buffer) {
-//             Ok(bytes_read) if bytes_read > 0 => {
-//                 let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-//                 print!("{}", chunk);
-//                 response.push_str(&chunk);
-//                 chunks.push(chunk.to_string());
-// 
-//                 if chunk.ends_with("\r\n\r\n") {
-//                     break; // End of response
-//                 }
-//             }
-//             Ok(_) | Err(_) => break, // No more data or error occurred, break the loop
-//         }
-//     }
-// 
-//     println!("ANU API response done");
-// 
-//     // Combine chunks into single string
-//     let combined_response = chunks.concat();
-// 
-//     // Create log
-//     write_api_response_to_log(&combined_response, ANU_LOG_FILE);
-// 
-//     // Remove chunked encoding
-//     let response = combined_response.replace("\r\n", "");
-// 
-//     response
-// }
-// 
-// 
-// 
-// fn write_api_response_to_log(response: &str, log_file: &str) {
-//     let current_time = SystemTime::now();
-//     let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-//     let log_file = format!("{}-{}", log_file, timestamp);
-// 
-//     if let Some(parent) = Path::new(log_file.as_str()).parent() {
-//         match fs::create_dir_all(parent) {
-//             Ok(_) => {
-//                 let mut file = match File::create(&log_file) {
-//                     Ok(file) => file,
-//                     Err(e) => {
-//                         eprintln!("Error creating file: {}", e);
-//                         return;
-//                     }
-//                 };
-//                 if let Err(e) = file.write_all(response.as_bytes()) {
-//                     eprintln!("Error writing to file: {}", e);
-//                 }
-//             }
-//             Err(err) => {
-//                 eprintln!("Error creating directory {}: {}", parent.display(), err);
-//             }
-//         }
-//     }
-// }
-// 
-// 
-// 
-// fn get_entropy_from_anu(
-//     entropy_length: usize,
-//     data_format: &str,
-//     array_length: u32,
-//     hex_block_size: Option<u32>
-// ) -> Result<String, Box<dyn std::error::Error>> {
-// 
-//         let anu_data = fetch_anu_qrng_data(data_format, array_length, hex_block_size.unwrap());
-//         let mut entropy_raw_binary: String = String::new();
-// 
-//         match data_format {
-//             "uint8" => {
-//                 let bytes = anu_data
-//                     .split_whitespace()
-//                     .map(|byte_str| byte_str.parse::<u8>().unwrap())
-//                     .collect::<Vec<u8>>();
-//              
-//                 // Convert bytes to binary strings
-//                 for byte in bytes {
-//                     entropy_raw_binary.push_str(&format!("{:08b}", byte));
-//                 }
-//             },
-//             "uint16" => {
-//                 todo!()// Create parsing for uin16
-//             },
-//             "hex16" => {
-//                 let hex_strings = extract_hex_strings(
-//                     &anu_data, 
-//                     hex_block_size.unwrap().try_into().unwrap()
-//                 );
-// 
-//                 let mut anu_qrng_binary = String::new();
-//  
-//                 for hex_string in hex_strings {
-//                     // println!("Hex string: {}", hex_string);
-//                     let bytes = hex::decode(hex_string).expect("Failed to decode hex string");
-//                     let binary_string: String = bytes.iter()
-//                         .map(|byte| format!("{:08b}", byte))
-//                         .collect();
-// 
-//                     // println!("Binary string: {:?}", binary_string);
-//                     anu_qrng_binary.push_str(&binary_string);
-//                 }
-// 
-//                 // Write all binary strings to a file
-//                 let qrng_file = format!("{}.binary", ANU_QRNG_FILE);
-//                 let mut file = File::create(&qrng_file)?;
-//                 file.write_all(anu_qrng_binary.as_bytes())?;
-// 
-//                 if anu_qrng_binary.len() < entropy_length {
-//                     return Err(format!(
-//                         "Entropy string too short for requested entropy length: {}",
-//                         entropy_length
-//                     ).into());
-//                 }
-// 
-//                 let max_start = anu_qrng_binary.len() - entropy_length;
-//                 let start_point = rand::thread_rng().gen_range(0..=max_start);
-// 
-//                 entropy_raw_binary = anu_qrng_binary
-//                     .chars()
-//                     .skip(start_point)
-//                     .take(entropy_length)
-//                     .collect();
-// 
-//                 println!("Final entropy string: {}", entropy_raw_binary);
-//             },
-//             &_ => eprint!("Unknown ANU format")
-//         }
-// 
-//     Ok(entropy_raw_binary)
-// }
-// 
-// fn fetch_anu_qrng_data(anu_data: &str, array_length: u32, block_size: u32) -> String {
-//     let current_time = SystemTime::now();
-//     // println!("New request: {:?}", current_time);
-// 
-//     let last_request_time = load_last_anu_request().unwrap();
-//     // println!("Last request: {:?}", last_request_time);
-// 
-//     let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
-//     let wait_duration = Duration::from_secs(TCP_REQUEST_INTERVAL_SECONDS as u64);
-//     if elapsed < wait_duration {
-//         let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-//         eprintln!("One request per 2 minutes. You have to wait {} seconds more", remaining_seconds);
-//         return String::new();
-//     }
-// 
-//     let response = generate_anu_qrng(anu_data, array_length, block_size);
-// 
-//     if let Err(err) = create_anu_timestamp(current_time) {
-//         eprintln!("Error saving last request time: {}", err);
-//     }
-// 
-//     let file = format!("{}.{}", ANU_QRNG_FILE, anu_data);
-// 
-//     append_to_file(&file, &response)
-//         .map_err(|e| format!("Error appending to file: {}", e))
-//         .map(|_| response)
-//         .unwrap_or_else(|e| {
-//             eprintln!("Can not append to a file: {}", e);
-//             String::new()
-//         })
-// }
-// 
-// 
-// 
-// fn generate_anu_qrng(anu_data: &str, array_length: u32, block_size: u32) -> String {
-//     println!("Connecting to ANU API...");
-//     let mut socket_addr = ANU_API_URL
-//         .to_socket_addrs()
-//         .map_err(|e| format!("Socket address parsing error: {}", e))
-//         .unwrap();
-// 
-//     let socket_addr = socket_addr
-//         .next()
-//         .ok_or("No socket addresses found for ANU API URL")
-//         .unwrap();
-// 
-//     let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
-//         .map_err(|e| format!("Connection error: {}", e))
-//         .unwrap();
-// 
-//     let anu_request = format!(
-//         "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
-//         anu_data, array_length, block_size
-//     )
-//     .into_bytes();
-// 
-//     stream.write_all(&anu_request)
-//         .map_err(|e| format!("Write error: {}", e))
-//         .unwrap();
-// 
-//     stream.flush()
-//         .map_err(|e| format!("Flush error: {}", e))
-//         .unwrap();
-// 
-//     let mut response = String::new();
-//     let mut buffer = [0; 256];
-//     let mut chunks = Vec::new(); // Store received chunks
-// 
-//     loop {
-//         match stream.read(&mut buffer) {
-//             Ok(bytes_read) if bytes_read > 0 => {
-//                 let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-//                 print!("{}", chunk);
-//                 response.push_str(&chunk);
-//                 chunks.push(chunk.to_string());
-// 
-//                 if chunk.ends_with("\r\n\r\n") {
-//                     break; // End of response
-//                 }
-//             }
-//             Ok(_) | Err(_) => break, // No more data or error occurred, break the loop
-//         }
-//     }
-// 
-//     println!("ANU API response done");
-// 
-//     // Combine chunks into single string
-//     let combined_response = chunks.concat();
-// 
-//     // Create log
-//     write_api_response_to_log(&combined_response, ANU_LOG_FILE);
-// 
-//     // Remove chunked encoding
-//     let response = combined_response.replace("\r\n", "");
-// 
-//     response
-// }
-// 
-// 
-// 
-// 
-// 
-// fn load_last_anu_request() -> Option<SystemTime> {
-//     let path = Path::new(ANU_TIMESTAMP_FILE);
-//     if path.exists() {
-//         if let Ok(file) = File::open(path) {
-//             let reader = BufReader::new(file);
-//             if let Some(Ok(timestamp_str)) = reader.lines().next() {
-//                 if let Ok(timestamp) = timestamp_str.trim().parse::<i64>() {
-//                     return Some(SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp as u64));
-//                 }
-//             }
-//         }
-//     }
-//     Some(SystemTime::UNIX_EPOCH)
-// }
-// 
-// fn create_anu_timestamp(time: SystemTime) -> Result<(), io::Error> {
-//     let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
-// 
-//     if let Some(parent) = Path::new(ANU_TIMESTAMP_FILE).parent() {
-//         fs::create_dir_all(parent)?;
-//     }
-// 
-//     let mut file = File::create(ANU_TIMESTAMP_FILE)?;
-// 
-//     file.write_all(timestamp.as_bytes())?;
-// 
-//     Ok(())
-// }
-// 
-// fn append_to_file(file_path: &str, data: &str) -> std::io::Result<()> {
-//     let mut file = OpenOptions::new()
-//         .write(true)
-//         .create(true)
-//         .append(true)
-//         .open(file_path)?;
-// 
-//     file.write_all(data.as_bytes())?;
-// 
-//     Ok(())
-// }
-// 
+
+fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
+    let start_time = SystemTime::now();
+
+    let anu_data = fetch_anu_qrng_data(data_format, array_length, hex_block_size.unwrap());
+
+    if !&anu_data.as_ref().unwrap().is_empty() {
+        create_anu_timestamp(start_time);
+        write_api_response_to_log(&anu_data);
+    } else {
+        return String::new()
+    }
+
+    let entropy = match data_format {
+        "uint8" =>  {
+            let uint8 = extract_uint8_data(&anu_data);
+
+            process_uint8_data(&uint8)
+        },
+        "uint16" =>  {
+            todo!() // Create uint16 ANU extraction
+        },
+        "hex16" =>  {
+            todo!() // Create hex16 ANU extraction
+            // let hex_strings = extract_hex_strings(
+            //         &anu_data, 
+            //         hex_block_size.unwrap().try_into().unwrap()
+            //     );
+            //     let mut anu_qrng_binary = String::new();
+            //     for hex_string in hex_strings {
+            //         // println!("Hex string: {}", hex_string);
+            //         let bytes = hex::decode(hex_string).expect("Failed to decode hex string");
+            //         let binary_string: String = bytes.iter()
+            //             .map(|byte| format!("{:08b}", byte))
+            //             .collect();
+            //         // println!("Binary string: {:?}", binary_string);
+            //         anu_qrng_binary.push_str(&binary_string);
+            //     }
+            //     // Write all binary strings to a file
+            //     let qrng_file = format!("{}.binary", ANU_QRNG_FILE);
+            //     let mut file = File::create(&qrng_file).expect("Can not read file");
+            //     file.write_all(anu_qrng_binary.as_bytes()).expect("can not write to file");
+            //     if anu_qrng_binary.len() < entropy_length {
+            //         return Err(format!(
+            //             "Entropy string too short for requested entropy length: {}",
+            //             entropy_length
+            //         ).into());
+            //     }
+            //     let max_start = anu_qrng_binary.len() - entropy_length;
+            //     let start_point = rand::thread_rng().gen_range(0..=max_start);
+            //     entropy_raw_binary = anu_qrng_binary
+            //         .chars()
+            //         .skip(start_point)
+            //         .take(entropy_length)
+            //         .collect();
+            //     println!("Final entropy string: {}", entropy_raw_binary);
+        },
+        _ => {
+            eprintln!("ANU data format is not valid");
+            return String::new()
+        }
+    };
+
+    if entropy.len() > entropy_length {
+        let original_len = entropy.len();
+        let mut rng = rand::thread_rng();
+        let start_index = rng.gen_range(0..original_len);
+
+        let trimmed_entropy = if start_index + entropy_length < original_len {
+            entropy[start_index..start_index + entropy_length].to_string()
+        } else {
+            entropy[start_index..].to_string()
+        };
+
+        return trimmed_entropy;
+    } else if entropy.len() == entropy_length {
+        return entropy.to_string();
+    } else {
+        eprintln!("Entropy too short");
+        return String::new();
+    }
+}
+
+fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) -> Option<String> {
+    let current_time = SystemTime::now();
+    let last_request_time = load_last_anu_request().unwrap();
+
+    println!("Last ANU request: {:?}", last_request_time);
+    println!("New ANU request: {:?}", current_time);
+    
+    let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
+    let wait_duration = Duration::from_secs(TCP_REQUEST_INTERVAL_SECONDS as u64);
+
+    if elapsed < wait_duration {
+        let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
+        eprintln!("One request per 2 minutes. You have to wait {} seconds more", remaining_seconds);
+        return Some(String::new());
+        // TODO: remove panic and replace with error dialog showing remaining time
+    }
+
+    print!("Connecting to ANU API");
+
+    let mut socket_addr = ANU_API_URL
+        .to_socket_addrs()
+        .map_err(|e| format!("Socket address parsing error: {}", e))
+        .unwrap();
+    
+    let socket_addr = socket_addr
+        .next()
+        .ok_or("No socket addresses found for ANU API URL")
+        .unwrap();
+
+    let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
+        .map_err(|e| format!("Connection error: {}", e))
+        .unwrap();
+
+    let anu_request = format!(
+        "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
+        data_format, array_length, block_size
+    )
+    .into_bytes();
+
+    stream.write_all(&anu_request)
+        .map_err(|e| format!("Write error: {}", e))
+        .unwrap();
+
+    stream.flush()
+        .map_err(|e| format!("Flush error: {}", e))
+        .unwrap();
+
+    let mut response = String::new();
+    let mut buffer = [0; 256];
+    let mut chunks = Vec::new(); // Store received chunks
+
+    loop {
+        print!(".");
+        match stream.read(&mut buffer) {
+            Ok(bytes_read) if bytes_read > 0 => {
+                let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+                // print!("{}", chunk);
+                response.push_str(&chunk);
+                chunks.push(chunk.to_string());
+
+                if chunk.ends_with("\r\n\r\n") {
+                    break;
+                }
+            }
+            Ok(_) | Err(_) => break,
+        }
+    }
+
+    print!("done\n");
+
+    let combined_response = chunks.concat();
+
+    Some(combined_response)
+}
+
+fn load_last_anu_request() -> Option<SystemTime> {
+    let path = Path::new(ANU_TIMESTAMP_FILE);
+    if path.exists() {
+        if let Ok(file) = File::open(path) {
+            let reader = BufReader::new(file);
+            if let Some(Ok(timestamp_str)) = reader.lines().next() {
+                if let Ok(timestamp) = timestamp_str.trim().parse::<i64>() {
+                    return Some(SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp as u64));
+                }
+            }
+        }
+    }
+    Some(SystemTime::UNIX_EPOCH)
+}
+
+fn create_anu_timestamp(time: SystemTime) {
+    let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
+
+    if let Some(parent) = Path::new(ANU_TIMESTAMP_FILE).parent() {
+        fs::create_dir_all(parent).expect("Can not create log directory");
+    }
+
+    let mut file = File::create(ANU_TIMESTAMP_FILE).expect("Can not create ANU timestamp file");
+
+    file.write_all(timestamp.as_bytes()).expect("Can not write to ANU timestamp file");
+
+    println!("ANU timestamp: {}",timestamp);
+}
+
+fn write_api_response_to_log(response: &Option<String>) {
+    let current_time = SystemTime::now();
+    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+    let log_file = format!("{}-{}.log", ANU_LOG_FILE, timestamp);
+
+    if let Some(parent) = Path::new(log_file.as_str()).parent() {
+        match fs::create_dir_all(parent) {
+            Ok(_) => {
+                let mut file = match File::create(&log_file) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        eprintln!("Error creating file: {}", e);
+                        return;
+                    }
+                };
+
+                if let Some(data) = &response {
+                    let bytes = data.as_bytes();
+                    if let Err(e) = file.write_all(bytes) {
+                        eprintln!("Can not write ANU response to log file: {}", e);
+                    }
+                    println!("ANU response written to log");
+                } else {
+                    eprintln!("ANU response is empty");
+                }
+            }
+            Err(err) => {
+                eprintln!("Error creating directory {}: {}", parent.display(), err);
+            }
+        }
+    }
+}
+
+fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
+    // Check if the API response is present
+    let api_response = match api_response {
+        Some(response) => response,
+        None => {
+            println!("ANU response is None.");
+            return None;
+        }
+    };
+
+    // Find the index where the JSON data starts
+    let json_start_index = match api_response.find('{') {
+        Some(index) => index,
+        None => {
+            println!("JSON data not found in the response.");
+            return None;
+        }
+    };
+
+    // Find the index where the JSON data ends
+    let json_end_index = match api_response.rfind('}') {
+        Some(index) => index,
+        None => {
+            println!("JSON data end not found in the response.");
+            return None;
+        }
+    };
+
+    // Extract the JSON data
+    let json_str = &api_response[json_start_index..=json_end_index];
+
+    // Parse JSON
+    let parsed_json: Result<serde_json::Value, _> = serde_json::from_str(json_str);
+    let parsed_json = match parsed_json {
+        Ok(value) => value,
+        Err(err) => {
+            println!("Failed to parse JSON: {}", err);
+            return None;
+        }
+    };
+
+    // Extract uint8 data
+    let data_array = parsed_json["data"].as_array();
+    let data_array = match data_array {
+        Some(arr) => arr,
+        None => {
+            println!("No data array found.");
+            return None;
+        }
+    };
+
+    let mut uint8_data = Vec::new();
+
+    for data_item in data_array {
+        if let Some(byte_val) = data_item.as_u64() {
+            if byte_val <= u8::MAX as u64 {
+                uint8_data.push(byte_val as u8);
+            } else {
+                eprintln!("Error parsing byte: number too large to fit in target type");
+            }
+        } else {
+            eprintln!("Invalid byte value: {:?}", data_item);
+        }
+    }
+
+    Some(uint8_data)
+}
+
+fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
+    let data = match data {
+        Some(data) => data,
+        None => {
+            eprintln!("ANU response was empty.");
+            return String::new();
+        }
+    };
+
+    let binary_string = data
+        .iter()
+        .flat_map(|byte| {
+            format!("{:08b}", byte)
+                .chars()
+                .collect::<Vec<_>>()
+        })
+        .collect::<String>();
+
+    println!("ANU entropy: {}", &binary_string);
+
+    binary_string
+}
+
+
+
+
+
+
+// TESTING
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 // fn extract_hex_strings(response: &str, hex_block_size: usize) -> Vec<String> {
 //     let hex_block_size = hex_block_size * 2; // Adjust for byte format for ANU
 //     let mut hex_strings = Vec::new();
 //     let mut current_string = String::new();
 //     let mut in_hex_string = false;
-// 
+
 //     for c in response.chars() {
 //         if !in_hex_string {
 //             if c == '"' {
@@ -1767,12 +1795,8 @@ fn main() {
 //             }
 //         }
 //     }
-// 
+
 //     hex_strings
 // }
-// 
-// 
-// 
-// // WORKING but uint8 can be done better
-// // 
+
 

@@ -1,3 +1,8 @@
+# version 0.9.0
+- ANU uint8 entropy
+- new config: enable/disable ANU QRNG API
+- new config: enable/disable ANU local log
+
 # version 0.8.2
 - GUI: keyboard shortcuts
     - Ctrl+N    New wallet
@@ -7,7 +12,6 @@
     - F5        Settings
     - F1        About
 - New wallet (window)
-
 
 # version 0.8.0
 - libadwaita
