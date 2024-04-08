@@ -1,3 +1,7 @@
+# version 0.9.1
+- entropy from file - import any file to generate entropy
+- Rustdoc
+
 # version 0.9.0
 - ANU uint8 entropy
 - new config: enable/disable ANU QRNG API

@@ -6,10 +6,10 @@
 - [x] master public key (xpub)
 - [x] address tab
 - [ ] get keccak256 support (Ethereum)
-- [ ] multimedia as entropy
-    - [ ] add get_entropy_from_image
-    - [ ] add get_entropy_from_sound
-    - [ ] add get_entropy_from_video
+- [x] multimedia as entropy
+    - [x] add get_entropy_from_image
+    - [x] add get_entropy_from_sound
+    - [x] add get_entropy_from_video
 - [ ] scripts for addresses:
     - [ ] public_key (basic)
     - [ ] time-lock

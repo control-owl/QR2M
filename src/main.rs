@@ -1,4 +1,4 @@
-// #![allow(non_snake_case)]
+#![allow(non_snake_case)] 
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
 
@@ -9,7 +9,7 @@
 // Crates
 use std::{
     fs::{self, File}, 
-    io::{self, Read, Seek, prelude::*, BufReader, BufRead},
+    io::{self, Read, prelude::*, BufReader, BufRead}, 
     net::{TcpStream,ToSocketAddrs},
     path::Path,time::{Duration, SystemTime}
 };
@@ -22,7 +22,6 @@ use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
-// use toml::Value;
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 
 // Default settings
@@ -33,6 +32,7 @@ const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
     "RNG", 
     "QRNG",
+    "File",
 ];
 const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
     "Internal", 
@@ -68,7 +68,28 @@ fn print_program_info() {
     println!("-.-. --- .--. -.-- .-. .. --. .... -\n")
 }
 
-fn generate_entropy(source: &str, entropy_length: u64, _file_name: Option<&str>) -> Result<String, Box<dyn std::error::Error>> {
+/// Generates entropy based on the specified source and length.
+///
+/// # Arguments
+///
+/// * `source` - A reference to a string specifying the entropy source. Supported values are:
+///   * `"RNG"`: Generates entropy using the local random number generator.
+///   * `"QRNG"`: Retrieves entropy from the ANU Quantum Random Number Generator.
+///   * `"File"`: Reads entropy from a selected file.
+///
+/// * `entropy_length` - The length of the entropy to generate.
+///
+/// # Returns
+///
+/// A string containing the generated entropy.
+///
+/// # Examples
+///
+/// ```
+/// let rng_entropy = generate_entropy("RNG", 256);
+/// println!("Random entropy: {}", rng_entropy);
+/// ```
+fn generate_entropy(source: &str, entropy_length: u64) -> String {
     match source {
         "RNG" => {
             let mut rng = rand::thread_rng();
@@ -77,7 +98,7 @@ fn generate_entropy(source: &str, entropy_length: u64, _file_name: Option<&str>)
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 
-            Ok(binary_string)
+            binary_string
         },
         "QRNG" => {
             let settings = AppSettings::load_settings().expect("Can not read settings");
@@ -122,38 +143,94 @@ fn generate_entropy(source: &str, entropy_length: u64, _file_name: Option<&str>)
                 Some(hex_block_size)
             );
 
-            Ok(qrng)
-        },
-        "Test" => {
-            // let file = File::open(file_name.unwrap())?;
-            let file = File::open("entropy/test.qrn").expect("Can not open test entropy file");
-            let mut reader = io::BufReader::new(file);
-            
-            let file_length = reader.seek(io::SeekFrom::End(0))?;
-            
-            if file_length < entropy_length {
-                eprintln!("Entropy file too small for requested entropy length: {}", entropy_length);
-                return Err("Insufficient entropy in file".into());
-            }
-
-            let max_start = file_length.saturating_sub(entropy_length);
-            let start_point = rand::thread_rng().gen_range(0..=max_start);
-
-            reader.seek(io::SeekFrom::Start(start_point))?;
-
-            let mut entropy_raw_binary = String::new();
-            reader.take(entropy_length).read_to_string(&mut entropy_raw_binary)?;
-
-            Ok(entropy_raw_binary)
+            qrng
         },
         "File" => {
-            todo!() // Create shannon entropy and support any file as entropy source
+            let main_context = glib::MainContext::default();
+            let main_loop = glib::MainLoop::new(Some(&main_context), false);
+            let window = gtk::Window::new();
 
+
+            let dialog = gtk::FileChooserDialog::new(
+            Some("Selected file as source of entropy"),
+            Some(&window),
+            gtk::FileChooserAction::Open,
+            &[("Open", gtk::ResponseType::Accept), ("Cancel", gtk::ResponseType::Cancel)],
+            );
+
+            // Create a channel for communication
+            let (tx, rx) = std::sync::mpsc::channel();
+            
+            let cloone = main_loop.clone();
+
+            dialog.connect_response(move |dialog, response| {
+                if response == gtk::ResponseType::Accept {
+                    if let Some(file) = dialog.file() {
+                        if let Some(path) = file.path() {
+                            let file_path = path.to_string_lossy().to_string();
+                            println!("Entropy file: {:?}", &file_path);
+                            
+                            let file_entropy = file_to_entropy(&file_path, entropy_length);
+                            println!("File entropy: {}", file_entropy);
+                            
+                            // Send the file entropy through the channel
+                            if let Err(err) = tx.send(file_entropy) {
+                                eprintln!("Error sending data: {:?}", err);
+                            } else {
+                                println!("data sent");
+                                main_loop.quit();
+                            }
+                        }
+                    }
+                }
+                dialog.close();
+            });
+            
+            
+            dialog.show();
+            cloone.run();
+            
+            
+            println!("main loop running");
+
+
+            // Receive the entropy
+            match rx.recv() {
+                Ok(entropy) => {
+                    println!("entropy: {}", entropy);
+                    entropy
+                },
+                Err(_) => {
+                    eprintln!("Failed to receive entropy");
+                    String::new()
+                }
+            }
         },
-        _ => Err("Invalid entropy source specified".into()),
+        _ => {
+            eprintln!("Invalid entropy source specified");
+            
+            return String::new()
+        }
     }
 }
 
+/// Generates a checksum for the provided entropy.
+///
+/// # Arguments
+///
+/// * `entropy` - The entropy for which the checksum is generated.
+/// * `entropy_length` - The length of the entropy in bits.
+///
+/// # Returns
+///
+/// The generated checksum as a string.
+///
+/// # Examples
+///
+/// ```rust
+/// let checksum = generate_checksum("0101010101", &10);
+/// assert_eq!(checksum.len(), 1);
+/// ```
 fn generate_checksum(entropy: &str, entropy_length: &u32) -> String {
     let entropy_binary = convert_string_to_binary(&entropy);
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
@@ -163,6 +240,23 @@ fn generate_checksum(entropy: &str, entropy_length: &u32) -> String {
     checksum
 }
 
+/// Calculates the checksum of the provided data.
+///
+/// # Arguments
+///
+/// * `data` - The data for which the checksum is calculated.
+///
+/// # Returns
+///
+/// The calculated checksum as a fixed-size array of bytes.
+///
+/// # Examples
+///
+/// ```rust
+/// let data = [0u8; 32];
+/// let checksum = calculate_checksum(&data);
+/// assert_eq!(checksum.len(), 4);
+/// ```
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
     let hash1 = Sha256::digest(data);
     let hash2 = Sha256::digest(&hash1);
@@ -172,6 +266,22 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
     result
 }
 
+/// Generates mnemonic words from the final entropy binary.
+///
+/// # Arguments
+///
+/// * `final_entropy_binary` - The final entropy in binary format.
+///
+/// # Returns
+///
+/// The generated mnemonic words as a string.
+///
+/// # Examples
+///
+/// ```rust
+/// let mnemonic = generate_mnemonic_words("01010101010101010101");
+/// assert!(!mnemonic.is_empty());
+/// ```
 fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     let chunks: Vec<String> = final_entropy_binary.chars().collect::<Vec<char>>().chunks(11).map(|chunk| chunk.iter().collect()).collect();
     let mnemonic_decimal: Vec<u32> = chunks.iter().map(|chunk| u32::from_str_radix(chunk, 2).unwrap()).collect();
@@ -198,6 +308,23 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     final_mnemonic
 }
 
+/// Generates a BIP39 seed from the provided entropy and passphrase.
+///
+/// # Arguments
+///
+/// * `entropy` - The entropy used for seed generation.
+/// * `passphrase` - The passphrase used for seed generation.
+///
+/// # Returns
+///
+/// The generated BIP39 seed as a fixed-size array of bytes.
+///
+/// # Examples
+///
+/// ```rust
+/// let seed = generate_bip39_seed("0101010101", "passphrase");
+/// assert_eq!(seed.len(), 64);
+/// ```
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     let entropy_vector = convert_string_to_binary(&entropy);
     let mnemonic = bip39::Mnemonic::from_entropy(&entropy_vector).expect("Can not create mnemomic words");
@@ -206,6 +333,29 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     seed
 }
 
+/// Derives master keys from the provided seed and headers.
+///
+/// # Arguments
+///
+/// * `seed` - The seed used for key derivation.
+/// * `private_header` - The private header for key derivation.
+/// * `public_header` - The public header for key derivation.
+///
+/// # Returns
+///
+/// A tuple containing the derived master private key and master public key as strings.
+///
+/// # Errors
+///
+/// Returns an error if the private/public headers cannot be parsed or if any error occurs during key derivation.
+///
+/// # Examples
+///
+/// ```rust
+/// let (master_private_key, master_public_key) = derive_master_keys("seed", "0x0488ADE4", "0x0488B21E").unwrap();
+/// assert!(!master_private_key.is_empty());
+/// assert!(!master_public_key.is_empty());
+/// ```
 fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &str,) -> Result<(String, String), String> {
     // Reverting to Bitcoin in case that coin is undefined
     if private_header.is_empty() {private_header = "0x0488ADE4";}
@@ -259,6 +409,25 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     Ok((master_xprv, master_xpub))
 }
 
+/// Computes HMAC-SHA512 hash.
+///
+/// # Arguments
+///
+/// * `key` - The key used for hashing.
+/// * `data` - The data to hash.
+///
+/// # Returns
+///
+/// The HMAC-SHA512 hash as a vector of bytes.
+///
+/// # Examples
+///
+/// ```rust
+/// let key = b"key";
+/// let data = b"data";
+/// let hash = hmac_sha512(key, data);
+/// assert_eq!(hash.len(), 64);
+/// ```
 fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
     const BLOCK_SIZE: usize = 128;
     const HASH_SIZE: usize = 64;
@@ -297,6 +466,62 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
     Sha512::digest(&opad_inner).to_vec() 
 }
 
+/// Reads the contents of a file located at the specified path and generates entropy based on it.
+///
+/// # Arguments
+///
+/// * `file_path` - A string slice that holds the path to the file.
+/// * `entropy_length` - An unsigned 64-bit integer specifying the length of entropy to be generated.
+///
+/// # Examples
+///
+/// ```
+/// let entropy = file_to_entropy("example.txt", 256);
+/// println!("{}", entropy);
+/// ```
+fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
+    // Read file contents into a byte vector
+    let mut file = File::open(file_path).expect("Failed to open file");
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).expect("Failed to read file");
+
+    // Calculate SHA256 hash of the file contents along with the seed word "qr2m"
+    let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
+
+    // Convert the hash into binary representation
+    let mut entropy = String::new();
+    for byte in hash {
+        entropy.push_str(&format!("{:08b}", byte)); // Convert byte to binary string
+    }
+
+    // Take only the required number of bits to match the specified entropy length
+    entropy = entropy.chars().take(entropy_length as usize).collect();
+
+    entropy
+}
+
+/// Generates a SHA256 hash of the given data.
+///
+/// # Arguments
+///
+/// * `data` - A reference to a slice of bytes representing the data to be hashed.
+///
+/// # Returns
+///
+/// A vector of bytes representing the SHA256 hash of the input data.
+///
+/// # Examples
+///
+/// ```
+/// let data = b"Hello, world!";
+/// let hash = sha256_hash(data);
+/// println!("{:x}", hex::encode(hash));
+/// ```
+fn sha256_hash(data: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hasher.finalize().iter().cloned().collect()
+}
 
 
 // COINS
@@ -452,6 +677,7 @@ impl AppSettings {
     // TODO: create verify_settings function
 
     fn load_settings() -> io::Result<Self> {
+        // TODO: Create local ($HOME) settings
         let config_file = "config/custom.conf";
         let default_config_file = "config/default.conf";
 
@@ -482,7 +708,7 @@ impl AppSettings {
         let wallet_section = config.get("wallet").expect("Missing 'wallet' section");
         let entropy_source = wallet_section.get("entropy_source")
             .and_then(|v| v.as_str())
-            .unwrap_or("rng")
+            .unwrap_or("RNG")
             .to_string();
 
         let entropy_length = wallet_section.get("entropy_length")
@@ -990,9 +1216,9 @@ fn create_main_window(application: &adw::Application) {
             let pre_entropy = generate_entropy(
                 &source,
                 *length as u64,
-                None // Some(&ENTROPY_FILE)
-            ).unwrap();
+            );
             
+            // println!("Pre entropy: {}", pre_entropy);
 
             if !pre_entropy.is_empty() {
                 let checksum = generate_checksum(&pre_entropy, entropy_length.unwrap());
@@ -1016,8 +1242,6 @@ fn create_main_window(application: &adw::Application) {
                 // TODO: If entropy is empty show error dialog
                 eprintln!("Entropy is empty");
             }
-            
-            
         }
     ));
 
@@ -1751,7 +1975,7 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
         })
         .collect::<String>();
 
-    println!("ANU entropy: {}", &binary_string);
+    // println!("ANU entropy: {}", &binary_string);
 
     binary_string
 }
@@ -1762,6 +1986,37 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 
 // TESTING
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// OLD CODE
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 // fn extract_hex_strings(response: &str, hex_block_size: usize) -> Vec<String> {
