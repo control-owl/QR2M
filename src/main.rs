@@ -345,10 +345,6 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
 ///
 /// A tuple containing the derived master private key and master public key as strings.
 ///
-/// # Errors
-///
-/// Returns an error if the private/public headers cannot be parsed or if any error occurs during key derivation.
-///
 /// # Examples
 ///
 /// ```rust
@@ -526,6 +522,8 @@ fn sha256_hash(data: &[u8]) -> Vec<u8> {
 
 // COINS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+/// This struct holds information about a particular coin.
 struct CoinDatabase {
     index: u32,
     path: u32,
@@ -540,6 +538,11 @@ struct CoinDatabase {
     comment: String,
 }
 
+/// Creates a vector of `CoinDatabase` from a CSV file.
+///
+/// # Returns
+///
+/// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_store() -> Vec<CoinDatabase> {
     let file = File::open(&COINLIST_FILE).expect("can not open bip44 coin file");
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
@@ -580,6 +583,13 @@ fn create_coin_store() -> Vec<CoinDatabase> {
     coin_store
 }
 
+/// Creates a `gtk::ListStore` for displaying coin information in a GTK application.
+///
+/// This function populates the list store with coin information retrieved from the CSV file.
+///
+/// # Returns
+///
+/// Returns a `gtk::ListStore` containing coin information.
 fn create_coin_completion_model() -> gtk::ListStore {
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
 
@@ -617,6 +627,16 @@ fn create_coin_completion_model() -> gtk::ListStore {
     store
 }
 
+/// Retrieves coins starting with the specified prefix from the coin store.
+///
+/// # Arguments
+///
+/// * `coin_store` - A reference to a vector of `CoinDatabase`.
+/// * `target_prefix` - The prefix to match with coin symbols.
+///
+/// # Returns
+///
+/// Returns a vector containing references to `CoinDatabase` entries whose symbols start with the specified prefix.
 fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix: &'a str) -> Vec<&'a CoinDatabase> {
     coin_store
         .iter()
@@ -624,6 +644,15 @@ fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix:
         .collect()
 }
 
+/// Creates a vector of `CoinDatabase` from a CSV file.
+///
+/// # Arguments
+///
+/// * `file_path` - The path to the CSV file containing coin information.
+///
+/// # Returns
+///
+/// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
     let file = File::open(&file_path).expect("can not read file");
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
@@ -658,6 +687,45 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
 
 // GUI
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+/// Struct to hold application settings.
+///
+/// # Fields
+///
+/// * `entropy_source`: The source of entropy used for wallet generation.
+/// * `entropy_length`: The length of entropy used for wallet generation.
+/// * `bip`: The BIP (Bitcoin Improvement Proposal) version.
+/// * `gui_save_window_size`: A flag indicating whether to save window size in GUI.
+/// * `gui_last_width`: The last width of the GUI window.
+/// * `gui_last_height`: The last height of the GUI window.
+/// * `anu_enabled`: A flag indicating whether ANU (Australian National University) data is enabled.
+/// * `anu_data_format`: The format of ANU data.
+/// * `anu_array_length`: The length of the ANU array.
+/// * `anu_hex_block_size`: The size of hex blocks in ANU data.
+/// * `anu_log`: A flag indicating whether to log ANU data.
+///
+/// # Examples
+///
+/// ```
+/// use std::io;
+/// use std::fs;
+/// use std::path::Path;
+/// use toml;
+///
+/// struct AppSettings {
+///     // fields...
+/// }
+///
+/// impl AppSettings {
+///     fn load_settings() -> io::Result<Self> {
+///         // implementation...
+///     }
+///
+///     fn get_value(&self, name: &str) -> Option<String> {
+///         // implementation...
+///     }
+/// }
+/// ```
 struct AppSettings {
     entropy_source: String,
     entropy_length: u32,
@@ -676,6 +744,27 @@ struct AppSettings {
 impl AppSettings {
     // TODO: create verify_settings function
 
+    /// Loads application settings from a configuration file.
+    ///
+    /// The function reads settings from the specified configuration file. If the file
+    /// doesn't exist, it copies settings from a default configuration file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there are any I/O errors or if the configuration file
+    /// cannot be parsed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io;
+    /// use myapp::AppSettings;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let settings = AppSettings::load_settings()?;
+    ///     Ok(())
+    /// }
+    /// ```
     fn load_settings() -> io::Result<Self> {
         // TODO: Create local ($HOME) settings
         let config_file = "config/custom.conf";
@@ -764,6 +853,25 @@ impl AppSettings {
         })
     }
 
+    /// Retrieves the value of a specific setting.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the setting to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// Returns the value of the specified setting as a `String`, or `None` if the
+    /// setting does not exist.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use myapp::AppSettings;
+    ///
+    /// let settings = AppSettings::load_settings().unwrap();
+    /// let entropy_source = settings.get_value("entropy_source");
+    /// ```
     fn get_value(&self, name: &str) -> Option<String> {
         match name {
             "entropy_source" => Some(self.entropy_source.clone()),
@@ -782,6 +890,19 @@ impl AppSettings {
     }
 }
 
+/// Creates the settings window.
+///
+/// This function initializes and displays the settings window with various sections
+/// for different types of settings such as general, wallet, and ANU settings.
+/// Users can modify the settings and save or cancel their changes.
+///
+/// # Examples
+///
+/// ```
+/// use myapp::create_settings_window;
+///
+/// create_settings_window();
+/// ```
 fn create_settings_window() {
     let settings = AppSettings::load_settings().expect("Can not read settings");
 
@@ -965,6 +1086,19 @@ fn create_settings_window() {
     settings_window.show();
 }
 
+/// Creates the settings window.
+///
+/// This function initializes and displays the settings window with various sections
+/// for different types of settings such as general, wallet, and ANU settings.
+/// Users can modify the settings and save or cancel their changes.
+///
+/// # Examples
+///
+/// ```
+/// use myapp::create_settings_window;
+///
+/// create_settings_window();
+/// ```
 fn create_about_window() {
     let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.svg")).expect("msg");
     let license = fs::read_to_string("LICENSE.txt").unwrap();
@@ -989,6 +1123,23 @@ fn create_about_window() {
 
 }
 
+/// Creates the main application window.
+///
+/// This function initializes and configures the main application window, including its
+/// dimensions, title, header bar, sidebar, and content area.
+///
+/// # Arguments
+///
+/// * `application` - The reference to the application instance.
+///
+/// # Examples
+///
+/// ```
+/// use myapp::create_main_window;
+///
+/// let application = adw::Application::new(None, Default::default()).expect("Initialization failed");
+/// create_main_window(&application);
+/// ```
 fn create_main_window(application: &adw::Application) {
     let settings = AppSettings::load_settings().expect("Can not read settings");
 
@@ -1208,6 +1359,10 @@ fn create_main_window(application: &adw::Application) {
             let source = selected_entropy_source_value.unwrap().to_string();
             let length = selected_entropy_length_value.unwrap();
             
+            entropy_text.buffer().set_text("");
+            mnemonic_words_text.buffer().set_text("");
+            seed_text.buffer().set_text("");
+
             println!("Entropy source: {:?}", source);
             println!("Entropy length: {:?}", length);
 
@@ -1670,6 +1825,20 @@ fn main() {
 // ANU QRNG
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+/// Fetch entropy data from ANU Quantum Random Number Generator (QRNG) API.
+///
+/// This function fetches entropy data from the ANU QRNG API based on the specified parameters.
+///
+/// # Arguments
+///
+/// * `entropy_length` - The length of the entropy string to fetch.
+/// * `data_format` - The format of the data to fetch (e.g., "uint8", "uint16", "hex16").
+/// * `array_length` - The length of the array of random numbers to fetch.
+/// * `hex_block_size` - The block size for hex data format (optional).
+///
+/// # Returns
+///
+/// A string containing the fetched entropy data, or an empty string if the fetch fails.
 fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
     let start_time = SystemTime::now();
 
@@ -1752,6 +1921,19 @@ fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: 
     }
 }
 
+/// Fetch data from ANU Quantum Random Number Generator (QRNG) API.
+///
+/// This function fetches data from the ANU QRNG API based on the specified parameters.
+///
+/// # Arguments
+///
+/// * `data_format` - The format of the data to fetch (e.g., "uint8", "uint16", "hex16").
+/// * `array_length` - The length of the array of random numbers to fetch.
+/// * `block_size` - The block size for hex data format.
+///
+/// # Returns
+///
+/// An optional string containing the fetched data, or None if the fetch fails.
 fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) -> Option<String> {
     let current_time = SystemTime::now();
     let last_request_time = load_last_anu_request().unwrap();
@@ -1827,6 +2009,13 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
     Some(combined_response)
 }
 
+/// Load the timestamp of the last ANU QRNG request from a file.
+///
+/// This function loads the timestamp of the last ANU QRNG request from a file.
+///
+/// # Returns
+///
+/// An optional `SystemTime` representing the timestamp of the last request, or None if the file does not exist.
 fn load_last_anu_request() -> Option<SystemTime> {
     let path = Path::new(ANU_TIMESTAMP_FILE);
     if path.exists() {
@@ -1842,6 +2031,13 @@ fn load_last_anu_request() -> Option<SystemTime> {
     Some(SystemTime::UNIX_EPOCH)
 }
 
+/// Create a timestamp file for the ANU request.
+///
+/// This function creates a timestamp file for the ANU request to track the last request time.
+///
+/// # Arguments
+///
+/// * `time` - The current time for the ANU request.
 fn create_anu_timestamp(time: SystemTime) {
     let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
 
@@ -1856,6 +2052,13 @@ fn create_anu_timestamp(time: SystemTime) {
     println!("ANU timestamp: {}",timestamp);
 }
 
+/// Write the ANU API response to a log file.
+///
+/// This function writes the ANU API response to a log file.
+///
+/// # Arguments
+///
+/// * `response` - The ANU API response.
 fn write_api_response_to_log(response: &Option<String>) {
     let current_time = SystemTime::now();
     let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
@@ -1889,6 +2092,17 @@ fn write_api_response_to_log(response: &Option<String>) {
     }
 }
 
+/// Extract uint8 data from the ANU API response.
+///
+/// This function extracts uint8 data from the ANU API response.
+///
+/// # Arguments
+///
+/// * `api_response` - The ANU API response.
+///
+/// # Returns
+///
+/// An optional `Vec<u8>` containing the extracted uint8 data, or None if extraction fails.
 fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
     // Check if the API response is present
     let api_response = match api_response {
@@ -1957,6 +2171,17 @@ fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
     Some(uint8_data)
 }
 
+/// Process uint8 data into a binary string.
+///
+/// This function processes uint8 data into a binary string.
+///
+/// # Arguments
+///
+/// * `data` - The uint8 data to process.
+///
+/// # Returns
+///
+/// A string containing the processed binary data.
 fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
     let data = match data {
         Some(data) => data,
