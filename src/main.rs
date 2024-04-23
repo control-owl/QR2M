@@ -9,9 +9,10 @@
 // Crates
 use std::{
     fs::{self, File}, 
-    io::{self, Read, prelude::*, BufReader, BufRead}, 
-    net::{TcpStream,ToSocketAddrs},
-    path::Path,time::{Duration, SystemTime}
+    io::{self, prelude::*, BufRead, BufReader, Read}, 
+    net::{TcpStream,ToSocketAddrs}, 
+    path::Path, 
+    time::{Duration, SystemTime},
 };
 use hex;
 use rand::Rng;
@@ -1173,6 +1174,7 @@ fn create_about_window() {
 fn create_main_window(application: &adw::Application) {
     let settings = AppSettings::load_settings().expect("Can not read settings");
 
+    // Get values from config file
     let window_width = match settings.get_value("gui_last_width") {
         Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
             eprintln!("Failed to parse default window width value: {}", width_str);
@@ -1195,6 +1197,7 @@ fn create_main_window(application: &adw::Application) {
         }
     };
 
+    // MAIN WINDOW
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
@@ -1206,34 +1209,46 @@ fn create_main_window(application: &adw::Application) {
     // TODO: Set main window icon
     window.set_icon_name(Some("org.gnome.Settings"));
 
+    // Main menu (HeaderBar)
     let header_bar = gtk::HeaderBar::new();
     window.set_titlebar(Some(&header_bar));
 
+    // HeaderBar buttons
     let new_wallet_button = gtk::Button::new();
     let open_wallet_button = gtk::Button::new();
     let save_wallet_button = gtk::Button::new();
     let settings_button = gtk::Button::new();
     let about_button = gtk::Button::new();
 
+    // HeaderBar Icons
     new_wallet_button.set_icon_name("tab-new-symbolic");
     open_wallet_button.set_icon_name("document-open-symbolic");
     save_wallet_button.set_icon_name("document-save-symbolic");
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
     about_button.set_icon_name("help-about-symbolic");
     
+    // HeaderBar Tooltips
+    new_wallet_button.set_tooltip_text(Some("New wallet (Ctrl+N)"));
+    open_wallet_button.set_tooltip_text(Some("Open wallet (Ctrl+O)"));
+    save_wallet_button.set_tooltip_text(Some("Save wallet (Ctrl+S)"));
+    settings_button.set_tooltip_text(Some("Settings (F5)"));
+    about_button.set_tooltip_text(Some("About (F1)"));
+
+    // Connections
     header_bar.pack_start(&new_wallet_button);
     header_bar.pack_start(&open_wallet_button);
     header_bar.pack_start(&save_wallet_button);
     header_bar.pack_end(&settings_button);
     header_bar.pack_end(&about_button);
 
+    // Actions
     settings_button.connect_clicked(move |_| {
         create_settings_window();
     });
 
-    open_wallet_button.connect_clicked(move |_| {
-        createDialogWindow("msg", None, None);
-    });
+    // open_wallet_button.connect_clicked(move |_| {
+    //     createDialogWindow("msg", None, None);
+    // });
 
     about_button.connect_clicked(move |_| {
         create_about_window();
@@ -1245,13 +1260,7 @@ fn create_main_window(application: &adw::Application) {
         create_main_window(&new_window);
     });
 
-    // Headerbar button tooltips
-    new_wallet_button.set_tooltip_text(Some("New wallet (Ctrl+N)"));
-    open_wallet_button.set_tooltip_text(Some("Open wallet (Ctrl+O)"));
-    save_wallet_button.set_tooltip_text(Some("Save wallet (Ctrl+S)"));
-    settings_button.set_tooltip_text(Some("Settings (F5)"));
-    about_button.set_tooltip_text(Some("About (F1)"));
-
+    // Main stack
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
@@ -1379,60 +1388,6 @@ fn create_main_window(application: &adw::Application) {
     entropy_main_box.append(&entropy_header_box);
     entropy_main_box.append(&body_box);
     
-    // Actions
-    generate_seed_button.connect_clicked(clone!(
-        @weak entropy_source_dropdown,
-        @weak entropy_length_dropdown,
-        @weak mnemonic_words_text,
-        @weak seed_text => move |_| {
-            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
-            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
-            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
-            let source = selected_entropy_source_value.unwrap().to_string();
-            let length = selected_entropy_length_value.unwrap();
-            
-            entropy_text.buffer().set_text("");
-            mnemonic_words_text.buffer().set_text("");
-            seed_text.buffer().set_text("");
-
-            println!("Entropy source: {:?}", source);
-            println!("Entropy length: {:?}", length);
-
-            let entropy_length = selected_entropy_length_value;
-            
-            let pre_entropy = generate_entropy(
-                &source,
-                *length as u64,
-            );
-            
-            // println!("Pre entropy: {}", pre_entropy);
-
-            if !pre_entropy.is_empty() {
-                let checksum = generate_checksum(&pre_entropy, entropy_length.unwrap());
-                println!("Entropy: {:?}", &pre_entropy);
-                println!("Checksum: {:?}", &checksum);
-                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-                entropy_text.buffer().set_text(&full_entropy);
-                
-                let mnemonic_words = generate_mnemonic_words(&full_entropy);
-                mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                println!("Mnemonic words: {:?}", mnemonic_words);
-
-                let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                println!("Mnemonic passphrase: {:?}", &passphrase_text);
-                
-                let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
-                println!("Seed: {:?}", &seed_hex.to_string());
-            } else {
-                // TODO: If entropy is empty show error dialog
-                eprintln!("Entropy is empty");
-            }
-        }
-    ));
-
     // Start Seed sidebar
     stack.add_titled(&entropy_main_box, Some("sidebar-seed"), "Seed");
 
@@ -1461,7 +1416,7 @@ fn create_main_window(application: &adw::Application) {
     coin_treeview.set_vexpand(true);
     coin_treeview.set_headers_visible(true);
 
-    let columns = ["Index", "Path", "Symbol", "Name", "Key derivation", "Private header", "Public header", "public_key_hash", "script_hash", "Wif", "Comment"];
+    let columns = ["Index", "Path", "Symbol", "Name", "Key derivation", "Private header", "Public header", "Public key hash", "Script hash", "Wif", "Comment"];
     for (i, column_title) in columns.iter().enumerate() {
         let column = gtk::TreeViewColumn::new();
         let cell = gtk::CellRendererText::new();
@@ -1514,10 +1469,248 @@ fn create_main_window(application: &adw::Application) {
     coin_main_box.append(&generate_master_keys_box);
     coin_main_box.append(&master_keys_box);
     
-    // Actions
+    stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
+
+
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // Sidebar 3 
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    main_address_box.set_hexpand(true);
+    main_address_box.set_vexpand(true);
+    main_address_box.set_margin_top(10);
+    main_address_box.set_margin_start(10);
+    main_address_box.set_margin_end(10);
+    main_address_box.set_margin_bottom(10);
+
+    // Derivation labels
+    // TODO: Show derivation boxes according to BIP number
+    let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let main_bip_frame = gtk::Frame::new(Some(" BIP"));
+    let main_coin_frame = gtk::Frame::new(Some(" Coin"));
+    let main_address_frame = gtk::Frame::new(Some(" Address"));
+    let main_purpose_frame = gtk::Frame::new(Some(" Purpose"));
+
+    main_bip_frame.set_hexpand(true);
+    main_coin_frame.set_hexpand(true);
+    main_address_frame.set_hexpand(true);
+    main_purpose_frame.set_hexpand(true);
+    
+    let bip_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
+    let coin_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
+    let address_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
+
+    let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
+    let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
+    let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
+    
+    match settings.get_value("wallet_bip") {
+        Some(bip_number) => {
+            let parsed_bip_number = bip_number.parse::<u32>().unwrap_or_else(|_| {
+                eprintln!("Failed to parse default BIP number: {}", bip_number);
+                44  // Default BIP
+            });
+
+            let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == parsed_bip_number).unwrap_or_else(|| {
+                eprintln!("Default BIP number {} not found in valid BIP derivations", parsed_bip_number);
+                1 // BIP44
+            });
+
+            bip_dropdown.set_selected(default_index.try_into().unwrap());
+            parsed_bip_number
+        },
+        None => {
+            eprintln!("'bip' not found in settings");
+
+            let default_bip_number = 44;
+            let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == default_bip_number).unwrap_or_else(|| {
+                eprintln!("Default BIP number {} not found in valid BIP derivations", default_bip_number);
+                1 // BIP44
+            });
+
+            bip_dropdown.set_selected(default_index.try_into().unwrap());
+            default_bip_number
+        }
+    };
+
+    bip_dropdown.set_hexpand(true);
+    
+    let bip_hardened_checkbox = gtk::CheckButton::new();
+    bip_hardened_checkbox.set_active(true);
+    bip_hardened_checkbox.set_halign(gtk::Align::Center);
+    
+    let coin_entry = gtk::Entry::new();
+    coin_entry.set_editable(false);
+    coin_entry.set_hexpand(true);
+    
+    let coin_hardened_checkbox = gtk::CheckButton::new();
+    coin_hardened_checkbox.set_active(true);
+    coin_hardened_checkbox.set_halign(gtk::Align::Center);
+    
+    let adjustment = gtk::Adjustment::new(
+        0.0, // initial value
+        0.0, // minimum value
+        2147483647.0, // maximum value
+        1.0, // step increment
+        100.0, // page increment
+        0.0, // page size
+    );
+    
+    let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
+    address_spinbutton.set_hexpand(true);
+    
+    let address_hardened_checkbox = gtk::CheckButton::new();
+    address_hardened_checkbox.set_active(true);
+    address_hardened_checkbox.set_halign(gtk::Align::Center);
+    
+    let valid_wallet_pupose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
+    let valid_wallet_pupose_as_ref: Vec<&str> = valid_wallet_pupose_as_strings.iter().map(|s| s.as_ref()).collect();
+    let purpose_dropbox = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
+    purpose_dropbox.set_selected(0); // Internal
+    purpose_dropbox.set_hexpand(true);
+
+    bip_hardened_frame.set_child(Some(&bip_hardened_checkbox));
+    coin_hardened_frame.set_child(Some(&coin_hardened_checkbox));
+    address_hardened_frame.set_child(Some(&address_hardened_checkbox));
+
+    let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
+    derivation_label_frame.set_hexpand(true);
+    
+    let bip_number = match settings.get_value("wallet_bip") {
+        Some(bip_number) => bip_number.parse::<u32>().unwrap_or_else(|_| {
+            eprintln!("Failed to parse default BIP number: {}", bip_number);
+            44
+        }),
+        None => {
+            eprintln!("'bip' not found in settings");
+            44
+        }
+    };
+
+    let default_bip_label = if bip_number == 32 {
+        format!("m/{}'/0'/0'", bip_number)
+    } else {
+        format!("m/{}'/0'/0'/0", bip_number)
+    };
+    
+    let derivation_label_text = gtk4::Label::builder()
+        .label(&default_bip_label)
+        .halign(gtk::Align::Center)
+        .valign(gtk::Align::Center)
+        .css_classes(["large-title"])
+        .build();
+
+
+
+    let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_treeview_frame = gtk::Frame::new(Some(" Addresses"));
+    address_treeview_frame.set_hexpand(true);
+    address_treeview_frame.set_vexpand(true);
+
+    let address_treeview = gtk::TreeView::new();
+    address_treeview.set_headers_visible(true);
+    let columns = ["Path", "Address", "Public key", "Private key"];
+    for (i, column_title) in columns.iter().enumerate() {
+        let column = gtk::TreeViewColumn::new();
+        let cell = gtk::CellRendererText::new();
+        column.set_title(column_title);
+        column.pack_start(&cell, true);
+        column.add_attribute(&cell, "text", i as i32);
+        address_treeview.append_column(&column);
+    }
+
+    // Connections
+    bip_box.append(&bip_dropdown);
+    bip_box.append(&bip_hardened_frame);
+    coin_box.append(&coin_entry);
+    coin_box.append(&coin_hardened_frame);
+    address_box.append(&address_spinbutton);
+    address_box.append(&address_hardened_frame);
+    purpose_box.append(&purpose_dropbox);
+    main_bip_frame.set_child(Some(&bip_box));
+    main_coin_frame.set_child(Some(&coin_box));
+    main_address_frame.set_child(Some(&address_box));
+    main_purpose_frame.set_child(Some(&purpose_box));
+    derivation_box.append(&main_bip_frame);
+    derivation_box.append(&main_coin_frame);
+    derivation_box.append(&main_address_frame);
+    derivation_box.append(&main_purpose_frame);
+    derivation_label_box.append(&derivation_label_frame);
+    derivation_label_frame.set_child(Some(&derivation_label_text));
+    address_treeview_frame.set_child(Some(&address_treeview));
+    address_treeview_box.append(&address_treeview_frame);
+    main_address_box.append(&derivation_box);
+    main_address_box.append(&derivation_label_box);
+    main_address_box.append(&address_treeview_box);
+    
+    stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
+
+
+
+    // ACTIONS
+    generate_seed_button.connect_clicked(clone!(
+        @weak entropy_source_dropdown,
+        @weak entropy_length_dropdown,
+        @weak mnemonic_words_text,
+        @weak seed_text,
+        @weak stack  => move |_| {
+            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
+            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
+            let source = selected_entropy_source_value.unwrap().to_string();
+            let length = selected_entropy_length_value.unwrap();
+            
+            entropy_text.buffer().set_text("");
+            mnemonic_words_text.buffer().set_text("");
+            seed_text.buffer().set_text("");
+
+            println!("Entropy source: {:?}", source);
+            println!("Entropy length: {:?}", length);
+
+            let entropy_length = selected_entropy_length_value;
+            
+            let pre_entropy = generate_entropy(
+                &source,
+                *length as u64,
+            );
+            
+            // println!("Pre entropy: {}", pre_entropy);
+
+            if !pre_entropy.is_empty() {
+                let checksum = generate_checksum(&pre_entropy, entropy_length.unwrap());
+                println!("Entropy: {:?}", &pre_entropy);
+                println!("Checksum: {:?}", &checksum);
+                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+                entropy_text.buffer().set_text(&full_entropy);
+                
+                let mnemonic_words = generate_mnemonic_words(&full_entropy);
+                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                println!("Mnemonic words: {:?}", mnemonic_words);
+
+                let passphrase_text = mnemonic_passphrase_text.text().to_string();
+                println!("Mnemonic passphrase: {:?}", &passphrase_text);
+                
+                let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+                println!("Seed: {:?}", &seed_hex.to_string());
+            } else {
+                // TODO: If entropy is empty show error dialog
+                eprintln!("Entropy is empty");
+            }
+        }
+    ));
+
     let coin_treeview_clone = coin_treeview.clone();
 
-    generate_master_keys_button.connect_clicked(move |_| {
+    generate_master_keys_button.connect_clicked(clone!(
+        @weak stack  => move |_| {
         // TODO: Check if seed is empty, show dialog error
         if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
             let coin = model.get_value(&iter, 0);
@@ -1591,7 +1784,10 @@ fn create_main_window(application: &adw::Application) {
                 }
                 
         }
-    });
+
+        // stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
+        // stack.set_visible_child_name("sidebar-address")
+    }));
     
     coin_search.connect_search_changed(move|coin_search| {
         let search_text = coin_search.text().to_uppercase();
@@ -1628,156 +1824,8 @@ fn create_main_window(application: &adw::Application) {
         }
     });
 
-    stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
 
 
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // Sidebar 3 
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    main_address_box.set_hexpand(true);
-    main_address_box.set_vexpand(true);
-    main_address_box.set_margin_top(10);
-    main_address_box.set_margin_start(10);
-    main_address_box.set_margin_end(10);
-    main_address_box.set_margin_bottom(10);
-
-    // Derivation labels
-    let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let main_bip_frame = gtk::Frame::new(Some(" BIP"));
-    let main_coin_frame = gtk::Frame::new(Some(" Coin"));
-    let main_address_frame = gtk::Frame::new(Some(" Address"));
-    let main_purpose_frame = gtk::Frame::new(Some(" Purpose"));
-
-    main_bip_frame.set_hexpand(true);
-    main_coin_frame.set_hexpand(true);
-    main_address_frame.set_hexpand(true);
-    main_purpose_frame.set_hexpand(true);
-    
-    let bip_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
-    let coin_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
-    let address_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
-
-    let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
-    let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
-    let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
-    bip_dropdown.set_selected(1); // TODO: Get value from settings
-    bip_dropdown.set_hexpand(true);
-    
-    let bip_hardened_checkbox = gtk::CheckButton::new();
-    bip_hardened_checkbox.set_active(true);
-    bip_hardened_checkbox.set_halign(gtk::Align::Center);
-    
-    let coin_entry = gtk::Entry::new();
-    coin_entry.set_editable(false);
-    coin_entry.set_hexpand(true);
-    
-    let coin_hardened_checkbox = gtk::CheckButton::new();
-    coin_hardened_checkbox.set_active(true);
-    coin_hardened_checkbox.set_halign(gtk::Align::Center);
-    
-    let adjustment = gtk::Adjustment::new(
-        0.0, // initial value
-        0.0, // minimum value
-        2147483647.0, // maximum value
-        1.0, // step increment
-        100.0, // page increment
-        0.0, // page size
-    );
-    
-    let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
-    address_spinbutton.set_hexpand(true);
-    
-    let address_hardened_checkbox = gtk::CheckButton::new();
-    address_hardened_checkbox.set_active(true);
-    address_hardened_checkbox.set_halign(gtk::Align::Center);
-    
-    let valid_wallet_pupose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
-    let valid_wallet_pupose_as_ref: Vec<&str> = valid_wallet_pupose_as_strings.iter().map(|s| s.as_ref()).collect();
-    let purpose_dropbox = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
-    purpose_dropbox.set_selected(0); // Internal
-    purpose_dropbox.set_hexpand(true);
-
-    bip_hardened_frame.set_child(Some(&bip_hardened_checkbox));
-    coin_hardened_frame.set_child(Some(&coin_hardened_checkbox));
-    address_hardened_frame.set_child(Some(&address_hardened_checkbox));
-
-    let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
-    derivation_label_frame.set_hexpand(true);
-    
-    let bip_number = match settings.get_value("bip_number") {
-        Some(bip_number) => bip_number.parse::<u32>().unwrap_or_else(|_| {
-            eprintln!("Failed to parse default BIP number: {}", bip_number);
-            44
-        }),
-        None => {
-            eprintln!("'bip' not found in settings");
-            44
-        }
-    };
-
-    let default_bip_label = if bip_number == 32 {
-        format!("m/{}'/0'/0'", bip_number)
-    } else {
-        format!("m/{}'/0'/0'/0", bip_number)
-    };
-    
-    let derivation_label_text = gtk4::Label::builder()
-        .label(&default_bip_label)
-        .halign(gtk::Align::Center)
-        .valign(gtk::Align::Center)
-        .css_classes(["large-title"])
-        .build();
-
-
-
-    let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let address_treeview_frame = gtk::Frame::new(Some(" Addresses"));
-    address_treeview_frame.set_hexpand(true);
-    address_treeview_frame.set_vexpand(true);
-
-    let address_treeview = gtk::TreeView::new();
-    address_treeview.set_headers_visible(true);
-    let columns = ["Path", "Address", "Public key", "Private key"];
-    for (i, column_title) in columns.iter().enumerate() {
-        let column = gtk::TreeViewColumn::new();
-        let cell = gtk::CellRendererText::new();
-        column.set_title(column_title);
-        column.pack_start(&cell, true);
-        column.add_attribute(&cell, "text", i as i32);
-        address_treeview.append_column(&column);
-    }
-
-    // Connections
-    bip_box.append(&bip_dropdown);
-    bip_box.append(&bip_hardened_frame);
-    coin_box.append(&coin_entry);
-    coin_box.append(&coin_hardened_frame);
-    address_box.append(&address_spinbutton);
-    address_box.append(&address_hardened_frame);
-    purpose_box.append(&purpose_dropbox);
-    main_bip_frame.set_child(Some(&bip_box));
-    main_coin_frame.set_child(Some(&coin_box));
-    main_address_frame.set_child(Some(&address_box));
-    main_purpose_frame.set_child(Some(&purpose_box));
-    derivation_box.append(&main_bip_frame);
-    derivation_box.append(&main_coin_frame);
-    derivation_box.append(&main_address_frame);
-    derivation_box.append(&main_purpose_frame);
-    derivation_label_box.append(&derivation_label_frame);
-    derivation_label_frame.set_child(Some(&derivation_label_text));
-    address_treeview_frame.set_child(Some(&address_treeview));
-    address_treeview_box.append(&address_treeview_frame);
-    main_address_box.append(&derivation_box);
-    main_address_box.append(&derivation_label_box);
-    main_address_box.append(&address_treeview_box);
-    
-    stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
 
     // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -1805,6 +1853,7 @@ fn main() {
     let save = gio::SimpleAction::new("save", None);
     let settings = gio::SimpleAction::new("settings", None);
     let about = gio::SimpleAction::new("about", None);
+    let test = gio::SimpleAction::new("test", None);
     
     quit.connect_activate(
         glib::clone!(@weak application => move |_action, _parameter| {
@@ -1834,6 +1883,10 @@ fn main() {
         create_about_window();
     });
 
+    test.connect_activate(move |_action, _parameter| {
+        createDialogWindow("msg", Some(true), Some(50));
+    });
+
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
     application.add_action(&quit);
 
@@ -1851,6 +1904,10 @@ fn main() {
 
     application.set_accels_for_action("app.about", &["F1"]);
     application.add_action(&about);
+
+    // Only to start testing window
+    application.set_accels_for_action("app.test", &["<Primary>T"]);
+    application.add_action(&test);
 
     application.run();
 }
@@ -2257,7 +2314,7 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 
 
-fn createDialogWindow(msg: &str, progress_active: Option<bool>, progress_percent: Option<&u32> ) {
+fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percent: Option<u32> ) {
 
     let dialog_window = gtk::ApplicationWindow::builder()
         .title(msg)
@@ -2370,4 +2427,45 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, progress_percent
 //     hex_strings
 // }
 
+
+// TODO: new struct: derivation_path, update derivation path label with changing struct
+
+
+struct DerivationPath {
+    bip: u32,
+    hardened_bip: bool,
+    coin: u32,
+    hardened_coin: bool,
+    address: u32,
+    hardened_address: bool,
+    purpose: u32,
+}
+
+
+impl DerivationPath {
+    fn get_derivation_path(&self) -> String {
+        let mut path = String::new();
+        
+        // Add purpose
+        path.push_str(&format!("m/{}'", self.purpose));
+        
+        // Add coin
+        if self.hardened_coin {
+            path.push_str(&format!("/{}'", self.coin));
+        } else {
+            path.push_str(&format!("/{}", self.coin));
+        }
+        
+        // Add address
+        if self.hardened_address {
+            path.push_str(&format!("/{}'", self.address));
+        } else {
+            path.push_str(&format!("/{}", self.address));
+        }
+        
+        path
+    }
+
+
+}
 
