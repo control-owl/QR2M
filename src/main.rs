@@ -1,4 +1,4 @@
-#![allow(non_snake_case)] 
+#![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
 
@@ -1231,6 +1231,10 @@ fn create_main_window(application: &adw::Application) {
         create_settings_window();
     });
 
+    open_wallet_button.connect_clicked(move |_| {
+        createDialogWindow("msg", None, None);
+    });
+
     about_button.connect_clicked(move |_| {
         create_about_window();
     });
@@ -1283,7 +1287,7 @@ fn create_main_window(application: &adw::Application) {
     entropy_source_frame.set_hexpand(true);
     
     // Entropy length
-    let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let entropy_length_frame = gtk::Frame::new(Some(" Entropy length"));
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
@@ -1304,25 +1308,12 @@ fn create_main_window(application: &adw::Application) {
     mnemonic_passphrase_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
     
-    // Generate button
+    // Generate seed button
     let generate_seed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_seed_button = gtk::Button::new();
     generate_seed_button.set_label("Generate seed");
     generate_seed_box.set_halign(gtk::Align::Center);
-
-    // Connections
-    entropy_source_frame.set_child(Some(&entropy_source_dropdown));
-    entropy_length_frame.set_child(Some(&entropy_length_dropdown));
-
-    generate_seed_box.append(&generate_seed_button);
-    entropy_source_box.append(&entropy_source_frame);
-    entropy_length_box.append(&entropy_length_frame);
-    entropy_header_first_box.append(&entropy_source_box);
-    entropy_header_first_box.append(&entropy_length_box);
-    entropy_header_second_box.append(&mnemonic_passphrase_box);
-    entropy_header_box.append(&entropy_header_first_box);
-    entropy_header_box.append(&entropy_header_second_box);
-    entropy_header_box.append(&generate_seed_box);
+    generate_seed_box.set_margin_top(10);
 
     // Body
     let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -1365,6 +1356,17 @@ fn create_main_window(application: &adw::Application) {
     seed_text.set_wrap_mode(gtk::WrapMode::Char);
 
     // Connections
+    entropy_source_frame.set_child(Some(&entropy_source_dropdown));
+    entropy_length_frame.set_child(Some(&entropy_length_dropdown));
+    generate_seed_box.append(&generate_seed_button);
+    entropy_source_box.append(&entropy_source_frame);
+    entropy_length_box.append(&entropy_length_frame);
+    entropy_header_first_box.append(&entropy_source_box);
+    entropy_header_first_box.append(&entropy_length_box);
+    entropy_header_second_box.append(&mnemonic_passphrase_box);
+    entropy_header_box.append(&entropy_header_first_box);
+    entropy_header_box.append(&entropy_header_second_box);
+    entropy_header_box.append(&generate_seed_box);
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_text));
     seed_frame.set_child(Some(&seed_text));
@@ -1377,6 +1379,7 @@ fn create_main_window(application: &adw::Application) {
     entropy_main_box.append(&entropy_header_box);
     entropy_main_box.append(&body_box);
     
+    // Actions
     generate_seed_button.connect_clicked(clone!(
         @weak entropy_source_dropdown,
         @weak entropy_length_dropdown,
@@ -1451,6 +1454,8 @@ fn create_main_window(application: &adw::Application) {
 
     // Coin treeview
     create_coin_completion_model();
+    let coin_store = create_coin_store();
+    let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 11]);
     let coins = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let coin_treeview = gtk::TreeView::new();
     coin_treeview.set_vexpand(true);
@@ -1470,48 +1475,50 @@ fn create_main_window(application: &adw::Application) {
     let coin_search = gtk::SearchEntry::new();
     coin_search.set_placeholder_text(Some("Find a coin by entering its symbol (BTC, LTC, ETH...)"));
 
-    coins.append(&coin_search);
-    scrolled_window.set_child(Some(&coin_treeview));
-    coins.append(&scrolled_window);
-    coin_frame.set_child(Some(&coins));
-    coin_box.append(&coin_frame);
+    // Generate master keys button
+    let generate_master_keys_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let generate_master_keys_button = gtk::Button::new();
+    generate_master_keys_button.set_label("Generate master keys");
+    generate_master_keys_box.set_halign(gtk::Align::Center);
+    generate_master_keys_box.append(&generate_master_keys_button);
 
-    // Master private key
+    // Master private keys
     let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let master_xprv_frame = gtk::Frame::new(Some(" Master private key"));
     let master_xpub_frame = gtk::Frame::new(Some(" Master public key"));
-    
     let master_private_key_text = gtk::TextView::new();
     let master_public_key_text = gtk::TextView::new();
 
     master_private_key_text.set_editable(false);
     master_public_key_text.set_editable(false);
-    
-    master_xprv_frame.set_child(Some(&master_private_key_text));
-    master_xpub_frame.set_child(Some(&master_public_key_text));
-
     master_private_key_text.set_wrap_mode(gtk::WrapMode::Char);
     master_private_key_text.set_editable(false);
     master_private_key_text.set_left_margin(5);
     master_private_key_text.set_top_margin(5);
-
     master_public_key_text.set_wrap_mode(gtk::WrapMode::Char);
     master_public_key_text.set_editable(false);
     master_public_key_text.set_left_margin(5);
     master_public_key_text.set_top_margin(5);
 
-    // Connections 
+    // Connections
+    coins.append(&coin_search);
+    scrolled_window.set_child(Some(&coin_treeview));
+    coins.append(&scrolled_window);
+    coin_frame.set_child(Some(&coins));
+    coin_box.append(&coin_frame);
+    master_xprv_frame.set_child(Some(&master_private_key_text));
+    master_xpub_frame.set_child(Some(&master_public_key_text));
     master_keys_box.append(&master_xprv_frame);
     master_keys_box.append(&master_xpub_frame);
     coin_main_box.append(&coin_box);
+    coin_main_box.append(&generate_master_keys_box);
     coin_main_box.append(&master_keys_box);
     
     // Actions
-    let coin_store = create_coin_store();
-    let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 11]);
     let coin_treeview_clone = coin_treeview.clone();
 
-    coin_treeview.connect_cursor_changed(move |_| {
+    generate_master_keys_button.connect_clicked(move |_| {
+        // TODO: Check if seed is empty, show dialog error
         if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
             let coin = model.get_value(&iter, 0);
             let header = model.get_value(&iter, 1);
@@ -1635,12 +1642,12 @@ fn create_main_window(application: &adw::Application) {
     main_address_box.set_margin_end(10);
     main_address_box.set_margin_bottom(10);
 
+    // Derivation labels
     let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-
     let main_bip_frame = gtk::Frame::new(Some(" BIP"));
     let main_coin_frame = gtk::Frame::new(Some(" Coin"));
     let main_address_frame = gtk::Frame::new(Some(" Address"));
@@ -1692,36 +1699,18 @@ fn create_main_window(application: &adw::Application) {
     let valid_wallet_pupose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
     let valid_wallet_pupose_as_ref: Vec<&str> = valid_wallet_pupose_as_strings.iter().map(|s| s.as_ref()).collect();
     let purpose_dropbox = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
-    purpose_dropbox.set_selected(1); // External
+    purpose_dropbox.set_selected(0); // Internal
     purpose_dropbox.set_hexpand(true);
 
     bip_hardened_frame.set_child(Some(&bip_hardened_checkbox));
     coin_hardened_frame.set_child(Some(&coin_hardened_checkbox));
     address_hardened_frame.set_child(Some(&address_hardened_checkbox));
 
-    bip_box.append(&bip_dropdown);
-    bip_box.append(&bip_hardened_frame);
-    coin_box.append(&coin_entry);
-    coin_box.append(&coin_hardened_frame);
-    address_box.append(&address_spinbutton);
-    address_box.append(&address_hardened_frame);
-    purpose_box.append(&purpose_dropbox);
-
-    main_bip_frame.set_child(Some(&bip_box));
-    main_coin_frame.set_child(Some(&coin_box));
-    main_address_frame.set_child(Some(&address_box));
-    main_purpose_frame.set_child(Some(&purpose_box));
-
-    derivation_box.append(&main_bip_frame);
-    derivation_box.append(&main_coin_frame);
-    derivation_box.append(&main_address_frame);
-    derivation_box.append(&main_purpose_frame);
-
     let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
     derivation_label_frame.set_hexpand(true);
     
-    let bip_number = match settings.get_value("gui_last_width") {
+    let bip_number = match settings.get_value("bip_number") {
         Some(bip_number) => bip_number.parse::<u32>().unwrap_or_else(|_| {
             eprintln!("Failed to parse default BIP number: {}", bip_number);
             44
@@ -1745,8 +1734,7 @@ fn create_main_window(application: &adw::Application) {
         .css_classes(["large-title"])
         .build();
 
-    derivation_label_box.append(&derivation_label_frame);
-    derivation_label_frame.set_child(Some(&derivation_label_text));
+
 
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_treeview_frame = gtk::Frame::new(Some(" Addresses"));
@@ -1765,15 +1753,33 @@ fn create_main_window(application: &adw::Application) {
         address_treeview.append_column(&column);
     }
 
+    // Connections
+    bip_box.append(&bip_dropdown);
+    bip_box.append(&bip_hardened_frame);
+    coin_box.append(&coin_entry);
+    coin_box.append(&coin_hardened_frame);
+    address_box.append(&address_spinbutton);
+    address_box.append(&address_hardened_frame);
+    purpose_box.append(&purpose_dropbox);
+    main_bip_frame.set_child(Some(&bip_box));
+    main_coin_frame.set_child(Some(&coin_box));
+    main_address_frame.set_child(Some(&address_box));
+    main_purpose_frame.set_child(Some(&purpose_box));
+    derivation_box.append(&main_bip_frame);
+    derivation_box.append(&main_coin_frame);
+    derivation_box.append(&main_address_frame);
+    derivation_box.append(&main_purpose_frame);
+    derivation_label_box.append(&derivation_label_frame);
+    derivation_label_frame.set_child(Some(&derivation_label_text));
     address_treeview_frame.set_child(Some(&address_treeview));
     address_treeview_box.append(&address_treeview_frame);
-    
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
     main_address_box.append(&address_treeview_box);
     
     stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
 
+    // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
     main_content_box.append(&stack);
@@ -1806,10 +1812,18 @@ fn main() {
         }),
     );
 
-    
+    // Keyboard shortcuts
     let new_window = application.clone();
     new.connect_activate(move |_action, _parameter| {
         create_main_window(&new_window);
+    });
+
+    open.connect_activate(move |_action, _parameter| {
+        todo!() // Open wallet action activated
+    });
+    
+    save.connect_activate(|_action, _parameter| {
+        todo!() // Save wallet action activated
     });
 
     settings.connect_activate(move |_action, _parameter| {
@@ -1819,15 +1833,6 @@ fn main() {
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
     });
-
-    open.connect_activate(|_action, _parameter| {
-        todo!() // Open wallet action activated
-    });
-
-    save.connect_activate(|_action, _parameter| {
-        todo!() // Save wallet action activated
-    });
-
 
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
     application.add_action(&quit);
@@ -1871,6 +1876,8 @@ fn main() {
 /// A string containing the fetched entropy data, or an empty string if the fetch fails.
 fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
     let start_time = SystemTime::now();
+
+    
 
     let anu_data = fetch_anu_qrng_data(data_format, array_length, hex_block_size.unwrap());
 
@@ -2250,7 +2257,61 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 
 
+fn createDialogWindow(msg: &str, progress_active: Option<bool>, progress_percent: Option<&u32> ) {
 
+    let dialog_window = gtk::ApplicationWindow::builder()
+        .title(msg)
+        .default_width(400)
+        .default_height(400)
+        .resizable(false)
+        .build();
+
+    let dialogMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    
+
+
+    // Progress box
+    if progress_active.unwrap_or(false) == true {
+        
+        let progressMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        
+        dialogMainBox.append(&progressMainBox);
+    }
+    
+
+
+    // Message Box
+    let messageMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    
+    
+
+
+    // Do not show
+    let doNotShowMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let doNotShowContentBox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    
+    
+    let doNotShowLabel = gtk::Label::new(Some("Do not show any more"));
+    let doNotShowCheckbox = gtk::CheckButton::new();
+
+    doNotShowContentBox.append(&doNotShowLabel);
+    doNotShowContentBox.append(&doNotShowCheckbox);
+    doNotShowContentBox.set_halign(gtk::Align::Center);
+
+
+    doNotShowMainBox.append(&doNotShowContentBox);
+
+
+
+
+    // Connections
+    dialogMainBox.append(&messageMainBox);
+    dialogMainBox.append(&doNotShowMainBox);
+
+    dialog_window.set_child(Some(&dialogMainBox));
+
+    dialog_window.show();
+}
 
 
 
@@ -2274,12 +2335,13 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 // OLD CODE
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+// ANU extract hex16
+// TODO: recheck if hex16 code is still working
 // fn extract_hex_strings(response: &str, hex_block_size: usize) -> Vec<String> {
 //     let hex_block_size = hex_block_size * 2; // Adjust for byte format for ANU
 //     let mut hex_strings = Vec::new();
 //     let mut current_string = String::new();
 //     let mut in_hex_string = false;
-
 //     for c in response.chars() {
 //         if !in_hex_string {
 //             if c == '"' {
@@ -2305,7 +2367,6 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 //             }
 //         }
 //     }
-
 //     hex_strings
 // }
 
