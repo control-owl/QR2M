@@ -2533,27 +2533,6 @@ struct DerivationPath {
 }
 
 impl DerivationPath {
-
-
-    fn get_value(&self, name: &str) -> Option<String> {
-        match name {
-            "wallet_entropy_source" => Some(self.wallet_entropy_source.clone()),
-            "wallet_entropy_length" => Some(self.wallet_entropy_length.to_string()),
-            "wallet_bip" => Some(self.wallet_bip.to_string()),
-            "gui_save_window_size" => Some(self.gui_save_window_size.to_string()),
-            "gui_last_width" => Some(self.gui_window_width.to_string()),
-            "gui_last_height" => Some(self.gui_window_height.to_string()),
-            "gui_window_maximized" => Some(self.gui_window_maximized.to_string()),
-            "anu_enabled" => Some(self.anu_enabled.to_string()),
-            "anu_data_format" => Some(self.anu_data_format.clone()),
-            "anu_array_length" => Some(self.anu_array_length.to_string()),
-            "anu_hex_block_size" => Some(self.anu_hex_block_size.to_string()),
-            "anu_log" => Some(self.anu_log.to_string()),
-            _ => None,
-        }
-    }
-
-    
     fn get_derivation_path(&self) -> String {
         let mut path = String::new();
         
