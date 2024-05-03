@@ -2,7 +2,6 @@
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
 
-
 // REQUIREMENTS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -16,13 +15,16 @@ use std::{
 };
 use hex;
 use rand::Rng;
-use sha2::{Digest, Sha256, Sha512};
+// use regex::Replacer;
+use sha2::{digest::typenum::NonZero, Digest, Sha256, Sha512};
 use bip39;
 use csv::ReaderBuilder;
 use gtk4 as gtk;
-use libadwaita as adw;
-use adw::prelude::*;
-use gtk::{gio, glib::clone, Stack, StackSidebar};
+// Problem with compiling on Windows 22H2
+// Reverting to generic GTK4 theme
+// use libadwaita as adw;
+// use adw::prelude::*;
+use gtk::{gio, glib::clone, Stack, StackSidebar, prelude::*};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 
 // Default settings
@@ -42,11 +44,11 @@ const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
 const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
 const ANU_LOG_FILE: &str = "log/anu";
 const ANU_API_URL: &str = "qrng.anu.edu.au:80";
-// const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
-//     "uint8", 
-//     "uint16", 
-//     "hex16",
-// ];
+const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
+    "uint8", 
+    "uint16", 
+    "hex16",
+];
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
@@ -513,6 +515,7 @@ fn sha256_hash(data: &[u8]) -> Vec<u8> {
 }
 
 
+
 // COINS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -919,32 +922,34 @@ fn create_settings_window() {
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
     
+
+    // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 1: General settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let general_settings_frame = gtk::Frame::new(Some(" App settings"));
     let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    general_settings_box.set_margin_bottom(10);
+    general_settings_box.set_margin_bottom(0);
     general_settings_box.set_margin_top(10);
     general_settings_box.set_margin_start(10);
     general_settings_box.set_margin_end(10);
     content_general_box.set_margin_start(20);
+    content_general_box.set_margin_top(10);
     general_settings_frame.set_hexpand(true);
     general_settings_frame.set_vexpand(true);
     general_settings_box.append(&general_settings_frame);
     general_settings_frame.set_child(Some(&content_general_box));
 
     // GUI: Save last window size
-    let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal,20);
     let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let window_save_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let save_window_size_label = gtk::Label::new(Some("Save last window size"));
     let save_window_size_checkbox = gtk::CheckButton::new();
     let is_checked = settings.gui_save_window_size;
 
-    // Assuming `checkbox` is the checkbox widget
     save_window_size_checkbox.set_active(is_checked);
-
     window_save_label_box.set_hexpand(true);
     window_save_item_box.set_hexpand(true);
     window_save_item_box.set_margin_end(20);
@@ -954,28 +959,24 @@ fn create_settings_window() {
     window_save_item_box.append(&save_window_size_checkbox);
     window_save_box.append(&window_save_label_box);
     window_save_box.append(&window_save_item_box);
-    
     content_general_box.append(&window_save_box);
 
     stack.add_titled(&general_settings_box, Some("sidebar-settings-general"), "General");
  
 
-
-
-
-
-
-
+    // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 2: Wallet settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let wallet_settings_frame = gtk::Frame::new(Some(" Wallet settings"));
     let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    wallet_settings_box.set_margin_bottom(10);
+    wallet_settings_box.set_margin_bottom(0);
     wallet_settings_box.set_margin_top(10);
     wallet_settings_box.set_margin_start(10);
     wallet_settings_box.set_margin_end(10);
     content_wallet_box.set_margin_start(20);
+    content_wallet_box.set_margin_top(10);
     wallet_settings_frame.set_hexpand(true);
     wallet_settings_frame.set_vexpand(true);
     wallet_settings_box.append(&wallet_settings_frame);
@@ -1062,27 +1063,165 @@ fn create_settings_window() {
     stack.add_titled(&wallet_settings_box, Some("sidebar-settings-wallet"), "Wallet");
 
 
+    // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 3: ANU settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let anu_settings_frame = gtk::Frame::new(Some(" App settings"));
+    let anu_settings_frame = gtk::Frame::new(Some(" ANU settings"));
     let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    anu_settings_box.set_margin_bottom(10);
+    anu_settings_box.set_margin_bottom(0);
     anu_settings_box.set_margin_top(10);
     anu_settings_box.set_margin_start(10);
     anu_settings_box.set_margin_end(10);
     content_anu_box.set_margin_start(20);
+    content_anu_box.set_margin_top(10);
     anu_settings_box.append(&anu_settings_frame);
     anu_settings_frame.set_child(Some(&content_anu_box));
     anu_settings_frame.set_hexpand(true);
     anu_settings_frame.set_vexpand(true);
 
-    // ANU objects
+    // Use ANU QRNG API
+    let use_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_anu_api_label = gtk::Label::new(Some("Use ANU QRNG API:"));
+    let use_anu_api_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.anu_enabled;
 
+    use_anu_api_checkbox.set_active(is_checked);
+    use_anu_api_label_box.set_hexpand(true);
+    use_anu_api_item_box.set_hexpand(true);
+    use_anu_api_item_box.set_margin_end(20);
+    use_anu_api_item_box.set_halign(gtk::Align::End);
 
+    use_anu_api_label_box.append(&use_anu_api_label);
+    use_anu_api_item_box.append(&use_anu_api_checkbox);
+    use_anu_api_box.append(&use_anu_api_label_box);
+    use_anu_api_box.append(&use_anu_api_item_box);
+    content_anu_box.append(&use_anu_api_box);
 
+    // ANU API data type
+    let default_api_data_format_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_api_data_format_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_api_data_format_label = gtk::Label::new(Some("API data type:"));
+    let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT.iter().map(|&x| x.to_string()).collect();
+    let valid_api_data_formats_as_str_refs: Vec<&str> = valid_api_data_formats_as_strings.iter().map(|s| s.as_ref()).collect();
+    let anu_data_format_dropdown = gtk::DropDown::from_strings(&valid_api_data_formats_as_str_refs);
+    let default_api_data_format = valid_api_data_formats_as_strings
+        .iter()
+        .position(|x| x.parse::<String>().unwrap() == settings.anu_data_format)
+        .unwrap_or(0);
 
+    anu_data_format_dropdown.set_selected(default_api_data_format.try_into().unwrap());
+    anu_data_format_dropdown.set_size_request(200, 10);
+    default_api_data_format_box.set_hexpand(true);
+    default_api_data_format_item_box.set_hexpand(true);
+    default_api_data_format_item_box.set_margin_end(20);
+    default_api_data_format_item_box.set_halign(gtk::Align::End);
+    
+    default_api_data_format_label_box.append(&default_api_data_format_label);
+    default_api_data_format_item_box.append(&anu_data_format_dropdown);
+    default_api_data_format_box.append(&default_api_data_format_label_box);
+    default_api_data_format_box.append(&default_api_data_format_item_box);
+    content_anu_box.append(&default_api_data_format_box);
+
+    // ANU array length
+    let default_anu_array_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_array_length_label = gtk::Label::new(Some("API array length:"));
+    
+    // TODO: calculate lower and initial value for a successfull API request based on entropy length
+    // 16 = 16x8 = 128 chars 
+    // 32 = 32x8 = 256 chars
+    let array_length_adjustment = gtk::Adjustment::new(
+        32.0, // initial value
+        32.0, // minimum value
+        1024.0, // maximum value
+        1.0, // step increment
+        10.0, // page increment
+        0.0, // page size
+    );
+    let default_anu_array_length_spinbutton = gtk::SpinButton::new(Some(&array_length_adjustment), 1.0, 0);
+
+    default_anu_array_length_label_box.set_hexpand(true);
+    default_anu_array_length_item_box.set_hexpand(true);
+    default_anu_array_length_item_box.set_margin_end(20);
+    default_anu_array_length_item_box.set_halign(gtk::Align::End);
+    default_anu_array_length_spinbutton.set_size_request(200, 10);
+
+    default_anu_array_length_label_box.append(&default_anu_array_length_label);
+    default_anu_array_length_item_box.append(&default_anu_array_length_spinbutton);
+    default_anu_array_length_box.append(&default_anu_array_length_label_box);
+    default_anu_array_length_box.append(&default_anu_array_length_item_box);
+    content_anu_box.append(&default_anu_array_length_box);
+    
+    // ANU hex block size
+    let default_anu_hex_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_hex_length_label = gtk::Label::new(Some("Hex block size:"));
+    
+    // TODO: calculate lower and initial value for a successfull API request based on entropy length and array length
+    // 16 = 16x8x(array_length)=
+    let hex_block_size_adjustment = gtk::Adjustment::new(
+        1.0, // initial value
+        1.0, // minimum value
+        1024.0, // maximum value
+        1.0, // step increment
+        10.0, // page increment
+        0.0, // page size
+    );
+    let default_anu_hex_length_spinbutton = gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
+
+    default_anu_hex_length_label_box.set_hexpand(true);
+    default_anu_hex_length_item_box.set_hexpand(true);
+    default_anu_hex_length_item_box.set_margin_end(20);
+    default_anu_hex_length_item_box.set_halign(gtk::Align::End);
+    default_anu_hex_length_spinbutton.set_size_request(200, 10);
+
+    default_anu_hex_length_label_box.append(&default_anu_hex_length_label);
+    default_anu_hex_length_item_box.append(&default_anu_hex_length_spinbutton);
+    default_anu_hex_length_box.append(&default_anu_hex_length_label_box);
+    default_anu_hex_length_box.append(&default_anu_hex_length_item_box);
+    content_anu_box.append(&default_anu_hex_length_box);
+
+    use_anu_api_checkbox.connect_toggled(move |checkbox| {
+        if checkbox.is_active() {
+            default_api_data_format_box.show();
+            default_anu_array_length_box.show();
+            default_anu_hex_length_box.show();
+        } else {
+            default_api_data_format_box.hide();
+            default_anu_array_length_box.hide();
+            default_anu_hex_length_box.hide();
+        }
+    });
+    
     stack.add_titled(&anu_settings_box, Some("sidebar-settings-anu"), "ANU");
+
+
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // Sidebar 4: Proxy settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let proxy_settings_frame = gtk::Frame::new(Some(" Proxy settings"));
+    let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+    proxy_settings_box.set_margin_bottom(0);
+    proxy_settings_box.set_margin_top(10);
+    proxy_settings_box.set_margin_start(10);
+    proxy_settings_box.set_margin_end(10);
+    content_proxy_box.set_margin_start(20);
+    proxy_settings_box.append(&proxy_settings_frame);
+    proxy_settings_frame.set_child(Some(&content_proxy_box));
+    proxy_settings_frame.set_hexpand(true);
+    proxy_settings_frame.set_vexpand(true);
+
+    stack.add_titled(&proxy_settings_box, Some("sidebar-settings-proxy"), "Proxy");
+
 
 
 
@@ -1131,12 +1270,12 @@ fn create_settings_window() {
 /// create_settings_window();
 /// ```
 fn create_about_window() {
-    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.svg")).expect("msg");
+    // TODO: repair logo loading in windows
+    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.svg")).expect("Can not load image");
     let license = fs::read_to_string("LICENSE.txt").unwrap();
 
     let help_window = gtk::AboutDialog::builder()
         .modal(true)
-        // .default_width(600)
         .default_height(400)
         .program_name(APP_DESCRIPTION.unwrap())
         .version(APP_VERSION.unwrap())
@@ -1171,7 +1310,7 @@ fn create_about_window() {
 /// let application = adw::Application::new(None, Default::default()).expect("Initialization failed");
 /// create_main_window(&application);
 /// ```
-fn create_main_window(application: &adw::Application) {
+fn create_main_window(application: &gtk::Application) {
     let settings = AppSettings::load_settings().expect("Can not read settings");
 
     // Get values from config file
@@ -1650,8 +1789,6 @@ fn create_main_window(application: &adw::Application) {
     
     stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
 
-
-
     // ACTIONS
     generate_seed_button.connect_clicked(clone!(
         @weak entropy_source_dropdown,
@@ -1749,44 +1886,39 @@ fn create_main_window(application: &adw::Application) {
                 script_hash.get::<String>(),
                 wif.get::<String>(),
                 comment.get::<String>(),
-            ) 
-                {
-                    println!("coin_type: {}", coin_type);
-                    println!("coin_header: {}", coin_header);
-                    println!("coin_symbol: {}", coin_symbol);
-                    println!("coin_name: {}", coin_name);
-                    println!("key_derivation: {}", key_derivation);
-                    println!("private_header: {}", private_header);
-                    println!("public_header: {}", public_header);
-                    println!("public_key_hash: {}", public_key_hash);
-                    println!("script_hash: {}", script_hash);
-                    println!("wif: {}", wif);
-                    println!("comment: {}", comment);
-                    let buffer = seed_text.buffer();
-                    let start_iter = buffer.start_iter();
-                    let end_iter = buffer.end_iter();
-                    let seed_string = buffer.text(&start_iter, &end_iter, true);
-                    println!("Seed: {}", seed_string);
-                    
-                    match derive_master_keys(
-                        &seed_string, 
-                        // &coin_symbol,
-                        &private_header,
-                        &public_header,
-                        // false,
-                    ) {
-                        Ok(xprv) => {
-                            master_private_key_text.buffer().set_text(&xprv.0);
-                            master_public_key_text.buffer().set_text(&xprv.1);
-                        },
-                        Err(err) => println!("Can not derive master keys: {}", err),
-                    }
-                }
+            ) {
+                println!("coin_type: {}", coin_type);
+                println!("coin_header: {}", coin_header);
+                println!("coin_symbol: {}", coin_symbol);
+                println!("coin_name: {}", coin_name);
+                println!("key_derivation: {}", key_derivation);
+                println!("private_header: {}", private_header);
+                println!("public_header: {}", public_header);
+                println!("public_key_hash: {}", public_key_hash);
+                println!("script_hash: {}", script_hash);
+                println!("wif: {}", wif);
+                println!("comment: {}", comment);
+                let buffer = seed_text.buffer();
+                let start_iter = buffer.start_iter();
+                let end_iter = buffer.end_iter();
+                let seed_string = buffer.text(&start_iter, &end_iter, true);
+                println!("Seed: {}", seed_string);
                 
+                match derive_master_keys(
+                    &seed_string, 
+                    // &coin_symbol,
+                    &private_header,
+                    &public_header,
+                    // false,
+                ) {
+                    Ok(xprv) => {
+                        master_private_key_text.buffer().set_text(&xprv.0);
+                        master_public_key_text.buffer().set_text(&xprv.1);
+                    },
+                    Err(err) => println!("Can not derive master keys: {}", err),
+                }
+            }
         }
-
-        // stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
-        // stack.set_visible_child_name("sidebar-address")
     }));
     
     coin_search.connect_search_changed(move|coin_search| {
@@ -1824,9 +1956,6 @@ fn create_main_window(application: &adw::Application) {
         }
     });
 
-
-
-
     // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
@@ -1839,9 +1968,38 @@ fn create_main_window(application: &adw::Application) {
 fn main() {
     print_program_info();
 
-    let application = adw::Application::builder()
-        .application_id("com.github.qr2m")
-        .build();
+    // TODO: Check OS type
+    let OS = std::env::consts::OS;
+    println!("Local OS: {:?}", OS);
+
+    match OS {
+        #[cfg(target_os = "linux")]
+        "linux" => {
+            use libadwaita as adw;
+            use adw::prelude::*;
+        },
+        #[cfg(target_os = "windows")]
+        "windows" => {
+            println!("libadwaita is disabled");
+        },
+        // macos
+        // ios
+        // freebsd
+        // dragonfly
+        // netbsd
+        // openbsd
+        // solaris
+        // android
+        &_ => {
+            println!("Unknown OS");
+        },
+    };
+
+    #[cfg(target_os = "windows")]
+    let application = gtk::Application::builder().application_id("com.github.qr2m").build();
+
+    #[cfg(target_os = "linux")]
+    let application = adw::Application::builder().application_id("com.github.qr2m").build();
 
     application.connect_activate(|app| {
         create_main_window(app);
@@ -2300,21 +2458,14 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 }
 
 
-
-
-
-
 // TESTING
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
-
-
-
-
-
-
 fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percent: Option<u32> ) {
+
+    
+    // let DP = DerivationPath::get_derivation_path(T)
+
 
     let dialog_window = gtk::ApplicationWindow::builder()
         .title(msg)
@@ -2370,6 +2521,108 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
     dialog_window.show();
 }
 
+
+struct DerivationPath {
+    bip: u32,
+    hardened_bip: bool,
+    coin: u32,
+    hardened_coin: bool,
+    address: u32,
+    hardened_address: bool,
+    purpose: u32,
+}
+
+impl DerivationPath {
+
+
+    fn get_value(&self, name: &str) -> Option<String> {
+        match name {
+            "wallet_entropy_source" => Some(self.wallet_entropy_source.clone()),
+            "wallet_entropy_length" => Some(self.wallet_entropy_length.to_string()),
+            "wallet_bip" => Some(self.wallet_bip.to_string()),
+            "gui_save_window_size" => Some(self.gui_save_window_size.to_string()),
+            "gui_last_width" => Some(self.gui_window_width.to_string()),
+            "gui_last_height" => Some(self.gui_window_height.to_string()),
+            "gui_window_maximized" => Some(self.gui_window_maximized.to_string()),
+            "anu_enabled" => Some(self.anu_enabled.to_string()),
+            "anu_data_format" => Some(self.anu_data_format.clone()),
+            "anu_array_length" => Some(self.anu_array_length.to_string()),
+            "anu_hex_block_size" => Some(self.anu_hex_block_size.to_string()),
+            "anu_log" => Some(self.anu_log.to_string()),
+            _ => None,
+        }
+    }
+
+    
+    fn get_derivation_path(&self) -> String {
+        let mut path = String::new();
+        
+        if self.bip == 32  {
+            // BIP      m/32[']
+            path.push_str(&format!("m/{}", self.bip));
+            if self.hardened_bip {
+                path.push_str(&format!("'"));
+            }
+    
+            // COIN     m/32[']/0[']
+            path.push_str(&format!("/{}", self.coin));
+            if self.hardened_coin {
+                path.push_str(&format!("'"));
+            }
+
+            // ADDRESS  m/32[']/0[']/0[']
+            path.push_str(&format!("/{}", self.address));
+            if self.hardened_address {
+                path.push_str(&format!("'"));
+            }
+        } else {
+            // BIP      m/!32[']
+            path.push_str(&format!("m/{}", self.bip));
+            if self.hardened_bip {
+                path.push_str(&format!("'"));
+            }
+    
+            // COIN     m/!32[']/0[']
+            path.push_str(&format!("/{}", self.coin));
+            if self.hardened_coin {
+                path.push_str(&format!("'"));
+            }
+            
+            // ADDRESS  m/!32[']/0[']/0[']
+            path.push_str(&format!("/{}", self.address));
+            if self.hardened_address {
+                path.push_str(&format!("'"));
+            }
+    
+            // PURPOSE  m/!32[']/0[']/0[']/[0,1]
+            path.push_str(&format!("{}", self.purpose));
+        }
+
+        path
+    }
+
+    fn update_derivation_path(&mut self, 
+        bip: Option<u32>,
+        hardened_bip: Option<bool>,
+        coin: Option<u32>,
+        hardened_coin: Option<bool>,
+        address: Option<u32>,
+        hardened_address: Option<bool>,
+        purpose: Option<u32>
+    ) {
+        if Some(bip) != None {
+                println!("New BIP: {:?}", bip);
+                self.bip = bip.unwrap();
+        }
+
+        // if self.bip. {
+        //     println!("x has value: {}", self.bip);
+        // }
+        // else {
+        //     println!("x is not set");
+        // }
+    }
+}
 
 
 
@@ -2427,45 +2680,4 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 //     hex_strings
 // }
 
-
-// TODO: new struct: derivation_path, update derivation path label with changing struct
-
-
-struct DerivationPath {
-    bip: u32,
-    hardened_bip: bool,
-    coin: u32,
-    hardened_coin: bool,
-    address: u32,
-    hardened_address: bool,
-    purpose: u32,
-}
-
-
-impl DerivationPath {
-    fn get_derivation_path(&self) -> String {
-        let mut path = String::new();
-        
-        // Add purpose
-        path.push_str(&format!("m/{}'", self.purpose));
-        
-        // Add coin
-        if self.hardened_coin {
-            path.push_str(&format!("/{}'", self.coin));
-        } else {
-            path.push_str(&format!("/{}", self.coin));
-        }
-        
-        // Add address
-        if self.hardened_address {
-            path.push_str(&format!("/{}'", self.address));
-        } else {
-            path.push_str(&format!("/{}", self.address));
-        }
-        
-        path
-    }
-
-
-}
 

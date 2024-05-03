@@ -1,3 +1,8 @@
+# version 0.10.0
+- basic windows support (no adwaita)
+- ANU settings
+- proxy settings
+
 # version 0.9.1
 - entropy from file - import any file to generate entropy
 - Rustdoc

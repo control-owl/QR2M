@@ -47,3 +47,4 @@
 ### Advance
 - [ ] tokio
 - [ ] buy USB QRNG and make support for it
+- [x] windows support
