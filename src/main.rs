@@ -2431,41 +2431,100 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 // TODO: new struct: derivation_path, update derivation path label with changing struct
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Debug, Default)]
 struct DerivationPath {
-    bip: u32,
-    hardened_bip: bool,
-    coin: u32,
-    hardened_coin: bool,
-    address: u32,
-    hardened_address: bool,
-    purpose: u32,
+    bip: Option<u32>,
+    hardened_bip: Option<bool>,
+    coin: Option<u32>,
+    hardened_coin: Option<bool>,
+    address: Option<u32>,
+    hardened_address: Option<bool>,
+    purpose: Option<u32>,
 }
 
 
 impl DerivationPath {
-    fn get_derivation_path(&self) -> String {
-        let mut path = String::new();
-        
-        // Add purpose
-        path.push_str(&format!("m/{}'", self.purpose));
-        
-        // Add coin
-        if self.hardened_coin {
-            path.push_str(&format!("/{}'", self.coin));
-        } else {
-            path.push_str(&format!("/{}", self.coin));
+    fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
+        match field {
+            "bip" => self.bip = value.and_then(|v| v.into_u32()),
+            "hardened_bip" => self.hardened_bip = value.and_then(|v| v.into_bool()),
+            "coin" => self.coin = value.and_then(|v| v.into_u32()),
+            "hardened_coin" => self.hardened_coin = value.and_then(|v| v.into_bool()),
+            "address" => self.address = value.and_then(|v| v.into_u32()),
+            "hardened_address" => self.hardened_address = value.and_then(|v| v.into_bool()),
+            "purpose" => self.purpose = value.and_then(|v| v.into_u32()),
+            _ => println!("Invalid field"),
         }
-        
-        // Add address
-        if self.hardened_address {
-            path.push_str(&format!("/{}'", self.address));
-        } else {
-            path.push_str(&format!("/{}", self.address));
-        }
-        
-        path
     }
-
-
 }
 
+#[derive(Debug)]
+enum FieldValue {
+    U32(u32),
+    Bool(bool),
+}
+
+impl FieldValue {
+    fn into_u32(self) -> Option<u32> {
+        match self {
+            FieldValue::U32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    fn into_bool(self) -> Option<bool> {
+        match self {
+            FieldValue::Bool(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
+
+fn updateDP() {
+    let mut derivation_path = DerivationPath::default();
+    
+    // Update individual fields
+    derivation_path.update_field("bip", Some(FieldValue::U32(44)));
+    derivation_path.update_field("hardened_address", Some(FieldValue::Bool(true)));
+
+    // Access fields
+    println!("BIP: {:?}", derivation_path.bip);
+    println!("Hardened Address: {:?}", derivation_path.hardened_address);
+}
