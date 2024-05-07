@@ -1,5 +1,12 @@
 ## Active tasks
 
+
+### Current focus is:
+
+1. Derivation Path struct, because without it I can not finish address table
+2. proxy settings
+
+
 ### Main window
 
 - [x] master private key (xprv)
@@ -32,6 +39,7 @@
     - [ ] write settings file
     - [ ] local settings ($HOME)
 - [ ] set theme color in settings
+- [ ] proxy support
 
 ---
 

@@ -42,11 +42,11 @@ const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
 const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
 const ANU_LOG_FILE: &str = "log/anu";
 const ANU_API_URL: &str = "qrng.anu.edu.au:80";
-// const ANU_VALID_DATA_FORMAT: &'static [&'static str] = &[
-//     "uint8", 
-//     "uint16", 
-//     "hex16",
-// ];
+const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
+    "uint8", 
+    "uint16", 
+    "hex16",
+];
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
@@ -1062,27 +1062,165 @@ fn create_settings_window() {
     stack.add_titled(&wallet_settings_box, Some("sidebar-settings-wallet"), "Wallet");
 
 
+    // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 3: ANU settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let anu_settings_frame = gtk::Frame::new(Some(" App settings"));
+    let anu_settings_frame = gtk::Frame::new(Some(" ANU settings"));
     let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    anu_settings_box.set_margin_bottom(10);
+    anu_settings_box.set_margin_bottom(0);
     anu_settings_box.set_margin_top(10);
     anu_settings_box.set_margin_start(10);
     anu_settings_box.set_margin_end(10);
     content_anu_box.set_margin_start(20);
+    content_anu_box.set_margin_top(10);
     anu_settings_box.append(&anu_settings_frame);
     anu_settings_frame.set_child(Some(&content_anu_box));
     anu_settings_frame.set_hexpand(true);
     anu_settings_frame.set_vexpand(true);
 
-    // ANU objects
+    // Use ANU QRNG API
+    let use_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_anu_api_label = gtk::Label::new(Some("Use ANU QRNG API:"));
+    let use_anu_api_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.anu_enabled;
 
+    use_anu_api_checkbox.set_active(is_checked);
+    use_anu_api_label_box.set_hexpand(true);
+    use_anu_api_item_box.set_hexpand(true);
+    use_anu_api_item_box.set_margin_end(20);
+    use_anu_api_item_box.set_halign(gtk::Align::End);
 
+    use_anu_api_label_box.append(&use_anu_api_label);
+    use_anu_api_item_box.append(&use_anu_api_checkbox);
+    use_anu_api_box.append(&use_anu_api_label_box);
+    use_anu_api_box.append(&use_anu_api_item_box);
+    content_anu_box.append(&use_anu_api_box);
 
+    // ANU API data type
+    let default_api_data_format_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_api_data_format_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_api_data_format_label = gtk::Label::new(Some("API data type:"));
+    let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT.iter().map(|&x| x.to_string()).collect();
+    let valid_api_data_formats_as_str_refs: Vec<&str> = valid_api_data_formats_as_strings.iter().map(|s| s.as_ref()).collect();
+    let anu_data_format_dropdown = gtk::DropDown::from_strings(&valid_api_data_formats_as_str_refs);
+    let default_api_data_format = valid_api_data_formats_as_strings
+        .iter()
+        .position(|x| x.parse::<String>().unwrap() == settings.anu_data_format)
+        .unwrap_or(0);
 
+    anu_data_format_dropdown.set_selected(default_api_data_format.try_into().unwrap());
+    anu_data_format_dropdown.set_size_request(200, 10);
+    default_api_data_format_box.set_hexpand(true);
+    default_api_data_format_item_box.set_hexpand(true);
+    default_api_data_format_item_box.set_margin_end(20);
+    default_api_data_format_item_box.set_halign(gtk::Align::End);
+    
+    default_api_data_format_label_box.append(&default_api_data_format_label);
+    default_api_data_format_item_box.append(&anu_data_format_dropdown);
+    default_api_data_format_box.append(&default_api_data_format_label_box);
+    default_api_data_format_box.append(&default_api_data_format_item_box);
+    content_anu_box.append(&default_api_data_format_box);
+
+    // ANU array length
+    let default_anu_array_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_array_length_label = gtk::Label::new(Some("API array length: (32-1024)"));
+    
+    // TODO: calculate lower and initial value for a successfull API request based on entropy length
+    // 16 = 16x8 = 128 chars 
+    // 32 = 32x8 = 256 chars
+    let array_length_adjustment = gtk::Adjustment::new(
+        32.0, // initial value
+        32.0, // minimum value
+        1024.0, // maximum value
+        1.0, // step increment
+        10.0, // page increment
+        0.0, // page size
+    );
+    let default_anu_array_length_spinbutton = gtk::SpinButton::new(Some(&array_length_adjustment), 1.0, 0);
+
+    default_anu_array_length_label_box.set_hexpand(true);
+    default_anu_array_length_item_box.set_hexpand(true);
+    default_anu_array_length_item_box.set_margin_end(20);
+    default_anu_array_length_item_box.set_halign(gtk::Align::End);
+    default_anu_array_length_spinbutton.set_size_request(200, 10);
+
+    default_anu_array_length_label_box.append(&default_anu_array_length_label);
+    default_anu_array_length_item_box.append(&default_anu_array_length_spinbutton);
+    default_anu_array_length_box.append(&default_anu_array_length_label_box);
+    default_anu_array_length_box.append(&default_anu_array_length_item_box);
+    content_anu_box.append(&default_anu_array_length_box);
+    
+    // ANU hex block size
+    let default_anu_hex_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_hex_length_label = gtk::Label::new(Some("Hex block size: (1-1024)"));
+    
+    // TODO: calculate lower and initial value for a successfull API request based on entropy length and array length
+    // 16 = 16x8x(array_length)=
+    let hex_block_size_adjustment = gtk::Adjustment::new(
+        1.0, // initial value
+        1.0, // minimum value
+        1024.0, // maximum value
+        1.0, // step increment
+        10.0, // page increment
+        0.0, // page size
+    );
+    let default_anu_hex_length_spinbutton = gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
+
+    default_anu_hex_length_label_box.set_hexpand(true);
+    default_anu_hex_length_item_box.set_hexpand(true);
+    default_anu_hex_length_item_box.set_margin_end(20);
+    default_anu_hex_length_item_box.set_halign(gtk::Align::End);
+    default_anu_hex_length_spinbutton.set_size_request(200, 10);
+
+    default_anu_hex_length_label_box.append(&default_anu_hex_length_label);
+    default_anu_hex_length_item_box.append(&default_anu_hex_length_spinbutton);
+    default_anu_hex_length_box.append(&default_anu_hex_length_label_box);
+    default_anu_hex_length_box.append(&default_anu_hex_length_item_box);
+    content_anu_box.append(&default_anu_hex_length_box);
+
+    use_anu_api_checkbox.connect_toggled(move |checkbox| {
+        if checkbox.is_active() {
+            default_api_data_format_box.show();
+            default_anu_array_length_box.show();
+            default_anu_hex_length_box.show();
+        } else {
+            default_api_data_format_box.hide();
+            default_anu_array_length_box.hide();
+            default_anu_hex_length_box.hide();
+        }
+    });
+    
     stack.add_titled(&anu_settings_box, Some("sidebar-settings-anu"), "ANU");
+
+
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // Sidebar 4: Proxy settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let proxy_settings_frame = gtk::Frame::new(Some(" Proxy settings"));
+    let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+    proxy_settings_box.set_margin_bottom(0);
+    proxy_settings_box.set_margin_top(10);
+    proxy_settings_box.set_margin_start(10);
+    proxy_settings_box.set_margin_end(10);
+    content_proxy_box.set_margin_start(20);
+    proxy_settings_box.append(&proxy_settings_frame);
+    proxy_settings_frame.set_child(Some(&content_proxy_box));
+    proxy_settings_frame.set_hexpand(true);
+    proxy_settings_frame.set_vexpand(true);
+
+    stack.add_titled(&proxy_settings_box, Some("sidebar-settings-proxy"), "Proxy");
+
 
 
 
@@ -1131,7 +1269,7 @@ fn create_settings_window() {
 /// create_settings_window();
 /// ```
 fn create_about_window() {
-    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.svg")).expect("msg");
+    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.png")).expect("msg");
     let license = fs::read_to_string("LICENSE.txt").unwrap();
 
     let help_window = gtk::AboutDialog::builder()
@@ -1221,6 +1359,7 @@ fn create_main_window(application: &adw::Application) {
     let about_button = gtk::Button::new();
 
     // HeaderBar Icons
+    // TODO: make my own menu icons
     new_wallet_button.set_icon_name("tab-new-symbolic");
     open_wallet_button.set_icon_name("document-open-symbolic");
     save_wallet_button.set_icon_name("document-save-symbolic");
@@ -1968,7 +2107,7 @@ fn main() {
     });
 
     test.connect_activate(move |_action, _parameter| {
-        createDialogWindow("msg", Some(true), Some(50));
+        createDialogWindow("test", Some(true), Some(50));
     });
 
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
