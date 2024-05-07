@@ -1,3 +1,7 @@
+# version 0.10.0
+- derivation path struct
+
+
 # version 0.9.1
 - entropy from file - import any file to generate entropy
 - Rustdoc

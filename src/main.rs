@@ -1044,7 +1044,7 @@ fn create_settings_window() {
     let default_bip = valid_bips_as_strings
         .iter()
         .position(|x| x.parse::<u32>().unwrap() == settings.wallet_bip)
-        .unwrap_or(0);
+        .unwrap_or(1); // Default BIP44
 
     bip_dropdown.set_selected(default_bip.try_into().unwrap());
     bip_dropdown.set_size_request(200, 10);
@@ -1508,11 +1508,12 @@ fn create_main_window(application: &adw::Application) {
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
     
-    match settings.get_value("wallet_bip") {
+    let bip_number = match settings.get_value("wallet_bip") {
         Some(bip_number) => {
+            // TODO: parsed_bip_number can not be any u32 number. Make extra check of make new function: verify_settings function
             let parsed_bip_number = bip_number.parse::<u32>().unwrap_or_else(|_| {
                 eprintln!("Failed to parse default BIP number: {}", bip_number);
-                44  // Default BIP
+                44  // Default BIP44
             });
 
             let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == parsed_bip_number).unwrap_or_else(|| {
@@ -1528,7 +1529,7 @@ fn create_main_window(application: &adw::Application) {
 
             let default_bip_number = 44;
             let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == default_bip_number).unwrap_or_else(|| {
-                eprintln!("Default BIP number {} not found in valid BIP derivations", default_bip_number);
+                eprintln!("BIP: {} in config file is invalid.", default_bip_number);
                 1 // BIP44
             });
 
@@ -1581,20 +1582,22 @@ fn create_main_window(application: &adw::Application) {
     let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
     derivation_label_frame.set_hexpand(true);
     
-    let bip_number = match settings.get_value("wallet_bip") {
-        Some(bip_number) => bip_number.parse::<u32>().unwrap_or_else(|_| {
-            eprintln!("Failed to parse default BIP number: {}", bip_number);
-            44
-        }),
-        None => {
-            eprintln!("'bip' not found in settings");
-            44
-        }
-    };
-
+    // Default derivation path: m/44'/0'/0'/0
+    let mut default_derivation_path = DerivationPath::default();
+    default_derivation_path.update_field("bip", Some(FieldValue::U32(bip_number)));
+    default_derivation_path.update_field("hardened_bip", Some(FieldValue::Bool(true)));
+    default_derivation_path.update_field("coin", Some(FieldValue::U32(0)));
+    default_derivation_path.update_field("hardened_coin", Some(FieldValue::Bool(true)));
+    default_derivation_path.update_field("address", Some(FieldValue::U32(0)));
+    default_derivation_path.update_field("hardened_address", Some(FieldValue::Bool(true)));
+    
     let default_bip_label = if bip_number == 32 {
+        default_derivation_path.update_field("purpose", None);
+        main_purpose_frame.set_visible(false);
         format!("m/{}'/0'/0'", bip_number)
     } else {
+        default_derivation_path.update_field("purpose", Some(FieldValue::U32(0)));
+        main_purpose_frame.set_visible(true);
         format!("m/{}'/0'/0'/0", bip_number)
     };
     
@@ -1823,9 +1826,90 @@ fn create_main_window(application: &adw::Application) {
             treestore.clear();
         }
     });
+    
+    fn update_derivation_label(label: gtk::Label, mut DP: DerivationPath, field: &str, value: Option<FieldValue>) {
+        DP.update_field(field, value);
 
+        println!("New derivation_path: {:?}", DP);
 
+        let mut path = String::new();
 
+        if DP.bip.unwrap() == 32  {
+            // BIP      m/32[']
+            path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
+            if DP.hardened_bip.unwrap_or_default() {
+                path.push_str(&format!("'"));
+            }
+            // COIN     m/32[']/0[']
+            path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
+            if DP.hardened_coin.unwrap_or_default() {
+                path.push_str(&format!("'"));
+            }
+            // ADDRESS  m/32[']/0[']/0[']
+            path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
+            if DP.hardened_address.unwrap_or_default() {
+                path.push_str(&format!("'"));
+            }
+        } else {
+            // BIP      m/!32[']
+            path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
+            if DP.hardened_bip.unwrap_or_default() {
+                path.push_str(&format!("'"));
+            }
+            // COIN     m/!32[']/0[']
+            path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
+            if DP.hardened_coin.unwrap_or_default() {
+                path.push_str(&format!("'"));
+            }
+            // ADDRESS  m/!32[']/0[']/0[']
+            path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
+            if DP.hardened_address.unwrap_or_default() {
+                path.push_str(&format!("'"));
+            }
+            // PURPOSE  m/!32[']/0[']/0[']/[0,1]
+            path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
+
+        }
+        
+        label.set_text(&path);
+    }
+
+    bip_dropdown.connect_selected_notify(clone!(
+        // @strong default_derivation_path,
+        @weak derivation_label_text,
+        @weak bip_dropdown, => move |_| {
+            let aa = bip_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(aa);
+            let bip = selected_entropy_source_value.unwrap();
+            println!("New BIP: {}", bip);
+            
+            if *bip == 32 {
+                main_purpose_frame.set_visible(false);
+            } else {
+                main_purpose_frame.set_visible(true);
+            }
+            
+        // TODO: replace default_derivation_path with a current_derivation-path
+        update_derivation_label(
+            derivation_label_text,
+            default_derivation_path,
+            "bip",
+            Some(FieldValue::U32(*bip))
+        );
+    }));
+
+    bip_hardened_checkbox.connect_active_notify(clone!(
+        @strong default_derivation_path,
+        @weak derivation_label_text,
+        @weak bip_dropdown, => move |bip_hardened_checkbox| {
+        
+        update_derivation_label(
+            derivation_label_text,
+            default_derivation_path,
+            "hardened_bip",
+            Some(FieldValue::Bool(bip_hardened_checkbox.is_active()))
+        );
+    }));
 
     // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -2307,6 +2391,74 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 // TESTING
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+#[derive(Debug, Default, Clone, Copy)]
+struct DerivationPath {
+    bip: Option<u32>,
+    hardened_bip: Option<bool>,
+    coin: Option<u32>,
+    hardened_coin: Option<bool>,
+    address: Option<u32>,
+    hardened_address: Option<bool>,
+    purpose: Option<u32>,
+}
+
+impl DerivationPath {
+    fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
+        match field {
+            "bip" => self.bip = value.and_then(|v| v.into_u32()),
+            "hardened_bip" => self.hardened_bip = value.and_then(|v| v.into_bool()),
+            "coin" => self.coin = value.and_then(|v| v.into_u32()),
+            "hardened_coin" => self.hardened_coin = value.and_then(|v| v.into_bool()),
+            "address" => self.address = value.and_then(|v| v.into_u32()),
+            "hardened_address" => self.hardened_address = value.and_then(|v| v.into_bool()),
+            "purpose" => self.purpose = value.and_then(|v| v.into_u32()),
+            _ => println!("Invalid field"),
+        }
+    }
+
+    fn get_derivation_path(self) -> io::Result<Self> {
+
+        Ok(DerivationPath {
+            bip: self.bip,
+            hardened_bip: self.hardened_bip,
+            coin: self.coin,
+            hardened_coin: self.hardened_coin,
+            address: self.address,
+            hardened_address: self.hardened_address,
+            purpose: self.purpose,
+        })
+
+    }
+}
+
+#[derive(Debug)]
+enum FieldValue {
+    U32(u32),
+    Bool(bool),
+}
+
+impl FieldValue {
+    fn into_u32(self) -> Option<u32> {
+        match self {
+            FieldValue::U32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    fn into_bool(self) -> Option<bool> {
+        match self {
+            FieldValue::Bool(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
+
+
+
+
+
+
 fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percent: Option<u32> ) {
 
     let dialog_window = gtk::ApplicationWindow::builder()
@@ -2367,21 +2519,6 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // OLD CODE
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -2419,105 +2556,3 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 //     }
 //     hex_strings
 // }
-
-
-// TODO: new struct: derivation_path, update derivation path label with changing struct
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#[derive(Debug, Default)]
-struct DerivationPath {
-    bip: Option<u32>,
-    hardened_bip: Option<bool>,
-    coin: Option<u32>,
-    hardened_coin: Option<bool>,
-    address: Option<u32>,
-    hardened_address: Option<bool>,
-    purpose: Option<u32>,
-}
-
-
-impl DerivationPath {
-    fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
-        match field {
-            "bip" => self.bip = value.and_then(|v| v.into_u32()),
-            "hardened_bip" => self.hardened_bip = value.and_then(|v| v.into_bool()),
-            "coin" => self.coin = value.and_then(|v| v.into_u32()),
-            "hardened_coin" => self.hardened_coin = value.and_then(|v| v.into_bool()),
-            "address" => self.address = value.and_then(|v| v.into_u32()),
-            "hardened_address" => self.hardened_address = value.and_then(|v| v.into_bool()),
-            "purpose" => self.purpose = value.and_then(|v| v.into_u32()),
-            _ => println!("Invalid field"),
-        }
-    }
-}
-
-#[derive(Debug)]
-enum FieldValue {
-    U32(u32),
-    Bool(bool),
-}
-
-impl FieldValue {
-    fn into_u32(self) -> Option<u32> {
-        match self {
-            FieldValue::U32(value) => Some(value),
-            _ => None,
-        }
-    }
-
-    fn into_bool(self) -> Option<bool> {
-        match self {
-            FieldValue::Bool(value) => Some(value),
-            _ => None,
-        }
-    }
-}
-
-
-fn updateDP() {
-    let mut derivation_path = DerivationPath::default();
-    
-    // Update individual fields
-    derivation_path.update_field("bip", Some(FieldValue::U32(44)));
-    derivation_path.update_field("hardened_address", Some(FieldValue::Bool(true)));
-
-    // Access fields
-    println!("BIP: {:?}", derivation_path.bip);
-    println!("Hardened Address: {:?}", derivation_path.hardened_address);
-}
