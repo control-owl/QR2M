@@ -17,7 +17,7 @@ use std::{
 use hex;
 use rand::Rng;
 use sha2::{Digest, Sha256, Sha512};
-use bip39;
+use bip39::{self, serde::de::value};
 use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
@@ -1709,9 +1709,9 @@ fn create_main_window(application: &adw::Application) {
     
     let valid_wallet_pupose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
     let valid_wallet_pupose_as_ref: Vec<&str> = valid_wallet_pupose_as_strings.iter().map(|s| s.as_ref()).collect();
-    let purpose_dropbox = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
-    purpose_dropbox.set_selected(0); // Internal
-    purpose_dropbox.set_hexpand(true);
+    let purpose_dropdown = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
+    purpose_dropdown.set_selected(0); // Internal
+    purpose_dropdown.set_hexpand(true);
 
     bip_hardened_frame.set_child(Some(&bip_hardened_checkbox));
     coin_hardened_frame.set_child(Some(&coin_hardened_checkbox));
@@ -1721,21 +1721,21 @@ fn create_main_window(application: &adw::Application) {
     let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
     derivation_label_frame.set_hexpand(true);
     
-    // Default derivation path: m/44'/0'/0'/0
-    let mut default_derivation_path = DerivationPath::default();
-    default_derivation_path.update_field("bip", Some(FieldValue::U32(bip_number)));
-    default_derivation_path.update_field("hardened_bip", Some(FieldValue::Bool(true)));
-    default_derivation_path.update_field("coin", Some(FieldValue::U32(0)));
-    default_derivation_path.update_field("hardened_coin", Some(FieldValue::Bool(true)));
-    default_derivation_path.update_field("address", Some(FieldValue::U32(0)));
-    default_derivation_path.update_field("hardened_address", Some(FieldValue::Bool(true)));
+    // // Default derivation path: m/44'/0'/0'/0
+    // let mut default_derivation_path = DerivationPath::default();
+    // default_derivation_path.update_field("bip", Some(FieldValue::U32(bip_number)));
+    // default_derivation_path.update_field("hardened_bip", Some(FieldValue::Bool(true)));
+    // default_derivation_path.update_field("coin", Some(FieldValue::U32(0)));
+    // default_derivation_path.update_field("hardened_coin", Some(FieldValue::Bool(true)));
+    // default_derivation_path.update_field("address", Some(FieldValue::U32(0)));
+    // default_derivation_path.update_field("hardened_address", Some(FieldValue::Bool(true)));
     
     let default_bip_label = if bip_number == 32 {
-        default_derivation_path.update_field("purpose", None);
+        // default_derivation_path.update_field("purpose", None);
         main_purpose_frame.set_visible(false);
         format!("m/{}'/0'/0'", bip_number)
     } else {
-        default_derivation_path.update_field("purpose", Some(FieldValue::U32(0)));
+        // default_derivation_path.update_field("purpose", Some(FieldValue::U32(0)));
         main_purpose_frame.set_visible(true);
         format!("m/{}'/0'/0'/0", bip_number)
     };
@@ -1773,7 +1773,7 @@ fn create_main_window(application: &adw::Application) {
     coin_box.append(&coin_hardened_frame);
     address_box.append(&address_spinbutton);
     address_box.append(&address_hardened_frame);
-    purpose_box.append(&purpose_dropbox);
+    purpose_box.append(&purpose_dropdown);
     main_bip_frame.set_child(Some(&bip_box));
     main_coin_frame.set_child(Some(&coin_box));
     main_address_frame.set_child(Some(&address_box));
@@ -1966,10 +1966,9 @@ fn create_main_window(application: &adw::Application) {
         }
     });
     
-    fn update_derivation_label(label: gtk::Label, mut DP: DerivationPath, field: &str, value: Option<FieldValue>) {
-        DP.update_field(field, value);
 
-        println!("New derivation_path: {:?}", DP);
+    fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
+        // println!("New derivation_path: {:?}", DP);
 
         let mut path = String::new();
 
@@ -2013,42 +2012,80 @@ fn create_main_window(application: &adw::Application) {
         label.set_text(&path);
     }
 
+    let derivation_path = std::rc::Rc::new(std::cell::RefCell::new(DerivationPath::default()));
+    let dp_clone = std::rc::Rc::clone(&derivation_path);
+
     bip_dropdown.connect_selected_notify(clone!(
-        // @strong default_derivation_path,
         @weak derivation_label_text,
-        @weak bip_dropdown, => move |_| {
-            let aa = bip_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(aa);
+        @weak bip_dropdown => move |_| {
+            let value = bip_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(value);
             let bip = selected_entropy_source_value.unwrap();
-            println!("New BIP: {}", bip);
-            
+    
             if *bip == 32 {
                 main_purpose_frame.set_visible(false);
             } else {
                 main_purpose_frame.set_visible(true);
             }
-            
-        // TODO: replace default_derivation_path with a current_derivation-path
-        update_derivation_label(
-            derivation_label_text,
-            default_derivation_path,
-            "bip",
-            Some(FieldValue::U32(*bip))
-        );
+    
+            dp_clone.borrow_mut().update_field("bip", Some(FieldValue::U32(*bip)));
+            // println!("new DP: {:?}", dp_clone.borrow());
+            update_derivation_label(*dp_clone.borrow(), derivation_label_text)
+        }
+    ));
+        
+    let dp_clone = std::rc::Rc::clone(&derivation_path);
+    
+    bip_hardened_checkbox.connect_active_notify(clone!(
+        @weak derivation_label_text,
+        @weak bip_hardened_checkbox => move |_| {
+            dp_clone.borrow_mut().update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
+            // println!("new DP: {:?}", dp_clone.borrow());
+            update_derivation_label(*dp_clone.borrow(), derivation_label_text)
+        }));
+        
+    let dp_clone2 = std::rc::Rc::clone(&derivation_path);
+    
+    coin_hardened_checkbox.connect_active_notify(clone!(
+        @weak derivation_label_text,
+        @weak coin_hardened_checkbox => move |_| {
+            dp_clone2.borrow_mut().update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
+            // println!("new DP: {:?}", dp_clone2.borrow());
+            update_derivation_label(*dp_clone2.borrow(), derivation_label_text)
     }));
 
-    bip_hardened_checkbox.connect_active_notify(clone!(
-        @strong default_derivation_path,
+    let dp_clone3 = std::rc::Rc::clone(&derivation_path);
+    
+    address_hardened_checkbox.connect_active_notify(clone!(
         @weak derivation_label_text,
-        @weak bip_dropdown, => move |bip_hardened_checkbox| {
+        @weak address_hardened_checkbox => move |_| {
+            dp_clone3.borrow_mut().update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
+            // println!("new DP: {:?}", dp_clone3.borrow());
+            update_derivation_label(*dp_clone3.borrow(), derivation_label_text)
+        }));
         
-        update_derivation_label(
-            derivation_label_text,
-            default_derivation_path,
-            "hardened_bip",
-            Some(FieldValue::Bool(bip_hardened_checkbox.is_active()))
-        );
-    }));
+    let dp_clone4 = std::rc::Rc::clone(&derivation_path);
+    
+    purpose_dropdown.connect_selected_notify(clone!(
+        @weak derivation_label_text,
+        @weak purpose_dropdown => move |_| {
+            let purpose = purpose_dropdown.selected();
+
+            dp_clone4.borrow_mut().update_field("purpose", Some(FieldValue::U32(purpose)));
+            // println!("new Purpose: {:?}", dp_clone4.borrow());
+            update_derivation_label(*dp_clone4.borrow(), derivation_label_text);
+        }
+    ));
+
+
+
+
+
+
+
+
+
+
 
     // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -2529,8 +2566,7 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 // TESTING
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct DerivationPath {
     bip: Option<u32>,
     hardened_bip: Option<bool>,
@@ -2542,6 +2578,18 @@ struct DerivationPath {
 }
 
 impl DerivationPath {
+    fn default() -> Self {
+        Self {
+            bip: Some(44),
+            hardened_bip: Some(true),
+            coin: Some(0),
+            hardened_coin: Some(true),
+            address: Some(0),
+            hardened_address: Some(true),
+            purpose: Some(0),
+        }
+    }
+
     fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
         match field {
             "bip" => self.bip = value.and_then(|v| v.into_u32()),
@@ -2555,9 +2603,8 @@ impl DerivationPath {
         }
     }
 
-    fn get_derivation_path(self) -> io::Result<Self> {
-
-        Ok(DerivationPath {
+    fn get_derivation_path(&self) -> Self {
+        Self {
             bip: self.bip,
             hardened_bip: self.hardened_bip,
             coin: self.coin,
@@ -2565,8 +2612,7 @@ impl DerivationPath {
             address: self.address,
             hardened_address: self.hardened_address,
             purpose: self.purpose,
-        })
-
+        }
     }
 }
 
