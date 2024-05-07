@@ -2307,13 +2307,6 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 // TESTING
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
-
-
-
-
-
-
 fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percent: Option<u32> ) {
 
     let dialog_window = gtk::ApplicationWindow::builder()
