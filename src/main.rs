@@ -2077,16 +2077,6 @@ fn create_main_window(application: &adw::Application) {
         }
     ));
 
-
-
-
-
-
-
-
-
-
-
     // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
