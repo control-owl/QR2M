@@ -17,7 +17,7 @@ use std::{
 use hex;
 use rand::Rng;
 use sha2::{Digest, Sha256, Sha512};
-use bip39::{self, serde::de::value};
+use bip39;
 use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
@@ -54,7 +54,11 @@ const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
 const APP_DEFAULT_WIDTH: u32 = 1000;
 const APP_DEFAULT_HEIGHT: u32 = 800;
-
+const VALID_PROXY_STATUS: &'static [&'static str] = &[
+    "off", 
+    "auto", 
+    "manual",
+];
 
 
 // BASIC
@@ -732,6 +736,15 @@ struct AppSettings {
     anu_array_length: u32,
     anu_hex_block_size: u32,
     anu_log: bool,
+    proxy_status: String,
+    proxy_server_address: String,
+    proxy_server_port: u32,
+    proxy_script_address: String,
+    proxy_login_credentials: bool,
+    proxy_login_username: String,
+    proxy_login_password: String,
+    proxy_ssl_cert_enabled: bool,
+    proxy_ssl_certificate: String,
     
 }
 
@@ -775,6 +788,7 @@ impl AppSettings {
 
         // APP settings
         let gui_section = config.get("gui").expect("Missing 'app' section");
+
         let gui_save_window_size = gui_section.get("save_window_size")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
@@ -796,6 +810,7 @@ impl AppSettings {
 
         // Wallet settings
         let wallet_section = config.get("wallet").expect("Missing 'wallet' section");
+
         let wallet_entropy_source = wallet_section.get("entropy_source")
             .and_then(|v| v.as_str())
             .unwrap_or("RNG")
@@ -814,6 +829,7 @@ impl AppSettings {
         
         // ANU settings
         let anu_section = config.get("anu").expect("Missing 'anu' section");
+
         let anu_enabled = anu_section.get("anu_enabled")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
@@ -837,6 +853,53 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
+
+        // Proxy settings
+        let proxy_section = config.get("proxy").expect("Missing 'proxy' section");
+
+        let proxy_status = proxy_section.get("proxy_status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Auto")
+            .to_string();
+
+        let proxy_server_address = proxy_section.get("proxy_server_address")
+            .and_then(|v| v.as_str())
+            .unwrap_or("qqqqq")
+            .to_string();
+
+        let proxy_server_port = proxy_section.get("proxy_server_port")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(8080);
+
+        let proxy_script_address = proxy_section.get("proxy_script_address")
+            .and_then(|v| v.as_str())
+            .unwrap_or("qqqq")
+            .to_string();
+
+        let proxy_login_credentials: bool = proxy_section.get("proxy_login_credentials")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        let proxy_login_username = proxy_section.get("proxy_login_username")
+            .and_then(|v| v.as_str())
+            .unwrap_or("qqqq")
+            .to_string();
+
+        let proxy_login_password = proxy_section.get("proxy_login_password")
+            .and_then(|v| v.as_str())
+            .unwrap_or("qqqq")
+            .to_string();
+
+        let proxy_ssl_cert_enabled: bool = proxy_section.get("proxy_ssl_cert_enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        let proxy_ssl_certificate = proxy_section.get("proxy_ssl_certificate")
+            .and_then(|v| v.as_str())
+            .unwrap_or("qqqqq")
+            .to_string();
+
         // Create and return AppSettings instance
         Ok(AppSettings {
             wallet_entropy_source,
@@ -851,6 +914,15 @@ impl AppSettings {
             anu_array_length,
             anu_hex_block_size,
             anu_log,
+            proxy_status,
+            proxy_server_address,
+            proxy_server_port,
+            proxy_script_address,
+            proxy_login_credentials,
+            proxy_login_username,
+            proxy_login_password,
+            proxy_ssl_cert_enabled,
+            proxy_ssl_certificate,
         })
     }
 
@@ -878,15 +950,99 @@ impl AppSettings {
             "wallet_entropy_source" => Some(self.wallet_entropy_source.clone()),
             "wallet_entropy_length" => Some(self.wallet_entropy_length.to_string()),
             "wallet_bip" => Some(self.wallet_bip.to_string()),
+
             "gui_save_window_size" => Some(self.gui_save_window_size.to_string()),
             "gui_last_width" => Some(self.gui_window_width.to_string()),
             "gui_last_height" => Some(self.gui_window_height.to_string()),
             "gui_window_maximized" => Some(self.gui_window_maximized.to_string()),
+
             "anu_enabled" => Some(self.anu_enabled.to_string()),
             "anu_data_format" => Some(self.anu_data_format.clone()),
             "anu_array_length" => Some(self.anu_array_length.to_string()),
             "anu_hex_block_size" => Some(self.anu_hex_block_size.to_string()),
             "anu_log" => Some(self.anu_log.to_string()),
+
+            "proxy_status" => Some(self.proxy_status.clone()),
+            "proxy_server_address" => Some(self.proxy_server_address.clone()),
+            "proxy_server_port" => Some(self.proxy_server_port.to_string()),
+            "proxy_script_address" => Some(self.proxy_script_address.clone()),
+            "proxy_login_credentials" => Some(self.proxy_login_credentials.to_string()),
+            "proxy_login_username" => Some(self.proxy_login_username.clone()),
+            "proxy_login_password" => Some(self.proxy_login_password.clone()),
+            "proxy_ssl_cert_enabled" => Some(self.proxy_ssl_cert_enabled.to_string()),
+            "proxy_ssl_certificate" => Some(self.proxy_ssl_certificate.clone()),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DerivationPath {
+    bip: Option<u32>,
+    hardened_bip: Option<bool>,
+    coin: Option<u32>,
+    hardened_coin: Option<bool>,
+    address: Option<u32>,
+    hardened_address: Option<bool>,
+    purpose: Option<u32>,
+}
+
+impl DerivationPath {
+    fn default() -> Self {
+        Self {
+            bip: Some(44),
+            hardened_bip: Some(true),
+            coin: Some(0),
+            hardened_coin: Some(true),
+            address: Some(0),
+            hardened_address: Some(true),
+            purpose: Some(0),
+        }
+    }
+
+    fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
+        match field {
+            "bip" => self.bip = value.and_then(|v| v.into_u32()),
+            "hardened_bip" => self.hardened_bip = value.and_then(|v| v.into_bool()),
+            "coin" => self.coin = value.and_then(|v| v.into_u32()),
+            "hardened_coin" => self.hardened_coin = value.and_then(|v| v.into_bool()),
+            "address" => self.address = value.and_then(|v| v.into_u32()),
+            "hardened_address" => self.hardened_address = value.and_then(|v| v.into_bool()),
+            "purpose" => self.purpose = value.and_then(|v| v.into_u32()),
+            _ => println!("Invalid field"),
+        }
+    }
+
+    // fn get_derivation_path(&self) -> Self {
+    //     Self {
+    //         bip: self.bip,
+    //         hardened_bip: self.hardened_bip,
+    //         coin: self.coin,
+    //         hardened_coin: self.hardened_coin,
+    //         address: self.address,
+    //         hardened_address: self.hardened_address,
+    //         purpose: self.purpose,
+    //     }
+    // }
+}
+
+#[derive(Debug)]
+enum FieldValue {
+    U32(u32),
+    Bool(bool),
+}
+
+impl FieldValue {
+    fn into_u32(self) -> Option<u32> {
+        match self {
+            FieldValue::U32(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    fn into_bool(self) -> Option<bool> {
+        match self {
+            FieldValue::Bool(value) => Some(value),
             _ => None,
         }
     }
@@ -1219,6 +1375,86 @@ fn create_settings_window() {
     proxy_settings_frame.set_hexpand(true);
     proxy_settings_frame.set_vexpand(true);
 
+
+    // TODO: make new group for every element in proxy
+    // 1. adress/port
+    // 2. Creds
+    // 3. PAC
+    // 4. SSL
+
+
+
+    // Use proxy settings
+    let use_proxy_settings_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_settings_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_settings_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_settings_label = gtk::Label::new(Some("Use proxy settings:"));
+    let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
+    let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
+    let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
+    let defaut_proxy_settings_format = valid_proxy_settings_as_strings
+        .iter()
+        .position(|x| x.parse::<String>().unwrap() == settings.anu_data_format)
+        .unwrap_or(1);  // Default proxy: auto
+
+    use_proxy_settings_dropdown.set_selected(defaut_proxy_settings_format.try_into().unwrap());
+    use_proxy_settings_dropdown.set_size_request(200, 10);
+    use_proxy_settings_label_box.set_hexpand(true);
+    use_proxy_settings_item_box.set_hexpand(true);
+    use_proxy_settings_item_box.set_margin_end(20);
+    use_proxy_settings_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_settings_label_box.append(&use_proxy_settings_label);
+    use_proxy_settings_item_box.append(&use_proxy_settings_dropdown);
+    use_proxy_settings_box.append(&use_proxy_settings_label_box);
+    use_proxy_settings_box.append(&use_proxy_settings_item_box);
+    content_proxy_box.append(&use_proxy_settings_box);
+
+
+    // Proxy server address
+    let proxy_server_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_server_address_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_address_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_address_label = gtk::Label::new(Some("Proxy server address:"));
+    let proxy_server_address_entry = gtk::Entry::new();
+
+    proxy_server_address_entry.set_size_request(200, 10);
+    proxy_server_address_label_box.set_hexpand(true);
+    proxy_server_address_item_box.set_hexpand(true);
+    proxy_server_address_item_box.set_margin_end(20);
+    proxy_server_address_item_box.set_halign(gtk::Align::End);
+
+    proxy_server_address_label_box.append(&proxy_server_address_label);
+    proxy_server_address_item_box.append(&proxy_server_address_entry);
+    proxy_server_address_box.append(&proxy_server_address_label_box);
+    proxy_server_address_box.append(&proxy_server_address_item_box);
+    content_proxy_box.append(&proxy_server_address_box);
+
+
+    // Proxy server port
+    let proxy_server_port_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_server_port_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_port_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_port_label = gtk::Label::new(Some("Proxy server port:"));
+    let proxy_server_port_entry = gtk::Entry::new();
+
+    proxy_server_port_entry.set_size_request(200, 10);
+    proxy_server_port_label_box.set_hexpand(true);
+    proxy_server_port_item_box.set_hexpand(true);
+    proxy_server_port_item_box.set_margin_end(20);
+    proxy_server_port_item_box.set_halign(gtk::Align::End);
+
+    proxy_server_port_label_box.append(&proxy_server_port_label);
+    proxy_server_port_item_box.append(&proxy_server_port_entry);
+    proxy_server_port_box.append(&proxy_server_port_label_box);
+    proxy_server_port_box.append(&proxy_server_port_item_box);
+    content_proxy_box.append(&proxy_server_port_box);
+    
+
+
+
+
+
     stack.add_titled(&proxy_settings_box, Some("sidebar-settings-proxy"), "Proxy");
 
 
@@ -1316,22 +1552,22 @@ fn create_main_window(application: &adw::Application) {
     let window_width = match settings.get_value("gui_last_width") {
         Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
             eprintln!("Failed to parse default window width value: {}", width_str);
-            1200
+            APP_DEFAULT_WIDTH.try_into().unwrap()
         }),
         None => {
             eprintln!("'gui_last_width' not found in settings");
-            1200
+            APP_DEFAULT_WIDTH.try_into().unwrap()
         }
     };
 
     let window_height = match settings.get_value("gui_last_height") {
         Some(height_str) => height_str.parse::<i32>().unwrap_or_else(|_| {
             eprintln!("Failed to parse default window height value: {}", height_str);
-            800
+            APP_DEFAULT_HEIGHT.try_into().unwrap()
         }),
         None => {
             eprintln!("'gui_last_height' not found in settings");
-            800
+            APP_DEFAULT_HEIGHT.try_into().unwrap()
         }
     };
 
@@ -1721,21 +1957,10 @@ fn create_main_window(application: &adw::Application) {
     let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
     derivation_label_frame.set_hexpand(true);
     
-    // // Default derivation path: m/44'/0'/0'/0
-    // let mut default_derivation_path = DerivationPath::default();
-    // default_derivation_path.update_field("bip", Some(FieldValue::U32(bip_number)));
-    // default_derivation_path.update_field("hardened_bip", Some(FieldValue::Bool(true)));
-    // default_derivation_path.update_field("coin", Some(FieldValue::U32(0)));
-    // default_derivation_path.update_field("hardened_coin", Some(FieldValue::Bool(true)));
-    // default_derivation_path.update_field("address", Some(FieldValue::U32(0)));
-    // default_derivation_path.update_field("hardened_address", Some(FieldValue::Bool(true)));
-    
     let default_bip_label = if bip_number == 32 {
-        // default_derivation_path.update_field("purpose", None);
         main_purpose_frame.set_visible(false);
         format!("m/{}'/0'/0'", bip_number)
     } else {
-        // default_derivation_path.update_field("purpose", Some(FieldValue::U32(0)));
         main_purpose_frame.set_visible(true);
         format!("m/{}'/0'/0'/0", bip_number)
     };
@@ -1746,8 +1971,6 @@ fn create_main_window(application: &adw::Application) {
         .valign(gtk::Align::Center)
         .css_classes(["large-title"])
         .build();
-
-
 
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_treeview_frame = gtk::Frame::new(Some(" Addresses"));
@@ -1791,7 +2014,6 @@ fn create_main_window(application: &adw::Application) {
     main_address_box.append(&address_treeview_box);
     
     stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
-
 
 
     // ACTIONS
@@ -1852,47 +2074,47 @@ fn create_main_window(application: &adw::Application) {
     let coin_treeview_clone = coin_treeview.clone();
 
     generate_master_keys_button.connect_clicked(clone!(
-        @weak stack  => move |_| {
-        // TODO: Check if seed is empty, show dialog error
-        if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
-            let coin = model.get_value(&iter, 0);
-            let header = model.get_value(&iter, 1);
-            let symbol = model.get_value(&iter, 2);
-            let name = model.get_value(&iter, 3);
-            let key_derivation = model.get_value(&iter, 4);
-            let private_header = model.get_value(&iter, 5);
-            let public_header = model.get_value(&iter, 6);
-            let public_key_hash = model.get_value(&iter, 7);
-            let script_hash = model.get_value(&iter, 8);
-            let wif = model.get_value(&iter, 9);
-            let comment = model.get_value(&iter, 10);
+        @strong coin_entry,
+        @weak stack   => move |_| {
+            // TODO: Check if seed is empty, show error dialog
+            if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
+                let coin = model.get_value(&iter, 0);
+                let header = model.get_value(&iter, 1);
+                let symbol = model.get_value(&iter, 2);
+                let name = model.get_value(&iter, 3);
+                let key_derivation = model.get_value(&iter, 4);
+                let private_header = model.get_value(&iter, 5);
+                let public_header = model.get_value(&iter, 6);
+                let public_key_hash = model.get_value(&iter, 7);
+                let script_hash = model.get_value(&iter, 8);
+                let wif = model.get_value(&iter, 9);
+                let comment = model.get_value(&iter, 10);
 
-            if let (
-                Ok(coin_type),
-                Ok(coin_header),
-                Ok(coin_symbol),
-                Ok(coin_name),
-                Ok(key_derivation),
-                Ok(private_header),
-                Ok(public_header),
-                Ok(public_key_hash),
-                Ok(script_hash),
-                Ok(wif),
-                Ok(comment),
-            ) = (
-                coin.get::<String>(), 
-                header.get::<String>(), 
-                symbol.get::<String>(), 
-                name.get::<String>(),
-                key_derivation.get::<String>(),
-                private_header.get::<String>(),
-                public_header.get::<String>(),
-                public_key_hash.get::<String>(),
-                script_hash.get::<String>(),
-                wif.get::<String>(),
-                comment.get::<String>(),
-            ) 
-                {
+                if let (
+                    Ok(coin_type),
+                    Ok(coin_header),
+                    Ok(coin_symbol),
+                    Ok(coin_name),
+                    Ok(key_derivation),
+                    Ok(private_header),
+                    Ok(public_header),
+                    Ok(public_key_hash),
+                    Ok(script_hash),
+                    Ok(wif),
+                    Ok(comment),
+                ) = (
+                    coin.get::<String>(), 
+                    header.get::<String>(), 
+                    symbol.get::<String>(), 
+                    name.get::<String>(),
+                    key_derivation.get::<String>(),
+                    private_header.get::<String>(),
+                    public_header.get::<String>(),
+                    public_key_hash.get::<String>(),
+                    script_hash.get::<String>(),
+                    wif.get::<String>(),
+                    comment.get::<String>(),
+                ) {
                     println!("coin_type: {}", coin_type);
                     println!("coin_header: {}", coin_header);
                     println!("coin_symbol: {}", coin_symbol);
@@ -1912,10 +2134,8 @@ fn create_main_window(application: &adw::Application) {
                     
                     match derive_master_keys(
                         &seed_string, 
-                        // &coin_symbol,
                         &private_header,
                         &public_header,
-                        // false,
                     ) {
                         Ok(xprv) => {
                             master_private_key_text.buffer().set_text(&xprv.0);
@@ -1923,14 +2143,13 @@ fn create_main_window(application: &adw::Application) {
                         },
                         Err(err) => println!("Can not derive master keys: {}", err),
                     }
-                }
-                
-        }
 
-        // stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
-        // stack.set_visible_child_name("sidebar-address")
-    }));
-    
+                    coin_entry.set_text(&coin_type);
+                }  
+            }
+        }
+    ));
+
     coin_search.connect_search_changed(move|coin_search| {
         let search_text = coin_search.text().to_uppercase();
         treestore.clear();
@@ -1966,7 +2185,6 @@ fn create_main_window(application: &adw::Application) {
         }
     });
     
-
     fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
         // println!("New derivation_path: {:?}", DP);
 
@@ -2042,7 +2260,8 @@ fn create_main_window(application: &adw::Application) {
             dp_clone.borrow_mut().update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
             // println!("new DP: {:?}", dp_clone.borrow());
             update_derivation_label(*dp_clone.borrow(), derivation_label_text)
-        }));
+        }
+    ));
         
     let dp_clone2 = std::rc::Rc::clone(&derivation_path);
     
@@ -2052,7 +2271,8 @@ fn create_main_window(application: &adw::Application) {
             dp_clone2.borrow_mut().update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
             // println!("new DP: {:?}", dp_clone2.borrow());
             update_derivation_label(*dp_clone2.borrow(), derivation_label_text)
-    }));
+        }
+    ));
 
     let dp_clone3 = std::rc::Rc::clone(&derivation_path);
     
@@ -2062,7 +2282,8 @@ fn create_main_window(application: &adw::Application) {
             dp_clone3.borrow_mut().update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
             // println!("new DP: {:?}", dp_clone3.borrow());
             update_derivation_label(*dp_clone3.borrow(), derivation_label_text)
-        }));
+        }
+    ));
         
     let dp_clone4 = std::rc::Rc::clone(&derivation_path);
     
@@ -2076,6 +2297,41 @@ fn create_main_window(application: &adw::Application) {
             update_derivation_label(*dp_clone4.borrow(), derivation_label_text);
         }
     ));
+
+    let dp_clone5 = std::rc::Rc::clone(&derivation_path);
+
+    coin_entry.connect_changed(clone!(
+        @weak derivation_label_text,
+        @strong coin_entry => move |_| {
+            let coin_number = coin_entry.buffer().text();
+            let ff = coin_number.as_str();
+            let my_int = ff.parse::<u32>();
+
+            if my_int.is_ok() {
+                dp_clone5.borrow_mut().update_field("coin", Some(FieldValue::U32(my_int.unwrap())));
+                // println!("new Coin: {:?}", dp_clone5.borrow());
+                update_derivation_label(*dp_clone5.borrow(), derivation_label_text);
+            }
+        }
+    ));
+
+    let dp_clone6 = std::rc::Rc::clone(&derivation_path);
+
+    address_spinbutton.connect_changed(clone!(
+        @weak derivation_label_text,
+        @weak address_spinbutton => move |_| {
+            let address_number = address_spinbutton.text();
+            let ff = address_number.as_str();
+            let my_int = ff.parse::<u32>();
+
+            if my_int.is_ok() {
+                dp_clone6.borrow_mut().update_field("address", Some(FieldValue::U32(my_int.unwrap())));
+                // println!("new Address: {:?}", dp_clone6.borrow());
+                update_derivation_label(*dp_clone6.borrow(), derivation_label_text);
+            }
+        }
+    ));
+
 
     // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -2556,83 +2812,6 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 // TESTING
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-#[derive(Debug, Clone, Copy)]
-struct DerivationPath {
-    bip: Option<u32>,
-    hardened_bip: Option<bool>,
-    coin: Option<u32>,
-    hardened_coin: Option<bool>,
-    address: Option<u32>,
-    hardened_address: Option<bool>,
-    purpose: Option<u32>,
-}
-
-impl DerivationPath {
-    fn default() -> Self {
-        Self {
-            bip: Some(44),
-            hardened_bip: Some(true),
-            coin: Some(0),
-            hardened_coin: Some(true),
-            address: Some(0),
-            hardened_address: Some(true),
-            purpose: Some(0),
-        }
-    }
-
-    fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
-        match field {
-            "bip" => self.bip = value.and_then(|v| v.into_u32()),
-            "hardened_bip" => self.hardened_bip = value.and_then(|v| v.into_bool()),
-            "coin" => self.coin = value.and_then(|v| v.into_u32()),
-            "hardened_coin" => self.hardened_coin = value.and_then(|v| v.into_bool()),
-            "address" => self.address = value.and_then(|v| v.into_u32()),
-            "hardened_address" => self.hardened_address = value.and_then(|v| v.into_bool()),
-            "purpose" => self.purpose = value.and_then(|v| v.into_u32()),
-            _ => println!("Invalid field"),
-        }
-    }
-
-    fn get_derivation_path(&self) -> Self {
-        Self {
-            bip: self.bip,
-            hardened_bip: self.hardened_bip,
-            coin: self.coin,
-            hardened_coin: self.hardened_coin,
-            address: self.address,
-            hardened_address: self.hardened_address,
-            purpose: self.purpose,
-        }
-    }
-}
-
-#[derive(Debug)]
-enum FieldValue {
-    U32(u32),
-    Bool(bool),
-}
-
-impl FieldValue {
-    fn into_u32(self) -> Option<u32> {
-        match self {
-            FieldValue::U32(value) => Some(value),
-            _ => None,
-        }
-    }
-
-    fn into_bool(self) -> Option<bool> {
-        match self {
-            FieldValue::Bool(value) => Some(value),
-            _ => None,
-        }
-    }
-}
-
-
-
-
-
-
 
 fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percent: Option<u32> ) {
 

@@ -40,6 +40,7 @@
     - [ ] local settings ($HOME)
 - [ ] set theme color in settings
 - [ ] proxy support
+- [ ] verify local config before applying it
 
 ---
 
@@ -55,3 +56,4 @@
 ### Advance
 - [ ] tokio
 - [ ] buy USB QRNG and make support for it
+- [ ] log output
