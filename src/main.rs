@@ -1972,6 +1972,12 @@ fn create_main_window(application: &adw::Application) {
         .css_classes(["large-title"])
         .build();
 
+    let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let generate_addresses_button = gtk::Button::with_label("Generate addresses");
+
+    generate_addresses_button_box.append(&generate_addresses_button);
+
+
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_treeview_frame = gtk::Frame::new(Some(" Addresses"));
     address_treeview_frame.set_hexpand(true);
@@ -2011,6 +2017,7 @@ fn create_main_window(application: &adw::Application) {
     address_treeview_box.append(&address_treeview_frame);
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
+    main_address_box.append(&generate_addresses_button_box);
     main_address_box.append(&address_treeview_box);
     
     stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
