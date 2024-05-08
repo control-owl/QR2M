@@ -47,6 +47,8 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
     "uint16", 
     "hex16",
 ];
+const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
+const ANU_DEFAULT_HEX_BLOCK_SIZE: u32 = 32;
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
@@ -59,7 +61,6 @@ const VALID_PROXY_STATUS: &'static [&'static str] = &[
     "auto", 
     "manual",
 ];
-
 
 // BASIC
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -124,22 +125,22 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             let array_length = match settings.get_value("anu_array_length") {
                 Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
                     eprintln!("Failed to parse ANU array length: {}", array_length);
-                    1024
+                    ANU_DEFAULT_ARRAY_LENGTH
                 }),
                 None => {
                     eprintln!("'anu_array_length' not found in settings");
-                    1024
+                    ANU_DEFAULT_ARRAY_LENGTH
                 }
             };
 
             let hex_block_size = match settings.get_value("hex_block_size") {
                 Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
                     eprintln!("Failed to parse ANU hex block size: {}", hex_block_size);
-                    1024
+                    ANU_DEFAULT_HEX_BLOCK_SIZE
                 }),
                 None => {
                     eprintln!("'hex_block_size' not found in settings");
-                    1024
+                    ANU_DEFAULT_HEX_BLOCK_SIZE
                 }
             };
 
@@ -353,7 +354,7 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     // Reverting to Bitcoin in case that coin is undefined
     if private_header.is_empty() {private_header = "0x0488ADE4";}
     if public_header.is_empty() {public_header = "0x0488B21E";}
-    // Default message for all blockchains
+    // Default message for all blockchains ? Why ?
     let message = "Bitcoin seed";
 
     let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
@@ -473,21 +474,18 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 /// println!("{}", entropy);
 /// ```
 fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
-    // Read file contents into a byte vector
     let mut file = File::open(file_path).expect("Failed to open file");
     let mut buffer = Vec::new();
+    
     file.read_to_end(&mut buffer).expect("Failed to read file");
 
-    // Calculate SHA256 hash of the file contents along with the seed word "qr2m"
     let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
 
-    // Convert the hash into binary representation
     let mut entropy = String::new();
     for byte in hash {
-        entropy.push_str(&format!("{:08b}", byte)); // Convert byte to binary string
+        entropy.push_str(&format!("{:08b}", byte));
     }
 
-    // Take only the required number of bits to match the specified entropy length
     entropy = entropy.chars().take(entropy_length as usize).collect();
 
     entropy
@@ -512,6 +510,7 @@ fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
 /// ```
 fn sha256_hash(data: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
+
     hasher.update(data);
     hasher.finalize().iter().cloned().collect()
 }
@@ -780,15 +779,43 @@ impl AppSettings {
         if !Path::new(config_file).exists() {
             fs::copy(default_config_file, config_file)?;
         }
+        
+        let config_str = match fs::read_to_string(config_file) {
+            Ok(contents) => contents,
+            Err(err) => {
+                // TODO: ask in dialog if to load default config file
+                eprintln!("Error reading config file: {}", err);
+                String::new()
+            }
+        };
+        
+        // TODO: If one parameter has typo, whole AppSetting is empty. Why? RESOLVE
+        let config: toml::Value = match config_str.parse() {
+            Ok(value) => {
+                // println!("Local config: {}", config);
+                value
+            },
+            Err(err) => {
+                eprintln!("Error in config file.\n{}", err);
+                toml::Value::Table(toml::value::Table::new())
+            }
+        };
 
-        let config_str = fs::read_to_string(config_file)?;
+        // TODO: make a config's version compatibility check
+        // let config_version = match config.get("version").and_then(|v| v.as_integer()) {
+        //     Some(v) => v as u32,
+        //     None => 0
+        // };
+        // println!("config_version: {}", config_version);
 
-        // TODO: remove panic when value = trues (typo)
-        let config: toml::Value = config_str.parse().expect("Failed to parse config file");
+        let empty_value = toml::Value::String("".to_string());
 
-        // APP settings
-        let gui_section = config.get("gui").expect("Missing 'app' section");
-
+        // GUI setting
+        let gui_section = match config.get("gui") {
+            Some(section) => section,
+            None => &empty_value    // TODO: return default GUI section instead empty one (maybe replace config/default.conf)
+        };
+            
         let gui_save_window_size = gui_section.get("save_window_size")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
@@ -802,14 +829,17 @@ impl AppSettings {
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(APP_DEFAULT_HEIGHT);
-
+    
         let gui_window_maximized = gui_section.get("window_maximized")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
 
         // Wallet settings
-        let wallet_section = config.get("wallet").expect("Missing 'wallet' section");
+        let wallet_section = match config.get("wallet") {
+            Some(section) => section,
+            None => &empty_value
+        };
 
         let wallet_entropy_source = wallet_section.get("entropy_source")
             .and_then(|v| v.as_str())
@@ -828,7 +858,10 @@ impl AppSettings {
 
         
         // ANU settings
-        let anu_section = config.get("anu").expect("Missing 'anu' section");
+        let anu_section = match config.get("anu") {
+            Some(section) => section,
+            None => &empty_value
+        };
 
         let anu_enabled = anu_section.get("anu_enabled")
             .and_then(|v| v.as_bool())
@@ -842,12 +875,12 @@ impl AppSettings {
         let anu_array_length = anu_section.get("array_length")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
-            .unwrap_or(1024);
+            .unwrap_or(ANU_DEFAULT_ARRAY_LENGTH);
         
         let anu_hex_block_size = anu_section.get("hex_block_size")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
-            .unwrap_or(24);
+            .unwrap_or(ANU_DEFAULT_HEX_BLOCK_SIZE);
 
         let anu_log = anu_section.get("anu_log")
             .and_then(|v| v.as_bool())
@@ -855,7 +888,10 @@ impl AppSettings {
 
 
         // Proxy settings
-        let proxy_section = config.get("proxy").expect("Missing 'proxy' section");
+        let proxy_section = match config.get("proxy") {
+            Some(section) => section,
+            None => &empty_value
+        };
 
         let proxy_status = proxy_section.get("proxy_status")
             .and_then(|v| v.as_str())
@@ -864,7 +900,7 @@ impl AppSettings {
 
         let proxy_server_address = proxy_section.get("proxy_server_address")
             .and_then(|v| v.as_str())
-            .unwrap_or("qqqqq")
+            .unwrap_or("")
             .to_string();
 
         let proxy_server_port = proxy_section.get("proxy_server_port")
@@ -874,7 +910,7 @@ impl AppSettings {
 
         let proxy_script_address = proxy_section.get("proxy_script_address")
             .and_then(|v| v.as_str())
-            .unwrap_or("qqqq")
+            .unwrap_or("")
             .to_string();
 
         let proxy_login_credentials: bool = proxy_section.get("proxy_login_credentials")
@@ -883,12 +919,12 @@ impl AppSettings {
 
         let proxy_login_username = proxy_section.get("proxy_login_username")
             .and_then(|v| v.as_str())
-            .unwrap_or("qqqq")
+            .unwrap_or("")
             .to_string();
 
         let proxy_login_password = proxy_section.get("proxy_login_password")
             .and_then(|v| v.as_str())
-            .unwrap_or("qqqq")
+            .unwrap_or("")
             .to_string();
 
         let proxy_ssl_cert_enabled: bool = proxy_section.get("proxy_ssl_cert_enabled")
@@ -897,10 +933,9 @@ impl AppSettings {
 
         let proxy_ssl_certificate = proxy_section.get("proxy_ssl_certificate")
             .and_then(|v| v.as_str())
-            .unwrap_or("qqqqq")
+            .unwrap_or("")
             .to_string();
 
-        // Create and return AppSettings instance
         Ok(AppSettings {
             wallet_entropy_source,
             wallet_entropy_length,
@@ -2374,6 +2409,7 @@ fn main() {
         }),
     );
 
+    
     // Keyboard shortcuts
     let new_window = application.clone();
     new.connect_activate(move |_action, _parameter| {

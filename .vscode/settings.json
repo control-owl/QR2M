@@ -1,0 +1,6 @@
+{
+    "todo-tree.tree.scanMode": "current file",
+    "lldb.displayFormat": "auto",
+    "lldb.dereferencePointers": true,
+    "lldb.consoleMode": "commands"
+}
