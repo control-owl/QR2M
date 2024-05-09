@@ -1,20 +1,19 @@
 #![allow(non_snake_case)]
-// #![allow(unused_imports)]
-// #![allow(unused_variables)]
-
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(unused_assignments)]
+#![allow(dead_code)]
 
 // REQUIREMENTS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 // Crates
 use std::{
-    fs::{self, File}, 
-    io::{self, prelude::*, BufRead, BufReader, Read}, 
-    net::{TcpStream,ToSocketAddrs}, 
-    path::Path, 
-    time::{Duration, SystemTime},
+    fs::{self, File}, io::{self, prelude::*, BufRead, BufReader, Read}, net::{TcpStream,ToSocketAddrs}, path::Path, str::FromStr, time::{Duration, SystemTime}
 };
+use generic_array::typenum::array;
 use hex;
+use hmac::Mac;
 use rand::Rng;
 use sha2::{Digest, Sha256, Sha512};
 use bip39;
@@ -2476,6 +2475,9 @@ fn create_main_window(application: &adw::Application) {
 
 fn main() {
     print_program_info();
+
+    gggggg();
+
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
         .build();
@@ -3059,64 +3061,163 @@ fn get_icon_name_for_current_mode() {
 }
 
 
+// ##########################
 
 
-fn create_private_key(
-    coin: &CoinDatabase, 
-    derivation_path: &str,
-    master_pk: &str,
-) -> String {
 
-    // Example Coin:
-    // coin-x {
-    //     index: 133,
-    //     path: 0x80000085
-    //     symbol: ZEC
-    //     name: Zcash
-    //     key_derivation: secp256k1
-    //     private_header: 0x0488ADE4
-    //     public_header: 0x0488B21E
-    //     public_key_hash: 0x1CB8
-    //     script_hash: 0x1CBD
-    //     wif: 0x80
-    //     evm: false
-    //     comment: hello
-    // }
+use secp256k1::{SecretKey, PublicKey, Secp256k1};
+use rand::rngs::OsRng;
+use ripemd::Ripemd160;
 
-    // Step 1: Parse the derivation path to extract individual components
-    // Step 1.1: convert hardened path "'" accordingly 
-    // Example derivation: "m/89'/15'/7'/3'/1"
-    let derivation_path = "m/89'/15'/7'/3'/1";
+fn derive_private_key_from_path(master_private_key: &SecretKey, path: &[u32]) -> Option<SecretKey> {
+    // Initialize secp256k1 context
+    let secp = Secp256k1::new();
 
-    let path_components: Vec<&str> = derivation_path.split('/').collect();
+    // Define HMAC-SHA512 type
+    type HmacSha512 = hmac::Hmac<Sha512>;
+    // use generic_array::GenericArray as genarr;
 
-    // Step 1.1: Convert hardened path "'" accordingly 
-    // for component in path_components.iter_mut() {
-    //     if component.ends_with("'") {
-    //         // Remove "'" character and mark it as hardened
-    //         let hardened_component = format!("{}'h", &component[..component.len() - 1]);
-    //         *component = &hardened_component;
-    //     }
-    // }
+    // Initialize HMAC-SHA512 with the master private key as the key
+    let mut hmac = HmacSha512::new_from_slice(&master_private_key[..]).unwrap();
 
-    // Print parsed components for debugging
-    println!("Parsed path components: {:?}", path_components);
+    // Iterate over the derivation path
+    let mut chain_code = [0u8; 32];
+    let mut private_key_bytes = master_private_key[..].to_vec();
+    for index in path {
+        let mut data = Vec::new();
 
+        // Concatenate the private key and index as data
+        data.extend_from_slice(&private_key_bytes);
+        data.extend_from_slice(&index.to_be_bytes());
 
-    // Example master_privat_key: "xprv9s21ZrQH143K4Y9kvCkgvsAtEeQz8N1V1b52bUExmNifRgtpivX8WACi2wNEmbyaCvXgNoMbk9szu2omzuLX3aPLEbMSHpRprr2XBDehqm7"
+        // Compute HMAC-SHA512
+        hmac.update(&data);
+        let result = hmac.clone().finalize().into_bytes();
 
-    // Step 2: Derive child private key using the current index
-    // FEATURE: Implement child private key derivation based on index
+        // Split the result into the child private key and chain code
+        let (private_key_bytes_new, chain_code_new) = result.split_at(32);
 
-    // let pk = 
-    // Step 3: Update the master private key to the derived child private key
-    // FEATURE: Update master private key
+        // Update private key and chain code for the next iteration
+        private_key_bytes = private_key_bytes_new.to_vec();
+        chain_code.copy_from_slice(chain_code_new);
 
-    // Step 4: Return the final derived private key
-    // FEATURE: Implement final private key extraction based on the updated master private key
+        // Convert the derived private key bytes into a SecretKey
+        let private_key = secp256k1::SecretKey::from_slice(&private_key_bytes).ok()?;
 
-    "Derived private key".to_string()
+        // // Check if the derived key is valid (not zero or greater than the order of the curve)
+        // if secp256k1::ecdsa::SecretKey::from_slice(&private_key[..]).is_err() {
+        //     return None;
+        // }
+    }
+
+    // Return the final derived private key
+    SecretKey::from_slice(&private_key_bytes).ok()
 }
+
+fn gggggg() {
+    // Parse the master private key into a SecretKey
+    let master_private_key_str = "xprv9s21ZrQH143K2iZz8n71zL1SNC8KM699AhxDemUQr1B2Lhy8Sqs38s61kgdSqmd4h47neFsrrz8cKTagAJRU7LsGJsQrMH3GiDXfrFJ4G7A";
+    let master_private_key = match parse_master_private_key(master_private_key_str) {
+        Ok(key) => key,
+        Err(e) => {
+            eprintln!("Failed to parse master private key: {}", e);
+            return;
+        }
+    };
+
+    // Define the derivation path
+    let path: Vec<u32> = vec![84 | 0x80000000, 0 | 0x80000000, 0 | 0x80000000, 0];
+
+    // Call the derive_private_key_from_path function
+    if let Some(derived_private_key) = derive_private_key_from_path(&master_private_key, &path) {
+        println!("Derived private key: {:?}", derived_private_key);
+    } else {
+        eprintln!("Failed to derive private key.");
+    }
+}
+
+fn sha256d(input: &[u8]) -> [u8; 32] {
+    let mut hasher = sha2::Sha256::new();
+    let mut output = [0u8; 32];
+
+    hasher.update(input);
+    hasher.result(&mut output);
+
+    hasher.reset();
+    hasher.update(&output);
+    hasher.result(&mut output);
+
+    output
+}
+
+fn parse_master_private_key(master_private_key_str: &str) -> Result<SecretKey, String> {
+    // Check if the string length is valid
+    if master_private_key_str.len() != 111 {
+        return Err("Invalid length for master private key".to_string());
+    }
+
+    // Check if the string starts with "xprv"
+    if !master_private_key_str.starts_with("xprv") {
+        return Err("Invalid format for master private key".to_string());
+    }
+
+    // For now, let's assume the master private key is base58 encoded and can be decoded
+    let decoded = match bs58::decode(master_private_key_str).into_vec() {
+        Ok(decoded) => decoded,
+        Err(e) => return Err(format!("Base58 decoding error: {}", e)),
+    };
+    
+    // Check if the decoded bytes match the expected length
+    if decoded.len() != 82 {
+        eprintln!("Invalid length for decoded bytes");
+    }
+
+    println!("Decoded bytes: {:?}", decoded);
+    
+    let key_bytes = &decoded[0..32];
+    
+    
+    // Parse the decoded bytes into a SecretKey
+    let secret_key = secp256k1::SecretKey::from_slice(&key_bytes)
+        .map_err(|e| format!("Error creating private key: {:?}", e))?;
+
+    println!("secret_key: {:?}", secret_key.display_secret().to_string());
+
+
+    let mut private_key = vec![];
+    private_key.push(0x80); // Prepend with WIF version byte
+    private_key.extend_from_slice(&decoded[0..32]); // Add the first 32 bytes
+
+    // Append checksum
+    let checksum = sha256d(&private_key);
+    private_key.extend_from_slice(&checksum[..4]);
+
+    // Convert to Base58Check encoding
+    let wif = private_key.to_base58();
+
+    println!("WIF: {}", wif);
+
+    Ok(secret_key)
+    // // Convert the secret key to a Base58Check string
+    // let base58_check_string = secret_key.to_base58check().unwrap();
+
+    // println!("Encoded secret key: {}", base58_check_string);
+
+    // // Decode the Base58Check string back to a secret key
+    // let decoded_secret_key = SecretKey::from_base58check(&base58_check_string).unwrap();
+
+    // // Ensure that the decoded secret key matches the original
+    // assert_eq!(SK, decoded_secret_key);
+
+    // SK
+}
+
+
+
+
+
+
+
 
 
 
