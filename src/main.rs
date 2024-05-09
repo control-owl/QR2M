@@ -61,6 +61,11 @@ const VALID_PROXY_STATUS: &'static [&'static str] = &[
     "auto", 
     "manual",
 ];
+const VALID_GUI_THEMES: &'static [&'static str] = &[
+    "system", 
+    "light", 
+    "dark",
+];
 
 // BASIC
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -531,6 +536,7 @@ struct CoinDatabase {
     public_key_hash: String,
     script_hash: String,
     wif: String,
+    evm: String,
     comment: String,
 }
 
@@ -557,7 +563,8 @@ fn create_coin_store() -> Vec<CoinDatabase> {
         let public_key_hash: String = if record[7].is_empty()   {"".to_string()} else {record[7].to_string()};
         let script_hash: String = if record[8].is_empty()       {"".to_string()} else {record[8].to_string()};
         let wif: String = if record[9].is_empty()               {"".to_string()} else {record[9].to_string()};
-        let comment: String = if record[10].is_empty()          {"".to_string()} else {record[10].to_string()};
+        let evm: String = if record[10].is_empty()              {"".to_string()} else {record[10].to_string()};
+        let comment: String = if record[11].is_empty()          {"".to_string()} else {record[11].to_string()};
         
         let coin_type = CoinDatabase { 
             index, 
@@ -569,7 +576,8 @@ fn create_coin_store() -> Vec<CoinDatabase> {
             public_header, 
             public_key_hash, 
             script_hash, 
-            wif, 
+            wif,
+            evm,
             comment 
         };
 
@@ -600,6 +608,7 @@ fn create_coin_completion_model() -> gtk::ListStore {
         glib::Type::STRING, // public_key_hash
         glib::Type::STRING, // script_hash
         glib::Type::STRING, // Wif
+        glib::Type::STRING, // EVM
         glib::Type::STRING, // Comment
     ]);
 
@@ -616,7 +625,8 @@ fn create_coin_completion_model() -> gtk::ListStore {
             (7, &coin_symbol.public_key_hash),
             (8, &coin_symbol.script_hash),
             (9, &coin_symbol.wif),
-            (10, &coin_symbol.comment),
+            (10, &coin_symbol.evm),
+            (11, &coin_symbol.comment),
         ]);
     }
 
@@ -669,9 +679,23 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
             let public_key_hash: String = record.get(7).unwrap_or_default().to_string();
             let script_hash: String = record.get(8).unwrap_or_default().to_string();
             let wif: String = record.get(9).unwrap_or_default().to_string();
-            let comment: String = record.get(10).unwrap_or_default().to_string();
+            let evm: String = record.get(10).unwrap_or_default().to_string();
+            let comment: String = record.get(11).unwrap_or_default().to_string();
 
-            CoinDatabase { index, path, symbol, name, key_derivation, private_header, public_header, public_key_hash, script_hash, wif, comment }
+            CoinDatabase {
+                index,
+                path,
+                symbol,
+                name,
+                key_derivation,
+                private_header,
+                public_header,
+                public_key_hash,
+                script_hash,
+                wif, 
+                evm, 
+                comment
+            }
             }
         )
         .collect();
@@ -730,6 +754,7 @@ struct AppSettings {
     gui_window_width: u32,
     gui_window_height: u32,
     gui_window_maximized: bool,
+    gui_theme: String,
     anu_enabled: bool,
     anu_data_format: String,
     anu_array_length: u32,
@@ -748,7 +773,7 @@ struct AppSettings {
 }
 
 impl AppSettings {
-    // TODO: create verify_settings function
+    // FEATURE: create verify_settings function
 
     /// Loads application settings from a configuration file.
     ///
@@ -772,7 +797,7 @@ impl AppSettings {
     /// }
     /// ```
     fn load_settings() -> io::Result<Self> {
-        // TODO: Create local ($HOME) settings
+        // FEATURE: Create local ($HOME) settings
         let config_file = "config/custom.conf";
         let default_config_file = "config/default.conf";
 
@@ -783,13 +808,14 @@ impl AppSettings {
         let config_str = match fs::read_to_string(config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                // TODO: ask in dialog if to load default config file
+                // IMPROVEMENT: ask if to load default config file
+                // FEATURE: open dialog window, show visualy error parameter
                 eprintln!("Error reading config file: {}", err);
                 String::new()
             }
         };
         
-        // TODO: If one parameter has typo, whole AppSetting is empty. Why? RESOLVE
+        // BUG: If one parameter has typo, whole AppSetting is empty ???
         let config: toml::Value = match config_str.parse() {
             Ok(value) => {
                 // println!("Local config: {}", config);
@@ -801,7 +827,7 @@ impl AppSettings {
             }
         };
 
-        // TODO: make a config's version compatibility check
+        // FEATURE: make a config's version compatibility check
         // let config_version = match config.get("version").and_then(|v| v.as_integer()) {
         //     Some(v) => v as u32,
         //     None => 0
@@ -813,7 +839,7 @@ impl AppSettings {
         // GUI setting
         let gui_section = match config.get("gui") {
             Some(section) => section,
-            None => &empty_value    // TODO: return default GUI section instead empty one (maybe replace config/default.conf)
+            None => &empty_value    // IMPROVEMENT: replace empty_value with default 'gui' values
         };
             
         let gui_save_window_size = gui_section.get("save_window_size")
@@ -834,6 +860,11 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
+        let gui_theme = gui_section.get("theme")
+            .and_then(|v| v.as_str())
+            .unwrap_or(*&VALID_GUI_THEMES[0])
+            .to_string();
+
 
         // Wallet settings
         let wallet_section = match config.get("wallet") {
@@ -843,18 +874,18 @@ impl AppSettings {
 
         let wallet_entropy_source = wallet_section.get("entropy_source")
             .and_then(|v| v.as_str())
-            .unwrap_or("RNG")
+            .unwrap_or(*&VALID_ENTROPY_SOURCES[0])
             .to_string();
 
         let wallet_entropy_length = wallet_section.get("entropy_length")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
-            .unwrap_or(256);
+            .unwrap_or(*VALID_ENTROPY_LENGTHS.last().unwrap_or(&0));
 
         let wallet_bip = wallet_section.get("bip")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
-            .unwrap_or(44);
+            .unwrap_or(*VALID_BIP_DERIVATIONS.get(1).unwrap_or(&VALID_BIP_DERIVATIONS[0]));
 
         
         // ANU settings
@@ -869,7 +900,7 @@ impl AppSettings {
 
         let anu_data_format = anu_section.get("data_format")
             .and_then(|v| v.as_str())
-            .unwrap_or("uint8")
+            .unwrap_or(*&VALID_ANU_API_DATA_FORMAT[0])
             .to_string();
 
         let anu_array_length = anu_section.get("array_length")
@@ -895,7 +926,7 @@ impl AppSettings {
 
         let proxy_status = proxy_section.get("proxy_status")
             .and_then(|v| v.as_str())
-            .unwrap_or("Auto")
+            .unwrap_or(*&VALID_PROXY_STATUS[0])
             .to_string();
 
         let proxy_server_address = proxy_section.get("proxy_server_address")
@@ -944,6 +975,7 @@ impl AppSettings {
             gui_window_width,
             gui_window_height,
             gui_window_maximized,
+            gui_theme,
             anu_enabled,
             anu_data_format,
             anu_array_length,
@@ -990,6 +1022,7 @@ impl AppSettings {
             "gui_last_width" => Some(self.gui_window_width.to_string()),
             "gui_last_height" => Some(self.gui_window_height.to_string()),
             "gui_window_maximized" => Some(self.gui_window_maximized.to_string()),
+            "gui_theme" => Some(self.gui_theme.to_string()),
 
             "anu_enabled" => Some(self.anu_enabled.to_string()),
             "anu_data_format" => Some(self.anu_data_format.clone()),
@@ -1125,6 +1158,32 @@ fn create_settings_window() {
     general_settings_box.append(&general_settings_frame);
     general_settings_frame.set_child(Some(&content_general_box));
 
+    // GUI theme color
+    let default_gui_theme_color_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_gui_theme_color_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_theme_color_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_theme_color_label = gtk::Label::new(Some("GUI theme color:"));
+    let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
+    let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
+    let default_gui_theme = valid_gui_themes_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_theme) 
+        .unwrap_or(0);
+
+    gui_theme_dropdown.set_selected(default_gui_theme.try_into().unwrap());
+    gui_theme_dropdown.set_size_request(200, 10);
+    default_gui_theme_color_box.set_hexpand(true);
+    default_gui_theme_color_item_box.set_hexpand(true);
+    default_gui_theme_color_item_box.set_margin_end(20);
+    default_gui_theme_color_item_box.set_halign(gtk::Align::End);
+    
+    default_gui_theme_color_label_box.append(&default_gui_theme_color_label);
+    default_gui_theme_color_item_box.append(&gui_theme_dropdown);
+    default_gui_theme_color_box.append(&default_gui_theme_color_label_box);
+    default_gui_theme_color_box.append(&default_gui_theme_color_item_box);
+    content_general_box.append(&default_gui_theme_color_box);
+
     // GUI: Save last window size
     let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -1133,9 +1192,7 @@ fn create_settings_window() {
     let save_window_size_checkbox = gtk::CheckButton::new();
     let is_checked = settings.gui_save_window_size;
 
-    // Assuming `checkbox` is the checkbox widget
     save_window_size_checkbox.set_active(is_checked);
-
     window_save_label_box.set_hexpand(true);
     window_save_item_box.set_hexpand(true);
     window_save_item_box.set_margin_end(20);
@@ -1145,8 +1202,19 @@ fn create_settings_window() {
     window_save_item_box.append(&save_window_size_checkbox);
     window_save_box.append(&window_save_label_box);
     window_save_box.append(&window_save_item_box);
-    
     content_general_box.append(&window_save_box);
+
+    
+
+
+
+
+
+
+
+
+
+
 
     stack.add_titled(&general_settings_box, Some("sidebar-settings-general"), "General");
  
@@ -1323,7 +1391,7 @@ fn create_settings_window() {
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_label = gtk::Label::new(Some("API array length: (32-1024)"));
     
-    // TODO: calculate lower and initial value for a successfull API request based on entropy length
+    // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length
     // 16 = 16x8 = 128 chars 
     // 32 = 32x8 = 256 chars
     let array_length_adjustment = gtk::Adjustment::new(
@@ -1354,8 +1422,8 @@ fn create_settings_window() {
     let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_label = gtk::Label::new(Some("Hex block size: (1-1024)"));
     
-    // TODO: calculate lower and initial value for a successfull API request based on entropy length and array length
-    // 16 = 16x8x(array_length)=
+    // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length and array length
+    // 16 = 16x8x(array_length)=????
     let hex_block_size_adjustment = gtk::Adjustment::new(
         1.0, // initial value
         1.0, // minimum value
@@ -1615,7 +1683,9 @@ fn create_main_window(application: &adw::Application) {
         .show_menubar(true)
         .build();
 
-    // TODO: Set main window icon
+    
+
+    // FEATURE: Create our own icon
     window.set_icon_name(Some("org.gnome.Settings"));
 
     // Main menu (HeaderBar)
@@ -1630,8 +1700,9 @@ fn create_main_window(application: &adw::Application) {
     let about_button = gtk::Button::new();
 
     // HeaderBar Icons
-    // TODO: make my own menu icons
+    // FEATURE: make my own menu icons
     new_wallet_button.set_icon_name("tab-new-symbolic");
+    // new_wallet_button.set_child(Some(&icon));
     open_wallet_button.set_icon_name("document-open-symbolic");
     save_wallet_button.set_icon_name("document-save-symbolic");
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
@@ -1820,13 +1891,27 @@ fn create_main_window(application: &adw::Application) {
     // Coin treeview
     create_coin_completion_model();
     let coin_store = create_coin_store();
-    let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 11]);
+    let treestore = gtk4::TreeStore::new(&[glib::Type::STRING; 12]);
     let coins = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let coin_treeview = gtk::TreeView::new();
     coin_treeview.set_vexpand(true);
     coin_treeview.set_headers_visible(true);
 
-    let columns = ["Index", "Path", "Symbol", "Name", "Key derivation", "Private header", "Public header", "Public key hash", "Script hash", "Wif", "Comment"];
+    let columns = [
+        "Index",
+        "Path",
+        "Symbol",
+        "Name",
+        "Key derivation",
+        "Private header",
+        "Public header",
+        "Public key hash", 
+        "Script hash", 
+        "Wif", 
+        "EVM", 
+        "Comment"
+    ];
+
     for (i, column_title) in columns.iter().enumerate() {
         let column = gtk::TreeViewColumn::new();
         let cell = gtk::CellRendererText::new();
@@ -2130,7 +2215,8 @@ fn create_main_window(application: &adw::Application) {
                 let public_key_hash = model.get_value(&iter, 7);
                 let script_hash = model.get_value(&iter, 8);
                 let wif = model.get_value(&iter, 9);
-                let comment = model.get_value(&iter, 10);
+                let evm = model.get_value(&iter, 10);
+                let comment = model.get_value(&iter, 11);
 
                 if let (
                     Ok(coin_type),
@@ -2143,6 +2229,7 @@ fn create_main_window(application: &adw::Application) {
                     Ok(public_key_hash),
                     Ok(script_hash),
                     Ok(wif),
+                    Ok(evm),
                     Ok(comment),
                 ) = (
                     coin.get::<String>(), 
@@ -2155,6 +2242,7 @@ fn create_main_window(application: &adw::Application) {
                     public_key_hash.get::<String>(),
                     script_hash.get::<String>(),
                     wif.get::<String>(),
+                    evm.get::<String>(),
                     comment.get::<String>(),
                 ) {
                     println!("coin_type: {}", coin_type);
@@ -2167,6 +2255,7 @@ fn create_main_window(application: &adw::Application) {
                     println!("public_key_hash: {}", public_key_hash);
                     println!("script_hash: {}", script_hash);
                     println!("wif: {}", wif);
+                    println!("EVM: {}", evm);
                     println!("comment: {}", comment);
                     let buffer = seed_text.buffer();
                     let start_iter = buffer.start_iter();
@@ -2215,7 +2304,8 @@ fn create_main_window(application: &adw::Application) {
                         (7, &found_coin.public_key_hash),
                         (8, &found_coin.script_hash),
                         (9, &found_coin.wif),
-                        (10, &found_coin.comment),
+                        (10, &found_coin.evm),
+                        (11, &found_coin.comment),
                     ]);
                 }
                 coin_treeview.set_model(Some(&treestore));
@@ -2386,12 +2476,14 @@ fn create_main_window(application: &adw::Application) {
 
 fn main() {
     print_program_info();
-
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
         .build();
 
+    
     application.connect_activate(|app| {
+        get_icon_name_for_current_mode();
+
         create_main_window(app);
     });
 
@@ -2459,6 +2551,7 @@ fn main() {
     application.add_action(&test);
 
     application.run();
+
 }
 
 
@@ -2591,7 +2684,7 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
         let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
         eprintln!("One request per 2 minutes. You have to wait {} seconds more", remaining_seconds);
         return Some(String::new());
-        // TODO: remove panic and replace with error dialog showing remaining time
+        // IMPROVEMENT: replace with error dialog showing remaining time #LOW
     }
 
     print!("Connecting to ANU API");
@@ -2911,6 +3004,134 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 
     dialog_window.show();
 }
+
+fn load_icon_bytes(path: &str) -> Vec<u8> {
+    let mut file = std::fs::File::open(path).expect("Failed to open file");
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).expect("Failed to read file");
+    buffer
+}
+
+fn get_icon_name_for_current_mode() {
+    let settings = gtk::Settings::default().unwrap();
+    let dark_style = settings.is_gtk_application_prefer_dark_theme();
+    let theme_name = settings.gtk_theme_name().unwrap();
+    let mut theme_path: String = String::new();
+
+    println!("Theme name: {}", theme_name);
+    println!("Dark style: {}", dark_style);
+
+    if dark_style {
+        theme_path = "res/theme/basic/dark".to_string();
+    } else {
+        theme_path = "res/theme/basic/light".to_string();
+    }
+
+    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.svg",theme_path));
+    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.svg",theme_path));
+    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.svg",theme_path));
+    let icon_about_bytes = load_icon_bytes(&format!("{}/about.svg",theme_path));
+    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.svg",theme_path));
+    
+    let icon_new_wallet = gtk::Image::builder()
+            .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_new_wallet_bytes)))
+            .build();
+
+    let icon_open_wallet = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_open_wallet_bytes)))
+        .build();
+    
+    let icon_save_wallet = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_save_wallet_bytes)))
+        .build();
+    
+    let icon_about = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_about_bytes)))
+        .build();
+    
+    let icon_settings = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_settings_bytes)))
+        .build();
+
+    
+
+
+}
+
+
+
+
+fn create_private_key(
+    coin: &CoinDatabase, 
+    derivation_path: &str,
+    master_pk: &str,
+) -> String {
+
+    // Example Coin:
+    // coin-x {
+    //     index: 133,
+    //     path: 0x80000085
+    //     symbol: ZEC
+    //     name: Zcash
+    //     key_derivation: secp256k1
+    //     private_header: 0x0488ADE4
+    //     public_header: 0x0488B21E
+    //     public_key_hash: 0x1CB8
+    //     script_hash: 0x1CBD
+    //     wif: 0x80
+    //     evm: false
+    //     comment: hello
+    // }
+
+    // Step 1: Parse the derivation path to extract individual components
+    // Step 1.1: convert hardened path "'" accordingly 
+    // Example derivation: "m/89'/15'/7'/3'/1"
+    let derivation_path = "m/89'/15'/7'/3'/1";
+
+    let path_components: Vec<&str> = derivation_path.split('/').collect();
+
+    // Step 1.1: Convert hardened path "'" accordingly 
+    // for component in path_components.iter_mut() {
+    //     if component.ends_with("'") {
+    //         // Remove "'" character and mark it as hardened
+    //         let hardened_component = format!("{}'h", &component[..component.len() - 1]);
+    //         *component = &hardened_component;
+    //     }
+    // }
+
+    // Print parsed components for debugging
+    println!("Parsed path components: {:?}", path_components);
+
+
+    // Example master_privat_key: "xprv9s21ZrQH143K4Y9kvCkgvsAtEeQz8N1V1b52bUExmNifRgtpivX8WACi2wNEmbyaCvXgNoMbk9szu2omzuLX3aPLEbMSHpRprr2XBDehqm7"
+
+    // Step 2: Derive child private key using the current index
+    // FEATURE: Implement child private key derivation based on index
+
+    // let pk = 
+    // Step 3: Update the master private key to the derived child private key
+    // FEATURE: Update master private key
+
+    // Step 4: Return the final derived private key
+    // FEATURE: Implement final private key extraction based on the updated master private key
+
+    "Derived private key".to_string()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
