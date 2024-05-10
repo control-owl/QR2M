@@ -30,6 +30,7 @@
     - [x] about
 - [x] theme (auto)
 - [ ] ShortcutsWindow
+- [ ] buy me a coffee
 
 ---
 
@@ -60,3 +61,4 @@
 - [ ] buy USB QRNG and make support for it
 - [ ] log output
 - [ ] translate app to another language
+- [ ] multi-threading
