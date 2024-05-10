@@ -41,6 +41,7 @@
 - [ ] set theme color in settings
 - [ ] proxy support
 - [ ] verify local config before applying it
+- [ ] log directory (file chooser dialog)
 
 ---
 
@@ -57,3 +58,4 @@
 - [ ] tokio
 - [ ] buy USB QRNG and make support for it
 - [ ] log output
+- [ ] translate app to another language

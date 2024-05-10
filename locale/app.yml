@@ -1,0 +1,7 @@
+_version: 2
+UI:
+  hello:
+    en: Hello world
+    de: Hallo Welt
+    hr: Pozdrav svijete
+    fa: سلام دنیا

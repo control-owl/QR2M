@@ -1,8 +1,10 @@
+# version 0.11.0
+- multi-language support
+
 # version 0.10.0
 - derivation path struct
 - settings: anu
 - settings: proxy
-
 
 # version 0.9.1
 - entropy from file - import any file to generate entropy

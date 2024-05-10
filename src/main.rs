@@ -12,6 +12,7 @@ use std::{
     fs::{self, File}, io::{self, prelude::*, BufRead, BufReader, Read}, net::{TcpStream,ToSocketAddrs}, path::Path, str::FromStr, time::{Duration, SystemTime}
 };
 use generic_array::typenum::array;
+use glib::property;
 use hex;
 use hmac::Mac;
 use rand::Rng;
@@ -25,6 +26,14 @@ use gtk::{gio, glib::clone, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 
 // Default settings
+const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
+const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
+const APP_LANGUAGE: &'static [&'static str] = &[
+    "English", 
+    "Deutsch",
+    "Hrvatski",
+];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
 const COINLIST_FILE: &str = "lib/bip44-extended-coin-list.csv";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
@@ -50,11 +59,10 @@ const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
 const ANU_DEFAULT_HEX_BLOCK_SIZE: u32 = 32;
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
-const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
-const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
-const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-const APP_DEFAULT_WIDTH: u32 = 1000;
-const APP_DEFAULT_HEIGHT: u32 = 800;
+const WINDOW_MAIN_DEFAULT_WIDTH: u32 = 1000;
+const WINDOW_MAIN_DEFAULT_HEIGHT: u32 = 800;
+const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 550;
+const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
 const VALID_PROXY_STATUS: &'static [&'static str] = &[
     "off", 
     "auto", 
@@ -754,6 +762,7 @@ struct AppSettings {
     gui_window_height: u32,
     gui_window_maximized: bool,
     gui_theme: String,
+    gui_language: String,
     anu_enabled: bool,
     anu_data_format: String,
     anu_array_length: u32,
@@ -762,11 +771,12 @@ struct AppSettings {
     proxy_status: String,
     proxy_server_address: String,
     proxy_server_port: u32,
+    proxy_use_pac: bool,
     proxy_script_address: String,
     proxy_login_credentials: bool,
     proxy_login_username: String,
     proxy_login_password: String,
-    proxy_ssl_cert_enabled: bool,
+    proxy_use_ssl: bool,
     proxy_ssl_certificate: String,
     
 }
@@ -848,12 +858,12 @@ impl AppSettings {
         let gui_window_width = gui_section.get("window_width")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
-            .unwrap_or(APP_DEFAULT_WIDTH);
+            .unwrap_or(WINDOW_MAIN_DEFAULT_WIDTH);
 
         let gui_window_height = gui_section.get("window_height")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
-            .unwrap_or(APP_DEFAULT_HEIGHT);
+            .unwrap_or(WINDOW_MAIN_DEFAULT_HEIGHT);
     
         let gui_window_maximized = gui_section.get("window_maximized")
             .and_then(|v| v.as_bool())
@@ -864,6 +874,10 @@ impl AppSettings {
             .unwrap_or(*&VALID_GUI_THEMES[0])
             .to_string();
 
+        let gui_language = gui_section.get("language")
+            .and_then(|v| v.as_str())
+            .unwrap_or(*&APP_LANGUAGE[0])
+            .to_string();
 
         // Wallet settings
         let wallet_section = match config.get("wallet") {
@@ -938,6 +952,10 @@ impl AppSettings {
             .map(|v| v as u32)
             .unwrap_or(8080);
 
+        let proxy_use_pac: bool = proxy_section.get("proxy_use_pac")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         let proxy_script_address = proxy_section.get("proxy_script_address")
             .and_then(|v| v.as_str())
             .unwrap_or("")
@@ -957,7 +975,7 @@ impl AppSettings {
             .unwrap_or("")
             .to_string();
 
-        let proxy_ssl_cert_enabled: bool = proxy_section.get("proxy_ssl_cert_enabled")
+        let proxy_use_ssl: bool = proxy_section.get("proxy_use_ssl")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
@@ -975,6 +993,7 @@ impl AppSettings {
             gui_window_height,
             gui_window_maximized,
             gui_theme,
+            gui_language,
             anu_enabled,
             anu_data_format,
             anu_array_length,
@@ -983,11 +1002,12 @@ impl AppSettings {
             proxy_status,
             proxy_server_address,
             proxy_server_port,
+            proxy_use_pac,
             proxy_script_address,
             proxy_login_credentials,
             proxy_login_username,
             proxy_login_password,
-            proxy_ssl_cert_enabled,
+            proxy_use_ssl,
             proxy_ssl_certificate,
         })
     }
@@ -1022,6 +1042,7 @@ impl AppSettings {
             "gui_last_height" => Some(self.gui_window_height.to_string()),
             "gui_window_maximized" => Some(self.gui_window_maximized.to_string()),
             "gui_theme" => Some(self.gui_theme.to_string()),
+            "gui_language" => Some(self.gui_language.to_string()),
 
             "anu_enabled" => Some(self.anu_enabled.to_string()),
             "anu_data_format" => Some(self.anu_data_format.clone()),
@@ -1036,7 +1057,7 @@ impl AppSettings {
             "proxy_login_credentials" => Some(self.proxy_login_credentials.to_string()),
             "proxy_login_username" => Some(self.proxy_login_username.clone()),
             "proxy_login_password" => Some(self.proxy_login_password.clone()),
-            "proxy_ssl_cert_enabled" => Some(self.proxy_ssl_cert_enabled.to_string()),
+            "proxy_use_ssl" => Some(self.proxy_use_ssl.to_string()),
             "proxy_ssl_certificate" => Some(self.proxy_ssl_certificate.clone()),
             _ => None,
         }
@@ -1133,8 +1154,8 @@ fn create_settings_window() {
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title("Settings")
-        .default_width(600)
-        .default_height(400)
+        .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
+        .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
         .resizable(false)
         .build();
 
@@ -1161,7 +1182,7 @@ fn create_settings_window() {
     let default_gui_theme_color_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_theme_color_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_theme_color_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_theme_color_label = gtk::Label::new(Some("GUI theme color:"));
+    let default_gui_theme_color_label = gtk::Label::new(Some("Theme color:"));
     let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
     let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
     let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
@@ -1183,6 +1204,32 @@ fn create_settings_window() {
     default_gui_theme_color_box.append(&default_gui_theme_color_item_box);
     content_general_box.append(&default_gui_theme_color_box);
 
+    // GUI language
+    let default_gui_language_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_language_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_language_label = gtk::Label::new(Some("Language:"));
+    let valid_gui_themes_as_strings: Vec<String> = APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
+    let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
+    let default_gui_theme = valid_gui_themes_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_theme) 
+        .unwrap_or(0);
+
+    gui_theme_dropdown.set_selected(default_gui_theme.try_into().unwrap());
+    gui_theme_dropdown.set_size_request(200, 10);
+    default_gui_language_box.set_hexpand(true);
+    default_gui_language_item_box.set_hexpand(true);
+    default_gui_language_item_box.set_margin_end(20);
+    default_gui_language_item_box.set_halign(gtk::Align::End);
+    
+    default_gui_language_label_box.append(&default_gui_language_label);
+    default_gui_language_item_box.append(&gui_theme_dropdown);
+    default_gui_language_box.append(&default_gui_language_label_box);
+    default_gui_language_box.append(&default_gui_language_item_box);
+    content_general_box.append(&default_gui_language_box);
+
     // GUI: Save last window size
     let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -1203,26 +1250,8 @@ fn create_settings_window() {
     window_save_box.append(&window_save_item_box);
     content_general_box.append(&window_save_box);
 
-    
-
-
-
-
-
-
-
-
-
-
-
     stack.add_titled(&general_settings_box, Some("sidebar-settings-general"), "General");
  
-
-
-
-
-
-
 
     // Sidebar 2: Wallet settings
     let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -1388,7 +1417,7 @@ fn create_settings_window() {
     let default_anu_array_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_array_length_label = gtk::Label::new(Some("API array length: (32-1024)"));
+    let default_anu_array_length_label = gtk::Label::new(Some("API array length:"));
     
     // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length
     // 16 = 16x8 = 128 chars 
@@ -1419,7 +1448,7 @@ fn create_settings_window() {
     let default_anu_hex_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_hex_length_label = gtk::Label::new(Some("Hex block size: (1-1024)"));
+    let default_anu_hex_length_label = gtk::Label::new(Some("Hex block size:"));
     
     // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length and array length
     // 16 = 16x8x(array_length)=????
@@ -1445,28 +1474,74 @@ fn create_settings_window() {
     default_anu_hex_length_box.append(&default_anu_hex_length_item_box);
     content_anu_box.append(&default_anu_hex_length_box);
 
+    if anu_data_format_dropdown.selected() == 2 {
+        default_anu_hex_length_box.set_visible(true);
+    } else {
+        default_anu_hex_length_box.set_visible(false);
+    } ;
+
+    // Actions
+    let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
+    let anu_data_format_dropdown_clone = anu_data_format_dropdown.clone();
+
     use_anu_api_checkbox.connect_toggled(move |checkbox| {
         if checkbox.is_active() {
-            default_api_data_format_box.show();
-            default_anu_array_length_box.show();
-            default_anu_hex_length_box.show();
+            default_api_data_format_box.set_visible(true);
+            default_anu_array_length_box.set_visible(true);
+            if anu_data_format_dropdown_clone.selected() as usize == 2 {
+                default_anu_hex_length_box_clone.set_visible(true);
+            } else {
+                default_anu_hex_length_box_clone.set_visible(false);
+            }
         } else {
-            default_api_data_format_box.hide();
-            default_anu_array_length_box.hide();
-            default_anu_hex_length_box.hide();
+            default_api_data_format_box.set_visible(false);
+            default_anu_array_length_box.set_visible(false);
+            default_anu_hex_length_box_clone.set_visible(false);
         }
     });
     
+
+    anu_data_format_dropdown.connect_selected_notify(clone!(
+        @weak default_anu_hex_length_box,
+        @weak anu_data_format_dropdown => move |dd| {
+            if dd.selected() as usize == 2 {
+                default_anu_hex_length_box.set_visible(true);
+            } else {
+                default_anu_hex_length_box.set_visible(false);
+            }
+        }
+    ));
+
+
     stack.add_titled(&anu_settings_box, Some("sidebar-settings-anu"), "ANU");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 4: Proxy settings
     // -.-. --- .--. -.-- .-. .. --. .... -
+    let scrolled_window = gtk::ScrolledWindow::new();
+    scrolled_window.set_max_content_height(400);
+    
     let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let proxy_settings_frame = gtk::Frame::new(Some(" Proxy settings"));
     let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-
+    
     proxy_settings_box.set_margin_bottom(0);
     proxy_settings_box.set_margin_top(10);
     proxy_settings_box.set_margin_start(10);
@@ -1476,15 +1551,7 @@ fn create_settings_window() {
     proxy_settings_frame.set_child(Some(&content_proxy_box));
     proxy_settings_frame.set_hexpand(true);
     proxy_settings_frame.set_vexpand(true);
-
-
-    // TODO: make new group for every element in proxy
-    // 1. adress/port
-    // 2. Creds
-    // 3. PAC
-    // 4. SSL
-
-
+    scrolled_window.set_child(Some(&proxy_settings_box));
 
     // Use proxy settings
     let use_proxy_settings_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
@@ -1496,7 +1563,7 @@ fn create_settings_window() {
     let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
     let defaut_proxy_settings_format = valid_proxy_settings_as_strings
         .iter()
-        .position(|x| x.parse::<String>().unwrap() == settings.anu_data_format)
+        .position(|x| x.parse::<String>().unwrap() == settings.proxy_status)
         .unwrap_or(1);  // Default proxy: auto
 
     use_proxy_settings_dropdown.set_selected(defaut_proxy_settings_format.try_into().unwrap());
@@ -1512,6 +1579,14 @@ fn create_settings_window() {
     use_proxy_settings_box.append(&use_proxy_settings_item_box);
     content_proxy_box.append(&use_proxy_settings_box);
 
+    // Proxy manual settings
+    let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    
+    if settings.proxy_status == "manual" {
+        proxy_manual_settings_box.set_visible(true);
+    } else {
+        proxy_manual_settings_box.set_visible(false);
+    }
 
     // Proxy server address
     let proxy_server_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
@@ -1525,12 +1600,13 @@ fn create_settings_window() {
     proxy_server_address_item_box.set_hexpand(true);
     proxy_server_address_item_box.set_margin_end(20);
     proxy_server_address_item_box.set_halign(gtk::Align::End);
+    proxy_server_address_entry.set_text(&settings.proxy_server_address);
 
     proxy_server_address_label_box.append(&proxy_server_address_label);
     proxy_server_address_item_box.append(&proxy_server_address_entry);
     proxy_server_address_box.append(&proxy_server_address_label_box);
     proxy_server_address_box.append(&proxy_server_address_item_box);
-    content_proxy_box.append(&proxy_server_address_box);
+    proxy_manual_settings_box.append(&proxy_server_address_box);
 
 
     // Proxy server port
@@ -1545,22 +1621,226 @@ fn create_settings_window() {
     proxy_server_port_item_box.set_hexpand(true);
     proxy_server_port_item_box.set_margin_end(20);
     proxy_server_port_item_box.set_halign(gtk::Align::End);
+    proxy_server_port_entry.set_text(&settings.proxy_server_port.to_string());
 
     proxy_server_port_label_box.append(&proxy_server_port_label);
     proxy_server_port_item_box.append(&proxy_server_port_entry);
     proxy_server_port_box.append(&proxy_server_port_label_box);
     proxy_server_port_box.append(&proxy_server_port_item_box);
-    content_proxy_box.append(&proxy_server_port_box);
+    proxy_manual_settings_box.append(&proxy_server_port_box);
     
+    // Use proxy credentials
+    let use_proxy_credentials_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_credentials_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_credentials_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_credentials_label = gtk::Label::new(Some("Use proxy credentials:"));
+    let use_proxy_credentials_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.proxy_login_credentials;
+    
+    use_proxy_credentials_checkbox.set_active(is_checked);
+    use_proxy_credentials_label_box.set_hexpand(true);
+    use_proxy_credentials_item_box.set_hexpand(true);
+    use_proxy_credentials_item_box.set_margin_end(20);
+    use_proxy_credentials_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_credentials_label_box.append(&use_proxy_credentials_label);
+    use_proxy_credentials_item_box.append(&use_proxy_credentials_checkbox);
+    use_proxy_credentials_box.append(&use_proxy_credentials_label_box);
+    use_proxy_credentials_box.append(&use_proxy_credentials_item_box);
+    proxy_manual_settings_box.append(&use_proxy_credentials_box);
+
+    // Proxy credentials
+    let use_proxy_credentials_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    
+    if settings.proxy_login_credentials == true {
+        use_proxy_credentials_content_box.set_visible(true);
+    } else {
+        use_proxy_credentials_content_box.set_visible(false);
+    }
+
+    // Proxy username
+    let proxy_username_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_username_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_username_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_username_label = gtk::Label::new(Some("Username:"));
+    let proxy_username_entry = gtk::Entry::new();
+
+    proxy_username_entry.set_size_request(200, 10);
+    proxy_username_label_box.set_hexpand(true);
+    proxy_username_item_box.set_hexpand(true);
+    proxy_username_item_box.set_margin_end(20);
+    proxy_username_item_box.set_halign(gtk::Align::End);
+    proxy_username_entry.set_text(&settings.proxy_login_username);
+
+    proxy_username_label_box.append(&proxy_username_label);
+    proxy_username_item_box.append(&proxy_username_entry);
+    proxy_username_box.append(&proxy_username_label_box);
+    proxy_username_box.append(&proxy_username_item_box);
+    use_proxy_credentials_content_box.append(&proxy_username_box);
+
+    // Proxy password
+    let proxy_password_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_password_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_password_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_password_label = gtk::Label::new(Some("Password:"));
+    let proxy_password_entry = gtk::PasswordEntry::new();
+
+    proxy_password_entry.set_size_request(200, 10);
+    proxy_password_label_box.set_hexpand(true);
+    proxy_password_item_box.set_hexpand(true);
+    proxy_password_item_box.set_margin_end(20);
+    proxy_password_item_box.set_halign(gtk::Align::End);
+    proxy_password_entry.set_show_peek_icon(true);
+    proxy_password_entry.set_text(&settings.proxy_login_password);
+
+    proxy_password_label_box.append(&proxy_password_label);
+    proxy_password_item_box.append(&proxy_password_entry);
+    proxy_password_box.append(&proxy_password_label_box);
+    proxy_password_box.append(&proxy_password_item_box);
+    use_proxy_credentials_content_box.append(&proxy_password_box);
+
+    proxy_manual_settings_box.append(&use_proxy_credentials_content_box);
+
+    // Use proxy PAC
+    let use_proxy_pac_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_pac_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_pac_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_pac_label = gtk::Label::new(Some("Use Proxy Auto-Configuration (PAC) file:"));
+    let use_proxy_pac_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.proxy_use_pac;
+    
+    use_proxy_pac_checkbox.set_active(is_checked);
+    use_proxy_pac_label_box.set_hexpand(true);
+    use_proxy_pac_item_box.set_hexpand(true);
+    use_proxy_pac_item_box.set_margin_end(20);
+    use_proxy_pac_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_pac_label_box.append(&use_proxy_pac_label);
+    use_proxy_pac_item_box.append(&use_proxy_pac_checkbox);
+    use_proxy_pac_box.append(&use_proxy_pac_label_box);
+    use_proxy_pac_box.append(&use_proxy_pac_item_box);
+    proxy_manual_settings_box.append(&use_proxy_pac_box);
+
+    // Proxy PAC
+    let use_proxy_pac_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    
+    if settings.proxy_use_pac == true {
+        use_proxy_pac_content_box.set_visible(true);
+    } else {
+        use_proxy_pac_content_box.set_visible(false);
+    }
+
+    // Proxy PAC path
+    let proxy_pac_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_pac_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_pac_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_pac_path_label = gtk::Label::new(Some("PAC path:"));
+    let proxy_pac_path_entry = gtk::Entry::new();
+
+    proxy_pac_path_entry.set_size_request(200, 10);
+    proxy_pac_path_label_box.set_hexpand(true);
+    proxy_pac_path_item_box.set_hexpand(true);
+    proxy_pac_path_item_box.set_margin_end(20);
+    proxy_pac_path_item_box.set_halign(gtk::Align::End);
+    proxy_pac_path_entry.set_text(&settings.proxy_script_address);
+
+    proxy_pac_path_label_box.append(&proxy_pac_path_label);
+    proxy_pac_path_item_box.append(&proxy_pac_path_entry);
+    proxy_pac_path_box.append(&proxy_pac_path_label_box);
+    proxy_pac_path_box.append(&proxy_pac_path_item_box);
+    use_proxy_pac_content_box.append(&proxy_pac_path_box);
+
+    proxy_manual_settings_box.append(&use_proxy_pac_content_box);
 
 
+    // Use proxy SSL
+    let use_proxy_ssl_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_ssl_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_ssl_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_ssl_label = gtk::Label::new(Some("Use SSL certificate:"));
+    let use_proxy_ssl_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.proxy_use_ssl;
+    
+    use_proxy_ssl_checkbox.set_active(is_checked);
+    use_proxy_ssl_label_box.set_hexpand(true);
+    use_proxy_ssl_item_box.set_hexpand(true);
+    use_proxy_ssl_item_box.set_margin_end(20);
+    use_proxy_ssl_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_ssl_label_box.append(&use_proxy_ssl_label);
+    use_proxy_ssl_item_box.append(&use_proxy_ssl_checkbox);
+    use_proxy_ssl_box.append(&use_proxy_ssl_label_box);
+    use_proxy_ssl_box.append(&use_proxy_ssl_item_box);
+    proxy_manual_settings_box.append(&use_proxy_ssl_box);
 
 
+    // Proxy SSL certificate
+    let use_proxy_ssl_certificate_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    
+    if settings.proxy_use_ssl == true {
+        use_proxy_ssl_certificate_content_box.set_visible(true);
+    } else {
+        use_proxy_ssl_certificate_content_box.set_visible(false);
+    }
 
-    stack.add_titled(&proxy_settings_box, Some("sidebar-settings-proxy"), "Proxy");
+    // Proxy SSL certificate path
+    let proxy_ssl_certificate_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_ssl_certificate_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_ssl_certificate_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_ssl_certificate_path_label = gtk::Label::new(Some("SSL path:"));
+    let proxy_ssl_certificate_path_entry = gtk::Entry::new();
 
+    proxy_ssl_certificate_path_entry.set_size_request(200, 10);
+    proxy_ssl_certificate_path_label_box.set_hexpand(true);
+    proxy_ssl_certificate_path_item_box.set_hexpand(true);
+    proxy_ssl_certificate_path_item_box.set_margin_end(20);
+    proxy_ssl_certificate_path_item_box.set_halign(gtk::Align::End);
+    proxy_ssl_certificate_path_entry.set_text(&settings.proxy_ssl_certificate);
 
+    proxy_ssl_certificate_path_label_box.append(&proxy_ssl_certificate_path_label);
+    proxy_ssl_certificate_path_item_box.append(&proxy_ssl_certificate_path_entry);
+    proxy_ssl_certificate_path_box.append(&proxy_ssl_certificate_path_label_box);
+    proxy_ssl_certificate_path_box.append(&proxy_ssl_certificate_path_item_box);
+    use_proxy_ssl_certificate_content_box.append(&proxy_ssl_certificate_path_box);
+    proxy_manual_settings_box.append(&use_proxy_ssl_certificate_content_box);
 
+    content_proxy_box.append(&proxy_manual_settings_box);
+    stack.add_titled(&scrolled_window, Some("sidebar-settings-proxy"), "Proxy");
+
+    // Actions
+    use_proxy_settings_dropdown.connect_selected_notify(clone!(
+        @weak proxy_manual_settings_box => move |dd| {
+            let value = dd.selected() as usize;
+            let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
+            let settings = selected_proxy_settings_value.unwrap();
+            
+
+            println!("settings: {}",settings);
+            if *settings == "manual" {
+                proxy_manual_settings_box.set_visible(true);
+            } else {
+                proxy_manual_settings_box.set_visible(false);
+            }
+        }
+    ));
+
+    use_proxy_credentials_checkbox.connect_active_notify(clone!(
+        @weak use_proxy_credentials_content_box => move |cb| {
+            use_proxy_credentials_content_box.set_visible(cb.is_active());
+        }
+    ));
+
+    use_proxy_pac_checkbox.connect_active_notify(clone!(
+        @weak use_proxy_pac_content_box => move |cb| {
+            use_proxy_pac_content_box.set_visible(cb.is_active());
+        }
+    ));
+
+    use_proxy_ssl_checkbox.connect_active_notify(clone!(
+        @weak use_proxy_ssl_checkbox => move |cb| {
+            use_proxy_ssl_certificate_content_box.set_visible(cb.is_active());
+        }
+    ));
 
     // Compose settings window
     let main_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -1654,22 +1934,22 @@ fn create_main_window(application: &adw::Application) {
     let window_width = match settings.get_value("gui_last_width") {
         Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
             eprintln!("Failed to parse default window width value: {}", width_str);
-            APP_DEFAULT_WIDTH.try_into().unwrap()
+            WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
         }),
         None => {
             eprintln!("'gui_last_width' not found in settings");
-            APP_DEFAULT_WIDTH.try_into().unwrap()
+            WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
         }
     };
 
     let window_height = match settings.get_value("gui_last_height") {
         Some(height_str) => height_str.parse::<i32>().unwrap_or_else(|_| {
             eprintln!("Failed to parse default window height value: {}", height_str);
-            APP_DEFAULT_HEIGHT.try_into().unwrap()
+            WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
         }),
         None => {
             eprintln!("'gui_last_height' not found in settings");
-            APP_DEFAULT_HEIGHT.try_into().unwrap()
+            WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
         }
     };
 
@@ -1819,6 +2099,9 @@ fn create_main_window(application: &adw::Application) {
     entropy_text.set_editable(false);
     entropy_text.set_left_margin(5);
     entropy_text.set_top_margin(5);
+
+    // let style = entropy_text.buffer().set_property(property::, "italic");
+    // println!("theme color: {:?}", style);
     
     // Mnemonic words
     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -1885,7 +2168,7 @@ fn create_main_window(application: &adw::Application) {
 
     // Create scrolled window
     let scrolled_window = gtk::ScrolledWindow::new();
-    scrolled_window.set_max_content_height(400); // Set maximum height
+    scrolled_window.set_max_content_height(400);
 
     // Coin treeview
     create_coin_completion_model();
@@ -2473,16 +2756,24 @@ fn create_main_window(application: &adw::Application) {
     window.present();
 }
 
+
+use rust_i18n::t;
+#[macro_use] extern crate rust_i18n;
+i18n!("locale", fallback = "en");
+
 fn main() {
     print_program_info();
 
-    gggggg();
+    // Test zone
+    // gggggg();
+    // rust_i18n::set_locale("hr");
+    
+    println!("{}", t!("UI.hello"));
 
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
         .build();
 
-    
     application.connect_activate(|app| {
         get_icon_name_for_current_mode();
 
@@ -2502,7 +2793,6 @@ fn main() {
             application.quit();
         }),
     );
-
     
     // Keyboard shortcuts
     let new_window = application.clone();
@@ -2553,7 +2843,6 @@ fn main() {
     application.add_action(&test);
 
     application.run();
-
 }
 
 
@@ -3136,48 +3425,42 @@ fn gggggg() {
     }
 }
 
-fn sha256d(input: &[u8]) -> [u8; 32] {
-    let mut hasher = sha2::Sha256::new();
-    let mut output = [0u8; 32];
+// fn sha256d(input: &[u8]) -> [u8; 32] {
+//     let mut hasher = sha2::Sha256::new();
+//     let mut output = [0u8; 32];
 
-    hasher.update(input);
-    hasher.result(&mut output);
+//     hasher.update(input);
+//     hasher.result(&mut output);
 
-    hasher.reset();
-    hasher.update(&output);
-    hasher.result(&mut output);
+//     hasher.reset();
+//     hasher.update(&output);
+//     hasher.result(&mut output);
 
-    output
-}
+//     output
+// }
 
 fn parse_master_private_key(master_private_key_str: &str) -> Result<SecretKey, String> {
-    // Check if the string length is valid
     if master_private_key_str.len() != 111 {
         return Err("Invalid length for master private key".to_string());
     }
 
-    // Check if the string starts with "xprv"
     if !master_private_key_str.starts_with("xprv") {
         return Err("Invalid format for master private key".to_string());
     }
 
-    // For now, let's assume the master private key is base58 encoded and can be decoded
-    let decoded = match bs58::decode(master_private_key_str).into_vec() {
+    let decoded_bytes = match bs58::decode(master_private_key_str).into_vec() {
         Ok(decoded) => decoded,
         Err(e) => return Err(format!("Base58 decoding error: {}", e)),
     };
     
-    // Check if the decoded bytes match the expected length
-    if decoded.len() != 82 {
+    if decoded_bytes.len() != 82 {
         eprintln!("Invalid length for decoded bytes");
     }
 
-    println!("Decoded bytes: {:?}", decoded);
+    println!("Decoded bytes: {:?}", decoded_bytes);
     
-    let key_bytes = &decoded[0..32];
+    let key_bytes = &decoded_bytes[0..32];
     
-    
-    // Parse the decoded bytes into a SecretKey
     let secret_key = secp256k1::SecretKey::from_slice(&key_bytes)
         .map_err(|e| format!("Error creating private key: {:?}", e))?;
 
@@ -3186,32 +3469,27 @@ fn parse_master_private_key(master_private_key_str: &str) -> Result<SecretKey, S
 
     let mut private_key = vec![];
     private_key.push(0x80); // Prepend with WIF version byte
-    private_key.extend_from_slice(&decoded[0..32]); // Add the first 32 bytes
+    private_key.extend_from_slice(&decoded_bytes[0..31]); // Add the first 32 bytes
 
-    // Append checksum
-    let checksum = sha256d(&private_key);
-    private_key.extend_from_slice(&checksum[..4]);
+    // // Append checksum
+    // let checksum = sha256d(&private_key);
+    // private_key.extend_from_slice(&checksum[..4]);
 
-    // Convert to Base58Check encoding
-    let wif = private_key.to_base58();
+    // // Convert to Base58Check encoding
+    // let wif = private_key.to_base58();
 
-    println!("WIF: {}", wif);
+    // println!("WIF: {}", wif);
 
-    Ok(secret_key)
     // // Convert the secret key to a Base58Check string
     // let base58_check_string = secret_key.to_base58check().unwrap();
-
+    
     // println!("Encoded secret key: {}", base58_check_string);
-
+    
     // // Decode the Base58Check string back to a secret key
     // let decoded_secret_key = SecretKey::from_base58check(&base58_check_string).unwrap();
-
-    // // Ensure that the decoded secret key matches the original
-    // assert_eq!(SK, decoded_secret_key);
-
-    // SK
+    
+    Ok(secret_key)
 }
-
 
 
 
