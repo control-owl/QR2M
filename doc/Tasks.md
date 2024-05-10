@@ -29,6 +29,7 @@
     - [x] settings
     - [x] about
 - [x] theme (auto)
+- [ ] ShortcutsWindow
 
 ---
 
