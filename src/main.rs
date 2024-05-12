@@ -840,6 +840,7 @@ impl AppSettings {
     ///     let settings = AppSettings::load_settings()?;
     ///     Ok(())
     /// }
+    /// 
     /// ```
     fn load_settings() -> io::Result<Self> {
         // FEATURE: Create local ($HOME) settings
@@ -2800,7 +2801,8 @@ fn main() {
     println!("{}", t!("hello"));
 
     // Test zone
-    test_function(5);
+    create_address(5);
+    // get_icon_name_for_current_mode();
     
 
     let application = adw::Application::builder()
@@ -2808,7 +2810,6 @@ fn main() {
         .build();
 
     application.connect_activate(|app| {
-        get_icon_name_for_current_mode();
 
         create_main_window(app);
     });
@@ -3396,92 +3397,62 @@ fn get_icon_name_for_current_mode() {
 
 use secp256k1::{PublicKey, Secp256k1, SecretKey, Message, All};
 
-
-
-fn test_function(num_addresses: u32) {
+fn create_address(address_count: u32) {
     let xprv = "xprv9s21ZrQH143K2sVVFVjWjUJ1ghSeprpexKiB4vVkxvFjkRXcUY8tvXWeo9LbWPgKSEiGs1mYhD8gymirquH5hpiVpFGtP2eD6aagMfb9ZV7";
-    println!("xprv {:?}", xprv);
-    
-    let master_key = SecretKey::from_slice(&bs58::decode(xprv).into_vec().unwrap()[..32]).unwrap();
+    let base_path = "m";
+
     let secp = Secp256k1::new();
-    let base_path = "m/0'/0'/0'/0/0";
-    println!("base_path {:?}", base_path);
-    
-    
-    for i in 0..num_addresses {
-        let index = i;
-        let mut derivation_path = base_path.to_string();
-        if index < 10 {
-            derivation_path.push('/');
-            derivation_path.push_str(&index.to_string());
-        } else {
-            derivation_path.push_str(&index.to_string());
-        }
-        let components: Vec<&str> = derivation_path.split('/').collect();
+    let master_key = SecretKey::from_slice(&bs58::decode(xprv).into_vec().unwrap()[..32]).unwrap();
 
-        let mut sk = master_key.clone();
+    for i in 0..address_count {
+        let derivation_path = format!("{}/{}", base_path, i);
+        // println!("Derivation Path: {}", derivation_path);
 
-        for component in components.iter().skip(1) {
-            let is_hardened = component.ends_with("'");
-            let index: u32 = match component.trim_end_matches('\'').parse() {
-                Ok(idx) => idx,
-                Err(err) => {
-                    eprintln!("Error parsing index: {}", err);
-                    continue;
-                }
-            };
-
-            sk = derive_child_key(&secp, &sk, index, is_hardened);
-        }
+        let sk = derive_child_key(&secp, &master_key, &derivation_path);
+        // println!("Derived Child Key for {}: {:?}", derivation_path, sk);
 
         let pk = PublicKey::from_secret_key(&secp, &sk);
+        // println!("Public Key: {:?}", pk);
+
         let address = generate_address(&pk);
-
-        println!("derivation_path \"{}\"", derivation_path);
-        println!("Address {}: {}", i + 1, address);
+        println!("{}: {}", derivation_path, address);
     }
 }
 
-fn derive_child_key(secp: &Secp256k1<All>, master_key: &SecretKey, index: u32, is_hardened: bool) -> SecretKey {
-    let mut sk = master_key.clone();
-    let mut data = [0u8; 32];
-
-    if is_hardened {
-        let mut hasher = Sha256::new();
-        hasher.update(&[0]);
-        hasher.update(&master_key[..]);
-        hasher.update(&index.to_be_bytes());
-        data.copy_from_slice(&hasher.finalize());
-    } else {
-        let child_key = PublicKey::from_secret_key(secp, &master_key);
-        let mut hasher = Sha256::new();
-        hasher.update(&child_key.serialize()[..]);
-        hasher.update(&index.to_be_bytes());
-        data.copy_from_slice(&hasher.finalize());
-    }
-
-    let child_scalar = secp256k1::scalar::Scalar::from_be_bytes(data);
-    
-    if is_hardened {
-        sk = sk.add_tweak(&child_scalar.unwrap()).expect("Failed to derive child key");
-    } else {
-        sk = sk.mul_tweak(&child_scalar.unwrap()).expect("Failed to derive child key");
-    }
-
-    sk
-}
-
+use hmac::{Hmac, Mac};
 use ripemd::Ripemd160;
 
-// Working bad
 fn generate_address(pk: &PublicKey) -> String {
+    // Step 1: Serialize the public key
     let pk_bytes = pk.serialize();
-    let hash = sha256ripemd160(&pk_bytes);
-    let mut address = vec![0x00]; // Assuming P2PKH address format
-    address.extend(&hash);
-    bs58::encode(address).into_string()
+
+    // Step 2: Compute the hash160 (SHA256 followed by RIPEMD160) of the public key
+    let hash160 = sha256ripemd160(&pk_bytes);
+
+    // Step 3: Prepend the address version byte (0x00 for P2PKH addresses)
+    let mut payload = vec![0x00];
+    payload.extend(&hash160);
+
+    // Step 4: Compute the checksum (double SHA256) of the payload
+    let checksum = sha256sha256(&payload);
+
+    // Step 5: Take the first 4 bytes of the checksum as the address checksum
+    let address_checksum = &checksum[0..4];
+
+    // Step 6: Concatenate the payload and address checksum
+    let mut address_payload = payload;
+    address_payload.extend(address_checksum);
+
+    // Step 7: Encode the address payload in Base58Check format
+    bs58::encode(address_payload).into_string()
 }
 
+
+fn sha256sha256(input: &[u8]) -> Vec<u8> {
+    let hash1 = crypto_hash::digest(Algorithm::SHA256, input);
+    let hash2 = crypto_hash::digest(Algorithm::SHA256, &hash1);
+    hash2.to_vec()
+}
 use crypto_hash::{Hasher, Algorithm};
 
 fn serialize_key(key: &[u8]) -> Vec<u8> {
@@ -3503,15 +3474,67 @@ fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
 }
 
 
+const HARDENED_KEY_START_INDEX: u32 = 0x80000000;
+
+fn derive_child_key(secp: &Secp256k1<secp256k1::All>, master_key: &SecretKey, derivation_path: &str) -> SecretKey {
+    let mut sk = master_key.clone();
+
+    for component in derivation_path.split('/').skip(1) {
+        let is_hardened = component.ends_with("'");
+        let index: u32 = component.trim_end_matches('\'').parse().expect("Invalid index");
+
+        sk = if index & HARDENED_KEY_START_INDEX != 0 {
+            // println!("Deriving hardened child key for index: {}", index);
+            derive_hardened_child_key(secp, &sk, index & !HARDENED_KEY_START_INDEX)
+        } else {
+            // println!("Deriving normal child key for index: {}", index);
+            derive_normal_child_key(secp, &sk, index)
+        };
+    }
+    
+    sk
+}
+
+fn derive_hardened_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
+    let mut data = [0u8; 32];
+    let mut hasher = Sha256::new();
+    hasher.update(&parent_key[..]);
+    hasher.update(&index.to_be_bytes());
+    data.copy_from_slice(&hasher.finalize());
+
+    let sk = parent_key.clone();
+    let mut hasher = Sha256::new();
+    hasher.update(&data);
+    let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(hasher.finalize().into()).unwrap();
+    sk.add_tweak(&tweak_scalar).unwrap();
+    
+    sk
+}
+
+// fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
+//     let child_key = PublicKey::from_secret_key(secp, &parent_key);
+//     let mut data = [0u8; 32];
+//     let mut hasher = Sha256::new();
+//     hasher.update(&child_key.serialize()[..]);
+//     hasher.update(&index.to_be_bytes());
+//     data.copy_from_slice(&hasher.finalize());
+//     let mut sk = parent_key.clone();
+//     let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(data).unwrap();
+//     sk.add_tweak(&tweak_scalar).unwrap();
+//     sk
+// }
 
 
+fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
+    let child_key = PublicKey::from_secret_key(secp, &parent_key);
+    let mut data = [0u8; 32];
+    let mut hasher = Sha256::new();
+    hasher.update(&child_key.serialize()[..]);
+    hasher.update(&index.to_be_bytes());
+    data.copy_from_slice(&hasher.finalize()[..32]); // Copy 32 bytes into data
 
-
-
-
-
-
-
+    SecretKey::from_slice(&data).expect("Failed to derive normal child key")
+}
 
 
 
