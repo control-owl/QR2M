@@ -1,3 +1,9 @@
+# version 0.11.1
+- i18:
+    - English (EN)
+    - German (DE)
+    - Hrvatski (HR)
+
 # version 0.11.0
 - multi-language support
 

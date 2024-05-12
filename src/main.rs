@@ -11,19 +11,21 @@
 use std::{
     fs::{self, File}, io::{self, prelude::*, BufRead, BufReader, Read}, net::{TcpStream,ToSocketAddrs}, path::Path, str::FromStr, time::{Duration, SystemTime}
 };
-use generic_array::typenum::array;
 use glib::property;
 use hex;
-use hmac::Mac;
 use rand::Rng;
 use sha2::{Digest, Sha256, Sha512};
-use bip39;
+use bip39::{self, serde::de::IntoDeserializer};
 use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
+use rust_i18n::t;
+#[macro_use] extern crate rust_i18n;
+i18n!("locale", fallback = "en");
+
 
 // Default settings
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
@@ -121,37 +123,38 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             binary_string
         },
         "QRNG" => {
-            let settings = AppSettings::load_settings().expect("Can not read settings");
+            let settings = AppSettings::load_settings()
+                .expect(&t!("error.settings.read"));
 
             let anu_format = match settings.get_value("anu_data_format") {
                 Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-                    eprintln!("Failed to load ANU data format: {}", format);
+                    eprintln!("{}", &t!("error.settings.wrong", tpart = "anu_data_format", ttype = "String"));
                     String::from("uint8")
                 }),
                 None => {
-                    eprintln!("'anu_data_format' not found in settings");
+                    eprintln!("{}", &t!("error.settings.read", part = "anu_data_format"));
                     String::from("uint8")
                 }
             };
-
+            
             let array_length = match settings.get_value("anu_array_length") {
                 Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
-                    eprintln!("Failed to parse ANU array length: {}", array_length);
+                    eprintln!("{}", &t!("error.settings.wrong", tpart = "anu_array_length", ttype = "String"));
                     ANU_DEFAULT_ARRAY_LENGTH
                 }),
                 None => {
-                    eprintln!("'anu_array_length' not found in settings");
+                    eprintln!("{}", &t!("error.settings.read", part = "anu_array_length"));
                     ANU_DEFAULT_ARRAY_LENGTH
                 }
             };
-
+            
             let hex_block_size = match settings.get_value("hex_block_size") {
                 Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
-                    eprintln!("Failed to parse ANU hex block size: {}", hex_block_size);
+                    eprintln!("{}", &t!("error.settings.wrong", tpart = "hex_block_size", ttype = "u32"));
                     ANU_DEFAULT_HEX_BLOCK_SIZE
                 }),
                 None => {
-                    eprintln!("'hex_block_size' not found in settings");
+                    eprintln!("{}", &t!("error.settings.read", part = "hex_block_size"));
                     ANU_DEFAULT_HEX_BLOCK_SIZE
                 }
             };
@@ -173,10 +176,10 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             let window = gtk::Window::new();
 
             let dialog = gtk::FileChooserDialog::new(
-            Some("Selected file as source of entropy"),
+            Some(t!("UI.dialog.select").to_string()),
             Some(&window),
             gtk::FileChooserAction::Open,
-            &[("Open", gtk::ResponseType::Accept), ("Cancel", gtk::ResponseType::Cancel)],
+            &[(&t!("UI.element.button.open").to_string(), gtk::ResponseType::Accept), (&t!("UI.element.button.calcel").to_string(), gtk::ResponseType::Cancel)],
             );
 
             let main_loop_clone = main_loop.clone();
@@ -186,13 +189,13 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                     if let Some(file) = dialog.file() {
                         if let Some(path) = file.path() {
                             let file_path = path.to_string_lossy().to_string();
-                            println!("Entropy file: {:?}", &file_path);
+                            // println!("Entropy file: {:?}", &file_path);
                             
                             let file_entropy = file_to_entropy(&file_path, entropy_length);
                             // println!("File entropy: {}", file_entropy);
                             
                             if let Err(err) = tx.send(file_entropy) {
-                                eprintln!("Error sending data through the mpsc channel: {:?}", err);
+                                eprintln!("{}", &t!("error.mpsc.send", terror = err));
                             } else {
                                 main_loop.quit();
                             }
@@ -211,13 +214,13 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                     entropy
                 },
                 Err(_) => {
-                    eprintln!("Failed to receive entropy from file");
+                    eprintln!("{}", &t!("error.entropy.create.file"));
                     String::new()
                 }
             }
         },
         _ => {
-            eprintln!("Invalid entropy source specified");
+            eprintln!("{}", &t!("error.entropy.create.source"));
             
             return String::new()
         }
@@ -299,17 +302,18 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
         Ok(content) => content,
         Err(err) => {
-            eprintln!("Error reading wordlist file: {}", err);
+            eprintln!("{}", &t!("error.wordlist.read"));
             return String::new();
         }
     };
     
+    let bad_word = t!("error.wordlist.word").to_string();
     let mnemonic_words: Vec<&str> = mnemonic_file_content.lines().collect();
     let mnemonic_words: Vec<&str> = mnemonic_decimal.iter().map(|&decimal| {
         if (decimal as usize) < mnemonic_words.len() {
             mnemonic_words[decimal as usize]
         } else {
-            "INVALID_WORD"
+            &bad_word
         }
     }).collect();
 
@@ -366,15 +370,16 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     // Reverting to Bitcoin in case that coin is undefined
     if private_header.is_empty() {private_header = "0x0488ADE4";}
     if public_header.is_empty() {public_header = "0x0488B21E";}
+    
     // Default message for all blockchains ? Why ?
     let message = "Bitcoin seed";
 
     let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
-        .expect("Can not parse private header");
+        .expect(&t!("error.master.parse.header", tpart = "private").to_string());
     let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
-        .expect("Can not parse public header");
+        .expect(&t!("error.master.parse.header", tpart = "public").to_string());
 
-    let seed_bytes = hex::decode(seed).expect("Can not decode seed");
+    let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
     let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
     let (master_private_key_bytes, chain_code_bytes) = hmac_result.split_at(32);
 
@@ -391,12 +396,12 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     master_private_key.extend_from_slice(&checksum);
     
     let master_xprv = bs58::encode(&master_private_key).into_string(); // Total      82 bytes
-    println!("Master private key: {}", master_xprv);
+    // println!("Master private key: {}", master_xprv);
 
     // Public construct
     let secp = secp256k1::Secp256k1::new();
     let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
-        .map_err(|e| format!("Error creating private key: {:?}", e))?;
+        .expect(&t!("error.master.create").to_string());
     let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
 
     let mut master_public_key = Vec::new();
@@ -410,7 +415,27 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     master_public_key.extend_from_slice(&checksum);
     
     let master_xpub = bs58::encode(&master_public_key).into_string();   // Total      82 bytes
-    println!("Master public key: {}", master_xpub);
+
+    // // Derive child keys
+    // let mut child_keys = Vec::new();
+    // for index in 0..5 {
+    //     let child_key = derive_child_key(&secp, &master_secret_key, index, false);
+    //     let child_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &child_key).serialize();
+    //     let mut child_key_ext = Vec::new();
+    //     child_key_ext.extend_from_slice(&u32::to_be_bytes(private_header)); // Version        4 bytes
+    //     child_key_ext.push(0x01); // Depth          1 byte (hardened)
+    //     child_key_ext.extend([0x00; 4].iter()); // Parent finger  4 bytes
+    //     child_key_ext.extend_from_slice(&index.to_be_bytes()); // Index/child    4 bytes
+    //     child_key_ext.extend_from_slice(chain_code_bytes); // Chain code     32 bytes
+    //     child_key_ext.extend_from_slice(&child_key_bytes); // Key            32 bytes
+    //     let checksum: [u8; 4] = calculate_checksum(&child_key_ext); // Checksum       4 bytes
+    //     child_key_ext.extend_from_slice(&checksum);
+    //     let child_xprv = bs58::encode(&child_key_ext).into_string();
+    //     child_keys.push(child_xprv);
+    // }
+    // println!("Master private key: {}", master_xprv);
+    // println!("Master public key: {}", master_xpub);
+    // println!("Child keys: {:?}", child_keys);
 
     Ok((master_xprv, master_xpub))
 }
@@ -450,25 +475,20 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
     let mut ipad = padded_key.clone();
     let mut opad = padded_key.clone();
 
-    // XOR key with ipad and opad
     ipad.iter_mut().for_each(|byte| *byte ^= 0x36);
     opad.iter_mut().for_each(|byte| *byte ^= 0x5c);
 
-    // Append data to ipad
     let mut ipad_data = vec![0x00; BLOCK_SIZE + data.len()];
+
     ipad_data[..BLOCK_SIZE].copy_from_slice(&ipad);
     ipad_data[BLOCK_SIZE..].copy_from_slice(&data);
 
-    // Calculate inner hash
     let inner_hash = Sha512::digest(&ipad_data);
-
-    // Append inner hash to opad
     let mut opad_inner = vec![0x00; BLOCK_SIZE + HASH_SIZE];
+
     opad_inner[..BLOCK_SIZE].copy_from_slice(&opad);
     opad_inner[BLOCK_SIZE..].copy_from_slice(&inner_hash);
-    // println!("opad_inner length: {}", opad_inner.len());
-    // println!("inner_hash length: {}", inner_hash.len());
-    // Calculate outer hash
+
     Sha512::digest(&opad_inner).to_vec() 
 }
 
@@ -486,10 +506,13 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 /// println!("{}", entropy);
 /// ```
 fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
-    let mut file = File::open(file_path).expect("Failed to open file");
+    let mut file = File::open(file_path)
+        .expect(&t!("error.file.open", tpart = file_path).to_string());
+
     let mut buffer = Vec::new();
     
-    file.read_to_end(&mut buffer).expect("Failed to read file");
+    file.read_to_end(&mut buffer)
+        .expect(&t!("error.file.read", tpart = file_path).to_string());
 
     let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
 
@@ -558,10 +581,15 @@ fn create_coin_store() -> Vec<CoinDatabase> {
     let mut coin_store = Vec::new();
 
     for result in rdr.records() {
-        let record = result.expect("error reading CSV record");
+        let record = result
+            .expect(&t!("error.csv.read").to_string());
+        
+        let index: u32 = record[0].parse()
+            .expect(&t!("error.csv.parse", telement = "index").to_string());
+        
+        let path: u32 = u32::from_str_radix(&record[1][2..], 16)
+            .expect(&t!("error.csv.parse", telement = "path").to_string());
 
-        let index: u32 = record[0].parse().expect("error parsing index");
-        let path: u32 = u32::from_str_radix(&record[1][2..], 16).expect("error parsing path");
         let symbol: String = if record[2].is_empty()            {"".to_string()} else {record[2].to_string()};
         let name: String = if record[3].is_empty()              {"".to_string()} else {record[3].to_string()};
         let key_derivation:String = if record[4].is_empty()     {"".to_string()} else {record[4].to_string()};
@@ -667,7 +695,9 @@ fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix:
 ///
 /// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
-    let file = File::open(&file_path).expect("can not read file");
+    let file = File::open(&file_path)
+        .expect(&t!("error.file.read", tpart = file_path).to_string());
+
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
 
     let coin_types: Vec<CoinDatabase> = rdr
@@ -677,7 +707,13 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
         .map(|(index, record)| {
             
             let path: u32 = index as u32;
-            let index: u32 = index.try_into().expect("Conversion from usize to u32 failed");
+            let index: u32 = index.try_into()
+                .expect(
+                    &t!(
+                        "error.converter.IO", 
+                        tinput = "usize",
+                        toutput="u32").to_string());
+
             let symbol: String = record.get(2).unwrap_or_default().to_string();
             let name: String = record.get(3).unwrap_or_default().to_string();
             let key_derivation: String = record.get(4).unwrap_or_default().to_string();
@@ -819,7 +855,7 @@ impl AppSettings {
             Err(err) => {
                 // IMPROVEMENT: ask if to load default config file
                 // FEATURE: open dialog window, show visualy error parameter
-                eprintln!("Error reading config file: {}", err);
+                eprintln!("{}", &t!("error.file.read", tfile = config_file));
                 String::new()
             }
         };
@@ -1097,21 +1133,9 @@ impl DerivationPath {
             "address" => self.address = value.and_then(|v| v.into_u32()),
             "hardened_address" => self.hardened_address = value.and_then(|v| v.into_bool()),
             "purpose" => self.purpose = value.and_then(|v| v.into_u32()),
-            _ => println!("Invalid field"),
+            _ => eprintln!("{}", &t!("error.DP.read")),
         }
     }
-
-    // fn get_derivation_path(&self) -> Self {
-    //     Self {
-    //         bip: self.bip,
-    //         hardened_bip: self.hardened_bip,
-    //         coin: self.coin,
-    //         hardened_coin: self.hardened_coin,
-    //         address: self.address,
-    //         hardened_address: self.hardened_address,
-    //         purpose: self.purpose,
-    //     }
-    // }
 }
 
 #[derive(Debug)]
@@ -1150,13 +1174,15 @@ impl FieldValue {
 /// create_settings_window();
 /// ```
 fn create_settings_window() {
-    let settings = AppSettings::load_settings().expect("Can not read settings");
+    let settings = AppSettings::load_settings()
+        .expect(&t!("error.settings.read").to_string());
 
     let settings_window = gtk::ApplicationWindow::builder()
-        .title("Settings")
+        .title(t!("UI.settings").to_string())
         .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
         .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
         .resizable(false)
+        .modal(true)
         .build();
 
     let stack = Stack::new();
@@ -1165,7 +1191,7 @@ fn create_settings_window() {
     
     // Sidebar 1: General settings
     let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let general_settings_frame = gtk::Frame::new(Some(" App settings"));
+    let general_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.general").to_string()));
     let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
     general_settings_box.set_margin_bottom(10);
@@ -1182,7 +1208,7 @@ fn create_settings_window() {
     let default_gui_theme_color_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_theme_color_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_theme_color_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_theme_color_label = gtk::Label::new(Some("Theme color:"));
+    let default_gui_theme_color_label = gtk::Label::new(Some(&t!("UI.settings.general.theme").to_string()));
     let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
     let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
     let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
@@ -1208,7 +1234,7 @@ fn create_settings_window() {
     let default_gui_language_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_language_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_language_label = gtk::Label::new(Some("Language:"));
+    let default_gui_language_label = gtk::Label::new(Some(&t!("UI.settings.general.language").to_string()));
     let valid_gui_themes_as_strings: Vec<String> = APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
     let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
     let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
@@ -1234,7 +1260,7 @@ fn create_settings_window() {
     let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let window_save_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let save_window_size_label = gtk::Label::new(Some("Save last window size"));
+    let save_window_size_label = gtk::Label::new(Some(&t!("UI.settings.general.save_window").to_string()));
     let save_window_size_checkbox = gtk::CheckButton::new();
     let is_checked = settings.gui_save_window_size;
 
@@ -1250,12 +1276,16 @@ fn create_settings_window() {
     window_save_box.append(&window_save_item_box);
     content_general_box.append(&window_save_box);
 
-    stack.add_titled(&general_settings_box, Some("sidebar-settings-general"), "General");
+    stack.add_titled(
+        &general_settings_box,
+        Some("sidebar-settings-general"),
+        &t!("UI.settings.sidebar.general").to_string()
+    );
  
-
+ 
     // Sidebar 2: Wallet settings
     let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let wallet_settings_frame = gtk::Frame::new(Some(" Wallet settings"));
+    let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet").to_string()));
     let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
     wallet_settings_box.set_margin_bottom(10);
@@ -1272,7 +1302,7 @@ fn create_settings_window() {
     let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_source_label = gtk::Label::new(Some("Entropy source:"));
+    let default_entropy_source_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source").to_string()));
     let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
@@ -1298,7 +1328,7 @@ fn create_settings_window() {
     let default_entropy_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_length_label = gtk::Label::new(Some("Entropy length:"));
+    let default_entropy_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.length").to_string()));
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
@@ -1324,7 +1354,7 @@ fn create_settings_window() {
     let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_bip_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_bip_label = gtk::Label::new(Some("BIP:"));
+    let default_bip_label = gtk::Label::new(Some(&t!("UI.settings.wallet.bip").to_string()));
     let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
     let valid_bips_as_str_refs: Vec<&str> = valid_bips_as_strings.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bips_as_str_refs);
@@ -1346,14 +1376,18 @@ fn create_settings_window() {
     default_bip_box.append(&default_bip_item_box);
     content_wallet_box.append(&default_bip_box);
 
-    stack.add_titled(&wallet_settings_box, Some("sidebar-settings-wallet"), "Wallet");
+    stack.add_titled(
+        &wallet_settings_box, 
+        Some("sidebar-settings-wallet"), 
+        &t!("UI.settings.sidebar.wallet").to_string()
+    );
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 3: ANU settings
     // -.-. --- .--. -.-- .-. .. --. .... -
     let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let anu_settings_frame = gtk::Frame::new(Some(" ANU settings"));
+    let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu").to_string()));
     let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
     anu_settings_box.set_margin_bottom(0);
@@ -1371,7 +1405,7 @@ fn create_settings_window() {
     let use_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_anu_api_label = gtk::Label::new(Some("Use ANU QRNG API:"));
+    let use_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.use_anu").to_string()));
     let use_anu_api_checkbox = gtk::CheckButton::new();
     let is_checked = settings.anu_enabled;
 
@@ -1391,7 +1425,7 @@ fn create_settings_window() {
     let default_api_data_format_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_api_data_format_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_api_data_format_label = gtk::Label::new(Some("API data type:"));
+    let default_api_data_format_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.type").to_string()));
     let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT.iter().map(|&x| x.to_string()).collect();
     let valid_api_data_formats_as_str_refs: Vec<&str> = valid_api_data_formats_as_strings.iter().map(|s| s.as_ref()).collect();
     let anu_data_format_dropdown = gtk::DropDown::from_strings(&valid_api_data_formats_as_str_refs);
@@ -1417,7 +1451,7 @@ fn create_settings_window() {
     let default_anu_array_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_array_length_label = gtk::Label::new(Some("API array length:"));
+    let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
     
     // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length
     // 16 = 16x8 = 128 chars 
@@ -1448,7 +1482,7 @@ fn create_settings_window() {
     let default_anu_hex_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_hex_length_label = gtk::Label::new(Some("Hex block size:"));
+    let default_anu_hex_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
     
     // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length and array length
     // 16 = 16x8x(array_length)=????
@@ -1513,23 +1547,11 @@ fn create_settings_window() {
     ));
 
 
-    stack.add_titled(&anu_settings_box, Some("sidebar-settings-anu"), "ANU");
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    stack.add_titled(
+        &anu_settings_box, 
+        Some("sidebar-settings-anu"), 
+        &t!("UI.settings.sidebar.anu").to_string()
+    );
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -1539,7 +1561,7 @@ fn create_settings_window() {
     scrolled_window.set_max_content_height(400);
     
     let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let proxy_settings_frame = gtk::Frame::new(Some(" Proxy settings"));
+    let proxy_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.proxy").to_string()));
     let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
     proxy_settings_box.set_margin_bottom(0);
@@ -1557,7 +1579,7 @@ fn create_settings_window() {
     let use_proxy_settings_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_settings_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_settings_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_settings_label = gtk::Label::new(Some("Use proxy settings:"));
+    let use_proxy_settings_label = gtk::Label::new(Some(&t!("UI.settings.proxy.use").to_string()));
     let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
     let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
     let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
@@ -1592,7 +1614,7 @@ fn create_settings_window() {
     let proxy_server_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_server_address_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_server_address_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_address_label = gtk::Label::new(Some("Proxy server address:"));
+    let proxy_server_address_label = gtk::Label::new(Some(&t!("UI.settings.proxy.address").to_string()));
     let proxy_server_address_entry = gtk::Entry::new();
 
     proxy_server_address_entry.set_size_request(200, 10);
@@ -1613,7 +1635,7 @@ fn create_settings_window() {
     let proxy_server_port_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_server_port_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_server_port_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_port_label = gtk::Label::new(Some("Proxy server port:"));
+    let proxy_server_port_label = gtk::Label::new(Some(&t!("UI.settings.proxy.port").to_string()));
     let proxy_server_port_entry = gtk::Entry::new();
 
     proxy_server_port_entry.set_size_request(200, 10);
@@ -1633,7 +1655,7 @@ fn create_settings_window() {
     let use_proxy_credentials_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_credentials_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_credentials_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_credentials_label = gtk::Label::new(Some("Use proxy credentials:"));
+    let use_proxy_credentials_label = gtk::Label::new(Some(&t!("UI.settings.proxy.creds").to_string()));
     let use_proxy_credentials_checkbox = gtk::CheckButton::new();
     let is_checked = settings.proxy_login_credentials;
     
@@ -1662,7 +1684,7 @@ fn create_settings_window() {
     let proxy_username_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_username_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_username_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_username_label = gtk::Label::new(Some("Username:"));
+    let proxy_username_label = gtk::Label::new(Some(&t!("UI.settings.proxy.username").to_string()));
     let proxy_username_entry = gtk::Entry::new();
 
     proxy_username_entry.set_size_request(200, 10);
@@ -1682,7 +1704,7 @@ fn create_settings_window() {
     let proxy_password_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_password_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_password_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_password_label = gtk::Label::new(Some("Password:"));
+    let proxy_password_label = gtk::Label::new(Some(&t!("UI.settings.proxy.password").to_string()));
     let proxy_password_entry = gtk::PasswordEntry::new();
 
     proxy_password_entry.set_size_request(200, 10);
@@ -1705,7 +1727,7 @@ fn create_settings_window() {
     let use_proxy_pac_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_pac_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_pac_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_pac_label = gtk::Label::new(Some("Use Proxy Auto-Configuration (PAC) file:"));
+    let use_proxy_pac_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac").to_string()));
     let use_proxy_pac_checkbox = gtk::CheckButton::new();
     let is_checked = settings.proxy_use_pac;
     
@@ -1734,7 +1756,7 @@ fn create_settings_window() {
     let proxy_pac_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_pac_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_pac_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_pac_path_label = gtk::Label::new(Some("PAC path:"));
+    let proxy_pac_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac.path").to_string()));
     let proxy_pac_path_entry = gtk::Entry::new();
 
     proxy_pac_path_entry.set_size_request(200, 10);
@@ -1757,7 +1779,7 @@ fn create_settings_window() {
     let use_proxy_ssl_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_ssl_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_ssl_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_ssl_label = gtk::Label::new(Some("Use SSL certificate:"));
+    let use_proxy_ssl_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl").to_string()));
     let use_proxy_ssl_checkbox = gtk::CheckButton::new();
     let is_checked = settings.proxy_use_ssl;
     
@@ -1787,7 +1809,7 @@ fn create_settings_window() {
     let proxy_ssl_certificate_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_ssl_certificate_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_ssl_certificate_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_ssl_certificate_path_label = gtk::Label::new(Some("SSL path:"));
+    let proxy_ssl_certificate_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl.path").to_string()));
     let proxy_ssl_certificate_path_entry = gtk::Entry::new();
 
     proxy_ssl_certificate_path_entry.set_size_request(200, 10);
@@ -1805,7 +1827,11 @@ fn create_settings_window() {
     proxy_manual_settings_box.append(&use_proxy_ssl_certificate_content_box);
 
     content_proxy_box.append(&proxy_manual_settings_box);
-    stack.add_titled(&scrolled_window, Some("sidebar-settings-proxy"), "Proxy");
+    stack.add_titled(
+        &scrolled_window,
+        Some("sidebar-settings-proxy"),
+        &t!("UI.settings.sidebar.proxy").to_string()
+    );
 
     // Actions
     use_proxy_settings_dropdown.connect_selected_notify(clone!(
@@ -1814,8 +1840,6 @@ fn create_settings_window() {
             let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
             let settings = selected_proxy_settings_value.unwrap();
             
-
-            println!("settings: {}",settings);
             if *settings == "manual" {
                 proxy_manual_settings_box.set_visible(true);
             } else {
@@ -1850,8 +1874,9 @@ fn create_settings_window() {
     
     // Buttons
     let buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let save_button = gtk::Button::with_label("Save");
-    let cancel_button = gtk::Button::with_label("Cancel");
+    let save_button = gtk::Button::with_label(&t!("UI.settings.button.save").to_string());
+    let cancel_button = gtk::Button::with_label(&t!("UI.settings.button.cancel").to_string());
+    // IMPLEMENT: apply button
 
     cancel_button.connect_clicked(clone!(
         @weak settings_window => move |_| {
@@ -1902,7 +1927,7 @@ fn create_about_window() {
         .copyright("Copyright [2023-2024] Control Owl")
         .license(license)
         .wrap_license(true)
-        .comments("(Q)RNG crypto key generator")
+        .comments(&t!("UI.about.description").to_string())
         .logo(&logo)
         .build();
 
@@ -1928,27 +1953,28 @@ fn create_about_window() {
 /// create_main_window(&application);
 /// ```
 fn create_main_window(application: &adw::Application) {
-    let settings = AppSettings::load_settings().expect("Can not read settings");
+    let settings = AppSettings::load_settings()
+        .expect(&t!("error.file.read").to_string());
 
     // Get values from config file
     let window_width = match settings.get_value("gui_last_width") {
         Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
-            eprintln!("Failed to parse default window width value: {}", width_str);
+            eprintln!("{}", &t!("error.settings.parse", telement = "default window width", telement = width_str));
             WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
         }),
         None => {
-            eprintln!("'gui_last_width' not found in settings");
+            eprintln!("{}", &t!("error.settings.not_found", telement = "gui_last_width"));
             WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
         }
     };
-
+    
     let window_height = match settings.get_value("gui_last_height") {
         Some(height_str) => height_str.parse::<i32>().unwrap_or_else(|_| {
-            eprintln!("Failed to parse default window height value: {}", height_str);
+            eprintln!("{}", &t!("error.settings.parse", telement = "default window height"));
             WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
         }),
         None => {
-            eprintln!("'gui_last_height' not found in settings");
+            eprintln!("{}", &t!("error.settings.not_found", telement = "gui_last_height"));
             WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
         }
     };
@@ -1961,8 +1987,6 @@ fn create_main_window(application: &adw::Application) {
         .default_height(window_height)
         .show_menubar(true)
         .build();
-
-    
 
     // FEATURE: Create our own icon
     window.set_icon_name(Some("org.gnome.Settings"));
@@ -1988,11 +2012,11 @@ fn create_main_window(application: &adw::Application) {
     about_button.set_icon_name("help-about-symbolic");
     
     // HeaderBar Tooltips
-    new_wallet_button.set_tooltip_text(Some("New wallet (Ctrl+N)"));
-    open_wallet_button.set_tooltip_text(Some("Open wallet (Ctrl+O)"));
-    save_wallet_button.set_tooltip_text(Some("Save wallet (Ctrl+S)"));
-    settings_button.set_tooltip_text(Some("Settings (F5)"));
-    about_button.set_tooltip_text(Some("About (F1)"));
+    new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", tshortcut = "Ctrl+N").to_string()));
+    open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", tshortcut = "Ctrl+O").to_string()));
+    save_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.save", tshortcut = "Ctrl+S").to_string()));
+    settings_button.set_tooltip_text(Some(&t!("UI.main.headerbar.settings", tshortcut = "F5").to_string()));
+    about_button.set_tooltip_text(Some(&t!("UI.main.headerbar.about", tshortcut = "F1").to_string()));
 
     // Connections
     header_bar.pack_start(&new_wallet_button);
@@ -2042,7 +2066,7 @@ fn create_main_window(application: &adw::Application) {
 
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let entropy_source_frame = gtk::Frame::new(Some(" Entropy source"));
+    let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
     let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
@@ -2057,7 +2081,7 @@ fn create_main_window(application: &adw::Application) {
     
     // Entropy length
     let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let entropy_length_frame = gtk::Frame::new(Some(" Entropy length"));
+    let entropy_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.length").to_string()));
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
@@ -2072,7 +2096,7 @@ fn create_main_window(application: &adw::Application) {
 
     // Mnemonic passphrase
     let mnemonic_passphrase_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let mnemonic_passphrase_frame = gtk::Frame::new(Some(" Mnemonic passphrase"));
+    let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
     let mnemonic_passphrase_text = gtk::Entry::new();
     mnemonic_passphrase_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
@@ -2080,7 +2104,7 @@ fn create_main_window(application: &adw::Application) {
     // Generate seed button
     let generate_seed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_seed_button = gtk::Button::new();
-    generate_seed_button.set_label("Generate seed");
+    generate_seed_button.set_label(&t!("UI.main.seed.generate").to_string());
     generate_seed_box.set_halign(gtk::Align::Center);
     generate_seed_box.set_margin_top(10);
 
@@ -2089,7 +2113,7 @@ fn create_main_window(application: &adw::Application) {
     
     // Entropy string
     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let entropy_frame = gtk::Frame::new(Some(" Entropy"));
+    let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy").to_string()));
     let entropy_text = gtk::TextView::new();
     entropy_text.set_vexpand(true);
     entropy_text.set_hexpand(true);
@@ -2100,12 +2124,9 @@ fn create_main_window(application: &adw::Application) {
     entropy_text.set_left_margin(5);
     entropy_text.set_top_margin(5);
 
-    // let style = entropy_text.buffer().set_property(property::, "italic");
-    // println!("theme color: {:?}", style);
-    
     // Mnemonic words
     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let mnemonic_words_frame = gtk::Frame::new(Some(" Mnemonic words"));
+    let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words").to_string()));
     let mnemonic_words_text = gtk::TextView::new();
     mnemonic_words_box.set_hexpand(true);
     mnemonic_words_text.set_vexpand(true);
@@ -2117,7 +2138,7 @@ fn create_main_window(application: &adw::Application) {
     
     // Seed
     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let seed_frame = gtk::Frame::new(Some(" Seed"));
+    let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed").to_string()));
     let seed_text = gtk::TextView::new();
     seed_box.set_hexpand(true);
     seed_text.set_editable(false);
@@ -2152,7 +2173,10 @@ fn create_main_window(application: &adw::Application) {
     entropy_main_box.append(&body_box);
     
     // Start Seed sidebar
-    stack.add_titled(&entropy_main_box, Some("sidebar-seed"), "Seed");
+    stack.add_titled(
+        &entropy_main_box,
+        Some("sidebar-seed"), 
+        &t!("UI.main.seed").to_string());
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -2160,7 +2184,7 @@ fn create_main_window(application: &adw::Application) {
     // -.-. --- .--. -.-- .-. .. --. .... -
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let coin_frame = gtk::Frame::new(Some(" Coin"));
+    let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin").to_string()));
     coin_main_box.set_margin_top(10);
     coin_main_box.set_margin_start(10);
     coin_main_box.set_margin_end(10);
@@ -2180,18 +2204,18 @@ fn create_main_window(application: &adw::Application) {
     coin_treeview.set_headers_visible(true);
 
     let columns = [
-        "Index",
-        "Path",
-        "Symbol",
-        "Name",
-        "Key derivation",
-        "Private header",
-        "Public header",
-        "Public key hash", 
-        "Script hash", 
-        "Wif", 
-        "EVM", 
-        "Comment"
+        &t!("UI.main.database.column.index").to_string(),
+        &t!("UI.main.database.column.path").to_string(),
+        &t!("UI.main.database.column.symbol").to_string(),
+        &t!("UI.main.database.column.name").to_string(),
+        &t!("UI.main.database.column.deriv").to_string(),
+        &t!("UI.main.database.column.priv_header").to_string(),
+        &t!("UI.main.database.column.pub_header").to_string(),
+        &t!("UI.main.database.column.pub_hash").to_string(),
+        &t!("UI.main.database.column.script").to_string(),
+        &t!("UI.main.database.column.wif").to_string(),
+        &t!("UI.main.database.column.evm").to_string(),
+        &t!("UI.main.database.column.comment").to_string(),
     ];
 
     for (i, column_title) in columns.iter().enumerate() {
@@ -2205,19 +2229,19 @@ fn create_main_window(application: &adw::Application) {
 
     // Coin search
     let coin_search = gtk::SearchEntry::new();
-    coin_search.set_placeholder_text(Some("Find a coin by entering its symbol (BTC, LTC, ETH...)"));
+    coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search").to_string()));
 
     // Generate master keys button
     let generate_master_keys_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let generate_master_keys_button = gtk::Button::new();
-    generate_master_keys_button.set_label("Generate master keys");
+    generate_master_keys_button.set_label(&t!("UI.main.coin.generate").to_string());
     generate_master_keys_box.set_halign(gtk::Align::Center);
     generate_master_keys_box.append(&generate_master_keys_button);
 
     // Master private keys
     let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let master_xprv_frame = gtk::Frame::new(Some(" Master private key"));
-    let master_xpub_frame = gtk::Frame::new(Some(" Master public key"));
+    let master_xprv_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.priv").to_string()));
+    let master_xpub_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.pub").to_string()));
     let master_private_key_text = gtk::TextView::new();
     let master_public_key_text = gtk::TextView::new();
 
@@ -2246,7 +2270,11 @@ fn create_main_window(application: &adw::Application) {
     coin_main_box.append(&generate_master_keys_box);
     coin_main_box.append(&master_keys_box);
     
-    stack.add_titled(&coin_main_box, Some("sidebar-coin"), "Coin");
+    stack.add_titled(
+        &coin_main_box, 
+        Some("sidebar-coin"), 
+        &t!("UI.main.coin").to_string()
+    );
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -2267,19 +2295,19 @@ fn create_main_window(application: &adw::Application) {
     let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let main_bip_frame = gtk::Frame::new(Some(" BIP"));
-    let main_coin_frame = gtk::Frame::new(Some(" Coin"));
-    let main_address_frame = gtk::Frame::new(Some(" Address"));
-    let main_purpose_frame = gtk::Frame::new(Some(" Purpose"));
+    let main_bip_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.bip").to_string()));
+    let main_coin_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.coin").to_string()));
+    let main_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.address").to_string()));
+    let main_purpose_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.purpose").to_string()));
 
     main_bip_frame.set_hexpand(true);
     main_coin_frame.set_hexpand(true);
     main_address_frame.set_hexpand(true);
     main_purpose_frame.set_hexpand(true);
     
-    let bip_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
-    let coin_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
-    let address_hardened_frame = gtk::Frame::new(Some(" Hardened?"));
+    let bip_hardened_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+    let coin_hardened_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+    let address_hardened_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
 
     let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
@@ -2289,12 +2317,12 @@ fn create_main_window(application: &adw::Application) {
         Some(bip_number) => {
             // TODO: parsed_bip_number can not be any u32 number. Make extra check of make new function: verify_settings function
             let parsed_bip_number = bip_number.parse::<u32>().unwrap_or_else(|_| {
-                eprintln!("Failed to parse default BIP number: {}", bip_number);
+                eprintln!("{}", &t!("error.settings.parse", telement = "default BIP number", tvalue = bip_number));
                 44  // Default BIP44
             });
-
+            
             let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == parsed_bip_number).unwrap_or_else(|| {
-                eprintln!("Default BIP number {} not found in valid BIP derivations", parsed_bip_number);
+                eprintln!("{}", &t!("error.bip.value", tvalue = parsed_bip_number));
                 1 // BIP44
             });
 
@@ -2302,11 +2330,11 @@ fn create_main_window(application: &adw::Application) {
             parsed_bip_number
         },
         None => {
-            eprintln!("'bip' not found in settings");
-
+            eprintln!("{}", &t!("error.settings.not_found", telement = "bip"));
+            
             let default_bip_number = 44;
             let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == default_bip_number).unwrap_or_else(|| {
-                eprintln!("BIP: {} in config file is invalid.", default_bip_number);
+                eprintln!("{}", &t!("error.bip.value", telement = default_bip_number));
                 1 // BIP44
             });
 
@@ -2356,7 +2384,7 @@ fn create_main_window(application: &adw::Application) {
     address_hardened_frame.set_child(Some(&address_hardened_checkbox));
 
     let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let derivation_label_frame = gtk::Frame::new(Some(" Derivation path"));
+    let derivation_label_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation").to_string()));
     derivation_label_frame.set_hexpand(true);
     
     let default_bip_label = if bip_number == 32 {
@@ -2375,19 +2403,25 @@ fn create_main_window(application: &adw::Application) {
         .build();
 
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let generate_addresses_button = gtk::Button::with_label("Generate addresses");
+    let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
 
     generate_addresses_button_box.append(&generate_addresses_button);
-
+    generate_addresses_button_box.set_halign(gtk::Align::Center);
 
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let address_treeview_frame = gtk::Frame::new(Some(" Addresses"));
+    let address_treeview_frame = gtk::Frame::new(Some(&t!("UI.main.address").to_string()));
     address_treeview_frame.set_hexpand(true);
     address_treeview_frame.set_vexpand(true);
 
     let address_treeview = gtk::TreeView::new();
     address_treeview.set_headers_visible(true);
-    let columns = ["Path", "Address", "Public key", "Private key"];
+    let columns = [
+        &t!("UI.main.address.table.path").to_string(), 
+        &t!("UI.main.address.table.address").to_string(), 
+        &t!("UI.main.address.table.pub").to_string(), 
+        &t!("UI.main.address.table.priv").to_string()
+    ];
+
     for (i, column_title) in columns.iter().enumerate() {
         let column = gtk::TreeViewColumn::new();
         let cell = gtk::CellRendererText::new();
@@ -2422,7 +2456,11 @@ fn create_main_window(application: &adw::Application) {
     main_address_box.append(&generate_addresses_button_box);
     main_address_box.append(&address_treeview_box);
     
-    stack.add_titled(&main_address_box, Some("sidebar-address"), "Address");
+    stack.add_titled(
+        &main_address_box,
+        Some("sidebar-address"), 
+        &t!("UI.main.address").to_string()
+    );
 
 
     // ACTIONS
@@ -2443,8 +2481,8 @@ fn create_main_window(application: &adw::Application) {
             mnemonic_words_text.buffer().set_text("");
             seed_text.buffer().set_text("");
 
-            println!("Entropy source: {:?}", source);
-            println!("Entropy length: {:?}", length);
+            // println!("Entropy source: {:?}", source);
+            // println!("Entropy length: {:?}", length);
 
             let entropy_length = selected_entropy_length_value;
             
@@ -2457,25 +2495,25 @@ fn create_main_window(application: &adw::Application) {
 
             if !pre_entropy.is_empty() {
                 let checksum = generate_checksum(&pre_entropy, entropy_length.unwrap());
-                println!("Entropy: {:?}", &pre_entropy);
-                println!("Checksum: {:?}", &checksum);
+                // println!("Entropy: {:?}", &pre_entropy);
+                // println!("Checksum: {:?}", &checksum);
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
                 entropy_text.buffer().set_text(&full_entropy);
                 
                 let mnemonic_words = generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                println!("Mnemonic words: {:?}", mnemonic_words);
+                // println!("Mnemonic words: {:?}", mnemonic_words);
 
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                println!("Mnemonic passphrase: {:?}", &passphrase_text);
+                // println!("Mnemonic passphrase: {:?}", &passphrase_text);
                 
                 let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
-                println!("Seed: {:?}", &seed_hex.to_string());
+                // println!("Seed: {:?}", &seed_hex.to_string());
             } else {
                 // TODO: If entropy is empty show error dialog
-                eprintln!("Entropy is empty");
+                eprintln!("{}", &t!("error.entropy.empty"))
             }
         }
     ));
@@ -2527,23 +2565,23 @@ fn create_main_window(application: &adw::Application) {
                     evm.get::<String>(),
                     comment.get::<String>(),
                 ) {
-                    println!("coin_type: {}", coin_type);
-                    println!("coin_header: {}", coin_header);
-                    println!("coin_symbol: {}", coin_symbol);
-                    println!("coin_name: {}", coin_name);
-                    println!("key_derivation: {}", key_derivation);
-                    println!("private_header: {}", private_header);
-                    println!("public_header: {}", public_header);
-                    println!("public_key_hash: {}", public_key_hash);
-                    println!("script_hash: {}", script_hash);
-                    println!("wif: {}", wif);
-                    println!("EVM: {}", evm);
-                    println!("comment: {}", comment);
+                    // println!("coin_type: {}", coin_type);
+                    // println!("coin_header: {}", coin_header);
+                    // println!("coin_symbol: {}", coin_symbol);
+                    // println!("coin_name: {}", coin_name);
+                    // println!("key_derivation: {}", key_derivation);
+                    // println!("private_header: {}", private_header);
+                    // println!("public_header: {}", public_header);
+                    // println!("public_key_hash: {}", public_key_hash);
+                    // println!("script_hash: {}", script_hash);
+                    // println!("wif: {}", wif);
+                    // println!("EVM: {}", evm);
+                    // println!("comment: {}", comment);
                     let buffer = seed_text.buffer();
                     let start_iter = buffer.start_iter();
                     let end_iter = buffer.end_iter();
                     let seed_string = buffer.text(&start_iter, &end_iter, true);
-                    println!("Seed: {}", seed_string);
+                    // println!("Seed: {}", seed_string);
                     
                     match derive_master_keys(
                         &seed_string, 
@@ -2554,7 +2592,7 @@ fn create_main_window(application: &adw::Application) {
                             master_private_key_text.buffer().set_text(&xprv.0);
                             master_public_key_text.buffer().set_text(&xprv.1);
                         },
-                        Err(err) => println!("Can not derive master keys: {}", err),
+                        Err(err) => eprintln!("{}", &t!("error.master.create")),
                     }
 
                     coin_entry.set_text(&coin_type);
@@ -2756,19 +2794,14 @@ fn create_main_window(application: &adw::Application) {
     window.present();
 }
 
-
-use rust_i18n::t;
-#[macro_use] extern crate rust_i18n;
-i18n!("locale", fallback = "en");
-
 fn main() {
     print_program_info();
+    // rust_i18n::set_locale("de");
+    println!("{}", t!("hello"));
 
     // Test zone
-    // gggggg();
-    // rust_i18n::set_locale("hr");
+    test_function(5);
     
-    println!("{}", t!("UI.hello"));
 
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
@@ -2867,9 +2900,11 @@ fn main() {
 fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
     let start_time = SystemTime::now();
 
-    
-
-    let anu_data = fetch_anu_qrng_data(data_format, array_length, hex_block_size.unwrap());
+    let anu_data = fetch_anu_qrng_data(
+        data_format, 
+        array_length, 
+        hex_block_size.unwrap()
+    );
 
     if !&anu_data.as_ref().unwrap().is_empty() {
         create_anu_timestamp(start_time);
@@ -2923,7 +2958,7 @@ fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: 
             //     println!("Final entropy string: {}", entropy_raw_binary);
         },
         _ => {
-            eprintln!("ANU data format is not valid");
+            eprintln!("{}", &t!("error.anu.format"));
             return String::new()
         }
     };
@@ -2943,7 +2978,7 @@ fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: 
     } else if entropy.len() == entropy_length {
         return entropy.to_string();
     } else {
-        eprintln!("Entropy too short");
+        eprintln!("{}", &t!("error.anu.short"));
         return String::new();
     }
 }
@@ -2965,20 +3000,20 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
     let current_time = SystemTime::now();
     let last_request_time = load_last_anu_request().unwrap();
 
-    println!("Last ANU request: {:?}", last_request_time);
-    println!("New ANU request: {:?}", current_time);
+    // println!("Last ANU request: {:?}", last_request_time);
+    // println!("New ANU request: {:?}", current_time);
     
     let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
     let wait_duration = Duration::from_secs(TCP_REQUEST_INTERVAL_SECONDS as u64);
 
     if elapsed < wait_duration {
         let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-        eprintln!("One request per 2 minutes. You have to wait {} seconds more", remaining_seconds);
+        eprintln!("{}", &t!("error.anu.timeout", tsec = remaining_seconds));
         return Some(String::new());
         // IMPROVEMENT: replace with error dialog showing remaining time #LOW
     }
 
-    print!("Connecting to ANU API");
+    // print!("Connecting to ANU API");
 
     let mut socket_addr = ANU_API_URL
         .to_socket_addrs()
@@ -3010,10 +3045,10 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
 
     let mut response = String::new();
     let mut buffer = [0; 256];
-    let mut chunks = Vec::new(); // Store received chunks
+    let mut chunks = Vec::new();
 
     loop {
-        print!(".");
+        // print!(".");
         match stream.read(&mut buffer) {
             Ok(bytes_read) if bytes_read > 0 => {
                 let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
@@ -3029,7 +3064,7 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
         }
     }
 
-    print!("done\n");
+    // print!("done\n");
 
     let combined_response = chunks.concat();
 
@@ -3350,146 +3385,158 @@ fn get_icon_name_for_current_mode() {
 }
 
 
+
+
+
+
+// Address derivation
 // ##########################
 
 
 
-use secp256k1::{SecretKey, PublicKey, Secp256k1};
-use rand::rngs::OsRng;
+use secp256k1::{PublicKey, Secp256k1, SecretKey, Message, All};
+
+
+
+fn test_function(num_addresses: u32) {
+    let xprv = "xprv9s21ZrQH143K2sVVFVjWjUJ1ghSeprpexKiB4vVkxvFjkRXcUY8tvXWeo9LbWPgKSEiGs1mYhD8gymirquH5hpiVpFGtP2eD6aagMfb9ZV7";
+    println!("xprv {:?}", xprv);
+    
+    let master_key = SecretKey::from_slice(&bs58::decode(xprv).into_vec().unwrap()[..32]).unwrap();
+    let secp = Secp256k1::new();
+    let base_path = "m/0'/0'/0'/0/0";
+    println!("base_path {:?}", base_path);
+    
+    
+    for i in 0..num_addresses {
+        let index = i;
+        let mut derivation_path = base_path.to_string();
+        if index < 10 {
+            derivation_path.push('/');
+            derivation_path.push_str(&index.to_string());
+        } else {
+            derivation_path.push_str(&index.to_string());
+        }
+        let components: Vec<&str> = derivation_path.split('/').collect();
+
+        let mut sk = master_key.clone();
+
+        for component in components.iter().skip(1) {
+            let is_hardened = component.ends_with("'");
+            let index: u32 = match component.trim_end_matches('\'').parse() {
+                Ok(idx) => idx,
+                Err(err) => {
+                    eprintln!("Error parsing index: {}", err);
+                    continue;
+                }
+            };
+
+            sk = derive_child_key(&secp, &sk, index, is_hardened);
+        }
+
+        let pk = PublicKey::from_secret_key(&secp, &sk);
+        let address = generate_address(&pk);
+
+        println!("derivation_path \"{}\"", derivation_path);
+        println!("Address {}: {}", i + 1, address);
+    }
+}
+
+fn derive_child_key(secp: &Secp256k1<All>, master_key: &SecretKey, index: u32, is_hardened: bool) -> SecretKey {
+    let mut sk = master_key.clone();
+    let mut data = [0u8; 32];
+
+    if is_hardened {
+        let mut hasher = Sha256::new();
+        hasher.update(&[0]);
+        hasher.update(&master_key[..]);
+        hasher.update(&index.to_be_bytes());
+        data.copy_from_slice(&hasher.finalize());
+    } else {
+        let child_key = PublicKey::from_secret_key(secp, &master_key);
+        let mut hasher = Sha256::new();
+        hasher.update(&child_key.serialize()[..]);
+        hasher.update(&index.to_be_bytes());
+        data.copy_from_slice(&hasher.finalize());
+    }
+
+    let child_scalar = secp256k1::scalar::Scalar::from_be_bytes(data);
+    
+    if is_hardened {
+        sk = sk.add_tweak(&child_scalar.unwrap()).expect("Failed to derive child key");
+    } else {
+        sk = sk.mul_tweak(&child_scalar.unwrap()).expect("Failed to derive child key");
+    }
+
+    sk
+}
+
 use ripemd::Ripemd160;
 
-fn derive_private_key_from_path(master_private_key: &SecretKey, path: &[u32]) -> Option<SecretKey> {
-    // Initialize secp256k1 context
-    let secp = Secp256k1::new();
-
-    // Define HMAC-SHA512 type
-    type HmacSha512 = hmac::Hmac<Sha512>;
-    // use generic_array::GenericArray as genarr;
-
-    // Initialize HMAC-SHA512 with the master private key as the key
-    let mut hmac = HmacSha512::new_from_slice(&master_private_key[..]).unwrap();
-
-    // Iterate over the derivation path
-    let mut chain_code = [0u8; 32];
-    let mut private_key_bytes = master_private_key[..].to_vec();
-    for index in path {
-        let mut data = Vec::new();
-
-        // Concatenate the private key and index as data
-        data.extend_from_slice(&private_key_bytes);
-        data.extend_from_slice(&index.to_be_bytes());
-
-        // Compute HMAC-SHA512
-        hmac.update(&data);
-        let result = hmac.clone().finalize().into_bytes();
-
-        // Split the result into the child private key and chain code
-        let (private_key_bytes_new, chain_code_new) = result.split_at(32);
-
-        // Update private key and chain code for the next iteration
-        private_key_bytes = private_key_bytes_new.to_vec();
-        chain_code.copy_from_slice(chain_code_new);
-
-        // Convert the derived private key bytes into a SecretKey
-        let private_key = secp256k1::SecretKey::from_slice(&private_key_bytes).ok()?;
-
-        // // Check if the derived key is valid (not zero or greater than the order of the curve)
-        // if secp256k1::ecdsa::SecretKey::from_slice(&private_key[..]).is_err() {
-        //     return None;
-        // }
-    }
-
-    // Return the final derived private key
-    SecretKey::from_slice(&private_key_bytes).ok()
+// Working bad
+fn generate_address(pk: &PublicKey) -> String {
+    let pk_bytes = pk.serialize();
+    let hash = sha256ripemd160(&pk_bytes);
+    let mut address = vec![0x00]; // Assuming P2PKH address format
+    address.extend(&hash);
+    bs58::encode(address).into_string()
 }
 
-fn gggggg() {
-    // Parse the master private key into a SecretKey
-    let master_private_key_str = "xprv9s21ZrQH143K2iZz8n71zL1SNC8KM699AhxDemUQr1B2Lhy8Sqs38s61kgdSqmd4h47neFsrrz8cKTagAJRU7LsGJsQrMH3GiDXfrFJ4G7A";
-    let master_private_key = match parse_master_private_key(master_private_key_str) {
-        Ok(key) => key,
-        Err(e) => {
-            eprintln!("Failed to parse master private key: {}", e);
-            return;
-        }
-    };
+use crypto_hash::{Hasher, Algorithm};
 
-    // Define the derivation path
-    let path: Vec<u32> = vec![84 | 0x80000000, 0 | 0x80000000, 0 | 0x80000000, 0];
-
-    // Call the derive_private_key_from_path function
-    if let Some(derived_private_key) = derive_private_key_from_path(&master_private_key, &path) {
-        println!("Derived private key: {:?}", derived_private_key);
-    } else {
-        eprintln!("Failed to derive private key.");
-    }
+fn serialize_key(key: &[u8]) -> Vec<u8> {
+    let hash = Sha256::digest(key);
+    let mut ripemd = Ripemd160::new();
+    ripemd.write(&hash);
+    ripemd.finalize().to_vec()
 }
 
-// fn sha256d(input: &[u8]) -> [u8; 32] {
-//     let mut hasher = sha2::Sha256::new();
-//     let mut output = [0u8; 32];
+fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.write(input);
+    let hash = hasher.finalize();
 
-//     hasher.update(input);
-//     hasher.result(&mut output);
+    let mut ripemd = Ripemd160::new();
+    ripemd.write(&hash);
 
-//     hasher.reset();
-//     hasher.update(&output);
-//     hasher.result(&mut output);
-
-//     output
-// }
-
-fn parse_master_private_key(master_private_key_str: &str) -> Result<SecretKey, String> {
-    if master_private_key_str.len() != 111 {
-        return Err("Invalid length for master private key".to_string());
-    }
-
-    if !master_private_key_str.starts_with("xprv") {
-        return Err("Invalid format for master private key".to_string());
-    }
-
-    let decoded_bytes = match bs58::decode(master_private_key_str).into_vec() {
-        Ok(decoded) => decoded,
-        Err(e) => return Err(format!("Base58 decoding error: {}", e)),
-    };
-    
-    if decoded_bytes.len() != 82 {
-        eprintln!("Invalid length for decoded bytes");
-    }
-
-    println!("Decoded bytes: {:?}", decoded_bytes);
-    
-    let key_bytes = &decoded_bytes[0..32];
-    
-    let secret_key = secp256k1::SecretKey::from_slice(&key_bytes)
-        .map_err(|e| format!("Error creating private key: {:?}", e))?;
-
-    println!("secret_key: {:?}", secret_key.display_secret().to_string());
-
-
-    let mut private_key = vec![];
-    private_key.push(0x80); // Prepend with WIF version byte
-    private_key.extend_from_slice(&decoded_bytes[0..31]); // Add the first 32 bytes
-
-    // // Append checksum
-    // let checksum = sha256d(&private_key);
-    // private_key.extend_from_slice(&checksum[..4]);
-
-    // // Convert to Base58Check encoding
-    // let wif = private_key.to_base58();
-
-    // println!("WIF: {}", wif);
-
-    // // Convert the secret key to a Base58Check string
-    // let base58_check_string = secret_key.to_base58check().unwrap();
-    
-    // println!("Encoded secret key: {}", base58_check_string);
-    
-    // // Decode the Base58Check string back to a secret key
-    // let decoded_secret_key = SecretKey::from_base58check(&base58_check_string).unwrap();
-    
-    Ok(secret_key)
+    ripemd.finalize().to_vec()
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

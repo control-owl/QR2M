@@ -1,7 +1,241 @@
-_version: 2
+"_version": 2
+hello:
+  en: "Hello world!"
+  de: "Hallo Welt!"
+  hr: "Pozdrav svijete!"
 UI:
-  hello:
-    en: Hello world
-    de: Hallo Welt
-    hr: Pozdrav svijete
-    fa: سلام دنیا
+  settings:
+    en: "Settings"
+    general:
+      en: "App settings"
+      theme:
+        en: "Theme color"
+      language:
+        en: "Language"
+      save_window:
+        en: "Save last window size"
+    wallet:
+      en: "Wallet settings"
+      entropy:
+        source:
+          en: "Entropy source"
+        length:
+          en: "Entropy length"
+      bip:
+        en: "BIP"
+    anu:
+      en: "ANU settings"
+      use_anu:
+        en: "Use ANU QRNG API"
+      data:
+        type:
+          en: "API data type"
+        array:
+          en: "API array length"
+        hex:
+          en: "Hex block size"
+    proxy:
+      en: "Proxy settings"
+      use:
+        en: "Use proxy"
+      address:
+        en: "Proxy server address"
+      port:
+        en: "Proxy server port"
+      creds:
+        en: "Use proxy credentials"
+      username:
+        en: "Username"
+      password:
+        en: "Password"
+      pac:
+        en: "Use Proxy Auto-Configuration (PAC) file"
+        path:
+          en: "PAC path"
+      ssl:
+        en: "Use SSL certificate"
+        path:
+          en: "SSL path"
+    button:
+      open:
+        en: "Open"
+      save:
+        en: "Save"
+      cancel:
+        en: "Cancel"
+    sidebar:
+      general:
+        en: "App"
+      wallet:
+        en: "Wallet"
+      anu:
+        en: "ANU"
+      proxy:
+        en: "Proxy"
+  about:
+    description:
+      en: "(Q)RNG crypto key generator"
+  main:
+    headerbar:
+      wallet:
+        new:
+          en: "New wallet (tshortcut)"
+        open:
+          en: "Open wallet (tshortcut)"
+        save:
+          en: "Save wallet (tshortcut)"
+      settings:
+        en: "Settings (tshortcut)"
+      about:
+        en: "About (tshortcut)"
+    seed:
+      en: "Seed"
+      entropy:
+        en: "Entropy"
+        source:
+          en: "Entropy source"
+        length:
+          en: "Entropy length"
+      mnemonic:
+        pass:
+          en: "Mnemonic passphrase"
+        words:
+          en: "Mnemonic words"
+      generate:
+        en: "Generate seed"
+    coin:
+      en: "Coin"
+      search:
+        en: "Find a coin by entering its symbol (BTC, LTC, ETH...)"
+      generate:
+        en: "Generate master keys"
+      keys:
+        priv:
+          en: "Master private key"
+        pub:
+          en: "Master public key"
+    address:
+      en: "Address"
+      derivation:
+        en: "Derivation Path"
+        bip:
+          en: "BIP"
+        coin:
+          en: "Coin"
+        address:
+          en: "Address"
+        purpose:
+          en: "Purpose"
+        hard:
+          en: "Hardened"
+      generate:
+        en: "Generate address"
+      table:
+        path:
+          en: "Path"
+        address:
+          en: "Address"
+        pub:
+          en: "Public key"
+        priv:
+          en: "Private key"
+    database:
+      column:
+        index:
+          en: "Index"
+        path:
+          en: "Path"
+        symbol:
+          en: "Symbol"
+        name:
+          en: "Name"
+        deriv:
+          en: "Key derivation"
+        priv_header:
+          en: "Private header"
+        pub_header:
+          en: "Public header"
+        pub_hash:
+          en: "Public key hash"
+        script:
+          en: "Script hash"
+        wif:
+          en: "Wif"
+        evm:
+          en: "EVM"
+        comment:
+          en: "Comment"
+error:
+  settings:
+    read:
+      en: "Can not read settings"
+    load:
+      en: "Failed to load '%{tpart}' from settings"
+    wrong:
+      en: "Wrong format found in settings '%{tpart}'. It should be a '%{ttype} format'"
+    parse:
+      en: "Failed to parse '%{telement}' value from settings. Value = '%{tvalue}'"
+    not_found:
+      en: "'%{telement}' not found in settings"
+  mpsc:
+    send:
+      en: "Error sending data through the mpsc channel '%{terror}'"
+  entropy:
+    create:
+      file:
+        en: "Failed to receive entropy from file"
+      source:
+        en: "Invalid entropy source specified"
+    empty:
+      en: "Entropy is empty"
+  wordlist:
+    read:
+      en: "Error reading from wordlist file"
+    word:
+      en: "INVALID_WORD"
+  master:
+    parse:
+      header:
+        en: "Can not parse '%{tpart}' header"
+    create:
+      en: "Error creating master private key"
+  seed:
+    decode:
+      en: "Can not decode seed"
+  file:
+    open:
+      en: "Failed to open file '%{tfile}'"
+    read:
+      en: "Failed to read file '%{tfile}'"
+  csv:
+    read:
+      en: "Error reading CSV record"
+    parse:
+      en: "Error parsing '%{telement}'"
+  converter:
+    IO:
+      en: "Conversion from '%{tinput}' to u32 '%{toutput}'"
+  DP:
+    read:
+      en: "Invalid field"
+  bip:
+    value:
+      en: "Invalid BIP number '%{tvalue}'"
+  anu:
+    format:
+      en: "ANU data format is not valid"
+    short:
+      en: "Entropy too short"
+    timeout:
+      en: "One request per 2 minutes. You have to wait 'tsec' seconds more"
+
+# &t!("UI.settings.element.frame.select").to_string()
+# Some(&t!("UI.settings.proxy.array").to_string())
+
+# .expect(&t!("error.seed.decode").to_string());
+# .expect(&t!("error.master.parse.header").to_string());
+
+# .expect(&t!("error.seed.decode", tpart = "SOMEPART").to_string());
+# .expect(&t!("error.master.parse.header", tpart = "private").to_string());
+
+# "{}", &t!("error.settings.read", part = "ANU data format")
