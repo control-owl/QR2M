@@ -63,7 +63,7 @@ const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
 const WINDOW_MAIN_DEFAULT_WIDTH: u32 = 1000;
 const WINDOW_MAIN_DEFAULT_HEIGHT: u32 = 800;
-const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 550;
+const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
 const VALID_PROXY_STATUS: &'static [&'static str] = &[
     "off", 
@@ -1169,6 +1169,7 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
 }
 
 fn get_window_theme_icons() -> [gtk::Image; 5] {
+    // IMPLEMENT: ato detect system theme color switch, change my icons also
     let settings = gtk::Settings::default().unwrap();
     // let theme_name = settings.gtk_theme_name().unwrap();
     let mut theme_path: String = String::new();
@@ -1644,10 +1645,12 @@ fn create_settings_window() {
     proxy_settings_box.set_margin_start(10);
     proxy_settings_box.set_margin_end(10);
     content_proxy_box.set_margin_start(20);
+    content_proxy_box.set_margin_bottom(20);
     proxy_settings_box.append(&proxy_settings_frame);
     proxy_settings_frame.set_child(Some(&content_proxy_box));
     proxy_settings_frame.set_hexpand(true);
     proxy_settings_frame.set_vexpand(true);
+    // scrolled_window.set_margin_bottom(10);
     scrolled_window.set_child(Some(&proxy_settings_box));
 
     // Use proxy settings
@@ -1787,6 +1790,8 @@ fn create_settings_window() {
     proxy_password_item_box.set_hexpand(true);
     proxy_password_item_box.set_margin_end(20);
     proxy_password_item_box.set_halign(gtk::Align::End);
+    // IMPLEMENT: Translate tooltip to another languages
+    // FEATURE: Make tooltip for every object
     proxy_password_entry.set_show_peek_icon(true);
     proxy_password_entry.set_text(&settings.proxy_login_password);
 
@@ -2903,7 +2908,7 @@ fn main() {
     println!("{}", t!("hello"));
 
     // Test zone
-    // create_address(5);
+    create_address(1);
     
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
@@ -3450,25 +3455,32 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 use secp256k1::{PublicKey, Secp256k1, SecretKey, Message, All};
 
 fn create_address(address_count: u32) {
+    println!("MY OUTPUT:");
     let xprv = "xprv9s21ZrQH143K2sVVFVjWjUJ1ghSeprpexKiB4vVkxvFjkRXcUY8tvXWeo9LbWPgKSEiGs1mYhD8gymirquH5hpiVpFGtP2eD6aagMfb9ZV7";
-    let base_path = "m";
+    println!("xprv: {}", xprv);
+    let base_path = "m/44'/0'/0'/0";
+    // println!("base_path: {}", base_path);
 
     let secp = Secp256k1::new();
     let master_key = SecretKey::from_slice(&bs58::decode(xprv).into_vec().unwrap()[..32]).unwrap();
 
     for i in 0..address_count {
+        // println!("i: {}", i);
         let derivation_path = format!("{}/{}", base_path, i);
         // println!("Derivation Path: {}", derivation_path);
 
         let sk = derive_child_key(&secp, &master_key, &derivation_path);
-        // println!("Derived Child Key for {}: {:?}", derivation_path, sk);
+        println!("Derived Child Key for {}: {:?}", derivation_path, sk);
 
-        let pk = PublicKey::from_secret_key(&secp, &sk);
+        // let pk = PublicKey::from_secret_key(&secp, &sk);
         // println!("Public Key: {:?}", pk);
 
-        let address = generate_address(&pk);
-        println!("{}: {}", derivation_path, address);
+        // let address = generate_address(&pk);
+        // println!("{}: {}", derivation_path, address);
     }
+
+    println!("BITCOIN CRATE OUTPUT:");
+    create_address_with_bitcoin_crate(1);
 }
 
 use hmac::{Hmac, Mac};
@@ -3509,21 +3521,20 @@ use crypto_hash::{Hasher, Algorithm};
 fn serialize_key(key: &[u8]) -> Vec<u8> {
     let hash = Sha256::digest(key);
     let mut ripemd = Ripemd160::new();
-    ripemd.write(&hash);
+    let _ = ripemd.write(&hash);
     ripemd.finalize().to_vec()
 }
 
 fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
-    hasher.write(input);
+    let _ = hasher.write(input);
     let hash = hasher.finalize();
 
     let mut ripemd = Ripemd160::new();
-    ripemd.write(&hash);
+    let _ = ripemd.write(&hash);
 
     ripemd.finalize().to_vec()
 }
-
 
 const HARDENED_KEY_START_INDEX: u32 = 0x80000000;
 
@@ -3553,28 +3564,11 @@ fn derive_hardened_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &Secr
     hasher.update(&index.to_be_bytes());
     data.copy_from_slice(&hasher.finalize());
 
-    let sk = parent_key.clone();
-    let mut hasher = Sha256::new();
-    hasher.update(&data);
-    let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(hasher.finalize().into()).unwrap();
-    sk.add_tweak(&tweak_scalar).unwrap();
-    
-    sk
+    let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(data).unwrap();
+    let derived_child_key = parent_key.add_tweak(&tweak_scalar).unwrap();
+
+    derived_child_key
 }
-
-// fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
-//     let child_key = PublicKey::from_secret_key(secp, &parent_key);
-//     let mut data = [0u8; 32];
-//     let mut hasher = Sha256::new();
-//     hasher.update(&child_key.serialize()[..]);
-//     hasher.update(&index.to_be_bytes());
-//     data.copy_from_slice(&hasher.finalize());
-//     let mut sk = parent_key.clone();
-//     let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(data).unwrap();
-//     sk.add_tweak(&tweak_scalar).unwrap();
-//     sk
-// }
-
 
 fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
     let child_key = PublicKey::from_secret_key(secp, &parent_key);
@@ -3590,6 +3584,46 @@ fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &Secret
 
 
 
+
+// fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
+//     let child_key = PublicKey::from_secret_key(secp, &parent_key);
+//     let mut data = [0u8; 32];
+//     let mut hasher = Sha256::new();
+//     hasher.update(&child_key.serialize()[..]);
+//     hasher.update(&index.to_be_bytes());
+//     data.copy_from_slice(&hasher.finalize());
+//     let mut sk = parent_key.clone();
+//     let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(data).unwrap();
+//     sk.add_tweak(&tweak_scalar).unwrap();
+//     sk
+// }
+
+
+
+
+use bitcoin::bip32::Xpriv;
+use bitcoin::Address;
+use bitcoin::Network;
+
+fn create_address_with_bitcoin_crate(address_count: u32) {
+    let xprv = "xprv9s21ZrQH143K2sVVFVjWjUJ1ghSeprpexKiB4vVkxvFjkRXcUY8tvXWeo9LbWPgKSEiGs1mYhD8gymirquH5hpiVpFGtP2eD6aagMfb9ZV7";
+    println!("xprv: {}", xprv);
+
+    let secp = Secp256k1::new();
+    let master_xprv = Xpriv::from_str(xprv).unwrap();
+
+    for i in 0..address_count {
+        let path = bitcoin::bip32::DerivationPath::from_str(&format!("m/44'/0'/0'/0/{}", i)).unwrap();
+        let sk = master_xprv.derive_priv(&secp, &path).unwrap().private_key;
+        println!("Derived Child Key for m/{}: {:?}", path, sk);
+
+        // let pk = bitcoin::PublicKey::from(&secp, &sk);
+        // println!("Public Key: {:?}", pk);
+
+        // let address = bitcoin::Address::p2pkh(&pk, Network::Bitcoin);
+        // println!("{}: {}", path, address);
+    }
+}
 
 
 
