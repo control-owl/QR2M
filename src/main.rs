@@ -20,7 +20,7 @@ use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
-use gtk::{gio, glib::clone, Stack, StackSidebar};
+use gtk::{gio, glib::clone, graphene::Vec2, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 use rust_i18n::t;
 #[macro_use] extern crate rust_i18n;
@@ -128,7 +128,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 
             let anu_format = match settings.get_value("anu_data_format") {
                 Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-                    eprintln!("{}", &t!("error.settings.wrong", tpart = "anu_data_format", ttype = "String"));
+                    eprintln!("{}", &t!("error.settings.wrong", telement = "anu_data_format", tvalue = "String"));
                     String::from("uint8")
                 }),
                 None => {
@@ -139,7 +139,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             
             let array_length = match settings.get_value("anu_array_length") {
                 Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
-                    eprintln!("{}", &t!("error.settings.wrong", tpart = "anu_array_length", ttype = "String"));
+                    eprintln!("{}", &t!("error.settings.wrong", telement = "anu_array_length", tvalue = "String"));
                     ANU_DEFAULT_ARRAY_LENGTH
                 }),
                 None => {
@@ -150,7 +150,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             
             let hex_block_size = match settings.get_value("hex_block_size") {
                 Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
-                    eprintln!("{}", &t!("error.settings.wrong", tpart = "hex_block_size", ttype = "u32"));
+                    eprintln!("{}", &t!("error.settings.wrong", telement = "hex_block_size", tvalue = "u32"));
                     ANU_DEFAULT_HEX_BLOCK_SIZE
                 }),
                 None => {
@@ -179,7 +179,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             Some(t!("UI.dialog.select").to_string()),
             Some(&window),
             gtk::FileChooserAction::Open,
-            &[(&t!("UI.element.button.open").to_string(), gtk::ResponseType::Accept), (&t!("UI.element.button.calcel").to_string(), gtk::ResponseType::Cancel)],
+            &[(&t!("UI.element.button.open").to_string(), gtk::ResponseType::Accept), (&t!("UI.element.button.cancel").to_string(), gtk::ResponseType::Cancel)],
             );
 
             let main_loop_clone = main_loop.clone();
@@ -195,7 +195,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                             // println!("File entropy: {}", file_entropy);
                             
                             if let Err(err) = tx.send(file_entropy) {
-                                eprintln!("{}", &t!("error.mpsc.send", terror = err));
+                                eprintln!("{}", &t!("error.mpsc.send", tvalue = err));
                             } else {
                                 main_loop.quit();
                             }
@@ -247,8 +247,8 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 fn generate_checksum(entropy: &str, entropy_length: &u32) -> String {
     let entropy_binary = convert_string_to_binary(&entropy);
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
-    let checksum_lenght = entropy_length / 32;
-    let checksum: String = hash_raw_binary.chars().take(checksum_lenght.try_into().unwrap()).collect();
+    let checksum_length = entropy_length / 32;
+    let checksum: String = hash_raw_binary.chars().take(checksum_length.try_into().unwrap()).collect();
 
     checksum
 }
@@ -341,7 +341,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 /// ```
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     let entropy_vector = convert_string_to_binary(&entropy);
-    let mnemonic = bip39::Mnemonic::from_entropy(&entropy_vector).expect("Can not create mnemomic words");
+    let mnemonic = bip39::Mnemonic::from_entropy(&entropy_vector).expect(&t!("error.bip.mnemonic").to_string());
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
 
     seed
@@ -375,9 +375,9 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     let message = "Bitcoin seed";
 
     let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", tpart = "private").to_string());
+        .expect(&t!("error.master.parse.header", tvalue = "private").to_string());
     let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", tpart = "public").to_string());
+        .expect(&t!("error.master.parse.header", tvalue = "public").to_string());
 
     let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
     let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
@@ -507,12 +507,12 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 /// ```
 fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
     let mut file = File::open(file_path)
-        .expect(&t!("error.file.open", tpart = file_path).to_string());
+        .expect(&t!("error.file.open", tvalue = file_path).to_string());
 
     let mut buffer = Vec::new();
     
     file.read_to_end(&mut buffer)
-        .expect(&t!("error.file.read", tpart = file_path).to_string());
+        .expect(&t!("error.file.read", tvalue = file_path).to_string());
 
     let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
 
@@ -585,10 +585,10 @@ fn create_coin_store() -> Vec<CoinDatabase> {
             .expect(&t!("error.csv.read").to_string());
         
         let index: u32 = record[0].parse()
-            .expect(&t!("error.csv.parse", telement = "index").to_string());
+            .expect(&t!("error.csv.parse", tvalue = "index").to_string());
         
         let path: u32 = u32::from_str_radix(&record[1][2..], 16)
-            .expect(&t!("error.csv.parse", telement = "path").to_string());
+            .expect(&t!("error.csv.parse", tvalue = "path").to_string());
 
         let symbol: String = if record[2].is_empty()            {"".to_string()} else {record[2].to_string()};
         let name: String = if record[3].is_empty()              {"".to_string()} else {record[3].to_string()};
@@ -696,7 +696,7 @@ fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix:
 /// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
     let file = File::open(&file_path)
-        .expect(&t!("error.file.read", tpart = file_path).to_string());
+        .expect(&t!("error.file.read", tvalue = file_path).to_string());
 
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
 
@@ -855,8 +855,8 @@ impl AppSettings {
             Ok(contents) => contents,
             Err(err) => {
                 // IMPROVEMENT: ask if to load default config file
-                // FEATURE: open dialog window, show visualy error parameter
-                eprintln!("{}", &t!("error.file.read", tfile = config_file));
+                // FEATURE: open dialog window, show visually error parameter
+                eprintln!("{}", &t!("error.file.read", tvalue = config_file));
                 String::new()
             }
         };
@@ -1161,6 +1161,80 @@ impl FieldValue {
     }
 }
 
+fn load_icon_bytes(path: &str) -> Vec<u8> {
+    let mut file = std::fs::File::open(path).expect(&t!("error.file.open", tvalue = path).to_string());
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).expect(&t!("error.file.read", tvalue = path).to_string());
+    buffer
+}
+
+fn get_window_theme_icons() -> [gtk::Image; 5] {
+    let settings = gtk::Settings::default().unwrap();
+    // let theme_name = settings.gtk_theme_name().unwrap();
+    let mut theme_path: String = String::new();
+
+    if settings.is_gtk_application_prefer_dark_theme() {
+        theme_path = "res/theme/basic/dark".to_string();
+    } else {
+        theme_path = "res/theme/basic/light".to_string();
+    }
+
+    // BUG: SVG is not working on Windows, revert to PNG icons
+    // IMPLEMENT: Check if svg can be loaded, if not, revert to png
+    let default_image_extension = "png";
+    
+    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", theme_path, default_image_extension));
+    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", theme_path, default_image_extension));
+    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.{}", theme_path, default_image_extension));
+    let icon_about_bytes = load_icon_bytes(&format!("{}/about.{}", theme_path, default_image_extension));
+    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.{}", theme_path, default_image_extension));
+    
+    // let icon_bytes = glib::Bytes::from(&icon_new_wallet_bytes);
+    // let icon = gio::BytesIcon::new(&icon_bytes);
+    // let test_image: gtk::Image = gtk::Image::builder().gicon(&icon).build();
+    
+    // println!("icon_bytes: {:?}", icon_bytes);
+    // println!("icon: {:?}", icon);
+    // println!("test_image: {:?}", test_image);
+    // println!("Theme name: {}", theme_name);
+    // println!("Dark style: {}", dark_style);
+
+    let icon_new_wallet = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_new_wallet_bytes)))
+        .build();
+
+    let icon_new_wallet = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_new_wallet_bytes)))
+        .build();
+
+    let icon_open_wallet = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_open_wallet_bytes)))
+        .build();
+    
+    let icon_save_wallet = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_save_wallet_bytes)))
+        .build();
+    
+    let icon_about = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_about_bytes)))
+        .build();
+    
+    let icon_settings = gtk::Image::builder()
+        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_settings_bytes)))
+        .build();
+
+    let images: [gtk::Image; 5] = [
+        icon_new_wallet,
+        icon_open_wallet,
+        icon_save_wallet,
+        icon_about,
+        icon_settings,
+    ];
+
+    images
+    
+}
+
 /// Creates the settings window.
 ///
 /// This function initializes and displays the settings window with various sections
@@ -1454,7 +1528,7 @@ fn create_settings_window() {
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
     
-    // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length
+    // IMPROVEMENT: calculate lower and initial value for a successfully API request based on entropy length
     // 16 = 16x8 = 128 chars 
     // 32 = 32x8 = 256 chars
     let array_length_adjustment = gtk::Adjustment::new(
@@ -1485,7 +1559,7 @@ fn create_settings_window() {
     let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
     
-    // IMPROVEMENT: calculate lower and initial value for a successfull API request based on entropy length and array length
+    // IMPROVEMENT: calculate lower and initial value for a successfully API request based on entropy length and array length
     // 16 = 16x8x(array_length)=????
     let hex_block_size_adjustment = gtk::Adjustment::new(
         1.0, // initial value
@@ -1584,12 +1658,12 @@ fn create_settings_window() {
     let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
     let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
     let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
-    let defaut_proxy_settings_format = valid_proxy_settings_as_strings
+    let default_proxy_settings_format = valid_proxy_settings_as_strings
         .iter()
         .position(|x| x.parse::<String>().unwrap() == settings.proxy_status)
         .unwrap_or(1);  // Default proxy: auto
 
-    use_proxy_settings_dropdown.set_selected(defaut_proxy_settings_format.try_into().unwrap());
+    use_proxy_settings_dropdown.set_selected(default_proxy_settings_format.try_into().unwrap());
     use_proxy_settings_dropdown.set_size_request(200, 10);
     use_proxy_settings_label_box.set_hexpand(true);
     use_proxy_settings_item_box.set_hexpand(true);
@@ -1956,29 +2030,54 @@ fn create_about_window() {
 fn create_main_window(application: &adw::Application) {
     let settings = AppSettings::load_settings()
         .expect(&t!("error.file.read").to_string());
-
-    // Get values from config file
+    
     let window_width = match settings.get_value("gui_last_width") {
         Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
-            eprintln!("{}", &t!("error.settings.parse", telement = "default window width", telement = width_str));
+            eprintln!("{}", &t!("error.settings.parse", telement = "gui_last_width", tvalue = width_str));
             WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
         }),
         None => {
-            eprintln!("{}", &t!("error.settings.not_found", telement = "gui_last_width"));
+            eprintln!("{}", &t!("error.settings.not_found", tvalue = "gui_last_width"));
             WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
         }
     };
     
     let window_height = match settings.get_value("gui_last_height") {
         Some(height_str) => height_str.parse::<i32>().unwrap_or_else(|_| {
-            eprintln!("{}", &t!("error.settings.parse", telement = "default window height"));
+            eprintln!("{}", &t!("error.settings.parse", tvalue = "gui_last_height"));
             WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
         }),
         None => {
-            eprintln!("{}", &t!("error.settings.not_found", telement = "gui_last_height"));
+            eprintln!("{}", &t!("error.settings.not_found", tvalue = "gui_last_height"));
             WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
         }
     };
+
+    let preferred_theme = match settings.get_value("gui_theme") {
+        Some(value) => {
+            // let theme = String::from(value);
+            // println!("theme {}", theme);
+
+            match String::from(&value).as_str() {
+                "system" => adw::ColorScheme::PreferLight,
+                "light" => adw::ColorScheme::ForceLight,
+                "dark" => adw::ColorScheme::PreferDark,
+                _ => {
+                    eprintln!("{}", &t!("error.settings.parse", telement = "gui_theme", tvalue = value));
+                    adw::ColorScheme::PreferLight
+                },
+            }
+        },
+        None => {
+            eprintln!("{}", &t!("error.settings.not_found", tvalue = "gui_theme"));
+            adw::ColorScheme::PreferLight
+        }
+        
+
+    };
+
+    // println!("preferred_theme: {:?}", preferred_theme);
+    application.style_manager().set_color_scheme(preferred_theme);
 
     // MAIN WINDOW
     let window = gtk::ApplicationWindow::builder()
@@ -1987,37 +2086,41 @@ fn create_main_window(application: &adw::Application) {
         .default_width(window_width)
         .default_height(window_height)
         .show_menubar(true)
+        .decorated(true)
         .build();
-
-    // FEATURE: Create our own icon
-    window.set_icon_name(Some("org.gnome.Settings"));
 
     // Main menu (HeaderBar)
     let header_bar = gtk::HeaderBar::new();
     window.set_titlebar(Some(&header_bar));
-
+    
     // HeaderBar buttons
     let new_wallet_button = gtk::Button::new();
     let open_wallet_button = gtk::Button::new();
     let save_wallet_button = gtk::Button::new();
-    let settings_button = gtk::Button::new();
     let about_button = gtk::Button::new();
+    let settings_button = gtk::Button::new();
 
     // HeaderBar Icons
     // FEATURE: make my own menu icons
+    let theme_images = get_window_theme_icons();
+
     new_wallet_button.set_icon_name("tab-new-symbolic");
-    // new_wallet_button.set_child(Some(&icon));
+    new_wallet_button.set_child(Some(&theme_images[0]));
     open_wallet_button.set_icon_name("document-open-symbolic");
+    open_wallet_button.set_child(Some(&theme_images[1]));
     save_wallet_button.set_icon_name("document-save-symbolic");
-    settings_button.set_icon_name("org.gnome.Settings-symbolic");
+    save_wallet_button.set_child(Some(&theme_images[2]));
     about_button.set_icon_name("help-about-symbolic");
+    about_button.set_child(Some(&theme_images[3]));
+    settings_button.set_icon_name("org.gnome.Settings-symbolic");
+    settings_button.set_child(Some(&theme_images[4]));
     
     // HeaderBar Tooltips
-    new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", tshortcut = "Ctrl+N").to_string()));
-    open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", tshortcut = "Ctrl+O").to_string()));
-    save_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.save", tshortcut = "Ctrl+S").to_string()));
-    settings_button.set_tooltip_text(Some(&t!("UI.main.headerbar.settings", tshortcut = "F5").to_string()));
-    about_button.set_tooltip_text(Some(&t!("UI.main.headerbar.about", tshortcut = "F1").to_string()));
+    new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", tvalue = "Ctrl+N").to_string()));
+    open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", tvalue = "Ctrl+O").to_string()));
+    save_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.save", tvalue = "Ctrl+S").to_string()));
+    about_button.set_tooltip_text(Some(&t!("UI.main.headerbar.about", tvalue = "F1").to_string()));
+    settings_button.set_tooltip_text(Some(&t!("UI.main.headerbar.settings", tvalue = "F5").to_string()));
 
     // Connections
     header_bar.pack_start(&new_wallet_button);
@@ -2331,11 +2434,11 @@ fn create_main_window(application: &adw::Application) {
             parsed_bip_number
         },
         None => {
-            eprintln!("{}", &t!("error.settings.not_found", telement = "bip"));
+            eprintln!("{}", &t!("error.settings.not_found", tvalue = "bip"));
             
             let default_bip_number = 44;
             let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == default_bip_number).unwrap_or_else(|| {
-                eprintln!("{}", &t!("error.bip.value", telement = default_bip_number));
+                eprintln!("{}", &t!("error.bip.value", tvalue = default_bip_number));
                 1 // BIP44
             });
 
@@ -2374,9 +2477,9 @@ fn create_main_window(application: &adw::Application) {
     address_hardened_checkbox.set_active(true);
     address_hardened_checkbox.set_halign(gtk::Align::Center);
     
-    let valid_wallet_pupose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
-    let valid_wallet_pupose_as_ref: Vec<&str> = valid_wallet_pupose_as_strings.iter().map(|s| s.as_ref()).collect();
-    let purpose_dropdown = gtk::DropDown::from_strings(&valid_wallet_pupose_as_ref);
+    let valid_wallet_purpose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
+    let valid_wallet_purpose_as_ref: Vec<&str> = valid_wallet_purpose_as_strings.iter().map(|s| s.as_ref()).collect();
+    let purpose_dropdown = gtk::DropDown::from_strings(&valid_wallet_purpose_as_ref);
     purpose_dropdown.set_selected(0); // Internal
     purpose_dropdown.set_hexpand(true);
 
@@ -2785,7 +2888,6 @@ fn create_main_window(application: &adw::Application) {
         }
     ));
 
-
     // Main sidebar
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
@@ -2797,20 +2899,17 @@ fn create_main_window(application: &adw::Application) {
 
 fn main() {
     print_program_info();
-    // rust_i18n::set_locale("de");
+    // rust_i18n::set_locale("hr");
     println!("{}", t!("hello"));
 
     // Test zone
-    create_address(5);
-    // get_icon_name_for_current_mode();
+    // create_address(5);
     
-
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
         .build();
 
     application.connect_activate(|app| {
-
         create_main_window(app);
     });
 
@@ -3009,7 +3108,7 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
 
     if elapsed < wait_duration {
         let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-        eprintln!("{}", &t!("error.anu.timeout", tsec = remaining_seconds));
+        eprintln!("{}", &t!("error.anu.timeout", tvalue = remaining_seconds));
         return Some(String::new());
         // IMPROVEMENT: replace with error dialog showing remaining time #LOW
     }
@@ -3332,58 +3431,11 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
     dialog_window.show();
 }
 
-fn load_icon_bytes(path: &str) -> Vec<u8> {
-    let mut file = std::fs::File::open(path).expect("Failed to open file");
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).expect("Failed to read file");
-    buffer
-}
-
-fn get_icon_name_for_current_mode() {
-    let settings = gtk::Settings::default().unwrap();
-    let dark_style = settings.is_gtk_application_prefer_dark_theme();
-    let theme_name = settings.gtk_theme_name().unwrap();
-    let mut theme_path: String = String::new();
-
-    println!("Theme name: {}", theme_name);
-    println!("Dark style: {}", dark_style);
-
-    if dark_style {
-        theme_path = "res/theme/basic/dark".to_string();
-    } else {
-        theme_path = "res/theme/basic/light".to_string();
-    }
-
-    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.svg",theme_path));
-    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.svg",theme_path));
-    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.svg",theme_path));
-    let icon_about_bytes = load_icon_bytes(&format!("{}/about.svg",theme_path));
-    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.svg",theme_path));
-    
-    let icon_new_wallet = gtk::Image::builder()
-            .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_new_wallet_bytes)))
-            .build();
-
-    let icon_open_wallet = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_open_wallet_bytes)))
-        .build();
-    
-    let icon_save_wallet = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_save_wallet_bytes)))
-        .build();
-    
-    let icon_about = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_about_bytes)))
-        .build();
-    
-    let icon_settings = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_settings_bytes)))
-        .build();
-
-    
 
 
-}
+
+
+
 
 
 
@@ -3446,7 +3498,6 @@ fn generate_address(pk: &PublicKey) -> String {
     // Step 7: Encode the address payload in Base58Check format
     bs58::encode(address_payload).into_string()
 }
-
 
 fn sha256sha256(input: &[u8]) -> Vec<u8> {
     let hash1 = crypto_hash::digest(Algorithm::SHA256, input);

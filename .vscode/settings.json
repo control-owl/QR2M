@@ -3,5 +3,11 @@
     "lldb.displayFormat": "auto",
     "lldb.dereferencePointers": true,
     "lldb.consoleMode": "commands",
-    "lldb.showDisassembly": "always"
+    "lldb.showDisassembly": "always",
+    "cSpell.ignoreWords": [
+        "Addrs",
+        "graphene",
+        "libadwaita"
+    ],
+    "cSpell.language": "en,hr,hr-HR,en-GB,en-US,de,de-DE"
 }

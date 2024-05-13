@@ -1,4 +1,4 @@
-index,path,symbol,name,key_derivation,private_version,public_version,pubKeyHash,scriptHash,wif,evm,comment
+index,path,symbol,coin_name,key_derivation,xprv_priv_header,xprv_pub_header,pub_key_hash,script_hash,wif,evm,comment
 0,0x80000000,BTC,Bitcoin,secp256k1,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,FALSE,
 1,0x80000001,TEST,Testnet (all coins),,,,,,,,
 2,0x80000002,LTC,Litecoin,secp256k1,0x019D9CFE,0x019DA462,0x30,0x32,0xb0,FALSE,

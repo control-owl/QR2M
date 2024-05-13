@@ -1,3 +1,7 @@
+# Primary focus
+
+- generate BIP32 or BIP44 address for some x coin !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ## Active tasks
 
 
@@ -56,3 +60,7 @@
 - [ ] log output
 - [ ] translate app to another language
 - [ ] multi-threading
+- [ ] extend bip44-extended-coin-list.csv with:
+    - [ ] status + icon
+    - [ ] top100
+    - [ ] token support

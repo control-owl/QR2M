@@ -6,68 +6,126 @@ hello:
 UI:
   settings:
     en: "Settings"
+    de: "Einstellungen"
+    hr: "Postavke"
     general:
       en: "App settings"
+      de: "App-Einstellungen"
+      hr: "Postavke programa"
       theme:
         en: "Theme color"
+        de: "Themenfarbe"
+        hr: "Boja programa"
       language:
         en: "Language"
+        de: "Sprache"
+        hr: "Jezik"
       save_window:
-        en: "Save last window size"
+        en: "Save last window size?"
+        de: "Fenstergröße speichern?"
+        hr: "Zapamti veličinu programa?"
     wallet:
       en: "Wallet settings"
+      de: "Wallet Einstellungen"
+      hr: "Postavke novčanika"
       entropy:
         source:
           en: "Entropy source"
+          de: "Entropiequelle"
+          hr: "Izvor entropije"
         length:
           en: "Entropy length"
+          de: "Länge der Entropie"
+          hr: "Dužina entropije"
       bip:
         en: "BIP"
     anu:
       en: "ANU settings"
+      de: "ANU Einstellungen"
+      hr: "ANU Postavke"
       use_anu:
-        en: "Use ANU QRNG API"
+        en: "Use ANU QRNG API?"
+        de: "ANU QRNG API verwenden?"
+        hr: "Korist ANU QRNG API?"
       data:
         type:
           en: "API data type"
+          de: "API-Datentyp"
+          hr: "API tip podataka"
         array:
           en: "API array length"
+          de: "API-Array-Länge"
+          hr: "Dužina API niza"
         hex:
           en: "Hex block size"
+          de: "Hex-Blockgröße"
+          hr: "Veličina hex bloka"
     proxy:
       en: "Proxy settings"
+      de: "Proxy Einstellungen"
+      hr: "Proxy postavke"
       use:
-        en: "Use proxy"
+        en: "Use proxy?"
+        de: "Proxy verwenden?"
+        hr: "Koristi proxy?"
       address:
         en: "Proxy server address"
+        de: "Adresse des Proxyservers"
+        hr: "Adresa proxy servera"
       port:
         en: "Proxy server port"
+        de: "Port des Proxyservers"
+        hr: "Port proxy servera"
       creds:
         en: "Use proxy credentials"
+        de: "Proxy-Anmeldedaten verwenden"
+        hr: "Koristi proxy isprave"
       username:
         en: "Username"
+        de: "Benutzername"
+        hr: "Korisničko ime"
       password:
         en: "Password"
+        de: "Passwort"
+        hr: "Lozinka"
       pac:
-        en: "Use Proxy Auto-Configuration (PAC) file"
+        en: "Use Proxy Auto-Configuration (PAC) file?"
+        de: "Proxy-Autokonfigurationsdatei (PAC) verwenden?"
+        hr: "Koristi datoteku automatske konfiguracije proxyja (PAC)?"
         path:
           en: "PAC path"
+          de: "PAC-Pfad"
+          hr: "PAC lokacija"
       ssl:
-        en: "Use SSL certificate"
+        en: "Use SSL certificate?"
+        de: "SSL-Zertifikat verwenden?"
+        hr: "Koristi SSL certifikat?"
         path:
           en: "SSL path"
+          de: "SSL-Pfad"
+          hr: "SSL lokacija"
     button:
       open:
         en: "Open"
+        de: "Öffnen"
+        hr: "Otvoriti"
       save:
         en: "Save"
+        de: "Speichern"
+        hr: "Spremiti"
       cancel:
         en: "Cancel"
+        de: "Abbrechen"
+        hr: "Otkazati"
     sidebar:
       general:
         en: "App"
+        de: "App"
+        hr: "Program"
       wallet:
         en: "Wallet"
+        de: "Wallet"
+        hr: "Novčanik"
       anu:
         en: "ANU"
       proxy:
@@ -75,159 +133,284 @@ UI:
   about:
     description:
       en: "(Q)RNG crypto key generator"
+      de: "(Q)RNG Krypto-Schlüsselgenerator"
+      hr: "(Q)RNG generator kripto ključeva"
   main:
     headerbar:
       wallet:
         new:
-          en: "New wallet (tshortcut)"
+          en: "New wallet %{tvalue}"
+          de: "Neue Wallet %{tvalue}"
+          hr: "Novi novčanik %{tvalue}"
         open:
-          en: "Open wallet (tshortcut)"
+          en: "Open wallet %{tvalue}"
+          de: "Wallet öffnen %{tvalue}"
+          hr: "Otvori novčanik %{tvalue}"
         save:
-          en: "Save wallet (tshortcut)"
+          en: "Save wallet %{tvalue}"
+          de: "Wallet speichern %{tvalue}"
+          hr: "Spremi novčanik %{tvalue}"
       settings:
-        en: "Settings (tshortcut)"
+        en: "Settings %{tvalue}"
+        de: "Einstellungen %{tvalue}"
+        hr: "Postavke %{tvalue}"
       about:
-        en: "About (tshortcut)"
+        en: "About %{tvalue}"
+        de: "Über %{tvalue}"
+        hr: "O programu %{tvalue}"
     seed:
       en: "Seed"
       entropy:
         en: "Entropy"
+        de: "Entropie"
+        hr: "Entropija"
         source:
           en: "Entropy source"
+          de: "Entropiequelle"
+          hr: "Izvor entropije"
         length:
           en: "Entropy length"
+          de: "Länge der Entropie"
+          hr: "Dužina entropije"
       mnemonic:
         pass:
           en: "Mnemonic passphrase"
+          de: "Mnemonische Kennwort"
+          hr: "Mnemonička lozinka"
         words:
           en: "Mnemonic words"
+          de: "Mnemonische Wörter"
+          hr: "Mnemoničke riječi"
       generate:
         en: "Generate seed"
+        de: "Seed generieren"
+        hr: "Generiraj seed"
     coin:
       en: "Coin"
       search:
         en: "Find a coin by entering its symbol (BTC, LTC, ETH...)"
+        de: "Finden Sie eine Coin durch Eingabe ihres Symbols (BTC, LTC, ETH...)"
+        hr: "Pronađite coin tako da unesete njegov simbol (BTC, LTC, ETH...)"
       generate:
         en: "Generate master keys"
+        de: "Masterschlüssel generieren"
+        hr: "Generirajte master ključeve"
       keys:
         priv:
           en: "Master private key"
+          de: "Master Private Schlüssel"
+          hr: "Master privatni ključ"
         pub:
           en: "Master public key"
+          de: "Master Public Schlüssel"
+          hr: "Glavni javni ključ"
     address:
       en: "Address"
+      de: "Adresse"
+      hr: "Adresa"
       derivation:
         en: "Derivation Path"
+        de: "Ableitungspfad"
+        hr: "Put derivacije"
         bip:
           en: "BIP"
         coin:
           en: "Coin"
         address:
           en: "Address"
+          de: "Adresse"
+          hr: "Adresa"
         purpose:
           en: "Purpose"
+          de: "Zweck"
+          hr: "Svrha"
         hard:
-          en: "Hardened"
+          en: "Hardened?"
+          de: "Gehärtete?"
+          hr: "Stvrdnuta?"
       generate:
         en: "Generate address"
+        de: "Adresse generieren"
+        hr: "Generirajte adresu"
       table:
         path:
           en: "Path"
+          de: "Pfad"
+          hr: "Putanja"
         address:
           en: "Address"
+          de: "Adresse"
+          hr: "Adresa"
         pub:
           en: "Public key"
+          de: "Öffentlicher Schlüssel"
+          hr: "Javni ključ"
         priv:
           en: "Private key"
+          de: "Privatschlüssel"
+          hr: "Privatni ključ"
     database:
       column:
         index:
           en: "Index"
+          de: "Index"
+          hr: "Indeks"
         path:
           en: "Path"
+          de: "Pfad"
+          hr: "Putanja"
         symbol:
           en: "Symbol"
+          de: "Zeichen"
+          hr: "Simbol"
         name:
-          en: "Name"
+          en: "Coin name"
+          de: "Coinname"
+          hr: "Ime coina"
         deriv:
-          en: "Key derivation"
+          en: "Algorithm"
+          de: "Algorithmus"
+          hr: "Algoritam"
         priv_header:
-          en: "Private header"
+          en: "xprv-priv-header"
+          # de: "Private Header"
+          # hr: "Privatno zaglavlje"
         pub_header:
-          en: "Public header"
+          en: "xprv-pub-header"
+          # de: "Öffentliche Header"
+          # hr: "Javno zaglavlje"
         pub_hash:
-          en: "Public key hash"
+          en: "pub-key-hash"
+          # de: "Öffentlicher Schlüssel Hash"
+          # hr: "Javni hash algoritam"
         script:
-          en: "Script hash"
+          en: "script-hash"
+          # de: "Skript-Hash"
+          # hr: "Hash skripte"
         wif:
-          en: "Wif"
+          en: "wif"
         evm:
           en: "EVM"
         comment:
           en: "Comment"
+          de: "Kommentar"
+          hr: "Komentar"
 error:
   settings:
     read:
       en: "Can not read settings"
+      de: "Einstellungen können nicht gelesen werden"
+      hr: "Ne mogu pročitati postavke"
     load:
-      en: "Failed to load '%{tpart}' from settings"
+      en: "Failed to load '%{tvalue}' from settings"
+      de: "Fehler beim Laden von '%{tvalue}' aus den Einstellungen"
+      hr: "Pogreška pri učitavanju '%{tvalue}' iz postavki"
     wrong:
-      en: "Wrong format found in settings '%{tpart}'. It should be a '%{ttype} format'"
+      en: "Wrong format found in settings '%{telement}'. It should be a '%{tvalue} format'"
+      de: "Falsches Format in den Einstellungen '%{telement}' gefunden. Es sollte ein '%{tvalue}-Format' sein."
+      hr: "Pogrešan format pronađen u postavkama '%{telement}'. Trebao bi biti '%{tvalue} format'."
     parse:
       en: "Failed to parse '%{telement}' value from settings. Value = '%{tvalue}'"
+      de: "Der Wert '%{telement}' aus den Einstellungen konnte nicht analysiert werden. Wert = '%{tvalue}'"
+      hr: "Vrijednost '%{telement}' iz postavki nije se mogla analizirati. Vrijednost = '%{tvalue}'"
     not_found:
-      en: "'%{telement}' not found in settings"
+      en: "'%{tvalue}' not found in settings"
+      de: "'%{tvalue}' nicht in Einstellungen gefunden"
+      hr: "'%{tvalue}' nije pronađen u postavkama"
   mpsc:
     send:
-      en: "Error sending data through the mpsc channel '%{terror}'"
+      en: "Error sending data through the mpsc channel '%{tvalue}'"
+      de: "Fehler beim Senden von Daten über den mpsc-Kanal '%{tvalue}'"
+      hr: "Pogreška pri slanju podataka putem mpsc kanala '%{tvalue}'"
   entropy:
     create:
       file:
         en: "Failed to receive entropy from file"
+        de: "Entropie aus Datei konnte nicht empfangen werden"
+        hr: "Nije moguće učitati entropiju iz datoteke"
       source:
         en: "Invalid entropy source specified"
+        de: "Ungültige Entropiequelle angegeben"
+        hr: "Nevažeći izvor entropije"
     empty:
       en: "Entropy is empty"
+      de: "Entropie ist leer"
+      hr: "Entropija je prazna"
   wordlist:
     read:
       en: "Error reading from wordlist file"
+      de: "Fehler beim Lesen aus der Wortlistendatei"
+      hr: "Pogreška pri čitanju iz datoteke popisa riječi"
     word:
       en: "INVALID_WORD"
+      de: "INVALID_WORT"
+      hr: "NEVAŽEĆA_RIJEČ"
   master:
     parse:
       header:
-        en: "Can not parse '%{tpart}' header"
+        en: "Can not parse '%{tvalue}' header"
+        de: "Kann '%{tvalue}'-Header nicht parsen"
+        hr: "Ne mogu analizirati zaglavlja '%{tvalue}'"
     create:
       en: "Error creating master private key"
+      de: "Fehler beim Erstellen des privaten Masterschlüssels"
+      hr: "Stvaranje glavnog privatnog ključa nije uspjelo"
   seed:
     decode:
       en: "Can not decode seed"
+      de: "Kann Seed nicht entschlüsseln"
+      hr: "Ne mogu dekodirati seed"
   file:
     open:
-      en: "Failed to open file '%{tfile}'"
+      en: "Failed to open file '%{tvalue}'"
+      de: "Die Datei '%{tvalue}' konnte nicht geöffnet werden."
+      hr: "Datoteku '%{tvalue}' nije bilo moguće otvoriti"
     read:
-      en: "Failed to read file '%{tfile}'"
+      en: "Failed to read file '%{tvalue}'"
+      de: "Die Datei '%{tvalue}' konnte nicht gelesen werden"
+      hr: "Datoteku '%{tvalue}' nije moguće pročitati"
   csv:
     read:
       en: "Error reading CSV record"
+      de: "Fehler beim Lesen eines CSV- Eintrags"
+      hr: "Pogreška pri čitanju CSV unosa"
     parse:
-      en: "Error parsing '%{telement}'"
+      en: "Error parsing '%{tvalue}'"
+      de: "Fehler beim Parsen von '%{tvalue}'"
+      hr: "Pogreška pri analiziranju '%{tvalue}'"
   converter:
     IO:
-      en: "Conversion from '%{tinput}' to u32 '%{toutput}'"
+      en: "Can not convert from '%{tinput}' to u32 '%{toutput}'"
+      de: "Kann nicht von '%{tinput}' nach u32 '%{toutput}' konvertieren"
+      hr: "Nije moguće pretvoriti iz '%{tinput}' u u32 '%{toutput}'"
   DP:
     read:
       en: "Invalid field"
+      de: "Ungültiges Feld"
+      hr: "Nevažeće polje"
   bip:
     value:
       en: "Invalid BIP number '%{tvalue}'"
+      de: "Ungültige BIP-Nummer '%{tvalue}'"
+      hr: "Nevažeći BIP broj '%{tvalue}'"
+    mnemonic:
+      en: "Can not create mnemonic words"
+      de: "Kann keine mnemonischen Wörter erstellen"
+      hr: "Ne mogu stvoriti mnemoničke riječi"
   anu:
     format:
       en: "ANU data format is not valid"
+      de: "ANU-Datenformat ist nicht gültig"
+      hr: "ANU format podataka nije valjan"
     short:
       en: "Entropy too short"
+      de: "Entropie zu kurz"
+      hr: "Entropija je prekratka"
     timeout:
-      en: "One request per 2 minutes. You have to wait 'tsec' seconds more"
+      en: "One request per 2 minutes. You have to wait '%{tvalue}' seconds more"
+      de: "Eine Anfrage alle 2 Minuten. Sie müssen '%{tvalue}' Sekunden mehr warten"
+      hr: "Jedan zahtjev svake 2 minute. Morate pričekati još ''%{tvalue}' sekundi"
+
 
 # &t!("UI.settings.element.frame.select").to_string()
 # Some(&t!("UI.settings.proxy.array").to_string())
@@ -235,7 +418,7 @@ error:
 # .expect(&t!("error.seed.decode").to_string());
 # .expect(&t!("error.master.parse.header").to_string());
 
-# .expect(&t!("error.seed.decode", tpart = "SOMEPART").to_string());
+# .expect(&t!("error.seed.decode", tpart = "SOME_PART").to_string());
 # .expect(&t!("error.master.parse.header", tpart = "private").to_string());
 
 # "{}", &t!("error.settings.read", part = "ANU data format")
