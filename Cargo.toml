@@ -35,7 +35,8 @@ hmac = "0.12.1"
 generic-array = "1.0.0"
 bitcoin = "0.32.0"
 
-
+num-bigint = "0.4"
+num-traits = "0.2"
 
 
 [[bin]]

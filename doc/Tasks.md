@@ -29,6 +29,7 @@
 - [x] theme (auto)
 - [ ] ShortcutsWindow
 - [ ] buy me a coffee
+- [ ] create filter for cointree
 
 ---
 
@@ -51,6 +52,7 @@
 - [x] uint8 parsing
 - [ ] uint16 parsing
 - [ ] hex16 parsing
+- [ ] import: entropy, seed, master...
 
 ---
 
