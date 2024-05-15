@@ -1,8 +1,10 @@
 #![allow(non_snake_case)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-#![allow(unused_assignments)]
-#![allow(dead_code)]
+// #![allow(unused_imports)]
+// #![allow(unused_variables)]
+// #![allow(unused_assignments)]
+// #![allow(dead_code)]
+// #![allow(unused_mut)]
+
 
 // REQUIREMENTS
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -11,21 +13,20 @@
 use std::{
     fs::{self, File}, io::{self, prelude::*, BufRead, BufReader, Read}, net::{TcpStream,ToSocketAddrs}, path::Path, str::FromStr, time::{Duration, SystemTime}
 };
-use glib::property;
+// use glib::property;
 use hex;
 use rand::Rng;
 use sha2::{Digest, Sha256, Sha512};
-use bip39::{self, serde::de::IntoDeserializer};
+use bip39;
 use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
-use gtk::{gio, glib::clone, graphene::Vec2, Stack, StackSidebar};
+use gtk::{gio, glib::clone, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 use rust_i18n::t;
 #[macro_use] extern crate rust_i18n;
 i18n!("locale", fallback = "en");
-
 
 // Default settings
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
@@ -75,6 +76,9 @@ const VALID_GUI_THEMES: &'static [&'static str] = &[
     "light", 
     "dark",
 ];
+
+
+
 
 // BASIC
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -302,7 +306,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
         Ok(content) => content,
         Err(err) => {
-            eprintln!("{}", &t!("error.wordlist.read"));
+            eprintln!("{}: {}", &t!("error.wordlist.read"), err);
             return String::new();
         }
     };
@@ -385,18 +389,19 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
 
     // Private construct
     let mut master_private_key = Vec::new();
-    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));     // Version        4 bytes
+    
+    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));          // Version        4 bytes
     master_private_key.push(0x00);                                                    // Depth          1 byte
     master_private_key.extend([0x00; 4].iter());                                      // Parent finger  4 bytes
     master_private_key.extend([0x00; 4].iter());                                      // Index/child    4 bytes
     master_private_key.extend_from_slice(chain_code_bytes);                           // Chain code     32 bytes
     master_private_key.push(0x00);                                                    // Key prefix     1 byte
     master_private_key.extend_from_slice(master_private_key_bytes);                   // Key            32 bytes
+    
     let checksum: [u8; 4] = calculate_checksum(&master_private_key);            // Checksum       4 bytes
     master_private_key.extend_from_slice(&checksum);
     
-    let master_xprv = bs58::encode(&master_private_key).into_string(); // Total      82 bytes
-    // println!("Master private key: {}", master_xprv);
+    let master_xprv = bs58::encode(&master_private_key).into_string();          // Total      82 bytes
 
     // Public construct
     let secp = secp256k1::Secp256k1::new();
@@ -405,16 +410,18 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
 
     let mut master_public_key = Vec::new();
-    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));      // Version        4 bytes
+    
+    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));            // Version        4 bytes
     master_public_key.push(0x00);                                                     // Depth          1 byte
     master_public_key.extend([0x00; 4].iter());                                       // Parent finger  4 bytes
     master_public_key.extend([0x00; 4].iter());                                       // Index/child    4 bytes
     master_public_key.extend_from_slice(chain_code_bytes);                            // Chain code     32 bytes
     master_public_key.extend_from_slice(&master_public_key_bytes);                    // Key            33 bytes (compressed)
+    
     let checksum: [u8; 4] = calculate_checksum(&master_public_key);              // Checksum       4 bytes
     master_public_key.extend_from_slice(&checksum);
     
-    let master_xpub = bs58::encode(&master_public_key).into_string();   // Total      82 bytes
+    let master_xpub = bs58::encode(&master_public_key).into_string();           // Total      82 bytes
 
     let mut child_keys = Vec::new();
     let parent_fingerprint = hash_public_key(&master_public_key_bytes);
@@ -423,33 +430,32 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
         let (child_secret_key, child_public_key) = derive_child_keys(&secp, &master_secret_key, &chain_code_bytes, index, true);
         let child_xprv = {
             let mut child_key_ext = Vec::new();
-            child_key_ext.extend_from_slice(&u32::to_be_bytes(private_header));       // Version        4 bytes
-            child_key_ext.push(0x01);                                                       // Depth          1 byte
-            // child_key_ext.extend([0x0; 4].iter());                                        // Parent fingerprint  4 bytes
-            // Assuming `master_public_key_bytes` is the parent's public key
-            child_key_ext.extend_from_slice(&parent_fingerprint);
-
-            child_key_ext.extend_from_slice(&index.to_be_bytes());                                  // Index/child    4 bytes
-            child_key_ext.extend_from_slice(&chain_code_bytes);                             // Chain code     32 bytes
-            child_key_ext.push(0x00);                                                       // Key prefix for private key    1 byte
-            child_key_ext.extend_from_slice(&child_secret_key[..]);                      // Key            32 bytes
-            let checksum: [u8; 4] = calculate_checksum(&child_key_ext);         // Checksum       4 bytes
+            
+            child_key_ext.extend_from_slice(&u32::to_be_bytes(private_header));        // Version        4 bytes
+            child_key_ext.push(0x01);                                                  // Depth          1 byte
+            child_key_ext.extend_from_slice(&parent_fingerprint);                      // Parent finger  4 bytes
+            child_key_ext.extend_from_slice(&index.to_be_bytes());                     // Index/child    4 bytes
+            child_key_ext.extend_from_slice(&chain_code_bytes);                        // Chain code     32 bytes
+            child_key_ext.push(0x00);                                                  // Priv.key prefix  1 byte
+            child_key_ext.extend_from_slice(&child_secret_key[..]);                    // Key            32 bytes
+            
+            let checksum: [u8; 4] = calculate_checksum(&child_key_ext);                // Checksum       4 bytes
             child_key_ext.extend_from_slice(&checksum);
-            bs58::encode(&child_key_ext).into_string()
+            
+            bs58::encode(&child_key_ext).into_string()                                 // Total      82 bytes
         };
         let child_xpub = {
             let mut child_key_ext = Vec::new();
             
-            child_key_ext.extend_from_slice(&u32::to_be_bytes(public_header));      // Version        4 bytes
-            child_key_ext.push(0x01);                                                     // Depth          1 byte
-            // child_key_ext.extend([0x00; 4].iter());                                       // Parent fingerprint  4 bytes
-            child_key_ext.extend_from_slice(&parent_fingerprint);
-
-            child_key_ext.extend_from_slice(&index.to_be_bytes());                        // Index/child    4 bytes
-            child_key_ext.extend_from_slice(&chain_code_bytes);                           // Chain code     32 bytes
-            child_key_ext.extend_from_slice(&child_public_key.serialize()[..]);           // Key            33 bytes (compressed)
+            child_key_ext.extend_from_slice(&u32::to_be_bytes(public_header));          // Version        4 bytes
+            child_key_ext.push(0x01);                                                   // Depth          1 byte
+            child_key_ext.extend_from_slice(&parent_fingerprint);                       // Parent finger  4 bytes
+            child_key_ext.extend_from_slice(&index.to_be_bytes());                      // Index/child    4 bytes
+            child_key_ext.extend_from_slice(&chain_code_bytes);                         // Chain code     32 bytes
+            child_key_ext.extend_from_slice(&child_public_key.serialize()[..]);         // Key            33 bytes (compressed)
             
-            let checksum: [u8; 4] = calculate_checksum(&child_key_ext);              // Checksum       4 bytes
+            let checksum: [u8; 4] = calculate_checksum(&child_key_ext);                  // Checksum       4 bytes
+            
             child_key_ext.extend_from_slice(&checksum);
             
             bs58::encode(&child_key_ext).into_string()
@@ -462,7 +468,57 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     println!("Child keys: {:?}", child_keys);
 
     inspect_child_keys(&child_keys);
+
     Ok((master_xprv, master_xpub))
+}
+
+
+fn derive_child_keys(
+    secp: &secp256k1::Secp256k1<secp256k1::All>,
+    master_secret_key: &secp256k1::SecretKey,
+    chain_code_bytes: &[u8],
+    index: u32,
+    hardened: bool,
+) -> (secp256k1::SecretKey, secp256k1::PublicKey) {
+    let mut data = Vec::with_capacity(37);
+    let mut child_scalar_bytes = [0u8; 32];
+
+    if hardened {
+        // Deriving a hardened child key
+        println!("Deriving a hardened child key");
+        data.extend_from_slice(&master_secret_key[..]); // Use parent private key
+        println!("Hard output: {:?}", data);
+    } else {
+        // Deriving a normal child key
+        println!("Deriving a normal child key");
+        let master_public_key = secp256k1::PublicKey::from_secret_key(secp, master_secret_key);
+        data.extend_from_slice(&master_public_key.serialize()[..]); // Use parent public key
+        println!("Normal output: {:?}", data);
+    }
+
+    data.extend_from_slice(&index.to_be_bytes());
+
+    let hmac_result = hmac_sha512(&chain_code_bytes, &data);
+    let (child_secret_key_bytes, _chain_code) = hmac_result.split_at(32);
+
+    child_scalar_bytes.copy_from_slice(&child_secret_key_bytes);
+
+    let child_secret_key = master_secret_key.clone();
+    
+    match secp256k1::Scalar::from_be_bytes(child_scalar_bytes) {
+        Ok(child_scalar) => {
+            child_secret_key
+                .add_tweak(&child_scalar)
+                .expect("Failed to add child scalar with master scalar");
+        }
+        Err(err) => {
+            eprintln!("Error: {:?}", err);
+            // Handle the error case appropriately
+        }
+    }
+    let child_public_key = secp256k1::PublicKey::from_secret_key(secp, &child_secret_key);
+
+    (child_secret_key, child_public_key)
 }
 
 fn inspect_child_keys(child_keys: &[(String, String)]) {
@@ -638,6 +694,7 @@ fn sha256_hash(data: &[u8]) -> Vec<u8> {
     hasher.update(data);
     hasher.finalize().iter().cloned().collect()
 }
+
 
 
 // COINS
@@ -945,7 +1002,7 @@ impl AppSettings {
             Err(err) => {
                 // IMPROVEMENT: ask if to load default config file
                 // FEATURE: open dialog window, show visually error parameter
-                eprintln!("{}", &t!("error.file.read", tvalue = config_file));
+                eprintln!("{}: {}", &t!("error.file.read", tvalue = config_file), err);
                 String::new()
             }
         };
@@ -2790,7 +2847,7 @@ fn create_main_window(application: &adw::Application) {
                             master_private_key_text.buffer().set_text(&xprv.0);
                             master_public_key_text.buffer().set_text(&xprv.1);
                         },
-                        Err(err) => eprintln!("{}", &t!("error.master.create")),
+                        Err(err) => eprintln!("{}: {}", &t!("error.master.create"), err),
                     }
 
                     coin_entry.set_text(&coin_type);
@@ -3540,39 +3597,40 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 // ##########################
 
 
+// const HARDENED_KEY_INDEX: u32 = 2_147_483_648; // 2^31
+use secp256k1::{PublicKey, Secp256k1, SecretKey};
+// use hmac::{Hmac, Mac};
+use ripemd::Ripemd160;
+use crypto_hash::Algorithm;
 
-use secp256k1::{PublicKey, Secp256k1, SecretKey, Message, All};
 
 fn create_address(address_count: u32) {
     println!("MY OUTPUT:");
     let xprv = "xprv9uYDQnWoX6aDevvvy3rjAaaXPAtkWwRtspSh3ebUDoPjjEqJvs8nYcrC2Yw5vd5y59gqrEHQoJ1fdxJSk4A8mEvCwtRHtC3fzav2wDnqVtU";
     println!("xprv: {}", xprv);
-    let base_path = "44'/0'/0'/0";
+    let base_path = "0";
     // println!("base_path: {}", base_path);
 
     let secp = Secp256k1::new();
     let master_key = SecretKey::from_slice(&bs58::decode(xprv).into_vec().unwrap()[..32]).unwrap();
 
-    for i in 0..address_count {
-        let derivation_path = format!("{}/{}", base_path, i);
-        // println!("Derivation Path: {}", derivation_path);
+    for index in 0..address_count {
+        let derivation_path = format!("{}/{}", base_path, index);
+        println!("Derivation Path: {}", derivation_path);
 
-        let sk = derive_child_key(&secp, &master_key, &derivation_path);
-        println!("Derived Child Key for {}: {:?}", derivation_path, sk);
+        let chain_code_bytes = "d0b023cbae629a825df5e001f4641214fdf6ce4f79a833308c5b0697cc6febe8".as_bytes();
+        let (child_secret_key, child_public_key) = derive_child_keys(&secp, &master_key, &chain_code_bytes, index, false);
 
-        // let pk = PublicKey::from_secret_key(&secp, &sk);
-        // println!("Public Key: {:?}", pk);
+        println!("Derived Child Key for {}: {:?}", derivation_path, child_secret_key);
+        println!("child_public_key: {:?}", child_public_key);
 
-        // let address = generate_address(&pk);
-        // println!("{}: {}", derivation_path, address);
+        let address = generate_address(&child_public_key);
+        println!("{}: {}", derivation_path, address);
     }
 
     println!("BITCOIN CRATE OUTPUT:");
     create_address_with_bitcoin_crate(1);
 }
-
-use hmac::{Hmac, Mac};
-use ripemd::Ripemd160;
 
 fn generate_address(pk: &PublicKey) -> String {
     // Step 1: Serialize the public key
@@ -3604,14 +3662,13 @@ fn sha256sha256(input: &[u8]) -> Vec<u8> {
     let hash2 = crypto_hash::digest(Algorithm::SHA256, &hash1);
     hash2.to_vec()
 }
-use crypto_hash::{Hasher, Algorithm};
 
-fn serialize_key(key: &[u8]) -> Vec<u8> {
-    let hash = Sha256::digest(key);
-    let mut ripemd = Ripemd160::new();
-    let _ = ripemd.write(&hash);
-    ripemd.finalize().to_vec()
-}
+// fn serialize_key(key: &[u8]) -> Vec<u8> {
+//     let hash = Sha256::digest(key);
+//     let mut ripemd = Ripemd160::new();
+//     let _ = ripemd.write(&hash);
+//     ripemd.finalize().to_vec()
+// }
 
 fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
@@ -3624,94 +3681,79 @@ fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
     ripemd.finalize().to_vec()
 }
 
-const HARDENED_KEY_START_INDEX: u32 = 2_147_483_648; // 2^31
+// fn derive_child_key(secp: &Secp256k1<secp256k1::All>, master_key: &SecretKey, derivation_path: &str) -> SecretKey {
+//     let mut sk = master_key.clone();
+
+//     for (index, component) in derivation_path.split('/').enumerate() {
+//         let is_hardened = component.ends_with("'");
+//         let index_str = if is_hardened {
+//             println!("index_str: {}", component.trim_end_matches('\''));
+//             component.trim_end_matches('\'')
+//         } else {
+//             println!("component: {}", component);
+//             component
+//         };
 
 
-fn derive_child_key(secp: &Secp256k1<secp256k1::All>, master_key: &SecretKey, derivation_path: &str) -> SecretKey {
-    let mut sk = master_key.clone();
+//         let index: u32 = index_str.parse().unwrap();
 
-    for (index, component) in derivation_path.split('/').enumerate() {
-        let is_hardened = component.ends_with("'");
-        let index_str = if is_hardened {
-            component.trim_end_matches('\'')
-        } else {
-            component
-        };
+//         if is_hardened && index > HARDENED_KEY_INDEX {
+//             eprintln!("Hardened key index out of range");
+//         }
 
-        let index: u32 = index_str.parse().unwrap();
-
-        if is_hardened && index > HARDENED_KEY_START_INDEX {
-            eprintln!("Hardened key index out of range");
-        }
-
-        let actual_index = if is_hardened {
-            if index >= HARDENED_KEY_START_INDEX {
-                eprintln!("Hardened key index out of range");
-            }
-            index
-        } else {
-            index
-        };
+//         let actual_index = if is_hardened {
+//             if index >= HARDENED_KEY_INDEX {
+//                 eprintln!("Hardened key index out of range");
+//             }
+//             index
+//         } else {
+//             index
+//         };
         
-        sk = if is_hardened {
-            derive_hardened_child_key(secp, &sk, actual_index)
-        } else {
-            derive_normal_child_key(secp, &sk, actual_index)
-        };
-    }
+//         sk = if is_hardened {
+//             derive_hardened_child_key(secp, &sk, actual_index)
+//         } else {
+//             derive_normal_child_key(secp, &sk, actual_index)
+//         };
+//     }
 
-    sk
-}
+//     sk
+// }
 
-fn derive_hardened_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
-    let mut data = [0u8; 32];
-    let mut hasher = Sha256::new();
+// fn derive_hardened_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
+//     let mut data = [0u8; 32];
+//     let mut hasher = Sha256::new();
     
-    hasher.update(&parent_key[..]);
-    hasher.update(&index.to_be_bytes());
-    data.copy_from_slice(&hasher.finalize());
+//     hasher.update(&parent_key[..]);
+//     hasher.update(&index.to_be_bytes());
+//     data.copy_from_slice(&hasher.finalize());
 
-    let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(data).unwrap();
-    let derived_child_key = parent_key.add_tweak(&tweak_scalar).unwrap();
+//     let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(data).unwrap();
+//     let derived_child_key = parent_key.add_tweak(&tweak_scalar).unwrap();
 
-    derived_child_key
-}
-
-fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
-    let child_key = PublicKey::from_secret_key(secp, &parent_key);
-    let mut data = [0u8; 32];
-    let mut hasher = Sha256::new();
-    
-    hasher.update(&child_key.serialize()[..]);
-    hasher.update(&index.to_be_bytes());
-    data.copy_from_slice(&hasher.finalize()[..32]); // Copy 32 bytes into data
-
-    SecretKey::from_slice(&data).expect("Failed to derive normal child key")
-}
-
-
-
-
+//     derived_child_key
+// }
 
 // fn derive_normal_child_key(secp: &Secp256k1<secp256k1::All>, parent_key: &SecretKey, index: u32) -> SecretKey {
 //     let child_key = PublicKey::from_secret_key(secp, &parent_key);
 //     let mut data = [0u8; 32];
 //     let mut hasher = Sha256::new();
+    
 //     hasher.update(&child_key.serialize()[..]);
 //     hasher.update(&index.to_be_bytes());
-//     data.copy_from_slice(&hasher.finalize());
-//     let mut sk = parent_key.clone();
-//     let tweak_scalar = secp256k1::scalar::Scalar::from_be_bytes(data).unwrap();
-//     sk.add_tweak(&tweak_scalar).unwrap();
-//     sk
+//     data.copy_from_slice(&hasher.finalize()[..32]); // Copy 32 bytes into data
+
+//     SecretKey::from_slice(&data).expect("Failed to derive normal child key")
 // }
 
 
 
 
+// Bitcoin crate testing
+
 use bitcoin::bip32::Xpriv;
-use bitcoin::Address;
-use bitcoin::Network;
+// use bitcoin::Address;
+// use bitcoin::Network;
 
 fn create_address_with_bitcoin_crate(address_count: u32) {
     let xprv = "xprv9uYDQnWoX6aDevvvy3rjAaaXPAtkWwRtspSh3ebUDoPjjEqJvs8nYcrC2Yw5vd5y59gqrEHQoJ1fdxJSk4A8mEvCwtRHtC3fzav2wDnqVtU";
@@ -3721,11 +3763,12 @@ fn create_address_with_bitcoin_crate(address_count: u32) {
     let master_xprv = Xpriv::from_str(xprv).unwrap();
 
     for i in 0..address_count {
-        let path = bitcoin::bip32::DerivationPath::from_str(&format!("m/44'/0'/0'/0/{}", i)).unwrap();
-        let sk = master_xprv.derive_priv(&secp, &path).unwrap().private_key;
+        let path = bitcoin::bip32::DerivationPath::from_str(&format!("0/{}", i)).unwrap();
+        // let path = bitcoin::bip32::DerivationPath::from_str("0").unwrap();
+        let sk = master_xprv.derive_priv(&secp, &path);
         println!("Derived Child Key for {}: {:?}", path, sk);
 
-        // let pk = bitcoin::PublicKey::from(&secp, &sk);
+        // let pk = bitcoin::PublicKey::from_private_key(&secp, &sk.unwrap());
         // println!("Public Key: {:?}", pk);
 
         // let address = bitcoin::Address::p2pkh(&pk, Network::Bitcoin);
@@ -3739,229 +3782,9 @@ fn create_address_with_bitcoin_crate(address_count: u32) {
 
 
 
-fn derive_child_keys(
-    secp: &secp256k1::Secp256k1<secp256k1::All>,
-    master_secret_key: &secp256k1::SecretKey,
-    chain_code_bytes: &[u8],
-    index: u32,
-    hardened: bool,
-) -> (secp256k1::SecretKey, secp256k1::PublicKey) {
-    let mut data = Vec::with_capacity(37);
 
-    if hardened {
-        // Deriving a hardened child key
-        println!("Deriving a hardened child key...");
-        data.extend_from_slice(&master_secret_key[..]); // Use parent private key
-    } else {
-        // Deriving a normal child key
-        println!("Deriving a normal child key...");
-        let master_public_key = secp256k1::PublicKey::from_secret_key(secp, master_secret_key);
-        data.extend_from_slice(&master_public_key.serialize()[..]); // Use parent public key
-    }
 
-    data.extend_from_slice(&index.to_be_bytes());
 
-    let hmac_result = hmac_sha512(&chain_code_bytes, &data);
-    let (child_secret_key_bytes, chain_code) = hmac_result.split_at(32);
-
-    let mut child_scalar_bytes = [0u8; 32];
-    child_scalar_bytes.copy_from_slice(&child_secret_key_bytes);
-
-    let mut child_secret_key = master_secret_key.clone();
-    
-    match secp256k1::Scalar::from_be_bytes(child_scalar_bytes) {
-        Ok(child_scalar) => {
-            child_secret_key
-                .add_tweak(&child_scalar)
-                .expect("Failed to add child scalar with master scalar");
-        }
-        Err(err) => {
-            eprintln!("Error: {:?}", err);
-            // Handle the error case appropriately
-        }
-    }
-    let child_public_key = secp256k1::PublicKey::from_secret_key(secp, &child_secret_key);
-
-    (child_secret_key, child_public_key)
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Big output, wrong outpu
-// fn derive_child_keys(
-//     secp: &secp256k1::Secp256k1<secp256k1::All>,
-//     master_secret_key: &secp256k1::SecretKey,
-//     chain_code_bytes: &[u8],
-//     index: u32,
-//     hardened: bool,
-// ) -> (secp256k1::SecretKey, secp256k1::PublicKey) {
-//     let mut data = Vec::with_capacity(37);
-//     if hardened {
-//         println!("Deriving a hardened child key...");
-//         data.push(0x00);
-//         data.extend_from_slice(&master_secret_key[..]);
-//     } else {
-//         println!("Deriving a non-hardened child key...");
-//         let master_public_key = secp256k1::PublicKey::from_secret_key(secp, master_secret_key);
-//         data.extend_from_slice(&master_public_key.serialize()[..]);
-//     }
-//     println!("Data: {:?}", data);
-//     data.extend_from_slice(&index.to_be_bytes());
-//     println!("Data after adding index: {:?}", data);
-//     let hmac_result = hmac_sha512(&chain_code_bytes, &data);
-//     println!("HMAC result: {:?}", hmac_result);
-//     let (child_secret_key_bytes, chain_code) = hmac_result.split_at(32);
-//     println!("Child secret key bytes: {:?}", child_secret_key_bytes);
-//     println!("Chain code: {:?}", chain_code);
-
-//     let mut child_scalar_bytes = [0u8; 32];
-//     child_scalar_bytes.copy_from_slice(&child_secret_key_bytes);
-
-//     let child_scalar = secp256k1::Scalar::from_be_bytes(child_scalar_bytes)
-//         .expect("Failed to create scalar from bytes");
-//     println!("Child scalar: {:?}", child_scalar);
-
-//     // Add the scalar to the master secret key modulo n
-//     let mut child_secret_key = master_secret_key.clone();
-
-//     child_secret_key
-//         .add_tweak(&child_scalar)
-//         .expect("Failed to add child scalar with master scalar");
-
-//     println!("Child secret key: {:?}", child_secret_key);
-
-//     // Create the child public key
-//     let child_public_key = secp256k1::PublicKey::from_secret_key(secp, &child_secret_key);
-
-//     println!("Child public key: {:?}", child_public_key);
-
-//     (child_secret_key, child_public_key)
-// }
-
-
-
-// WORKING 2, BUT WRONG >=2 CHILD XPRV
-// fn derive_child_keys(
-//     secp: &secp256k1::Secp256k1<secp256k1::All>,
-//     master_secret_key: &secp256k1::SecretKey,
-//     chain_code_bytes: &[u8],
-//     index: u32,
-//     hardened: bool,
-// ) -> (secp256k1::SecretKey, secp256k1::PublicKey) {
-//     let mut data = Vec::with_capacity(37);
-    
-//     if hardened {
-//         data.push(0x00);
-//         data.extend_from_slice(&master_secret_key[..]);
-//     } else {
-//         let master_public_key = secp256k1::PublicKey::from_secret_key(secp, master_secret_key);
-//         data.extend_from_slice(&master_public_key.serialize()[..]);
-//     }
-    
-//     data.extend_from_slice(&index.to_be_bytes());
-    
-//     let hmac_result = hmac_sha512(&chain_code_bytes, &data);
-//     let (child_secret_key_bytes, chain_code) = hmac_result.split_at(32);
-
-//     // Reduce the scalar modulo the order of the curve
-//     let mut child_scalar_bytes = [0u8; 32];
-//     child_scalar_bytes.copy_from_slice(&child_secret_key_bytes);
-    
-//     let child_scalar = secp256k1::Scalar::from_be_bytes(child_scalar_bytes)
-//         .expect("Failed to create scalar from bytes");
-    
-//      // Add the scalar to the master secret key
-//      let master_scalar = secp256k1::SecretKey::from_slice(&master_secret_key[..])
-//         .expect("Failed to create scalar from slice");
-    
-    
-    
-    
-//     let mut child_secret_key = master_scalar.add_tweak(&child_scalar)
-//         .expect("Failed to add child scalar with master scalar");
-
-//     // Create the child public key
-//     let child_public_key = secp256k1::PublicKey::from_secret_key(secp, &child_secret_key);
-
-//     (child_secret_key, child_public_key)
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ORIGINAL BUT BAD OUTPUT
-// fn derive_child_keys(
-//     secp: &secp256k1::Secp256k1<secp256k1::All>,
-//     master_secret_key: &secp256k1::SecretKey,
-//     chain_code_bytes: &[u8],
-//     index: u32,
-//     hardened: bool,
-// ) -> (secp256k1::SecretKey, secp256k1::PublicKey) {
-//     let mut data = Vec::with_capacity(37);
-//     data.extend_from_slice(&master_secret_key[..]);
-//     if hardened {
-//         data.push(0x00);
-//         data.extend_from_slice(&master_secret_key[..]);
-//     } else {
-//         data.extend_from_slice(&secp256k1::PublicKey::from_secret_key(secp, master_secret_key).serialize()[..]);
-//     }
-//     data.extend_from_slice(&index.to_be_bytes());
-//     let hmac_result = hmac_sha512(&chain_code_bytes, &data);
-//     let (child_secret_key_bytes, chain_code) = hmac_result.split_at(32);
-//     let mut child_secret_key = [0u8; 32];
-//     child_secret_key.copy_from_slice(child_secret_key_bytes);
-//     let child_secret_key = secp256k1::SecretKey::from_slice(&child_secret_key)
-//         .expect("Failed to derive child secret key");
-//     let child_public_key = secp256k1::PublicKey::from_secret_key(secp, &child_secret_key);
-//     (child_secret_key, child_public_key)
-// }
 
 
 
