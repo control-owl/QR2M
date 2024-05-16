@@ -13,8 +13,9 @@ Copyright  [2023-2024]  Control Owl
 
 ## Beta
 
-![Screenshot](./doc/preview/Screenshot%20from%202024-02-15%2020-38-18.png "Preview")
-![Screenshot](./doc/preview/Screenshot%20from%202024-02-15%2020-37-44.png "Preview")
+![Screenshot](./doc/preview/Screenshot%202024-05-16%20123427.png "Preview")
+![Screenshot](./doc/preview/Screenshot%20 2024-05-16%20123442.png "Preview")
+![Screenshot](./doc/preview/Screenshot%202024-05-16%20123501.png "Preview")
 
 
 ## Abstract
