@@ -1,3 +1,7 @@
+# version 0.11.2
+- master child keys
+- bigger CLI output
+
 # version 0.11.1
 - i18:
     - English (EN)

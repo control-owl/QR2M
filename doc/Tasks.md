@@ -66,3 +66,4 @@
     - [ ] status + icon
     - [ ] top100
     - [ ] token support
+- [ ] advance view for main window for all possible values
