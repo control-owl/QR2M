@@ -1,13 +1,42 @@
 {
-    "todo-tree.tree.scanMode": "current file",
-    "lldb.displayFormat": "auto",
-    "lldb.dereferencePointers": true,
-    "lldb.consoleMode": "commands",
-    "lldb.showDisassembly": "always",
-    "cSpell.ignoreWords": [
-        "Addrs",
-        "graphene",
-        "libadwaita"
+    "explorer.confirmDelete": false,
+    "[ruby]": {
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+        "editor.rulers": [
+            120
+        ],
+        "editor.semanticHighlighting.enabled": true
+    },
+    "git.enableSmartCommit": true,
+    "git.confirmSync": false,
+    "bracket-pair-colorizer-2.depreciation-notice": false,
+    "editor.guides.bracketPairs": true,
+    "explorer.confirmDragAndDrop": false,
+    "editor.minimap.enabled": false,
+    "extensions.autoUpdate": false,
+    "workbench.colorCustomizations": {},
+    "terminal.integrated.tabs.enabled": false,
+    "todo-tree.general.tags": [
+        "JUMP",
+        "FIX",
+        "FIXME",
+        "TODO",
+        "todo!()",
+        "BUG",
+        "IMPLEMENT",
+        "IMPL",
+        "FEATURE",
     ],
-    "cSpell.language": "en,hr,hr-HR,en-GB,en-US,de,de-DE"
+    "workbench.colorTheme": "Default Dark+",
+    "todo-tree.general.tagGroups": {
+        "FIX": ["FIXME"],
+        "TODO": ["todo!()","FIXIT"],
+        "IMPLEMENT": ["IMPL"],
+    }
 }

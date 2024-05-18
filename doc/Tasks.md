@@ -30,6 +30,7 @@
 - [ ] ShortcutsWindow
 - [ ] buy me a coffee
 - [ ] create filter for cointree
+- [ ] copy button in major fields
 
 ---
 
