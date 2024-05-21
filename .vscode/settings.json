@@ -75,7 +75,6 @@
     "todo-tree.general.tagGroups": {
         "FIX": ["FIXME"],
         "TODO": ["todo!()","FIXIT", "IMPLEMENT"],
-        // "IMPLEMENT": ["IMPL"],
         "VERIFY": ["CHECK"],
     }
 }
