@@ -6,8 +6,7 @@
 // #![allow(unused_mut)]
 
 
-// REQUIREMENTS
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// REQUIREMENTS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 // Crates
 use std::{
@@ -85,8 +84,7 @@ const VALID_GUI_THEMES: &'static [&'static str] = &[
 
 
 
-// BASIC
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 fn print_program_info() {
     println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
@@ -397,181 +395,13 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     let seed_hex = hex::encode(&seed[..]);
 
     ADDRESS_DATA.with(|data| {
-        println!("Seed (hex): {}", &seed_hex);
+        println!("Seed: {:?}", &seed_hex);
         let mut data = data.borrow_mut();
         data.seed = Some(seed_hex);
     });
 
     seed
 }
-
-/// Derives master private and public keys from the provided seed and optional private and public headers.
-///
-/// This function derives master keys using a seed and optional private and public headers. If the headers are not provided,
-/// default headers for Bitcoin are used.
-///
-/// # Arguments
-///
-/// * `seed` - The seed used for key derivation.
-/// * `private_header` - Optional header for the master private key in hexadecimal format. If not provided or empty,
-///                      default Bitcoin header `0x0488ADE4` is used.
-/// * `public_header` - Optional header for the master public key in hexadecimal format. If not provided or empty,
-///                     default Bitcoin header `0x0488B21E` is used.
-///
-/// # Returns
-///
-/// A result containing the derived master extended private and public keys as strings, or an error if the derivation fails.
-///
-/// # Errors
-///
-/// This function can fail if there are issues with parsing headers or decoding the seed.
-///
-/// # Examples
-///
-/// ```rust
-/// let seed = "0101010101";
-/// let (master_xprv, master_xpub) = derive_master_keys(seed, "", "");
-/// println!("Master Extended Private Key: {}", master_xprv);
-/// println!("Master Extended Public Key: {}", master_xpub);
-/// ```
-
-
-// /// Inspects the child keys to verify their integrity and relationship.
-// ///
-// /// This function compares the decoded components of the provided child extended private
-// /// and public keys to determine if they are derived from the same master private key.
-// ///
-// /// # Arguments
-// ///
-// /// * `child_keys` - A slice containing tuples of child extended private and public keys.
-// ///
-// /// # Examples
-// ///
-// /// ```rust
-// /// let child_keys = vec![
-// ///     ("xprv1...", "xpub1..."),
-// ///     ("xprv2...", "xpub2..."),
-// ///     // Add more child keys as needed...
-// /// ];
-// /// inspect_child_keys(&child_keys);
-// /// ```
-// fn inspect_child_keys(child_keys: &[(secp256k1::SecretKey, secp256k1::PublicKey)]) {
-//     println!("\n#### Inspecting child keys ####");
-
-//     for (child_xprv, child_xpub) in child_keys {
-//         println!("Child xprv: {:?}", child_xprv);
-//         println!("Child xpub: {:?}", child_xpub);
-        
-//         let decoded_xprv = bs58::decode(child_xprv.secret_bytes()).into_vec().unwrap();
-//         let decoded_xpub = bs58::decode(child_xpub.serialize()).into_vec().unwrap();
-        
-//         let version_xprv = &decoded_xprv[..4];
-//         let version_xpub = &decoded_xpub[..4];
-        
-//         let depth_xprv = decoded_xprv[4];
-//         let depth_xpub = decoded_xpub[4];
-        
-//         let parent_fingerprint_xprv = &decoded_xprv[5..9];
-//         let parent_fingerprint_xpub = &decoded_xpub[5..9];
-        
-//         let index_xprv = &decoded_xprv[9..13];
-//         let index_xpub = &decoded_xpub[9..13];
-        
-//         let chain_code_xprv = &decoded_xprv[13..45];
-//         let chain_code_xpub = &decoded_xpub[13..45];
-        
-//         let key_xprv = &decoded_xprv[45..77];
-//         let key_xpub = &decoded_xpub[45..78];
-        
-//         let checksum_xprv = &decoded_xprv[77..];
-//         let checksum_xpub = &decoded_xpub[78..];
-        
-//         println!("Version (xprv): {:x?}", version_xprv);
-//         println!("Version (xpub): {:x?}", version_xpub);
-//         println!("Depth (xprv): {}", depth_xprv);
-//         println!("Depth (xpub): {}", depth_xpub);
-//         println!("Parent Fingerprint (xprv): {:x?}", parent_fingerprint_xprv);
-//         println!("Parent Fingerprint (xpub): {:x?}", parent_fingerprint_xpub);
-//         println!("Index/Child Number (xprv): {}", u32::from_be_bytes(index_xprv.try_into().unwrap()));
-//         println!("Index/Child Number (xpub): {}", u32::from_be_bytes(index_xpub.try_into().unwrap()));
-//         println!("Chain Code (xprv): {:x?}", chain_code_xprv);
-//         println!("Chain Code (xpub): {:x?}", chain_code_xpub);
-//         println!("Key (xprv): {:x?}", key_xprv);
-//         println!("Key (xpub): {:x?}", key_xpub);
-//         println!("Checksum (xprv): {:x?}", checksum_xprv);
-//         println!("Checksum (xpub): {:x?}", checksum_xpub);
-
-//         // Verify keys
-//         if version_xprv != version_xpub ||
-//             depth_xprv == depth_xpub ||
-//             parent_fingerprint_xprv == parent_fingerprint_xpub ||
-//             index_xprv == index_xpub ||
-//             chain_code_xprv == chain_code_xpub ||
-//             key_xprv != key_xpub ||
-//             checksum_xprv != checksum_xpub {
-//             println!("Child keys are valid");
-//         } else {
-//             eprintln!("INVALID CHILD KEYS.\nThey are not generated from the same master private key");
-//         }
-//     }
-// }
-
-// /// Hashes a public key to generate its fingerprint.
-// ///
-// /// This function calculates the SHA-256 hash of the provided public key and extracts the
-// /// first four bytes to generate the fingerprint.
-// ///
-// /// # Arguments
-// ///
-// /// * `public_key` - The public key to be hashed.
-// ///
-// /// # Returns
-// ///
-// /// The fingerprint of the public key as a fixed-size array of bytes.
-// ///
-// /// # Examples
-// ///
-// /// ```rust
-// /// let public_key = &[0x04, 0x12, 0x34, 0x56]; // Example public key
-// /// let fingerprint = hash_public_key(public_key);
-// /// assert_eq!(fingerprint, [0xab, 0xcd, 0xef, 0x12]); // Example fingerprint
-// /// ```
-// fn hash_public_key(public_key: &[u8]) -> [u8; 4] {
-//     println!("Public Key: {:?}", public_key);
-
-//     let mut hasher = Sha256::new();
-//     hasher.update(public_key);
-//     let result = hasher.finalize();
-
-//     println!("Hash Result: {:?}", result);
-
-//     let mut fingerprint = [0u8; 4];
-//     fingerprint.copy_from_slice(&result[..4]);
-
-//     println!("Fingerprint: {:?}", fingerprint);
-
-//     fingerprint
-// }
-
-/// Computes HMAC-SHA512 hash.
-///
-/// # Arguments
-///
-/// * `key` - The key used for hashing.
-/// * `data` - The data to hash.
-///
-/// # Returns
-///
-/// The HMAC-SHA512 hash as a vector of bytes.
-///
-/// # Examples
-///
-/// ```rust
-/// let key = b"key";
-/// let data = b"data";
-/// let hash = hmac_sha512(key, data);
-/// assert_eq!(hash.len(), 64);
-/// ```
 
 /// Reads the contents of a file located at the specified path and generates entropy based on it.
 ///
@@ -607,27 +437,262 @@ fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
     entropy
 }
 
-/// Generates a SHA256 hash of the given data.
+/// Computes the SHA-256 hash of the given byte slice.
 ///
 /// # Arguments
 ///
-/// * `data` - A reference to a slice of bytes representing the data to be hashed.
+/// * `data` - A reference to a byte slice containing the data to be hashed.
 ///
 /// # Returns
 ///
-/// A vector of bytes representing the SHA256 hash of the input data.
+/// A vector of bytes representing the SHA-256 hash.
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
-/// let data = b"Hello, world!";
+/// let data = b"hello world";
 /// let hash = sha256_hash(data);
-/// println!("{:x}", hex::encode(hash));
+/// println!("SHA-256 Hash: {:?}", hash);
 /// ```
+fn sha256_hash(data: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+
+    hasher.update(data);
+    hasher.finalize().iter().cloned().collect()
+}
+
+/// Derives master private and public keys from a seed using the provided headers.
+///
+/// # Arguments
+///
+/// * `seed` - A hexadecimal string representing the seed.
+/// * `private_header` - A hexadecimal string representing the private header.
+/// * `public_header` - A hexadecimal string representing the public header.
+///
+/// # Returns
+///
+/// A tuple containing the derived master private and public keys as strings, or an error message string.
+///
+/// # Errors
+///
+/// Returns an error if parsing headers or creating keys fails.
+///
+/// # Example
+///
+/// ```
+/// let seed = "12ab34cd56ef";
+/// let private_header = "0x0488ADE4";
+/// let public_header = "0x0488B21E";
+/// match derive_master_keys(seed, private_header, public_header) {
+///     Ok((master_xprv, master_xpub)) => {
+///         println!("Master Private Key: {}", master_xprv);
+///         println!("Master Public Key: {}", master_xpub);
+///     },
+///     Err(err) => println!("Error: {}", err),
+/// }
+/// ```
+fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String), String> {
+    println!("\n#### Deriving master private keys ####");
+
+    // Reverting to Bitcoin in case that coin is undefined
+    if private_header.is_empty() {
+        private_header = "0x0488ADE4";
+    }
+    if public_header.is_empty() {
+        public_header = "0x0488B21E";
+    }
+
+    // Default message for all blockchains ? Why ?
+    let message = "Bitcoin seed";
+
+    println!("Private header: {}", private_header);
+    println!("Public header: {}", public_header);
+
+    let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
+        .expect(&t!("error.master.parse.header", tvalue = "private").to_string());
+    let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
+        .expect(&t!("error.master.parse.header", tvalue = "public").to_string());
+
+    println!("Private header (parsed): {}", private_header);
+    println!("Public header (parsed): {}", public_header);
+
+    let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
+    let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
+    let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
+
+    println!("Seed (bytes): {:?}", seed_bytes);
+    println!("HMAC result: {:?}", hmac_result);
+    println!("Master Private Key (bytes): {:?}", master_private_key_bytes);
+    println!("Chain Code (bytes): {:?}", master_chain_code_bytes);
+
+    // Private construct
+    let mut master_private_key = Vec::new();
+
+    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));                  // Version        4 bytes
+    master_private_key.push(0x00);                                                                 // Depth          1 byte
+    master_private_key.extend([0x00; 4].iter());                                                   // Parent finger  4 bytes
+    master_private_key.extend([0x00; 4].iter());                                                   // Index/child    4 bytes
+    master_private_key.extend_from_slice(master_chain_code_bytes);                                 // Chain code     32 bytes
+    master_private_key.push(0x00);                                                                 // Key prefix     1 byte
+    master_private_key.extend_from_slice(master_private_key_bytes);                                // Key            32 bytes
+
+    println!("Master Private Key: {:?}", master_private_key);
+
+    let checksum: [u8; 4] = calculate_checksum(&master_private_key);                         // Checksum       4 bytes
+    master_private_key.extend_from_slice(&checksum);
+
+    println!("Master Private Key (with checksum): {:?}", master_private_key);
+
+    let master_xprv = bs58::encode(&master_private_key).into_string();              // Total      82 bytes
+
+    println!("Master XPRV: {}", master_xprv);
+
+    // Public construct
+    let secp = secp256k1::Secp256k1::new();
+    let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
+        .expect(&t!("error.master.create").to_string());
+    let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
+
+    println!("Master Secret Key: {:?}", master_secret_key);
+    println!("Master Public Key (bytes): {:?}", master_public_key_bytes);
+
+    let mut master_public_key = Vec::new();
+
+    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));                    // Version        4 bytes
+    master_public_key.push(0x00);                                                                   // Depth          1 byte
+    master_public_key.extend([0x00; 4].iter());                                                     // Parent finger  4 bytes
+    master_public_key.extend([0x00; 4].iter());                                                     // Index/child    4 bytes
+    master_public_key.extend_from_slice(master_chain_code_bytes);                                   // Chain code     32 bytes
+    master_public_key.extend_from_slice(&master_public_key_bytes);                                  // Key            33 bytes (compressed)
+
+    println!("Master Public Key: {:?}", master_public_key);
+
+    let checksum: [u8; 4] = calculate_checksum(&master_public_key);                           // Checksum       4 bytes
+    master_public_key.extend_from_slice(&checksum);
+
+    println!("Master Public Key (with checksum): {:?}", master_public_key);
+
+    let master_xpub = bs58::encode(&master_public_key).into_string();                // Total      82 bytes
+
+    println!("Master XPUB: {}", master_xpub);
+
+    ADDRESS_DATA.with(|data| {
+        let mut data = data.borrow_mut();
+        println!("Master Private key bytes: {:?}", &master_private_key_bytes);
+        println!("Master Chain code bytes: {:?}", &master_chain_code_bytes);
+
+        data.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
+        data.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
+    });
+
+    Ok((master_xprv, master_xpub))
+}
+
+/// Computes the HMAC-SHA512 hash of the given key and data.
+///
+/// # Arguments
+///
+/// * `key` - A reference to a byte slice containing the key.
+/// * `data` - A reference to a byte slice containing the data.
+///
+/// # Returns
+///
+/// A vector of bytes representing the HMAC-SHA512 hash.
+///
+/// # Example
+///
+/// ```
+/// let key = b"secret";
+/// let data = b"hello world";
+/// let hmac = hmac_sha512(key, data);
+/// println!("HMAC-SHA512 Hash: {:?}", hmac);
+/// ```
+fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
+    const BLOCK_SIZE: usize = 128;
+    const HASH_SIZE: usize = 64;
+
+    // Step 1: Create the padded key
+    let padded_key = if key.len() > BLOCK_SIZE {
+        println!("Key length is greater than BLOCK_SIZE. Hashing the key.");
+        let mut hasher = Sha512::new();
+        hasher.update(key);
+        let mut hashed_key = vec![0u8; HASH_SIZE];
+        hashed_key.copy_from_slice(&hasher.finalize());
+        hashed_key.resize(BLOCK_SIZE, 0x00);
+        println!("Hashed key: {:?}", hashed_key);
+        hashed_key
+    } else {
+        println!("Key length ({}) is less than or equal to BLOCK_SIZE ({}). Padding the key.", key.len(), BLOCK_SIZE);
+        let mut padded_key = vec![0x00; BLOCK_SIZE];
+        padded_key[..key.len()].copy_from_slice(key);
+        println!("Padded key: {:?}", padded_key);
+        padded_key
+    };
+
+    // Verify the padded key length
+    assert_eq!(padded_key.len(), BLOCK_SIZE, "Padded key length mismatch");
+
+    // Step 2: Create inner and outer paddings
+    let mut ipad = vec![0x36; BLOCK_SIZE];
+    let mut opad = vec![0x5c; BLOCK_SIZE];
+    for (i, &b) in padded_key.iter().enumerate() {
+        ipad[i] ^= b;
+        opad[i] ^= b;
+    }
+
+    println!("Inner padding (ipad): {:?}", ipad);
+    println!("Outer padding (opad): {:?}", opad);
+
+    // Step 3: Perform inner hash
+    let mut hasher = Sha512::new();
+    hasher.update(&ipad);
+    hasher.update(data);
+    let inner_hash = hasher.finalize();
+
+    println!("Inner hash result: {:?}", inner_hash);
+
+    // Step 4: Perform outer hash
+    let mut hasher = Sha512::new();
+    hasher.update(&opad);
+    hasher.update(&inner_hash);
+    let final_hash = hasher.finalize().to_vec();
+
+    // Verify the final hash length
+    assert_eq!(final_hash.len(), HASH_SIZE, "Final hash length mismatch");
+
+    println!("Final HMAC result: {:?}", final_hash);
+
+    final_hash
+}
+
+/// Calculates the checksum of the given data using SHA-256.
+///
+/// # Arguments
+///
+/// * `data` - A reference to a byte slice containing the data.
+///
+/// # Returns
+///
+/// An array of 4 bytes representing the checksum.
+///
+/// # Example
+///
+/// ```
+/// let data = b"hello world";
+/// let checksum = calculate_checksum(data);
+/// println!("Checksum: {:?}", checksum);
+/// ```
+fn calculate_checksum(data: &[u8]) -> [u8; 4] {
+    let hash = Sha256::digest(data);
+    let double_hash = Sha256::digest(&hash);
+    let mut checksum = [0u8; 4];
+    checksum.copy_from_slice(&double_hash[..4]);
+    checksum
+}
 
 
-// COINS
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+// COINS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 /// This struct holds information about a particular coin.
 struct CoinDatabase {
@@ -823,8 +888,7 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
 
 
 
-// GUI
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 /// Struct to hold application settings.
 ///
@@ -1279,26 +1343,26 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
 /// // Use the retrieved icons to set up the application window.
 /// ```
 fn get_window_theme_icons() -> [gtk::Image; 5] {
-    // IMPLEMENT: ato detect system theme color switch, change my icons also
+    // IMPLEMENT: auto detect system theme color switch, change my icons also
     let settings = gtk::Settings::default().unwrap();
     // let theme_name = settings.gtk_theme_name().unwrap();
-    let mut theme_path: String = String::new();
+    let mut _theme_path: String = String::new();
 
     if settings.is_gtk_application_prefer_dark_theme() {
-        theme_path = "res/theme/basic/dark".to_string();
+        _theme_path = "res/theme/basic/dark".to_string();
     } else {
-        theme_path = "res/theme/basic/light".to_string();
+        _theme_path = "res/theme/basic/light".to_string();
     }
 
     // BUG: SVG is not working on Windows, revert to PNG icons
     // IMPLEMENT: Check if svg can be loaded, if not, revert to png
     let default_image_extension = "png";
     
-    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", theme_path, default_image_extension));
-    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", theme_path, default_image_extension));
-    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.{}", theme_path, default_image_extension));
-    let icon_about_bytes = load_icon_bytes(&format!("{}/about.{}", theme_path, default_image_extension));
-    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.{}", theme_path, default_image_extension));
+    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", _theme_path, default_image_extension));
+    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", _theme_path, default_image_extension));
+    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.{}", _theme_path, default_image_extension));
+    let icon_about_bytes = load_icon_bytes(&format!("{}/about.{}", _theme_path, default_image_extension));
+    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.{}", _theme_path, default_image_extension));
     
     // let icon_bytes = glib::Bytes::from(&icon_new_wallet_bytes);
     // let icon = gio::BytesIcon::new(&icon_bytes);
@@ -2679,6 +2743,7 @@ fn create_main_window(application: &adw::Application) {
 
 
     // ACTIONS
+    // JUMP: Generate Seed button
     generate_seed_button.connect_clicked(clone!(
         @weak entropy_source_dropdown,
         @weak entropy_length_dropdown,
@@ -2719,7 +2784,7 @@ fn create_main_window(application: &adw::Application) {
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
                 
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                // println!("Mnemonic passphrase: {:?}", &passphrase_text);
+                println!("Mnemonic passphrase: {:?}", &passphrase_text);
                 
                 let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
@@ -2734,6 +2799,7 @@ fn create_main_window(application: &adw::Application) {
     let coin_treeview_clone = coin_treeview.clone();
     let master_seed_text_clone = seed_text.clone();
 
+    // JUMP: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
         @strong coin_entry,
         @weak stack   => move |_| {
@@ -3005,9 +3071,55 @@ fn create_main_window(application: &adw::Application) {
 
     // JUMP: Generate Addresses button
     generate_addresses_button.connect_clicked(move |_| {
-        println!("\n#### Generating addresses ####");
+        println!("\n#### Generating addresses button ####");
     
-        generate_crypto_addresses();
+        let master_private_key_bytes = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.master_private_key_bytes.clone().unwrap()
+        });
+        println!("Received Master private bytes: {:?}", master_private_key_bytes);
+
+
+        let master_chain_code_bytes = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.master_chain_code_bytes.clone().unwrap()
+        });
+        println!("Received Master chain code bytes: {:?}", master_chain_code_bytes);
+
+
+        let path = "m/44'/1'/2'/0";
+
+        match derive_from_path(&master_private_key_bytes, &master_chain_code_bytes, path) {
+            Some((child_private_key, child_chain_code_bytes)) => {
+                println!("Derived private key: {:?}", child_private_key);
+                println!("Derived chain code: {:?}", child_chain_code_bytes);
+        
+                // Convert private key bytes to SecretKey
+                let secp = secp256k1::Secp256k1::new();
+                let child_private_key_bytes = child_private_key.secret_bytes();
+                println!("Child private key bytes: {:?}", child_private_key_bytes);
+        
+                // Reconstruct and verify the SecretKey
+                let child_private_key = secp256k1::SecretKey::from_slice(&child_private_key_bytes)
+                    .expect("32 bytes, within curve order");
+                println!("Reconstructed SecretKey: {:?}", child_private_key);
+                
+                // Ensure the key matches
+                assert_eq!(child_private_key.secret_bytes(), child_private_key_bytes);
+                println!("The reconstructed key matches the derived key");
+        
+                // Convert private key to public key
+                let child_public_key = secp256k1::PublicKey::from_secret_key(&secp, &child_private_key);
+                println!("Derived Public Key: {:?}", child_public_key);
+        
+                // Generate address from public key
+                let address = generate_address(&child_public_key);
+                println!("Generated address: {}", address);
+            },
+            None => println!("Derivation failed"),
+        }
+
+        
     
     });
     
@@ -3101,8 +3213,7 @@ fn main() {
 
 
 
-// ANU QRNG
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// ANU QRNG -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 /// Fetch entropy data from ANU Quantum Random Number Generator (QRNG) API.
 ///
@@ -3493,8 +3604,349 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 
 
-// TESTING
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// TESTING -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+
+
+thread_local! {
+    static ADDRESS_DATA: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
+}
+
+#[derive(Debug, Default)]
+struct WalletSettings {
+    entropy_string: Option<String>,
+    entropy_checksum: Option<String>,
+    mnemonic_words: Option<String>,
+    seed: Option<String>,
+    master_private_key_bytes: Option<Vec<u8>>,
+    master_chain_code_bytes: Option<Vec<u8>>,
+
+    // SEND:
+    // ADDRESS_DATA.with(|data| {
+    //     let mut data = data.borrow_mut();
+    //     println!("RNG entropy (string): {}", &rng_entropy_string);
+    //     data.entropy = Some(rng_entropy_string.clone());
+    // });
+    // 
+    // GET:
+    // let master_private_key_bytes = ADDRESS_DATA.with(|data| {
+    //     let data = data.borrow();
+    //     data.master_private_key_bytes.clone().unwrap()
+    // });
+}
+
+
+
+fn derive_child_key(
+    parent_key: &[u8],
+    parent_chain_code: &[u8],
+    index: u32,
+    hardened: bool,
+    path_part: &str
+) -> Option<(secp256k1::SecretKey, [u8; 32])> {
+    println!("\n#### Deriving child keys for path part: {} ####", path_part);
+
+    let index_bytes = if hardened {
+        (0x80000000u32.to_be() | index).to_be_bytes()
+    } else {
+        index.to_be_bytes()
+    };
+
+    let secp = secp256k1::Secp256k1::new();
+
+    if parent_key.len() != 32 {
+        eprintln!("Error: Parent key must be 32 bytes long");
+        return None;
+    }
+
+    if parent_chain_code.len() != 32 {
+        eprintln!("Error: Parent chain code must be 32 bytes long");
+        return None;
+    }
+
+    let mut data = Vec::new();
+
+    if hardened {
+        data.push(0x00);
+        data.extend_from_slice(parent_key);
+    } else {
+        let parent_secret_key = match secp256k1::SecretKey::from_slice(parent_key) {
+            Ok(key) => key,
+            Err(_) => {
+                eprintln!("Error: Invalid parent secret key");
+                return None;
+            }
+        };
+        let parent_public_key = secp256k1::PublicKey::from_secret_key(&secp, &parent_secret_key);
+        data.extend_from_slice(&parent_public_key.serialize());
+    }
+
+    data.extend_from_slice(&index_bytes);
+
+    println!("Data for HMAC: {:?}", data);
+
+    let hmac_result = hmac_sha512(parent_chain_code, &data);
+
+    if hmac_result.len() != 64 {
+        eprintln!("Error: HMAC result must be 64 bytes long. Actual length: {}", hmac_result.len());
+        return None;
+    }
+
+    println!("HMAC result: {:?}", hmac_result);
+
+    let (key_bytes, chain_code_bytes) = hmac_result.split_at(32);
+
+    let child_key = match secp256k1::SecretKey::from_slice(key_bytes) {
+        Ok(key) => key,
+        Err(_) => {
+            eprintln!("Error: Unable to create SecretKey from bytes");
+            return None;
+        }
+    };
+
+    let mut child_chain_code = [0u8; 32];
+    child_chain_code.copy_from_slice(chain_code_bytes);
+
+    Some((child_key, child_chain_code))
+}
+
+fn derive_from_path(
+    master_key: &[u8],
+    master_chain_code: &[u8],
+    path: &str
+) -> Option<(secp256k1::SecretKey, [u8; 32])> {
+    println!("\n#### Deriving path: {} ####", path);
+
+    let mut key = master_key.to_vec();
+    let mut chain_code = master_chain_code.to_vec();
+
+    for part in path.split('/') {
+        if part == "m" {
+            continue;
+        }
+
+        let hardened = part.ends_with("'");
+        let index: u32 = match part.trim_end_matches("'").parse() {
+            Ok(index) => index,
+            Err(_) => {
+                eprintln!("Error: Unable to parse index from path part: {}", part);
+                return None;
+            }
+        };
+
+        let derived = derive_child_key(&key, &chain_code, index, hardened, part)?;
+
+        key = derived.0[..].to_vec();
+        chain_code = derived.1.to_vec();
+    }
+
+    match secp256k1::SecretKey::from_slice(&key) {
+        Ok(secret_key) => match chain_code.try_into() {
+            Ok(chain_code_array) => Some((secret_key, chain_code_array)),
+            Err(_) => {
+                eprintln!("Error: Unable to convert chain_code to [u8; 32]");
+                None
+            }
+        },
+        Err(_) => {
+            eprintln!("Error: Unable to create SecretKey from key slice");
+            None
+        }
+    }
+}
+
+
+fn generate_address(pk: &secp256k1::PublicKey) -> String {
+    println!("\n#### Generating addresses ####");
+    
+    let pk_bytes = pk.serialize();
+    println!("Received private key bytes: {:?}", &pk_bytes);
+    
+    let hash160 = sha256ripemd160(&pk_bytes);
+    // println!("sha256ripemd160 hash: {:?}", &hash160);
+    
+    let mut payload = vec![0x00];
+    payload.extend(&hash160);
+    println!("Extended sha256ripemd160 payload: {:?}", &payload);
+    
+    
+    let checksum = doubleSha256(&payload);
+    // println!("doubleSha256 checksum: {:?}", &checksum);
+    
+    let address_checksum = &checksum[0..4];
+    println!("Address checksum: {:?}", &address_checksum);
+    
+    
+    let mut address_payload = payload;
+    address_payload.extend(address_checksum);
+    println!("Extended Address payload: {:?}", &address_payload);
+    
+    
+    bs58::encode(address_payload).into_string()
+}
+
+fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
+    println!("\n#### sha256ripemd160 ####");
+    println!("Received data: {:?}", &input);
+
+
+    let mut hasher = Sha256::new();
+    let _ = hasher.write(input);
+    let hash = hasher.finalize();
+    println!("Sha256 hash: {:?}", &hash);
+    
+    let mut ripemd = ripemd::Ripemd160::new();
+    let _ = ripemd.write(&hash);
+    
+    let final_hash = ripemd.finalize().to_vec();
+    println!("sha256ripemd160 output: {:?}", &final_hash);
+
+    final_hash
+}
+
+fn doubleSha256(input: &[u8]) -> Vec<u8> {
+    println!("\n#### doubleSha256 ####");
+    println!("Received data: {:?}", &input);
+
+
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let first_hash = hasher.finalize();
+    println!("First hash: {:?}", &first_hash);
+    
+    let mut hasher = Sha256::new();
+    hasher.update(&first_hash);
+    let final_hash = hasher.finalize().to_vec();
+    println!("doubleSha256 output: {:?}", &final_hash);
+
+    final_hash
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// fn generate_crypto_addresses(derivation_path: &str) -> Option<()> {
+//     let master_private_key_bytes = ADDRESS_DATA.with(|data| {
+//         let data = data.borrow();
+//         data.master_private_key_bytes.clone().unwrap()
+//     });
+
+//     // Check if the master private key has a proper length (32 bytes)
+//     if master_private_key_bytes.len() != 32 {
+//         println!("Error: Master private key must be 32 bytes long");
+//         return None;
+//     }
+
+//     let master_chain_code = ADDRESS_DATA.with(|data| {
+//         let data = data.borrow();
+//         data.master_chain_code_bytes.clone().unwrap_or_else(|| vec![])
+//     });
+
+//     // Check if the master chain code has a proper length (32 bytes)
+//     if master_chain_code.len() != 32 {
+//         println!("Error: Master chain code must be 32 bytes long");
+//         return None;
+//     }
+
+//     // Split the derivation path into components
+//     let path_components: Vec<&str> = derivation_path.split('/').collect();
+
+//     // Start with the master keys
+//     let mut current_private_key = master_private_key_bytes;
+//     let mut current_chain_code = master_chain_code;
+
+//     for component in path_components.iter().skip(1) {
+//         let (index_str, hardened) = if component.ends_with('\'') {
+//             (&component[..component.len() - 1], true)
+//         } else {
+//             (*component, false)
+//         };
+
+//         let index: u32 = match u32::from_str(index_str) {
+//             Ok(i) => i,
+//             Err(_) => {
+//                 println!("Error: Invalid derivation path component '{}'", component);
+//                 return None;
+//             }
+//         };
+
+//         const EXTERNAL_INDEX: u32 = 0;
+//         const INTERNAL_INDEX: u32 = 1;
+
+//         let (index_to_use, is_change) = if index == EXTERNAL_INDEX || index == INTERNAL_INDEX {
+//             (index, true)
+//         } else if hardened {
+//             (index | 0x80000000, false)
+//         } else {
+//             (index, false)
+//         };
+
+//         let (derived_private_key, derived_chain_code) = match derive_child_key(&current_private_key, &current_chain_code, index_to_use, hardened, component) {
+//             Some((secret_key, chain_code)) => (secret_key, chain_code),
+//             None => return None,
+//         };
+
+//         current_private_key = derived_private_key.secret_bytes().to_vec();
+//         current_chain_code = derived_chain_code.to_vec();
+
+//         let secp = secp256k1::Secp256k1::new();
+//         let public_key = secp256k1::PublicKey::from_secret_key(&secp, &derived_private_key);
+//         let public_key_hex = hex::encode(public_key.serialize());
+
+//         let private_key_hex = hex::encode(&current_private_key);
+
+//         let mut path = String::new();
+//         for comp in path_components.iter().take_while(|c| *c != component) {
+//             path.push_str(comp);
+//             path.push('/');
+//         }
+//         path.push_str(component);
+
+//         println!("{} : {},{}", path, public_key_hex, private_key_hex);
+//     }
+
+//     Some(())
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percent: Option<u32> ) {
 
@@ -3551,428 +4003,6 @@ fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percen
 
     dialog_window.show();
 }
-
-
-
-
-
-// New Addresses Struct
-// SEND
-// ADDRESS_DATA.with(|data| {
-//     let mut data = data.borrow_mut();
-//     println!("RNG entropy (string): {}", &rng_entropy_string);
-//     data.entropy = Some(rng_entropy_string.clone());
-// });
-// GET
-// ADDRESS_DATA.with(|data| {
-//     let data = data.borrow();
-//     if let Some(seed) = &data.seed {
-//         println!("Seed in function2: {:?}", seed);
-//     } else {
-//         println!("Seed in function2: None");
-//     }
-// });
-
-thread_local! {
-    static ADDRESS_DATA: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
-}
-
-#[derive(Debug, Default)]
-struct WalletSettings {
-    entropy_string: Option<String>,
-    entropy_checksum: Option<String>,
-    mnemonic_words: Option<String>,
-    seed: Option<String>,
-    master_private_key: Option<Vec<u8>>,
-    master_chain_code: Option<Vec<u8>>,
-    master_xprv: Option<Vec<u8>>,
-    master_xpub: Option<Vec<u8>>,
-}
-
-fn base58_encode_check(data: &[u8]) -> String {
-    let mut result = data.to_vec();
-    let checksum = calculate_checksum(&result);
-    result.extend(&checksum);
-    bs58::encode(result).into_string()
-}
-
-fn private_key_to_address(private_key: &secp256k1::SecretKey) -> String {
-    let secp = secp256k1::Secp256k1::new();
-    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &private_key);
-    let uncompressed_pubkey = public_key.serialize_uncompressed(); // Serialize uncompressed public key
-
-    let hashed_pubkey = hash160(&uncompressed_pubkey);
-    let mut address_bytes = vec![0x00];
-    address_bytes.extend_from_slice(&hashed_pubkey);
-
-    let checksum = calculate_checksum(&address_bytes);
-    address_bytes.extend_from_slice(&checksum);
-
-    base58_encode_check(&address_bytes)
-}
-
-fn ripemd160_hash_bytes(data: &[u8]) -> Vec<u8> {
-    let mut hasher = ripemd::Ripemd160::new();
-    
-    hasher.update(data);
-    hasher.finalize().to_vec()
-}
-
-fn hash160(data: &[u8]) -> Vec<u8> {
-    let sha256_hash = Sha256::digest(data);
-    let ripemd160_hash = ripemd160_hash_bytes(&sha256_hash);
-  
-    ripemd160_hash.to_vec()
-}
-
-fn verify_address(master_private_key_bytes: &[u8], address: &str) -> bool {
-    if master_private_key_bytes.len() != 32 {
-        eprintln!("master_private_key_bytes is not 32 bytes. it is: {:?}", master_private_key_bytes.len());
-        return false; // Return false if the length is not correct
-    }
-
-    let secp = secp256k1::Secp256k1::new();
-
-    let master_private_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes).unwrap();
-    let master_public_key = secp256k1::PublicKey::from_secret_key(&secp, &master_private_key);
-    let serialized_pubkey = master_public_key.serialize_uncompressed();
-    let hashed_pubkey = hash160(&serialized_pubkey);
-    let mut address_bytes = vec![0x00];
-
-    address_bytes.extend_from_slice(&hashed_pubkey);
-
-    let checksum = Sha256::digest(&Sha256::digest(&address_bytes)).as_slice()[0..4].to_vec();
-    address_bytes.extend_from_slice(&checksum);
-
-    let generated_address = base58_encode_check(&address_bytes);
-
-    generated_address == address
-}
-
-fn generate_crypto_addresses() {
-    let master_private_key = ADDRESS_DATA.with(|data| {
-        let data = data.borrow();
-        data.master_private_key.clone().unwrap_or_else(|| vec![])
-    });
-
-    // Check if the master private key has a proper length (32 bytes)
-    if master_private_key.len() != 32 {
-        println!("Error: Master private key must be 32 bytes long");
-        return;
-    }
-
-    println!("Master private key: {:?}", master_private_key);
-            
-    let master_chain_code = ADDRESS_DATA.with(|data| {
-        let data = data.borrow();
-        data.master_chain_code.clone().unwrap_or_else(|| vec![])
-    });
-    
-    // Check if the master chain code has a proper length (32 bytes)
-    if master_chain_code.len() != 32 {
-        println!("Error: Master chain code must be 32 bytes long");
-        return;
-    }
-
-    println!("Master chain code: {:?}", master_chain_code);
-
-    // Derive purpose node (44')
-    let (purpose_secret_key, purpose_chain_code) = match derive_child_key(&master_private_key, &master_chain_code, 44, true, "m/44'") {
-        Some((secret_key, chain_code)) => (secret_key, chain_code),
-        None => return, // Exit if derivation failed
-    };
-
-    // Derive coin type node (0' for Bitcoin)
-    let (coin_type_secret_key, coin_type_chain_code) = match derive_child_key(&purpose_secret_key[..], &purpose_chain_code, 0, true, "m/44'/0'") {
-        Some((secret_key, chain_code)) => (secret_key, chain_code),
-        None => return, // Exit if derivation failed
-    };
-
-    // Derive account node (0')
-    let (account_secret_key, account_chain_code) = match derive_child_key(&coin_type_secret_key[..], &coin_type_chain_code, 0, true, "m/44'/0'/0'") {
-        Some((secret_key, chain_code)) => (secret_key, chain_code),
-        None => return, // Exit if derivation failed
-    };
-
-    // Derive change node (0 for receiving addresses)
-    let (change_secret_key, change_chain_code) = match derive_child_key(&account_secret_key[..], &account_chain_code, 0, false, "m/44'/0'/0'/0") {
-        Some((secret_key, chain_code)) => (secret_key, chain_code),
-        None => return, // Exit if derivation failed
-    };
-
-    // Derive address index node (0)
-    let (address_secret_key, _address_chain_code) = match derive_child_key(&change_secret_key[..], &change_chain_code, 0, false, "m/44'/0'/0'/0/0") {
-        Some((secret_key, chain_code)) => (secret_key, chain_code),
-        None => return, // Exit if derivation failed
-    };
-
-    println!("Private key: {:?}", address_secret_key);
-
-    let bitcoin_address = private_key_to_address(&address_secret_key);
-
-    println!("Coin Address: {:?}", bitcoin_address);
-
-    if verify_address(&address_secret_key.secret_bytes(), &bitcoin_address) {
-        println!("The generated address matches the provided one.");
-    } else {
-        println!("The generated address does not match the provided one.");
-    }
-}
-
-fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String), String> {
-    println!("\n#### Deriving master private keys ####");
-
-    // Reverting to Bitcoin in case that coin is undefined
-    if private_header.is_empty() {
-        private_header = "0x0488ADE4";
-    }
-    if public_header.is_empty() {
-        public_header = "0x0488B21E";
-    }
-
-    // Default message for all blockchains ? Why ?
-    let message = "Bitcoin seed";
-
-    println!("Private header: {}", private_header);
-    println!("Public header: {}", public_header);
-
-    let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", tvalue = "private").to_string());
-    let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", tvalue = "public").to_string());
-
-    // println!("Private header (parsed): {}", private_header);
-    // println!("Public header (parsed): {}", public_header);
-
-    let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
-    let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
-    let secp = secp256k1::Secp256k1::new();
-
-    // MASTER XPRV construct
-    let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
-    let mut master_xprv_vec = Vec::new();
-
-    master_xprv_vec.extend_from_slice(&u32::to_be_bytes(private_header));                  // Version        4 bytes
-    master_xprv_vec.push(0x00);                                                                 // Depth          1 byte
-    master_xprv_vec.extend([0x00; 4].iter());                                                   // Parent finger  4 bytes
-    master_xprv_vec.extend([0x00; 4].iter());                                                   // Index/child    4 bytes
-    master_xprv_vec.extend_from_slice(master_chain_code_bytes);                                 // Chain code     32 bytes
-    master_xprv_vec.push(0x00);                                                                 // Key prefix     1 byte
-    master_xprv_vec.extend_from_slice(master_private_key_bytes);                                // Key            32 bytes
-
-    let checksum: [u8; 4] = calculate_checksum(&master_xprv_vec);                         // Checksum       4 bytes
-    master_xprv_vec.extend_from_slice(&checksum);
-
-    let master_xprv = bs58::encode(&master_xprv_vec).into_string();              // Total      82 bytes
-
-    println!("Master XPRV: {}", master_xprv);
-
-
-    // MASTER XPUB construct
-    let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
-        .expect(&t!("error.master.create").to_string());
-    let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
-
-    let mut master_xpub_vec = Vec::new();
-
-    master_xpub_vec.extend_from_slice(&u32::to_be_bytes(public_header));                    // Version        4 bytes
-    master_xpub_vec.push(0x00);                                                                   // Depth          1 byte
-    master_xpub_vec.extend([0x00; 4].iter());                                                     // Parent finger  4 bytes
-    master_xpub_vec.extend([0x00; 4].iter());                                                     // Index/child    4 bytes
-    master_xpub_vec.extend_from_slice(master_chain_code_bytes);                                   // Chain code     32 bytes
-    master_xpub_vec.extend_from_slice(&master_public_key_bytes);                                  // Key            33 bytes (compressed)
-
-    let checksum: [u8; 4] = calculate_checksum(&master_xpub_vec);                           // Checksum       4 bytes
-    master_xpub_vec.extend_from_slice(&checksum);
-    
-    
-    let master_xpub = bs58::encode(&master_xpub_vec).into_string();                // Total      82 bytes
-    
-    println!("Master XPUB: {}", master_xpub);
-    
-    ADDRESS_DATA.with(|data| {
-        let mut data = data.borrow_mut();
-        // println!("Master Private Key: {:?}", &master_private_key_bytes);
-        // println!("Master Chain Code: {:?}", &master_chain_code_bytes);
-        // println!("Master XPRV: {:?}", &master_xprv_vec);
-        // println!("Master XPUB: {:?}", &master_xpub_vec);
-        
-        data.master_private_key = Some(master_private_key_bytes.to_vec());
-        data.master_chain_code = Some(master_chain_code_bytes.to_vec());
-        data.master_xprv = Some(master_xprv_vec.to_vec());
-        data.master_xpub = Some(master_xpub_vec.to_vec());
-    });
-
-    Ok((master_xprv, master_xpub))
-}
-
-fn derive_child_key(parent_key: &[u8], parent_chain_code: &[u8], index: u32, hardened: bool, path: &str) -> Option<(secp256k1::SecretKey, [u8; 32])> {
-    let secp = secp256k1::Secp256k1::new();
-
-    println!("Derivation path: {}", path);
-
-    // Check if the parent key has a proper length (32 bytes)
-    if parent_key.len() != 32 {
-        eprintln!("Error: Parent key must be 32 bytes long");
-        return None;
-    }
-
-    // Check if the parent chain code has a proper length (32 bytes)
-    if parent_chain_code.len() != 32 {
-        eprintln!("Error: Parent chain code must be 32 bytes long");
-        return None;
-    }
-
-    let mut data = Vec::new();
-
-    if hardened {
-        // Hardened key derivation
-        data.push(0x00);
-        data.extend_from_slice(parent_key);
-        data.extend_from_slice(&(index | 0x80000000).to_be_bytes());
-        println!("Hardened key derivation");
-    } else {
-        // Non-hardened key derivation
-        let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).unwrap();
-        let parent_public_key = secp256k1::PublicKey::from_secret_key(&secp, &parent_secret_key);
-
-        // Serialize the parent public key
-        let serialized_parent_public_key = parent_public_key.serialize();
-
-        // Check if the serialized parent public key has a proper length (33 bytes)
-        if serialized_parent_public_key.len() != 33 {
-            eprintln!("Error: Serialized parent public key must be 33 bytes long");
-            return None;
-        }
-
-        data.extend_from_slice(&serialized_parent_public_key);
-        data.extend_from_slice(&index.to_be_bytes());
-        println!("Non-hardened key derivation");
-    }
-
-    println!("Data for HMAC: {:?}", data);
-
-    let hmac_result = hmac_sha512(parent_chain_code, &data);
-
-    if hmac_result.len() != 64 {
-        eprintln!("Error: HMAC result must be 64 bytes long");
-        return None;
-    }
-
-    println!("HMAC result: {:?}", hmac_result);
-
-    let (key_bytes, chain_code_bytes) = hmac_result.split_at(32);
-
-    let child_key = match secp256k1::SecretKey::from_slice(key_bytes) {
-        Ok(key) => key,
-        Err(e) => {
-            eprintln!("Error creating child key: {:?}", e);
-            return None;
-        }
-    };
-
-    let mut child_chain_code = [0u8; 32];
-    child_chain_code.copy_from_slice(chain_code_bytes);
-
-    println!("Derived child key: {:?}", child_key);
-    println!("Derived child chain code: {:?}", child_chain_code);
-
-    Some((child_key, child_chain_code))
-}
-
-fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
-    const BLOCK_SIZE: usize = 128;
-    const HASH_SIZE: usize = 64;
-
-    // Check if the key length is greater than the block size
-    let padded_key = if key.len() > BLOCK_SIZE {
-        let mut hasher = Sha512::new();
-        hasher.update(key);
-        hasher.finalize().to_vec()
-    } else {
-        let mut padded_key = vec![0x00; BLOCK_SIZE];
-        padded_key[..key.len()].copy_from_slice(key);
-        padded_key
-    };
-
-    // Check if the key is of correct length
-    if padded_key.len() != BLOCK_SIZE {
-        eprintln!("Padded key is not long as block_size: {} != {}", padded_key.len(), BLOCK_SIZE);
-        return Vec::new();
-    }
-
-    let mut ipad = padded_key.clone();
-    let mut opad = padded_key.clone();
-
-    ipad.iter_mut().for_each(|byte| *byte ^= 0x36);
-    opad.iter_mut().for_each(|byte| *byte ^= 0x5c);
-
-    let mut ipad_data = vec![0x00; BLOCK_SIZE + data.len()];
-    ipad_data[..BLOCK_SIZE].copy_from_slice(&ipad);
-    ipad_data[BLOCK_SIZE..].copy_from_slice(&data);
-
-    let inner_hash = Sha512::digest(&ipad_data);
-    let mut opad_inner = vec![0x00; BLOCK_SIZE + HASH_SIZE];
-
-    opad_inner[..BLOCK_SIZE].copy_from_slice(&opad);
-    opad_inner[BLOCK_SIZE..].copy_from_slice(&inner_hash);
-
-    let final_hash = Sha512::digest(&opad_inner).to_vec();
-
-    // Check if the final hash has the expected output size
-    if final_hash.len() != HASH_SIZE {
-        eprintln!("Final hash is not proper length: {:?}", final_hash.len());
-        return Vec::new();
-    }
-    // result.copy_from_slice(&final_hash);
-
-    final_hash
-
-}
-
-fn sha256_hash(data: &[u8]) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-
-    hasher.update(data);
-    hasher.finalize().iter().cloned().collect()
-}
-
-fn calculate_checksum(data: &[u8]) -> [u8; 4] {
-    // use sha2::{Digest, Sha256};
-    let hash = Sha256::digest(data);
-    let double_hash = Sha256::digest(&hash);
-    let checksum: [u8; 4] = double_hash[0..4].try_into().expect("slice with incorrect length");
-    checksum
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // OLD CODE

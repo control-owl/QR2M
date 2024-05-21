@@ -22,6 +22,43 @@
     "extensions.autoUpdate": false,
     "workbench.colorCustomizations": {},
     "terminal.integrated.tabs.enabled": false,
+    "workbench.colorTheme": "Default Dark+",
+    "todo-tree.highlights.defaultHighlight": {
+        "type": "text",
+    },
+    "todo-tree.highlights.customHighlight": {
+        "TODO": {
+            "icon": "task",
+            "type": "text",
+            "gutterIcon": true,
+        },
+        "JUMP": {
+            "icon": "arrow-right",
+            "type": "text",
+        },
+        "FEATURE": {
+            "icon": "beaker",
+            "type": "text",
+            "gutterIcon": true,
+            "foreground": "#00ff15",
+            "background": "#000000",
+        },
+        "VERIFY": {
+            "icon": "alert-fill",
+            "type": "line",
+            "gutterIcon": true,
+            "foreground": "#ff9100",
+            "background": "#000000",
+        },
+        "BUG": {
+            "foreground": "#000000",
+            "background": "#ff0000",
+            "iconColour": "#ff0000",
+            "gutterIcon": true,
+            "type": "text",
+            "fontWeight": "800",
+        },
+    },
     "todo-tree.general.tags": [
         "JUMP",
         "FIX",
@@ -32,11 +69,13 @@
         "IMPLEMENT",
         "IMPL",
         "FEATURE",
+        "VERIFY",
+        "CHECK",
     ],
-    "workbench.colorTheme": "Default Dark+",
     "todo-tree.general.tagGroups": {
         "FIX": ["FIXME"],
-        "TODO": ["todo!()","FIXIT"],
-        "IMPLEMENT": ["IMPL"],
+        "TODO": ["todo!()","FIXIT", "IMPLEMENT"],
+        // "IMPLEMENT": ["IMPL"],
+        "VERIFY": ["CHECK"],
     }
 }
