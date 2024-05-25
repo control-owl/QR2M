@@ -1,3 +1,7 @@
+# version 0.11.3
+- nothing :(
+- still trying to produce proper address
+
 # version 0.11.2
 - master child keys
 - bigger CLI output

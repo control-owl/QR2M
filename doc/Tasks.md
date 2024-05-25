@@ -1,6 +1,6 @@
 # Primary focus
 
-- generate BIP32 or BIP44 address for some x coin !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+- addresses !!!
 
 ## Active tasks
 

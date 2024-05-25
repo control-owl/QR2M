@@ -91,7 +91,7 @@ UI:
       pac:
         en: "Use Proxy Auto-Configuration (PAC) file?"
         de: "Proxy-Autokonfigurationsdatei (PAC) verwenden?"
-        hr: "Koristi datoteku automatske konfiguracije proxyja (PAC)?"
+        hr: "Koristi datoteku automatske konfiguracije proxy-ja (PAC)?"
         path:
           en: "PAC path"
           de: "PAC-Pfad"
@@ -139,25 +139,25 @@ UI:
     headerbar:
       wallet:
         new:
-          en: "New wallet %{tvalue}"
-          de: "Neue Wallet %{tvalue}"
-          hr: "Novi novčanik %{tvalue}"
+          en: "New wallet %{value}"
+          de: "Neue Wallet %{value}"
+          hr: "Novi novčanik %{value}"
         open:
-          en: "Open wallet %{tvalue}"
-          de: "Wallet öffnen %{tvalue}"
-          hr: "Otvori novčanik %{tvalue}"
+          en: "Open wallet %{value}"
+          de: "Wallet öffnen %{value}"
+          hr: "Otvori novčanik %{value}"
         save:
-          en: "Save wallet %{tvalue}"
-          de: "Wallet speichern %{tvalue}"
-          hr: "Spremi novčanik %{tvalue}"
+          en: "Save wallet %{value}"
+          de: "Wallet speichern %{value}"
+          hr: "Spremi novčanik %{value}"
       settings:
-        en: "Settings %{tvalue}"
-        de: "Einstellungen %{tvalue}"
-        hr: "Postavke %{tvalue}"
+        en: "Settings %{value}"
+        de: "Einstellungen %{value}"
+        hr: "Postavke %{value}"
       about:
-        en: "About %{tvalue}"
-        de: "Über %{tvalue}"
-        hr: "O programu %{tvalue}"
+        en: "About %{value}"
+        de: "Über %{value}"
+        hr: "O programu %{value}"
     seed:
       en: "Seed"
       entropy:
@@ -302,26 +302,26 @@ error:
       de: "Einstellungen können nicht gelesen werden"
       hr: "Ne mogu pročitati postavke"
     load:
-      en: "Failed to load '%{tvalue}' from settings"
-      de: "Fehler beim Laden von '%{tvalue}' aus den Einstellungen"
-      hr: "Pogreška pri učitavanju '%{tvalue}' iz postavki"
+      en: "Failed to load '%{value}' from settings"
+      de: "Fehler beim Laden von '%{value}' aus den Einstellungen"
+      hr: "Pogreška pri učitavanju '%{value}' iz postavki"
     wrong:
-      en: "Wrong format found in settings '%{telement}'. It should be a '%{tvalue} format'"
-      de: "Falsches Format in den Einstellungen '%{telement}' gefunden. Es sollte ein '%{tvalue}-Format' sein."
-      hr: "Pogrešan format pronađen u postavkama '%{telement}'. Trebao bi biti '%{tvalue} format'."
+      en: "Wrong format found in settings '%{element}'. It should be a '%{value} format'"
+      de: "Falsches Format in den Einstellungen '%{element}' gefunden. Es sollte ein '%{value}-Format' sein."
+      hr: "Pogrešan format pronađen u postavkama '%{element}'. Trebao bi biti '%{value} format'."
     parse:
-      en: "Failed to parse '%{telement}' value from settings. Value = '%{tvalue}'"
-      de: "Der Wert '%{telement}' aus den Einstellungen konnte nicht analysiert werden. Wert = '%{tvalue}'"
-      hr: "Vrijednost '%{telement}' iz postavki nije se mogla analizirati. Vrijednost = '%{tvalue}'"
+      en: "Failed to parse '%{element}' value from settings. Value = '%{value}'"
+      de: "Der Wert '%{element}' aus den Einstellungen konnte nicht analysiert werden. Wert = '%{value}'"
+      hr: "Vrijednost '%{element}' iz postavki nije se mogla analizirati. Vrijednost = '%{value}'"
     not_found:
-      en: "'%{tvalue}' not found in settings"
-      de: "'%{tvalue}' nicht in Einstellungen gefunden"
-      hr: "'%{tvalue}' nije pronađen u postavkama"
+      en: "'%{value}' not found in settings"
+      de: "'%{value}' nicht in Einstellungen gefunden"
+      hr: "'%{value}' nije pronađen u postavkama"
   mpsc:
     send:
-      en: "Error sending data through the mpsc channel '%{tvalue}'"
-      de: "Fehler beim Senden von Daten über den mpsc-Kanal '%{tvalue}'"
-      hr: "Pogreška pri slanju podataka putem mpsc kanala '%{tvalue}'"
+      en: "Error sending data through the mpsc channel '%{value}'"
+      de: "Fehler beim Senden von Daten über den mpsc-Kanal '%{value}'"
+      hr: "Pogreška pri slanju podataka putem mpsc kanala '%{value}'"
   entropy:
     create:
       file:
@@ -348,9 +348,9 @@ error:
   master:
     parse:
       header:
-        en: "Can not parse '%{tvalue}' header"
-        de: "Kann '%{tvalue}'-Header nicht parsen"
-        hr: "Ne mogu analizirati zaglavlja '%{tvalue}'"
+        en: "Can not parse '%{value}' header"
+        de: "Kann '%{value}'-Header nicht parsen"
+        hr: "Ne mogu analizirati zaglavlja '%{value}'"
     create:
       en: "Error creating master private key"
       de: "Fehler beim Erstellen des privaten Masterschlüssels"
@@ -362,27 +362,31 @@ error:
       hr: "Ne mogu dekodirati seed"
   file:
     open:
-      en: "Failed to open file '%{tvalue}'"
-      de: "Die Datei '%{tvalue}' konnte nicht geöffnet werden."
-      hr: "Datoteku '%{tvalue}' nije bilo moguće otvoriti"
+      en: "Failed to open file '%{value}'"
+      de: "Die Datei '%{value}' konnte nicht geöffnet werden."
+      hr: "Datoteku '%{value}' nije bilo moguće otvoriti"
     read:
-      en: "Failed to read file '%{tvalue}'"
-      de: "Die Datei '%{tvalue}' konnte nicht gelesen werden"
-      hr: "Datoteku '%{tvalue}' nije moguće pročitati"
+      en: "Failed to read file '%{value}'"
+      de: "Die Datei '%{value}' konnte nicht gelesen werden"
+      hr: "Datoteku '%{value}' nije moguće pročitati"
+    write:
+      en: "Can not write to file '%{value}'"
+      de: "Kann nicht in die Datei '%{value}' schreiben"
+      hr: "Ne mogu da zapišem u datoteku '%{value}'"
   csv:
     read:
       en: "Error reading CSV record"
       de: "Fehler beim Lesen eines CSV- Eintrags"
       hr: "Pogreška pri čitanju CSV unosa"
     parse:
-      en: "Error parsing '%{tvalue}'"
-      de: "Fehler beim Parsen von '%{tvalue}'"
-      hr: "Pogreška pri analiziranju '%{tvalue}'"
+      en: "Error parsing '%{value}'"
+      de: "Fehler beim Parsen von '%{value}'"
+      hr: "Pogreška pri analiziranju '%{value}'"
   converter:
     IO:
-      en: "Can not convert from '%{tinput}' to u32 '%{toutput}'"
-      de: "Kann nicht von '%{tinput}' nach u32 '%{toutput}' konvertieren"
-      hr: "Nije moguće pretvoriti iz '%{tinput}' u u32 '%{toutput}'"
+      en: "Can not convert '%{input}' to '%{output}'. %{error}"
+      de: "Kann nicht '%{input}' nach '%{output}' konvertieren. %{error}"
+      hr: "Nije moguće pretvoriti '%{input}' u '%{output}'. %{error}"
   DP:
     read:
       en: "Invalid field"
@@ -390,9 +394,9 @@ error:
       hr: "Nevažeće polje"
   bip:
     value:
-      en: "Invalid BIP number '%{tvalue}'"
-      de: "Ungültige BIP-Nummer '%{tvalue}'"
-      hr: "Nevažeći BIP broj '%{tvalue}'"
+      en: "Invalid BIP number '%{value}'"
+      de: "Ungültige BIP-Nummer '%{value}'"
+      hr: "Nevažeći BIP broj '%{value}'"
     mnemonic:
       en: "Can not create mnemonic words"
       de: "Kann keine mnemonischen Wörter erstellen"
@@ -407,9 +411,9 @@ error:
       de: "Entropie zu kurz"
       hr: "Entropija je prekratka"
     timeout:
-      en: "One request per 2 minutes. You have to wait '%{tvalue}' seconds more"
-      de: "Eine Anfrage alle 2 Minuten. Sie müssen '%{tvalue}' Sekunden mehr warten"
-      hr: "Jedan zahtjev svake 2 minute. Morate pričekati još ''%{tvalue}' sekundi"
+      en: "One request per 2 minutes. You have to wait '%{value}' seconds more"
+      de: "Eine Anfrage alle 2 Minuten. Sie müssen '%{value}' Sekunden mehr warten"
+      hr: "Jedan zahtjev svake 2 minute. Morate pričekati još ''%{value}' sekundi"
 
 
 # &t!("UI.settings.element.frame.select").to_string()
@@ -418,7 +422,7 @@ error:
 # .expect(&t!("error.seed.decode").to_string());
 # .expect(&t!("error.master.parse.header").to_string());
 
-# .expect(&t!("error.seed.decode", tpart = "SOME_PART").to_string());
-# .expect(&t!("error.master.parse.header", tpart = "private").to_string());
+# .expect(&t!("error.seed.decode", part = "SOME_PART").to_string());
+# .expect(&t!("error.master.parse.header", part = "private").to_string());
 
 # "{}", &t!("error.settings.read", part = "ANU data format")
