@@ -295,12 +295,21 @@ UI:
           en: "Comment"
           de: "Kommentar"
           hr: "Komentar"
+    anu:
+      download:
+        en: "Trying to retrieve QRNG from ANU API"
+        de: "Versuch, QRNG von der ANU-API abzurufen"
+        hr: "Pokušavam skinuti QRNG sa ANU API-ja"
 error:
   settings:
+    config:
+      en: "Error in config file: '%{error}'"
+      de: "Fehler in der Konfigurationsdatei: '%{error}'"
+      hr: "Pogreška u konfiguracijskoj datoteci: '%{error}'"
     read:
-      en: "Can not read settings"
-      de: "Einstellungen können nicht gelesen werden"
-      hr: "Ne mogu pročitati postavke"
+      en: "Can not read settings: '%{value}'"
+      de: "Einstellungen können nicht gelesen werden: '%{value}'"
+      hr: "Ne mogu pročitati postavke: '%{value}'"
     load:
       en: "Failed to load '%{value}' from settings"
       de: "Fehler beim Laden von '%{value}' aus den Einstellungen"
@@ -338,9 +347,9 @@ error:
       hr: "Entropija je prazna"
   wordlist:
     read:
-      en: "Error reading from wordlist file"
-      de: "Fehler beim Lesen aus der Wortlistendatei"
-      hr: "Pogreška pri čitanju iz datoteke popisa riječi"
+      en: "Error reading from wordlist file: '%{value}'"
+      de: "Fehler beim Lesen aus der Wortlistendatei: '%{value}'"
+      hr: "Pogreška pri čitanju iz datoteke popisa riječi: '%{value}'"
     word:
       en: "INVALID_WORD"
       de: "INVALID_WORT"
@@ -362,13 +371,13 @@ error:
       hr: "Ne mogu dekodirati seed"
   file:
     open:
-      en: "Failed to open file '%{value}'"
-      de: "Die Datei '%{value}' konnte nicht geöffnet werden."
-      hr: "Datoteku '%{value}' nije bilo moguće otvoriti"
+      en: "Failed to open file '%{value}': '%{error}'"
+      de: "Die Datei '%{value}' konnte nicht geöffnet werden: '%{error}'"
+      hr: "Datoteku '%{value}' nije bilo moguće otvoriti: '%{error}'"
     read:
-      en: "Failed to read file '%{value}'"
-      de: "Die Datei '%{value}' konnte nicht gelesen werden"
-      hr: "Datoteku '%{value}' nije moguće pročitati"
+      en: "Failed to read file '%{value}': '%{error}'"
+      de: "Die Datei '%{value}' konnte nicht gelesen werden: '%{error}'"
+      hr: "Datoteku '%{value}' nije moguće pročitati: '%{error}'"
     write:
       en: "Can not write to file '%{value}'"
       de: "Kann nicht in die Datei '%{value}' schreiben"
@@ -398,9 +407,9 @@ error:
       de: "Ungültige BIP-Nummer '%{value}'"
       hr: "Nevažeći BIP broj '%{value}'"
     mnemonic:
-      en: "Can not create mnemonic words"
-      de: "Kann keine mnemonischen Wörter erstellen"
-      hr: "Ne mogu stvoriti mnemoničke riječi"
+      en: "Can not create mnemonic words: '%{error}'"
+      de: "Kann keine mnemonischen Wörter erstellen: '%{error}'"
+      hr: "Ne mogu stvoriti mnemoničke riječi: '%{error}'"
   anu:
     format:
       en: "ANU data format is not valid"

@@ -28,7 +28,7 @@
     },
     "todo-tree.highlights.customHighlight": {
         "TODO": {
-            "icon": "task",
+            "icon": "check",
             "type": "text",
             "gutterIcon": true,
         },
@@ -71,10 +71,11 @@
         "FEATURE",
         "VERIFY",
         "CHECK",
+        "IMPROVEMENT",
     ],
     "todo-tree.general.tagGroups": {
         "FIX": ["FIXME"],
-        "TODO": ["todo!()","FIXIT", "IMPLEMENT"],
+        "TODO": ["todo!()","FIXIT", "IMPLEMENT", "IMPROVEMENT"],
         "VERIFY": ["CHECK"],
     },
     "cSpell.language": "en,hr,de",
@@ -110,6 +111,7 @@
         "privkey",
         "PRNG",
         "Proxyservers",
+        "pubkey",
         "qrng",
         "QRNG",
         "recv",

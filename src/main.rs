@@ -24,9 +24,10 @@ use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
-use gtk::{gio, glib::clone, Stack, StackSidebar};
+use gtk::{accessible::Property, gio, glib::clone, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 use rust_i18n::t;
+
 
 // Multi-language support
 #[macro_use] extern crate rust_i18n;
@@ -69,9 +70,11 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
     "hex16",
 ];
 const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
-const ANU_DEFAULT_HEX_BLOCK_SIZE: u32 = 32;
+const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
+const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
+const ANU_DEFAULT_HEX_BLOCK_SIZE: u32 = 16;
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
-const TCP_REQUEST_INTERVAL_SECONDS: i64 = 120;
+const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 const WINDOW_MAIN_DEFAULT_WIDTH: u32 = 1000;
 const WINDOW_MAIN_DEFAULT_HEIGHT: u32 = 800;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
@@ -158,41 +161,48 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 
             let anu_format = match settings.get_value("anu_data_format") {
                 Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-                    eprintln!("{}", &t!("error.settings.wrong", element = "anu_data_format", value = "String"));
+                    fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "anu_data_format", value = "String")));
                     String::from("uint8")
                 }),
                 None => {
-                    eprintln!("{}", &t!("error.settings.read", part = "anu_data_format"));
+                    fancy_print(Some("ERROR"), Some(&t!("error.settings.read", value = "anu_data_format")));
                     String::from("uint8")
                 }
             };
             
             let array_length = match settings.get_value("anu_array_length") {
                 Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
-                    eprintln!("{}", &t!("error.settings.wrong", element = "anu_array_length", value = "String"));
+                    fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "anu_array_length", value = "String")));
                     ANU_DEFAULT_ARRAY_LENGTH
                 }),
                 None => {
-                    eprintln!("{}", &t!("error.settings.read", part = "anu_array_length"));
+                    fancy_print(Some("ERROR"), Some(&t!("error.settings.read", value = "anu_array_length")));
                     ANU_DEFAULT_ARRAY_LENGTH
                 }
             };
             
-            let hex_block_size = match settings.get_value("hex_block_size") {
+            let hex_block_size = match settings.get_value("anu_hex_block_size") {
                 Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
-                    eprintln!("{}", &t!("error.settings.wrong", element = "hex_block_size", value = "u32"));
+                    fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "hex_block_size", value = "u32")));
                     ANU_DEFAULT_HEX_BLOCK_SIZE
                 }),
                 None => {
-                    eprintln!("{}", &t!("error.settings.read", part = "hex_block_size"));
+                    fancy_print(Some("ERROR"), Some(&t!("error.settings.read", value = "hex_block_size")));
                     ANU_DEFAULT_HEX_BLOCK_SIZE
                 }
             };
 
-            println!("ANU Format: {}", anu_format);
-            println!("ANU Array Length: {}", array_length);
-            println!("Hex Block Size: {}", hex_block_size);
+            fancy_print(Some("anu_data_format"), Some(&format!("{:?}", anu_format)));
+            fancy_print(Some("anu_array_length"), Some(&format!("{:?}", array_length)));
+            fancy_print(Some("anu_hex_block_size"), Some(&format!("{:?}", hex_block_size)));
 
+            create_message_window(
+                "ANU QRNG API", 
+                &t!("UI.main.anu.download"), 
+                None, 
+                None
+            );
+            
             let qrng_entropy_string = get_entropy_from_anu(
                 entropy_length.try_into().unwrap(),
                 &anu_format, 
@@ -229,13 +239,13 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                     if let Some(file) = dialog.file() {
                         if let Some(path) = file.path() {
                             let file_path = path.to_string_lossy().to_string();
-                            println!("Entropy file: {:?}", &file_path);
+                            fancy_print(Some("entropy_file_name"), Some(&format!("{:?}", file_path)));
                             
                             let file_entropy_string = file_to_entropy(&file_path, entropy_length);
-                            println!("File entropy: {}", file_entropy_string);
                             
                             if let Err(err) = tx.send(file_entropy_string) {
-                                eprintln!("{}", &t!("error.mpsc.send", value = err));
+                                fancy_print(Some("ERROR"), Some(&t!("error.mpsc.send", value = err)));
+
                             } else {
                                 main_loop.quit();
                             }
@@ -252,12 +262,10 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 Ok(received_file_entropy_string) => {
                     ADDRESS_DATA.with(|data| {
                         let mut data = data.borrow_mut();
-                        println!("QRNG entropy (string): {}", &received_file_entropy_string);
                         data.entropy_string = Some(received_file_entropy_string.clone());
                     });
 
                     fancy_print(Some("entropy_initial"), Some(&format!("{:?}", received_file_entropy_string)));
-
 
                     received_file_entropy_string
                 },
@@ -268,8 +276,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             }
         },
         _ => {
-            eprintln!("{}", &t!("error.entropy.create.source"));
-            
+            fancy_print(Some("ERROR"), Some(&t!("error.entropy.create.source")));
             return String::new()
         }
     }
@@ -294,7 +301,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 /// ```
 fn generate_entropy_checksum(entropy: &str, entropy_length: &u32) -> String {
     let entropy_binary = convert_string_to_binary(&entropy);
-    fancy_print(Some("entropy_binary_format"), Some(&format!("{:?}", entropy_binary)));
+    fancy_print(Some("entropy_as_binary"), Some(&format!("{:?}", entropy_binary)));
     
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
     fancy_print(Some("entropy_sha256_hash"), Some(&format!("{:?}", hash_raw_binary)));
@@ -312,24 +319,6 @@ fn generate_entropy_checksum(entropy: &str, entropy_length: &u32) -> String {
     
     entropy_checksum
 }
-
-/// Calculates the checksum of the provided data.
-///
-/// # Arguments
-///
-/// * `data` - The data for which the checksum is calculated.
-///
-/// # Returns
-///
-/// The calculated checksum as a fixed-size array of bytes.
-///
-/// # Examples
-///
-/// ```rust
-/// let data = [0u8; 32];
-/// let checksum = calculate_checksum(&data);
-/// assert_eq!(checksum.len(), 4);
-/// ```
 
 /// Generates mnemonic words from the final entropy binary.
 ///
@@ -359,13 +348,12 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     let mnemonic_decimal: Vec<u32> = chunks.iter()
         .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
         .collect();
-    println!("Mnemonic (decimal): {:?}", mnemonic_decimal);
-    fancy_print(Some("entropy_final_chunks"), Some(&format!("{:?}", chunks)));
+    fancy_print(Some("mnemonic_as_decimal"), Some(&format!("{:?}", mnemonic_decimal)));
 
     let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
         Ok(content) => content,
         Err(err) => {
-            eprintln!("{}: {}", &t!("error.wordlist.read"), err);
+            fancy_print(Some("ERROR"), Some(&t!("error.wordlist.read", value = err)));
             return String::new();
         }
     };
@@ -384,7 +372,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 
     ADDRESS_DATA.with(|data| {
         let mut data = data.borrow_mut();
-        println!("Mnemonic words: {}", &mnemonic_words_as_string);
+        fancy_print(Some("mnemonic_words"), Some(&format!("{:?}", mnemonic_words_as_string)));
         data.mnemonic_words = Some(mnemonic_words_as_string.clone());
     });
 
@@ -410,16 +398,22 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 /// ```
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     let entropy_vector = convert_string_to_binary(&entropy);
-    let mnemonic = bip39::Mnemonic::from_entropy(&entropy_vector).expect(&t!("error.bip.mnemonic").to_string());
+    let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
+        Ok(mnemonic) => mnemonic,
+        Err(err) => {
+            fancy_print(Some("ERROR"), Some(&t!("error.bip.mnemonic", error = err)));
+            return [0; 64];
+        },
+    };
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
     let seed_hex = hex::encode(&seed[..]);
-
+    
     ADDRESS_DATA.with(|data| {
-        println!("Seed: {:?}", &seed_hex);
+        fancy_print(Some("seed_as_hex"), Some(&format!("{:?}", seed_hex)));
         let mut data = data.borrow_mut();
         data.seed = Some(seed_hex);
     });
-
+    
     seed
 }
 
@@ -437,13 +431,25 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
 /// println!("{}", entropy);
 /// ```
 fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
-    let mut file = File::open(file_path)
-        .expect(&t!("error.file.open", value = file_path).to_string());
+    // let mut file = File::open(file_path)
+        // .expect(&t!("error.file.open", value = file_path).to_string());
 
+    let mut file = match File::open(file_path) {
+        Ok(file) => file,
+        Err(err) => {
+            fancy_print(Some("ERROR"), Some(&t!("error.file.open", value = file_path, error = err)));
+            return String::new()
+        },
+    };
+    
     let mut buffer = Vec::new();
     
-    file.read_to_end(&mut buffer)
-        .expect(&t!("error.file.read", value = file_path).to_string());
+    match file.read_to_end(&mut buffer) {
+        Ok(_) => {},
+        Err(err) => {
+            fancy_print(Some("ERROR"), Some(&t!("error.file.read", value = file_path, error = err)));
+        },
+    };
 
     let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
 
@@ -1023,11 +1029,10 @@ impl AppSettings {
         // BUG: If one parameter has typo, whole AppSetting is empty ???
         let config: toml::Value = match config_str.parse() {
             Ok(value) => {
-                // println!("Local config: {}", config);
                 value
             },
             Err(err) => {
-                eprintln!("Error in config file.\n{}", err);
+                fancy_print(Some("ERROR"), Some(&t!("error.settings.config", error = err)));
                 toml::Value::Table(toml::value::Table::new())
             }
         };
@@ -1724,13 +1729,15 @@ fn create_settings_window() {
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
     
-    // IMPROVEMENT: calculate lower and initial value for a successfully API request based on entropy length
-    // 16 = 16x8 = 128 chars 
-    // 32 = 32x8 = 256 chars
+    // Min/Max check
+    let mut default_array_length = settings.anu_array_length;
+    default_array_length = std::cmp::max(ANU_MINIMUM_ARRAY_LENGTH, default_array_length);
+    default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
+
     let array_length_adjustment = gtk::Adjustment::new(
-        32.0, // initial value
-        32.0, // minimum value
-        1024.0, // maximum value
+        default_array_length as f64,        // initial value
+        ANU_MINIMUM_ARRAY_LENGTH as f64,    // minimum value
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,    // maximum value
         1.0, // step increment
         10.0, // page increment
         0.0, // page size
@@ -1755,12 +1762,14 @@ fn create_settings_window() {
     let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
     
-    // IMPROVEMENT: calculate lower and initial value for a successfully API request based on entropy length and array length
-    // 16 = 16x8x(array_length)=????
+    let mut default_hex_size = settings.anu_hex_block_size;
+    default_hex_size = std::cmp::max(1, default_hex_size);
+    default_hex_size = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_hex_size);
+
     let hex_block_size_adjustment = gtk::Adjustment::new(
-        1.0, // initial value
-        1.0, // minimum value
-        1024.0, // maximum value
+        default_hex_size as f64,            // initial value
+        1.0,                                // minimum value
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,    // maximum value
         1.0, // step increment
         10.0, // page increment
         0.0, // page size
@@ -2335,7 +2344,7 @@ fn create_main_window(application: &adw::Application) {
     });
 
     // open_wallet_button.connect_clicked(move |_| {
-    //     createDialogWindow("msg", None, None);
+    //     create_message_window("msg", None, None);
     // });
 
     about_button.connect_clicked(move |_| {
@@ -3137,6 +3146,7 @@ fn create_main_window(application: &adw::Application) {
     window.present();
 }
 
+
 fn main() {
     print_program_info();
 
@@ -3187,7 +3197,12 @@ fn main() {
     });
 
     test.connect_activate(move |_action, _parameter| {
-        createDialogWindow("test", Some(true), Some(50));
+        create_message_window(
+            "Test title dialog", 
+            "One request every 10 seconds.", 
+            Some(true), 
+            Some(10)
+        );
     });
 
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
@@ -3337,20 +3352,22 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
     let current_time = SystemTime::now();
     let last_request_time = load_last_anu_request().unwrap();
 
-    // println!("Last ANU request: {:?}", last_request_time);
-    // println!("New ANU request: {:?}", current_time);
-    
     let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
-    let wait_duration = Duration::from_secs(TCP_REQUEST_INTERVAL_SECONDS as u64);
+    let wait_duration = Duration::from_secs(ANU_REQUEST_INTERVAL_SECONDS as u64);
 
     if elapsed < wait_duration {
         let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
+        create_message_window(
+            "ANU API Timeout", 
+            &t!("error.anu.timeout", value = remaining_seconds), 
+            Some(true), 
+            Some(remaining_seconds as u32)
+        );
         eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
         return Some(String::new());
-        // IMPROVEMENT: replace with error dialog showing remaining time #LOW
     }
-
-    // print!("Connecting to ANU API");
+    
+    println!("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++created");
 
     let mut socket_addr = ANU_API_URL
         .to_socket_addrs()
@@ -3830,6 +3847,14 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
         }
     }
 
+    match value.unwrap() {
+        "ERROR" => {
+            create_message_window(value.unwrap(), &msg.unwrap(), None, None);
+        },
+        _ => {
+
+        }
+    }
     match log_output.as_str() {
         "Default" => {
             println!("{}", formatted_output);
@@ -3869,64 +3894,178 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
 
 
 
-
-
-
-fn createDialogWindow(msg: &str, progress_active: Option<bool>, _progress_percent: Option<u32> ) {
-
-    let dialog_window = gtk::ApplicationWindow::builder()
-        .title(msg)
-        .default_width(400)
-        .default_height(400)
+fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
+    let message_window = gtk::Window::builder()
+        .title(title)
         .resizable(false)
+        .modal(true)
         .build();
 
-    let dialogMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        // message_window.width
+    let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    dialog_main_box.set_margin_bottom(20);
+    dialog_main_box.set_margin_top(20);
+    dialog_main_box.set_margin_start(50);
+    dialog_main_box.set_margin_end(50);
     
-
-
+    let message_label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    message_label_box.set_margin_bottom(10);
+    
+    let message_label = gtk::Label::new(Some(&msg));
+    message_label.set_justify(gtk::Justification::Center);
+    
+    message_label_box.append(&message_label);
+    dialog_main_box.append(&message_label_box);
+    
     // Progress box
-    if progress_active.unwrap_or(false) == true {
-        
-        let progressMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        
-        dialogMainBox.append(&progressMainBox);
-    }
-    
+    if progress_active.unwrap_or(false) {
+        let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        progress_main_box.set_margin_top(10);
+        progress_main_box.set_margin_bottom(10);
 
+        let level_bar = gtk::LevelBar::new();
+        level_bar.set_max_value(100.0);
+
+        progress_main_box.append(&level_bar);
+        dialog_main_box.append(&progress_main_box);
+
+        let wait_time = wait_time.unwrap_or(10).min(ANU_REQUEST_INTERVAL_SECONDS as u32);
+        let level_bar_clone = level_bar.clone();
+        let message_window_clone = message_window.clone();
+
+        let mut progress = 0.0;
+        progress += 100.0 / wait_time as f64;
+        level_bar_clone.set_value(progress);
+        
+        glib::timeout_add_seconds_local(1, move || {
+            progress += 100.0 / wait_time as f64;
+            level_bar_clone.set_value(progress);
+            if progress >= 100.0 {
+                message_window_clone.close();
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
+    }
 
     // Message Box
-    let messageMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    
-    
-
+    let message_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
     // Do not show
-    let doNotShowMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let doNotShowContentBox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    
-    
-    let doNotShowLabel = gtk::Label::new(Some("Do not show any more"));
-    let doNotShowCheckbox = gtk::CheckButton::new();
+    let do_not_show_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    do_not_show_main_box.set_margin_top(10);
 
-    doNotShowContentBox.append(&doNotShowLabel);
-    doNotShowContentBox.append(&doNotShowCheckbox);
-    doNotShowContentBox.set_halign(gtk::Align::Center);
+    let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
 
-    doNotShowMainBox.append(&doNotShowContentBox);
+    let do_not_show_label = gtk::Label::new(Some("Do not show any more"));
+    let do_not_show_checkbox = gtk::CheckButton::new();
 
+    do_not_show_content_box.append(&do_not_show_label);
+    do_not_show_content_box.append(&do_not_show_checkbox);
+    do_not_show_content_box.set_halign(gtk::Align::Center);
 
-
+    do_not_show_main_box.append(&do_not_show_content_box);
 
     // Connections
-    dialogMainBox.append(&messageMainBox);
-    dialogMainBox.append(&doNotShowMainBox);
+    dialog_main_box.append(&message_main_box);
+    dialog_main_box.append(&do_not_show_main_box);
 
-    dialog_window.set_child(Some(&dialogMainBox));
+    message_window.set_child(Some(&dialog_main_box));
 
-    dialog_window.show();
+    message_window.show();
 }
+
+// TOKIO
+// fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32> ) {
+
+//     let dialog_window = gtk::ApplicationWindow::builder()
+//         .title(title)
+//         // .default_width(500)
+//         // .default_height(50)
+//         .resizable(false)
+//         // .modal(true)
+//         .hexpand(true)
+//         .vexpand(true)
+//         .build();
+
+//     dialog_window.grab_focus();
+//     let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//     dialog_main_box.set_margin_bottom(20);
+//     dialog_main_box.set_margin_top(20);
+//     dialog_main_box.set_margin_start(20);
+//     dialog_main_box.set_margin_end(20);
+
+//     let message_label = gtk::Label::new(Some(&msg));
+//     message_label.set_justify(gtk::Justification::Center);
+
+//     dialog_main_box.append(&message_label);
+
+
+//     // Progress box
+//     if progress_active.unwrap_or(false) {
+//         let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//         let level_bar = gtk::LevelBar::new();
+//         level_bar.set_max_value(100.0);
+
+//         progress_main_box.append(&level_bar);
+//         dialog_main_box.append(&progress_main_box);
+
+//         // Set the maximum wait time to 120 seconds
+//         let wait_time = wait_time.unwrap_or(10).min(120);
+//         let level_bar_clone = level_bar.clone();
+//         let dialog_window_clone = dialog_window.clone();
+
+//         glib::MainContext::default().spawn_local(async move {
+//             let mut interval = tokio::time::interval(Duration::from_secs(1));
+//             for i in 1..=wait_time {
+//                 interval.tick().await;
+//                 let progress = (i as f64 / wait_time as f64) * 100.0;
+//                 glib::MainContext::default().spawn_local(clone!(@weak level_bar_clone => async move {
+//                     level_bar_clone.set_value(progress);
+//                 }));
+//             }
+//             glib::MainContext::default().spawn_local(clone!(@weak dialog_window_clone => async move {
+//                 dialog_window_clone.close();
+//             }));
+//         });
+//     }
+    
+
+
+//     // Message Box
+//     let messageMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    
+    
+
+
+//     // Do not show
+//     let doNotShowMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//     let doNotShowContentBox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    
+    
+//     let doNotShowLabel = gtk::Label::new(Some("Do not show any more"));
+//     let doNotShowCheckbox = gtk::CheckButton::new();
+
+//     doNotShowContentBox.append(&doNotShowLabel);
+//     doNotShowContentBox.append(&doNotShowCheckbox);
+//     doNotShowContentBox.set_halign(gtk::Align::Center);
+
+
+//     doNotShowMainBox.append(&doNotShowContentBox);
+
+
+
+
+//     // Connections
+//     dialog_main_box.append(&messageMainBox);
+//     dialog_main_box.append(&doNotShowMainBox);
+
+//     dialog_window.set_child(Some(&dialog_main_box));
+
+//     dialog_window.show();
+// }
 
 
 // OLD CODE
