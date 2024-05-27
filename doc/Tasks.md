@@ -30,13 +30,13 @@
 - [ ] ShortcutsWindow
 - [ ] buy me a coffee
 - [ ] create filter for cointree
-- [ ] copy button in major fields
+- [ ] copy-button in major fields
 
 ---
 
 ### Settings window
 
-- [ ] settings and config file before proceeding further
+- [ ] settings and config file
     - [x] read settings file
     - [ ] write settings file
     - [ ] local settings ($HOME)
@@ -53,15 +53,13 @@
 - [x] uint8 parsing
 - [ ] uint16 parsing
 - [ ] hex16 parsing
-- [ ] import: entropy, seed, master...
 
 ---
 
 ### Advance
-- [ ] tokio
 - [ ] buy USB QRNG and make support for it
-- [ ] log output
-- [ ] translate app to another language
+- [x] log output
+- [x] translate app to another language
 - [ ] multi-threading
 - [ ] extend bip44-extended-coin-list.csv with:
     - [ ] status + icon

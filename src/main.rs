@@ -195,13 +195,6 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             fancy_print(Some("anu_data_format"), Some(&format!("{:?}", anu_format)));
             fancy_print(Some("anu_array_length"), Some(&format!("{:?}", array_length)));
             fancy_print(Some("anu_hex_block_size"), Some(&format!("{:?}", hex_block_size)));
-
-            create_message_window(
-                "ANU QRNG API", 
-                &t!("UI.main.anu.download"), 
-                Some(true), 
-                Some(10)
-            );
             
             let qrng_entropy_string = get_entropy_from_anu(
                 entropy_length.try_into().unwrap(),
@@ -2784,44 +2777,46 @@ fn create_main_window(application: &adw::Application) {
         @weak mnemonic_words_text,
         @weak seed_text,
         @weak stack  => move |_| {
-            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
-            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
-            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
-            let source = selected_entropy_source_value.unwrap().to_string();
-            let length = selected_entropy_length_value.unwrap();
-            
-            entropy_text.buffer().set_text("");
-            mnemonic_words_text.buffer().set_text("");
-            seed_text.buffer().set_text("");
+            gio::spawn_blocking(move || {
+                let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
+                let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
+                let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+                let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
+                let source = selected_entropy_source_value.unwrap().to_string();
+                let length = selected_entropy_length_value.unwrap();
+                
+                entropy_text.buffer().set_text("");
+                mnemonic_words_text.buffer().set_text("");
+                seed_text.buffer().set_text("");
 
-            let entropy_length = selected_entropy_length_value;
-            
-            let pre_entropy = generate_entropy(
-                &source,
-                *length as u64,
-            );
-            
-            if !pre_entropy.is_empty() {
-                let checksum = generate_entropy_checksum(&pre_entropy, entropy_length.unwrap());
-                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+                let entropy_length = selected_entropy_length_value;
+                
+                let pre_entropy = generate_entropy(
+                    &source,
+                    *length as u64,
+                );
+                
+                if !pre_entropy.is_empty() {
+                    let checksum = generate_entropy_checksum(&pre_entropy, entropy_length.unwrap());
+                    let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
-                fancy_print(Some("entropy_final"), Some(&format!("{:?}", full_entropy)));
-                entropy_text.buffer().set_text(&full_entropy);
-                
-                let mnemonic_words = generate_mnemonic_words(&full_entropy);
-                mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                
-                let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                fancy_print(Some("mnemonic_passphrase"), Some(&format!("{:?}", passphrase_text)));
-                
-                let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
-            } else {
-                // TODO: If entropy is empty show error dialog
-                eprintln!("{}", &t!("error.entropy.empty"))
-            }
+                    fancy_print(Some("entropy_final"), Some(&format!("{:?}", full_entropy)));
+                    entropy_text.buffer().set_text(&full_entropy);
+                    
+                    let mnemonic_words = generate_mnemonic_words(&full_entropy);
+                    mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                    
+                    let passphrase_text = mnemonic_passphrase_text.text().to_string();
+                    fancy_print(Some("mnemonic_passphrase"), Some(&format!("{:?}", passphrase_text)));
+                    
+                    let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
+                    let seed_hex = hex::encode(&seed[..]);
+                    seed_text.buffer().set_text(&seed_hex.to_string());
+                } else {
+                    // TODO: If entropy is empty show error dialog
+                    eprintln!("{}", &t!("error.entropy.empty"))
+                }
+            });
         }
     ));
 
@@ -3357,17 +3352,23 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
 
     if elapsed < wait_duration {
         let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-        // create_message_window(
-        //     "ANU API Timeout", 
-        //     &t!("error.anu.timeout", value = remaining_seconds), 
-        //     Some(true), 
-        //     Some(remaining_seconds as u32)
-        // );
+        create_message_window(
+            "ANU API Timeout", 
+            &t!("error.anu.timeout", value = remaining_seconds), 
+            Some(true), 
+            Some(remaining_seconds as u32)
+        );
         eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
         return Some(String::new());
     }
     
-    println!("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++created");
+    create_message_window(
+        "ANU QRNG API", 
+        &t!("UI.main.anu.download"), 
+        Some(true), 
+        Some(5)
+    );
+
 
     let mut socket_addr = ANU_API_URL
         .to_socket_addrs()
@@ -3850,17 +3851,11 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
 
 
 fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
-    let main_context = glib::MainContext::default();
-    let main_loop = glib::MainLoop::new(Some(&main_context), false);
-    
-    
-    let message_window = gtk::Window::builder()
+    let message_window = gtk::MessageDialog::builder()
         .title(title)
         .resizable(false)
         .modal(true)
         .build();
-
-    let main_loop_clone = main_loop.clone();
 
     let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     dialog_main_box.set_margin_bottom(20);
@@ -3917,8 +3912,6 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     do_not_show_main_box.set_margin_top(10);
 
     let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-
-
     let do_not_show_label = gtk::Label::new(Some("Do not show any more"));
     let do_not_show_checkbox = gtk::CheckButton::new();
 
@@ -3932,11 +3925,9 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     dialog_main_box.append(&message_main_box);
     dialog_main_box.append(&do_not_show_main_box);
 
+
     message_window.set_child(Some(&dialog_main_box));
-
     message_window.show();
-    main_loop_clone.run();
-
 }
 
 
