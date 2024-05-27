@@ -24,7 +24,7 @@ use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
-use gtk::{accessible::Property, gio, glib::clone, Stack, StackSidebar};
+use gtk::{gio, glib::clone, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 use rust_i18n::t;
 
@@ -107,7 +107,7 @@ fn print_program_info() {
     println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
-    fancy_print(Some(sig), None);
+    // fancy_print(Some(sig), None);
     fancy_print(Some(&APP_DESCRIPTION.unwrap()), Some(&APP_VERSION.unwrap()));
     fancy_print(Some("Start time"), Some(&timestamp.to_string()));
     fancy_print(Some(sig), None);
@@ -199,8 +199,8 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             create_message_window(
                 "ANU QRNG API", 
                 &t!("UI.main.anu.download"), 
-                None, 
-                None
+                Some(true), 
+                Some(10)
             );
             
             let qrng_entropy_string = get_entropy_from_anu(
@@ -3357,12 +3357,12 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
 
     if elapsed < wait_duration {
         let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-        create_message_window(
-            "ANU API Timeout", 
-            &t!("error.anu.timeout", value = remaining_seconds), 
-            Some(true), 
-            Some(remaining_seconds as u32)
-        );
+        // create_message_window(
+        //     "ANU API Timeout", 
+        //     &t!("error.anu.timeout", value = remaining_seconds), 
+        //     Some(true), 
+        //     Some(remaining_seconds as u32)
+        // );
         eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
         return Some(String::new());
     }
@@ -3655,9 +3655,6 @@ struct WalletSettings {
     // });
 }
 
-
-
-
 fn derive_child_key(parent_key: &[u8], parent_chain_code: &[u8], index: u32, hardened: bool) -> Option<(Vec<u8>, Vec<u8>)> {
     let secp = secp256k1::Secp256k1::new();
     let mut data = vec![];
@@ -3683,9 +3680,6 @@ fn derive_child_key(parent_key: &[u8], parent_chain_code: &[u8], index: u32, har
 
     Some((child_key.secret_bytes().to_vec(), child_chain_code))
 }
-
-
-
 
 fn derive_from_path(master_key: &[u8], master_chain_code: &[u8], path: &str) -> Option<(secp256k1::SecretKey, [u8; 32])> {
     println!("Derivation path: {:?}", path);
@@ -3720,39 +3714,6 @@ fn derive_from_path(master_key: &[u8], master_chain_code: &[u8], path: &str) -> 
 
     Some((secret_key, chain_code_array))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 fn generate_address(pk: &secp256k1::PublicKey) -> String {
     let pk_bytes = pk.serialize();
@@ -3820,7 +3781,6 @@ fn double_sha256(input: &[u8]) -> Vec<u8> {
 
 // fancy_print(Some("entropy_source"), Some(&format!("{:?}", source)));
 // fancy_print(Some("ERROR"), Some(&t!("error.entropy.create.file")));
-
 fn fancy_print(value: Option<&str>, msg: Option<&str>) {
     let settings = AppSettings::load_settings()
                 .expect(&t!("error.settings.read"));
@@ -3843,7 +3803,6 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
             formatted_output.push_str(&format!("{} = {}", value, msg));
         } else {
             formatted_output.push_str(&format!("{}", value));
-
         }
     }
 
@@ -3851,9 +3810,7 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
         "ERROR" => {
             create_message_window(value.unwrap(), &msg.unwrap(), None, None);
         },
-        _ => {
-
-        }
+        _ => {}
     }
     match log_output.as_str() {
         "Default" => {
@@ -3884,9 +3841,7 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
                 }
             }
         },
-        _ => {
-            // No output
-        },
+        _ => {},
     }
 }
 
@@ -3895,13 +3850,18 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
 
 
 fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
+    let main_context = glib::MainContext::default();
+    let main_loop = glib::MainLoop::new(Some(&main_context), false);
+    
+    
     let message_window = gtk::Window::builder()
         .title(title)
         .resizable(false)
         .modal(true)
         .build();
 
-        // message_window.width
+    let main_loop_clone = main_loop.clone();
+
     let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     dialog_main_box.set_margin_bottom(20);
     dialog_main_box.set_margin_top(20);
@@ -3975,97 +3935,12 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     message_window.set_child(Some(&dialog_main_box));
 
     message_window.show();
+    main_loop_clone.run();
+
 }
 
-// TOKIO
-// fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32> ) {
-
-//     let dialog_window = gtk::ApplicationWindow::builder()
-//         .title(title)
-//         // .default_width(500)
-//         // .default_height(50)
-//         .resizable(false)
-//         // .modal(true)
-//         .hexpand(true)
-//         .vexpand(true)
-//         .build();
-
-//     dialog_window.grab_focus();
-//     let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//     dialog_main_box.set_margin_bottom(20);
-//     dialog_main_box.set_margin_top(20);
-//     dialog_main_box.set_margin_start(20);
-//     dialog_main_box.set_margin_end(20);
-
-//     let message_label = gtk::Label::new(Some(&msg));
-//     message_label.set_justify(gtk::Justification::Center);
-
-//     dialog_main_box.append(&message_label);
 
 
-//     // Progress box
-//     if progress_active.unwrap_or(false) {
-//         let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//         let level_bar = gtk::LevelBar::new();
-//         level_bar.set_max_value(100.0);
-
-//         progress_main_box.append(&level_bar);
-//         dialog_main_box.append(&progress_main_box);
-
-//         // Set the maximum wait time to 120 seconds
-//         let wait_time = wait_time.unwrap_or(10).min(120);
-//         let level_bar_clone = level_bar.clone();
-//         let dialog_window_clone = dialog_window.clone();
-
-//         glib::MainContext::default().spawn_local(async move {
-//             let mut interval = tokio::time::interval(Duration::from_secs(1));
-//             for i in 1..=wait_time {
-//                 interval.tick().await;
-//                 let progress = (i as f64 / wait_time as f64) * 100.0;
-//                 glib::MainContext::default().spawn_local(clone!(@weak level_bar_clone => async move {
-//                     level_bar_clone.set_value(progress);
-//                 }));
-//             }
-//             glib::MainContext::default().spawn_local(clone!(@weak dialog_window_clone => async move {
-//                 dialog_window_clone.close();
-//             }));
-//         });
-//     }
-    
-
-
-//     // Message Box
-//     let messageMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    
-    
-
-
-//     // Do not show
-//     let doNotShowMainBox = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//     let doNotShowContentBox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    
-    
-//     let doNotShowLabel = gtk::Label::new(Some("Do not show any more"));
-//     let doNotShowCheckbox = gtk::CheckButton::new();
-
-//     doNotShowContentBox.append(&doNotShowLabel);
-//     doNotShowContentBox.append(&doNotShowCheckbox);
-//     doNotShowContentBox.set_halign(gtk::Align::Center);
-
-
-//     doNotShowMainBox.append(&doNotShowContentBox);
-
-
-
-
-//     // Connections
-//     dialog_main_box.append(&messageMainBox);
-//     dialog_main_box.append(&doNotShowMainBox);
-
-//     dialog_window.set_child(Some(&dialog_main_box));
-
-//     dialog_window.show();
-// }
 
 
 // OLD CODE
