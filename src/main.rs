@@ -107,11 +107,76 @@ fn print_program_info() {
     println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
-    // fancy_print(Some(sig), None);
-    fancy_print(Some(&APP_DESCRIPTION.unwrap()), Some(&APP_VERSION.unwrap()));
-    fancy_print(Some("Start time"), Some(&timestamp.to_string()));
+    fancy_print(Some(&format!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap())), None);
+    fancy_print(Some(&format!("Start time {}", &timestamp.to_string())), None);
     fancy_print(Some(sig), None);
 
+}
+
+// fancy_print(Some("entropy_source"), Some(&format!("{:?}", source)));
+// fancy_print(Some("ERROR"), Some(&t!("error.entropy.create.file")));
+fn fancy_print(value: Option<&str>, msg: Option<&str>) {
+    let settings = AppSettings::load_settings()
+                .expect(&t!("error.settings.read"));
+
+    let log_output = match settings.get_value("log_output") {
+        Some(format) => format.parse::<String>().unwrap_or_else(|_| {
+            fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "log_output", value = "String")));
+            String::from(*&LOG_OUTPUT[0])
+        }),
+        None => {
+            fancy_print(Some("ERROR"), Some(&t!("error.settings.read", part = "log_output")));
+            String::from(*&LOG_OUTPUT[0])
+        }
+    };
+
+    let mut formatted_output = String::new();
+
+    if let Some(value) = value {
+        if let Some(msg) = msg {
+            formatted_output.push_str(&format!("\t{} = {}", value, msg));
+        } else {
+            formatted_output.push_str(&format!("{}", value));
+        }
+    }
+
+    match value.unwrap() {
+        "ERROR" => {
+            create_message_window(value.unwrap(), &msg.unwrap(), None, None);
+        },
+        _ => {}
+    }
+    match log_output.as_str() {
+        "Default" => {
+            println!("{}", formatted_output);
+        },
+        "File" => {
+            println!("{}", formatted_output);
+
+            if let Some(parent) = Path::new(LOG_FILE).parent() {
+                match fs::create_dir_all(parent) {
+                    Ok(_) => {
+                        let mut file = match std::fs::OpenOptions::new().create(true).append(true).open(&LOG_FILE) {
+                            Ok(file) => file,
+                            Err(e) => {
+                                eprintln!("Error creating file: {}", e);
+                                return;
+                            }
+                        };
+        
+                        formatted_output.push_str("\n");
+                        file.write_all(formatted_output.as_bytes())
+                                .expect(&t!("error.file.write", value = &LOG_FILE).to_string());
+                            
+                    }
+                    Err(err) => {
+                        eprintln!("Error creating directory {}: {}", parent.display(), err);
+                    }
+                }
+            }
+        },
+        _ => {},
+    }
 }
 
 /// Generates entropy based on the specified source and length.
@@ -136,6 +201,8 @@ fn print_program_info() {
 /// println!("Random entropy: {}", rng_entropy);
 /// ```
 fn generate_entropy(source: &str, entropy_length: u64) -> String {
+    fancy_print(Some(&t!("log.generate_entropy").to_string()), None);
+
     fancy_print(Some("entropy_source"), Some(&format!("{:?}", source)));
     fancy_print(Some("entropy_length"), Some(&format!("{:?}", entropy_length)));
 
@@ -234,7 +301,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                             let file_path = path.to_string_lossy().to_string();
                             fancy_print(Some("entropy_file_name"), Some(&format!("{:?}", file_path)));
                             
-                            let file_entropy_string = file_to_entropy(&file_path, entropy_length);
+                            let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
                             
                             if let Err(err) = tx.send(file_entropy_string) {
                                 fancy_print(Some("ERROR"), Some(&t!("error.mpsc.send", value = err)));
@@ -257,8 +324,6 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                         let mut data = data.borrow_mut();
                         data.entropy_string = Some(received_file_entropy_string.clone());
                     });
-
-                    fancy_print(Some("entropy_initial"), Some(&format!("{:?}", received_file_entropy_string)));
 
                     received_file_entropy_string
                 },
@@ -293,6 +358,8 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 /// assert_eq!(checksum.len(), 1);
 /// ```
 fn generate_entropy_checksum(entropy: &str, entropy_length: &u32) -> String {
+    fancy_print(Some(&t!("log.generate_entropy_checksum").to_string()), None);
+
     let entropy_binary = convert_string_to_binary(&entropy);
     fancy_print(Some("entropy_as_binary"), Some(&format!("{:?}", entropy_binary)));
     
@@ -330,6 +397,8 @@ fn generate_entropy_checksum(entropy: &str, entropy_length: &u32) -> String {
 /// assert!(!mnemonic.is_empty());
 /// ```
 fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
+    fancy_print(Some(&t!("log.generate_mnemonic_words").to_string()), None);
+
     let chunks: Vec<String> = final_entropy_binary.chars()
         .collect::<Vec<char>>()
         .chunks(11)
@@ -390,6 +459,8 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 /// assert_eq!(seed.len(), 64);
 /// ```
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
+    fancy_print(Some(&t!("log.generate_bip39_seed").to_string()), None);
+
     let entropy_vector = convert_string_to_binary(&entropy);
     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
         Ok(mnemonic) => mnemonic,
@@ -420,12 +491,11 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
 /// # Examples
 ///
 /// ```
-/// let entropy = file_to_entropy("example.txt", 256);
+/// let entropy = generate_entropy_from_file("example.txt", 256);
 /// println!("{}", entropy);
 /// ```
-fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
-    // let mut file = File::open(file_path)
-        // .expect(&t!("error.file.open", value = file_path).to_string());
+fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
+    fancy_print(Some(&t!("log.generate_entropy_from_file").to_string()), None);
 
     let mut file = match File::open(file_path) {
         Ok(file) => file,
@@ -445,6 +515,7 @@ fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
     };
 
     let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
+    fancy_print(Some("entropy_sha256_hash"), Some(&format!("{:?}", hash)));
 
     let mut entropy = String::new();
     for byte in hash {
@@ -453,31 +524,8 @@ fn file_to_entropy(file_path: &str, entropy_length: u64) -> String {
 
     entropy = entropy.chars().take(entropy_length as usize).collect();
 
+    fancy_print(Some("entropy_initial"), Some(&format!("{:?}", entropy)));
     entropy
-}
-
-/// Computes the SHA-256 hash of the given byte slice.
-///
-/// # Arguments
-///
-/// * `data` - A reference to a byte slice containing the data to be hashed.
-///
-/// # Returns
-///
-/// A vector of bytes representing the SHA-256 hash.
-///
-/// # Example
-///
-/// ```
-/// let data = b"hello world";
-/// let hash = sha256_hash(data);
-/// println!("SHA-256 Hash: {:?}", hash);
-/// ```
-fn sha256_hash(data: &[u8]) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-
-    hasher.update(data);
-    hasher.finalize().iter().cloned().collect()
 }
 
 /// Derives master private and public keys from a seed using the provided headers.
@@ -511,7 +559,7 @@ fn sha256_hash(data: &[u8]) -> Vec<u8> {
 /// }
 /// ```
 fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String), String> {
-    println!("\n#### Deriving master private keys ####");
+    fancy_print(Some(&t!("log.derive_master_keys").to_string()), None);
 
     // Reverting to Bitcoin in case that coin is undefined
     if private_header.is_empty() {
@@ -627,6 +675,8 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
 /// println!("HMAC-SHA512 Hash: {:?}", hmac);
 /// ```
 fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
+    fancy_print(Some(&t!("log.hmac_sha512").to_string()), None);
+
     const BLOCK_SIZE: usize = 128;
     const HASH_SIZE: usize = 64;
 
@@ -684,6 +734,32 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
     final_hash
 }
 
+/// Computes the SHA-256 hash of the given byte slice.
+///
+/// # Arguments
+///
+/// * `data` - A reference to a byte slice containing the data to be hashed.
+///
+/// # Returns
+///
+/// A vector of bytes representing the SHA-256 hash.
+///
+/// # Example
+///
+/// ```
+/// let data = b"hello world";
+/// let hash = sha256_hash(data);
+/// println!("SHA-256 Hash: {:?}", hash);
+/// ```
+fn sha256_hash(data: &[u8]) -> Vec<u8> {
+    fancy_print(Some(&t!("log.sha256_hash").to_string()), None);
+
+    let mut hasher = Sha256::new();
+
+    hasher.update(data);
+    hasher.finalize().iter().cloned().collect()
+}
+
 /// Calculates the checksum of the given data using SHA-256.
 ///
 /// # Arguments
@@ -702,6 +778,8 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 /// println!("Checksum: {:?}", checksum);
 /// ```
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
+    fancy_print(Some(&t!("log.calculate_checksum").to_string()), None);
+    
     let hash = Sha256::digest(data);
     let double_hash = Sha256::digest(&hash);
     let mut checksum = [0u8; 4];
@@ -735,6 +813,8 @@ struct CoinDatabase {
 ///
 /// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_store() -> Vec<CoinDatabase> {
+    fancy_print(Some(&t!("log.create_coin_store").to_string()), None);
+
     let file = File::open(&COINLIST_FILE).expect("can not open bip44 coin file");
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
     let mut coin_store = Vec::new();
@@ -789,6 +869,8 @@ fn create_coin_store() -> Vec<CoinDatabase> {
 ///
 /// Returns a `gtk::ListStore` containing coin information.
 fn create_coin_completion_model() -> gtk::ListStore {
+    fancy_print(Some(&t!("log.create_coin_completion_model").to_string()), None);
+
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
 
     let store = gtk::ListStore::new(&[
@@ -854,6 +936,8 @@ fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix:
 ///
 /// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
+    fancy_print(Some(&t!("log.create_coin_database").to_string()), None);
+
     let file = File::open(&file_path)
         .expect(&t!("error.file.read", value = file_path).to_string());
 
@@ -1001,6 +1085,8 @@ impl AppSettings {
     /// 
     /// ```
     fn load_settings() -> io::Result<Self> {
+        // fancy_print(Some("Loading settings:"), None);
+
         // FEATURE: Create local ($HOME) settings
         let config_file = "config/custom.conf";
         let default_config_file = "config/default.conf";
@@ -1355,6 +1441,8 @@ impl FieldValue {
 /// assert!(!icon_bytes.is_empty());
 /// ```
 fn load_icon_bytes(path: &str) -> Vec<u8> {
+    fancy_print(Some(&t!("log.load_icon_bytes").to_string()), Some(path));
+
     let mut file = std::fs::File::open(path).expect(&t!("error.file.open", value = path).to_string());
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).expect(&t!("error.file.read", value = path).to_string());
@@ -1377,6 +1465,8 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
 /// // Use the retrieved icons to set up the application window.
 /// ```
 fn get_window_theme_icons() -> [gtk::Image; 5] {
+    fancy_print(Some(&t!("log.get_window_theme_icons").to_string()), None);
+
     // IMPLEMENT: auto detect system theme color switch, change my icons also
     let settings = gtk::Settings::default().unwrap();
     let mut _theme_path: String = String::new();
@@ -1443,6 +1533,8 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
 /// create_settings_window();
 /// ```
 fn create_settings_window() {
+    fancy_print(Some(&t!("log.create_settings_window").to_string()), None);
+
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
 
@@ -2189,6 +2281,8 @@ fn create_settings_window() {
 /// create_settings_window();
 /// ```
 fn create_about_window() {
+    fancy_print(Some(&t!("log.create_about_window").to_string()), None);
+
     let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.png")).expect("msg");
     let license = fs::read_to_string("LICENSE.txt").unwrap();
 
@@ -2212,6 +2306,53 @@ fn create_about_window() {
 
 }
 
+fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
+    fancy_print(Some(&t!("log.update_derivation_label").to_string()), None);
+
+    // println!("New derivation_path: {:?}", DP);
+
+    let mut path = String::new();
+
+    if DP.bip.unwrap() == 32  {
+        // BIP      m/32[']
+        path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
+        if DP.hardened_bip.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
+        // COIN     m/32[']/0[']
+        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
+        if DP.hardened_coin.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
+        // ADDRESS  m/32[']/0[']/0[']
+        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
+        if DP.hardened_address.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
+    } else {
+        // BIP      m/!32[']
+        path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
+        if DP.hardened_bip.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
+        // COIN     m/!32[']/0[']
+        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
+        if DP.hardened_coin.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
+        // ADDRESS  m/!32[']/0[']/0[']
+        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
+        if DP.hardened_address.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
+        // PURPOSE  m/!32[']/0[']/0[']/[0,1]
+        path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
+
+    }
+    
+    label.set_text(&path);
+}
+
 /// Creates the main application window.
 ///
 /// This function initializes and configures the main application window, including its
@@ -2230,6 +2371,8 @@ fn create_about_window() {
 /// create_main_window(&application);
 /// ```
 fn create_main_window(application: &adw::Application) {
+    fancy_print(Some(&t!("log.create_main_window").to_string()), None);
+
     let settings = AppSettings::load_settings()
         .expect(&t!("error.file.read").to_string());
     
@@ -2777,46 +2920,44 @@ fn create_main_window(application: &adw::Application) {
         @weak mnemonic_words_text,
         @weak seed_text,
         @weak stack  => move |_| {
-            gio::spawn_blocking(move || {
-                let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
-                let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
-                let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
-                let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
-                let source = selected_entropy_source_value.unwrap().to_string();
-                let length = selected_entropy_length_value.unwrap();
-                
-                entropy_text.buffer().set_text("");
-                mnemonic_words_text.buffer().set_text("");
-                seed_text.buffer().set_text("");
+            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
+            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
+            let source = selected_entropy_source_value.unwrap().to_string();
+            let length = selected_entropy_length_value.unwrap();
+            
+            entropy_text.buffer().set_text("");
+            mnemonic_words_text.buffer().set_text("");
+            seed_text.buffer().set_text("");
 
-                let entropy_length = selected_entropy_length_value;
-                
-                let pre_entropy = generate_entropy(
-                    &source,
-                    *length as u64,
-                );
-                
-                if !pre_entropy.is_empty() {
-                    let checksum = generate_entropy_checksum(&pre_entropy, entropy_length.unwrap());
-                    let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+            let entropy_length = selected_entropy_length_value;
+            
+            let pre_entropy = generate_entropy(
+                &source,
+                *length as u64,
+            );
+            
+            if !pre_entropy.is_empty() {
+                let checksum = generate_entropy_checksum(&pre_entropy, entropy_length.unwrap());
+                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
-                    fancy_print(Some("entropy_final"), Some(&format!("{:?}", full_entropy)));
-                    entropy_text.buffer().set_text(&full_entropy);
-                    
-                    let mnemonic_words = generate_mnemonic_words(&full_entropy);
-                    mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                    
-                    let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                    fancy_print(Some("mnemonic_passphrase"), Some(&format!("{:?}", passphrase_text)));
-                    
-                    let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
-                    let seed_hex = hex::encode(&seed[..]);
-                    seed_text.buffer().set_text(&seed_hex.to_string());
-                } else {
-                    // TODO: If entropy is empty show error dialog
-                    eprintln!("{}", &t!("error.entropy.empty"))
-                }
-            });
+                fancy_print(Some("entropy_final"), Some(&format!("{:?}", full_entropy)));
+                entropy_text.buffer().set_text(&full_entropy);
+                
+                let mnemonic_words = generate_mnemonic_words(&full_entropy);
+                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                
+                let passphrase_text = mnemonic_passphrase_text.text().to_string();
+                fancy_print(Some("mnemonic_passphrase"), Some(&format!("{:?}", passphrase_text)));
+                
+                let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+            } else {
+                // TODO: If entropy is empty show error dialog
+                eprintln!("{}", &t!("error.entropy.empty"))
+            }
         }
     ));
 
@@ -2946,51 +3087,7 @@ fn create_main_window(application: &adw::Application) {
         }
     });
     
-    fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
-        // println!("New derivation_path: {:?}", DP);
-
-        let mut path = String::new();
-
-        if DP.bip.unwrap() == 32  {
-            // BIP      m/32[']
-            path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
-            if DP.hardened_bip.unwrap_or_default() {
-                path.push_str(&format!("'"));
-            }
-            // COIN     m/32[']/0[']
-            path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
-            if DP.hardened_coin.unwrap_or_default() {
-                path.push_str(&format!("'"));
-            }
-            // ADDRESS  m/32[']/0[']/0[']
-            path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
-            if DP.hardened_address.unwrap_or_default() {
-                path.push_str(&format!("'"));
-            }
-        } else {
-            // BIP      m/!32[']
-            path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
-            if DP.hardened_bip.unwrap_or_default() {
-                path.push_str(&format!("'"));
-            }
-            // COIN     m/!32[']/0[']
-            path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
-            if DP.hardened_coin.unwrap_or_default() {
-                path.push_str(&format!("'"));
-            }
-            // ADDRESS  m/!32[']/0[']/0[']
-            path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
-            if DP.hardened_address.unwrap_or_default() {
-                path.push_str(&format!("'"));
-            }
-            // PURPOSE  m/!32[']/0[']/0[']/[0,1]
-            path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
-
-        }
-        
-        label.set_text(&path);
-    }
-
+    
     let derivation_path = std::rc::Rc::new(std::cell::RefCell::new(DerivationPath::default()));
     let dp_clone = std::rc::Rc::clone(&derivation_path);
 
@@ -3099,14 +3196,15 @@ fn create_main_window(application: &adw::Application) {
     
         let master_private_key_bytes = ADDRESS_DATA.with(|data| {
             let data = data.borrow();
-            data.master_private_key_bytes.clone().unwrap()
+            // BUG: called `Option::unwrap()` on a `None` value
+            data.master_private_key_bytes.clone().unwrap_or_default()
         });
         println!("Received Master private bytes: {:?}", master_private_key_bytes);
 
 
         let master_chain_code_bytes = ADDRESS_DATA.with(|data| {
             let data = data.borrow();
-            data.master_chain_code_bytes.clone().unwrap()
+            data.master_chain_code_bytes.clone().unwrap_or_default()
         });
         println!("Received Master chain code bytes: {:?}", master_chain_code_bytes);
 
@@ -3141,6 +3239,86 @@ fn create_main_window(application: &adw::Application) {
     window.present();
 }
 
+fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
+    fancy_print(Some(&t!("log.create_message_window").to_string()), None);
+        
+    let message_window = gtk::MessageDialog::builder()
+        .title(title)
+        .resizable(false)
+        .modal(true)
+        .build();
+
+    let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    dialog_main_box.set_margin_bottom(20);
+    dialog_main_box.set_margin_top(20);
+    dialog_main_box.set_margin_start(50);
+    dialog_main_box.set_margin_end(50);
+    
+    let message_label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    message_label_box.set_margin_bottom(10);
+    
+    let message_label = gtk::Label::new(Some(&msg));
+    message_label.set_justify(gtk::Justification::Center);
+    
+    message_label_box.append(&message_label);
+    dialog_main_box.append(&message_label_box);
+    
+    // Progress box
+    if progress_active.unwrap_or(false) {
+        let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        progress_main_box.set_margin_top(10);
+        progress_main_box.set_margin_bottom(10);
+
+        let level_bar = gtk::LevelBar::new();
+        level_bar.set_max_value(100.0);
+
+        progress_main_box.append(&level_bar);
+        dialog_main_box.append(&progress_main_box);
+
+        let wait_time = wait_time.unwrap_or(10).min(ANU_REQUEST_INTERVAL_SECONDS as u32);
+        let level_bar_clone = level_bar.clone();
+        let message_window_clone = message_window.clone();
+
+        let mut progress = 0.0;
+        progress += 100.0 / wait_time as f64;
+        level_bar_clone.set_value(progress);
+        
+        glib::timeout_add_seconds_local(1, move || {
+            progress += 100.0 / wait_time as f64;
+            level_bar_clone.set_value(progress);
+            if progress >= 100.0 {
+                message_window_clone.close();
+                glib::ControlFlow::Break
+            } else {
+                glib::ControlFlow::Continue
+            }
+        });
+    }
+
+    // Message Box
+    let message_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+    // Do not show
+    let do_not_show_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    do_not_show_main_box.set_margin_top(10);
+
+    let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let do_not_show_label = gtk::Label::new(Some("Do not show any more"));
+    let do_not_show_checkbox = gtk::CheckButton::new();
+
+    do_not_show_content_box.append(&do_not_show_label);
+    do_not_show_content_box.append(&do_not_show_checkbox);
+    do_not_show_content_box.set_halign(gtk::Align::Center);
+
+    do_not_show_main_box.append(&do_not_show_content_box);
+
+    // Connections
+    dialog_main_box.append(&message_main_box);
+    dialog_main_box.append(&do_not_show_main_box);
+
+    message_window.set_child(Some(&dialog_main_box));
+    message_window.show();
+}
 
 fn main() {
     print_program_info();
@@ -3244,6 +3422,8 @@ fn main() {
 ///
 /// A string containing the fetched entropy data, or an empty string if the fetch fails.
 fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
+    fancy_print(Some(&t!("log.get_entropy_from_anu").to_string()), None);
+
     let start_time = SystemTime::now();
 
     let anu_data = fetch_anu_qrng_data(
@@ -3344,6 +3524,8 @@ fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: 
 ///
 /// An optional string containing the fetched data, or None if the fetch fails.
 fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) -> Option<String> {
+    fancy_print(Some(&t!("log.fetch_anu_qrng_data").to_string()), None);
+
     let current_time = SystemTime::now();
     let last_request_time = load_last_anu_request().unwrap();
 
@@ -3434,6 +3616,8 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
 ///
 /// An optional `SystemTime` representing the timestamp of the last request, or None if the file does not exist.
 fn load_last_anu_request() -> Option<SystemTime> {
+    fancy_print(Some(&t!("log.load_last_anu_request").to_string()), None);
+
     let path = Path::new(ANU_TIMESTAMP_FILE);
     if path.exists() {
         if let Ok(file) = File::open(path) {
@@ -3456,6 +3640,8 @@ fn load_last_anu_request() -> Option<SystemTime> {
 ///
 /// * `time` - The current time for the ANU request.
 fn create_anu_timestamp(time: SystemTime) {
+    fancy_print(Some(&t!("log.create_anu_timestamp").to_string()), None);
+
     let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
 
     if let Some(parent) = Path::new(ANU_TIMESTAMP_FILE).parent() {
@@ -3477,6 +3663,9 @@ fn create_anu_timestamp(time: SystemTime) {
 ///
 /// * `response` - The ANU API response.
 fn write_api_response_to_log(response: &Option<String>) {
+    fancy_print(Some(&t!("log.write_api_response_to_log").to_string()), None);
+
+    // IMPLEMENT: Check if log is enabled before writing it
     let current_time = SystemTime::now();
     let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
     let log_file = format!("{}-{}.log", ANU_LOG_DIRECTORY, timestamp);
@@ -3521,6 +3710,8 @@ fn write_api_response_to_log(response: &Option<String>) {
 ///
 /// An optional `Vec<u8>` containing the extracted uint8 data, or None if extraction fails.
 fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
+    fancy_print(Some(&t!("log.extract_uint8_data").to_string()), None);
+
     // Check if the API response is present
     let api_response = match api_response {
         Some(response) => response,
@@ -3600,6 +3791,8 @@ fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
 ///
 /// A string containing the processed binary data.
 fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
+    fancy_print(Some(&t!("log.process_uint8_data").to_string()), None);
+
     let data = match data {
         Some(data) => data,
         None => {
@@ -3657,6 +3850,8 @@ struct WalletSettings {
 }
 
 fn derive_child_key(parent_key: &[u8], parent_chain_code: &[u8], index: u32, hardened: bool) -> Option<(Vec<u8>, Vec<u8>)> {
+    fancy_print(Some(&t!("log.derive_child_key").to_string()), None);
+
     let secp = secp256k1::Secp256k1::new();
     let mut data = vec![];
 
@@ -3683,6 +3878,8 @@ fn derive_child_key(parent_key: &[u8], parent_chain_code: &[u8], index: u32, har
 }
 
 fn derive_from_path(master_key: &[u8], master_chain_code: &[u8], path: &str) -> Option<(secp256k1::SecretKey, [u8; 32])> {
+    fancy_print(Some(&t!("log.derive_from_path").to_string()), None);
+
     println!("Derivation path: {:?}", path);
 
     let mut key = master_key.to_vec();
@@ -3717,14 +3914,16 @@ fn derive_from_path(master_key: &[u8], master_chain_code: &[u8], path: &str) -> 
 }
 
 fn generate_address(pk: &secp256k1::PublicKey) -> String {
+    fancy_print(Some(&t!("log.generate_address").to_string()), None);
+
     let pk_bytes = pk.serialize();
     println!("Public key bytes: {:?}", &pk_bytes);
     
-    let hash160 = sha256ripemd160(&pk_bytes);
+    let hash160 = sha256_and_ripemd160(&pk_bytes);
     
     let mut payload = vec![0x00];
     payload.extend(&hash160);
-    println!("Extended sha256ripemd160 payload: {:?}", &payload);
+    println!("Extended sha256_and_ripemd160 payload: {:?}", &payload);
     
     let checksum = double_sha256(&payload);
     
@@ -3738,8 +3937,10 @@ fn generate_address(pk: &secp256k1::PublicKey) -> String {
     bs58::encode(address_payload).into_string()
 }
 
-fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
-    println!("\n#### sha256ripemd160 ####");
+fn sha256_and_ripemd160(input: &[u8]) -> Vec<u8> {
+    fancy_print(Some(&t!("log.sha256_and_ripemd160").to_string()), None);
+
+    println!("\n#### sha256_and_ripemd160 ####");
     println!("Received data: {:?}", input);
 
     let mut hasher = Sha256::new();
@@ -3750,13 +3951,14 @@ fn sha256ripemd160(input: &[u8]) -> Vec<u8> {
     let mut ripemd = ripemd::Ripemd160::new();
     ripemd.update(&hash);
     let final_hash = ripemd.finalize().to_vec();
-    println!("sha256ripemd160 output: {:?}", final_hash);
+    println!("sha256_and_ripemd160 output: {:?}", final_hash);
 
     final_hash
 }
 
 fn double_sha256(input: &[u8]) -> Vec<u8> {
-    println!("\n#### doubleSha256 ####");
+    fancy_print(Some(&t!("log.double_sha256").to_string()), None);
+
     println!("Received data: {:?}", input);
 
     let mut hasher = Sha256::new();
@@ -3780,155 +3982,11 @@ fn double_sha256(input: &[u8]) -> Vec<u8> {
 
 
 
-// fancy_print(Some("entropy_source"), Some(&format!("{:?}", source)));
-// fancy_print(Some("ERROR"), Some(&t!("error.entropy.create.file")));
-fn fancy_print(value: Option<&str>, msg: Option<&str>) {
-    let settings = AppSettings::load_settings()
-                .expect(&t!("error.settings.read"));
-
-    let log_output = match settings.get_value("log_output") {
-        Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-            fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "log_output", value = "String")));
-            String::from(*&LOG_OUTPUT[0])
-        }),
-        None => {
-            fancy_print(Some("ERROR"), Some(&t!("error.settings.read", part = "log_output")));
-            String::from(*&LOG_OUTPUT[0])
-        }
-    };
-
-    let mut formatted_output = String::new();
-
-    if let Some(value) = value {
-        if let Some(msg) = msg {
-            formatted_output.push_str(&format!("{} = {}", value, msg));
-        } else {
-            formatted_output.push_str(&format!("{}", value));
-        }
-    }
-
-    match value.unwrap() {
-        "ERROR" => {
-            create_message_window(value.unwrap(), &msg.unwrap(), None, None);
-        },
-        _ => {}
-    }
-    match log_output.as_str() {
-        "Default" => {
-            println!("{}", formatted_output);
-        },
-        "File" => {
-            println!("{}", formatted_output);
-
-            if let Some(parent) = Path::new(LOG_FILE).parent() {
-                match fs::create_dir_all(parent) {
-                    Ok(_) => {
-                        let mut file = match std::fs::OpenOptions::new().create(true).append(true).open(&LOG_FILE) {
-                            Ok(file) => file,
-                            Err(e) => {
-                                eprintln!("Error creating file: {}", e);
-                                return;
-                            }
-                        };
-        
-                        formatted_output.push_str("\n");
-                        file.write_all(formatted_output.as_bytes())
-                                .expect(&t!("error.file.write", value = &LOG_FILE).to_string());
-                            
-                    }
-                    Err(err) => {
-                        eprintln!("Error creating directory {}: {}", parent.display(), err);
-                    }
-                }
-            }
-        },
-        _ => {},
-    }
-}
 
 
 
 
 
-fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
-    let message_window = gtk::MessageDialog::builder()
-        .title(title)
-        .resizable(false)
-        .modal(true)
-        .build();
-
-    let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    dialog_main_box.set_margin_bottom(20);
-    dialog_main_box.set_margin_top(20);
-    dialog_main_box.set_margin_start(50);
-    dialog_main_box.set_margin_end(50);
-    
-    let message_label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    message_label_box.set_margin_bottom(10);
-    
-    let message_label = gtk::Label::new(Some(&msg));
-    message_label.set_justify(gtk::Justification::Center);
-    
-    message_label_box.append(&message_label);
-    dialog_main_box.append(&message_label_box);
-    
-    // Progress box
-    if progress_active.unwrap_or(false) {
-        let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        progress_main_box.set_margin_top(10);
-        progress_main_box.set_margin_bottom(10);
-
-        let level_bar = gtk::LevelBar::new();
-        level_bar.set_max_value(100.0);
-
-        progress_main_box.append(&level_bar);
-        dialog_main_box.append(&progress_main_box);
-
-        let wait_time = wait_time.unwrap_or(10).min(ANU_REQUEST_INTERVAL_SECONDS as u32);
-        let level_bar_clone = level_bar.clone();
-        let message_window_clone = message_window.clone();
-
-        let mut progress = 0.0;
-        progress += 100.0 / wait_time as f64;
-        level_bar_clone.set_value(progress);
-        
-        glib::timeout_add_seconds_local(1, move || {
-            progress += 100.0 / wait_time as f64;
-            level_bar_clone.set_value(progress);
-            if progress >= 100.0 {
-                message_window_clone.close();
-                glib::ControlFlow::Break
-            } else {
-                glib::ControlFlow::Continue
-            }
-        });
-    }
-
-    // Message Box
-    let message_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-
-    // Do not show
-    let do_not_show_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    do_not_show_main_box.set_margin_top(10);
-
-    let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let do_not_show_label = gtk::Label::new(Some("Do not show any more"));
-    let do_not_show_checkbox = gtk::CheckButton::new();
-
-    do_not_show_content_box.append(&do_not_show_label);
-    do_not_show_content_box.append(&do_not_show_checkbox);
-    do_not_show_content_box.set_halign(gtk::Align::Center);
-
-    do_not_show_main_box.append(&do_not_show_content_box);
-
-    // Connections
-    dialog_main_box.append(&message_main_box);
-    dialog_main_box.append(&do_not_show_main_box);
-
-
-    message_window.set_child(Some(&dialog_main_box));
-    message_window.show();
-}
 
 
 

@@ -44,6 +44,7 @@
 - [ ] proxy support
 - [ ] verify local config before applying it
 - [ ] log directory (file chooser dialog)
+- [ ] notification timeout
 
 ---
 
