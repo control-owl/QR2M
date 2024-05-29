@@ -27,13 +27,14 @@ use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 use rust_i18n::t;
-
+use lazy_static::lazy_static;
 
 // Multi-language support
 #[macro_use] extern crate rust_i18n;
 i18n!("locale", fallback = "en");
 
 // Default settings
+const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
@@ -44,7 +45,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
 const COINLIST_FILE: &str = "lib/bip44-extended-coin-list.csv";
-const LOG_FILE: &str = "log/wallet/qrng.log";
+const APP_LOG_DIRECTORY: &str = "log/";
 const LOG_OUTPUT: &'static [&'static str] = &[
     "Default", 
     "File",
@@ -62,7 +63,6 @@ const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
     "External", 
 ];
 const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
-const ANU_LOG_DIRECTORY: &str = "log/anu/anu";
 const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
     "uint8", 
@@ -90,6 +90,14 @@ const VALID_GUI_THEMES: &'static [&'static str] = &[
     "Light", 
     "Dark",
 ];
+
+thread_local! {
+    static ADDRESS_DATA: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
+}
+
+lazy_static! {
+    static ref LOG_FILE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+}
 
 
 
@@ -153,10 +161,12 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
         "File" => {
             println!("{}", formatted_output);
 
-            if let Some(parent) = Path::new(LOG_FILE).parent() {
+            // let local_log_file = get_log_file().as_str();
+
+            if let Some(parent) = Path::new(get_log_file().as_str()).parent() {
                 match fs::create_dir_all(parent) {
                     Ok(_) => {
-                        let mut file = match std::fs::OpenOptions::new().create(true).append(true).open(&LOG_FILE) {
+                        let mut file = match std::fs::OpenOptions::new().create(true).append(true).open(&get_log_file().as_str()) {
                             Ok(file) => file,
                             Err(e) => {
                                 eprintln!("Error creating file: {}", e);
@@ -166,7 +176,7 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
         
                         formatted_output.push_str("\n");
                         file.write_all(formatted_output.as_bytes())
-                                .expect(&t!("error.file.write", value = &LOG_FILE).to_string());
+                                .expect(&t!("error.file.write", value = &get_log_file().as_str()).to_string());
                             
                     }
                     Err(err) => {
@@ -177,6 +187,14 @@ fn fancy_print(value: Option<&str>, msg: Option<&str>) {
         },
         _ => {},
     }
+}
+
+fn get_log_file() -> String {
+    LOG_FILE.lock().unwrap().clone()
+}
+
+fn set_log_file(file: String) {
+    *LOG_FILE.lock().unwrap() = file;
 }
 
 /// Generates entropy based on the specified source and length.
@@ -572,25 +590,25 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     // Default message for all blockchains ? Why ?
     let message = "Bitcoin seed";
 
-    println!("Private header: {}", private_header);
-    println!("Public header: {}", public_header);
+    fancy_print(Some("master_key_private_header"), Some(&format!("{:?}", private_header)));
+    fancy_print(Some("master_key_public_header"), Some(&format!("{:?}", public_header)));
 
     let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
         .expect(&t!("error.master.parse.header", value = "private").to_string());
     let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
         .expect(&t!("error.master.parse.header", value = "public").to_string());
 
-    println!("Private header (parsed): {}", private_header);
-    println!("Public header (parsed): {}", public_header);
+    fancy_print(Some("master_key_parsed_private_header"), Some(&format!("{:?}", private_header)));
+    fancy_print(Some("master_key_parsed_public_header"), Some(&format!("{:?}", public_header)));
 
     let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
     let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
     let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
 
-    println!("Seed (bytes): {:?}", seed_bytes);
-    println!("HMAC result: {:?}", hmac_result);
-    println!("Master Private Key (bytes): {:?}", master_private_key_bytes);
-    println!("Chain Code (bytes): {:?}", master_chain_code_bytes);
+    fancy_print(Some("seed_as_bytes"), Some(&format!("{:?}", seed_bytes)));
+    fancy_print(Some("hmac_sha512_hash"), Some(&format!("{:?}", hmac_result)));
+    fancy_print(Some("master_key_private_bytes"), Some(&format!("{:?}", master_private_key_bytes)));
+    fancy_print(Some("master_key_chain_code"), Some(&format!("{:?}", master_chain_code_bytes)));
 
     // Private construct
     let mut master_private_key = Vec::new();
@@ -603,16 +621,13 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     master_private_key.push(0x00);                                                                 // Key prefix     1 byte
     master_private_key.extend_from_slice(master_private_key_bytes);                                // Key            32 bytes
 
-    println!("Master Private Key: {:?}", master_private_key);
-
     let checksum: [u8; 4] = calculate_checksum(&master_private_key);                         // Checksum       4 bytes
     master_private_key.extend_from_slice(&checksum);
 
-    println!("Master Private Key (with checksum): {:?}", master_private_key);
-
     let master_xprv = bs58::encode(&master_private_key).into_string();              // Total      82 bytes
 
-    println!("Master XPRV: {}", master_xprv);
+    fancy_print(Some("master_private_key_xprv"), Some(&format!("{:?}", master_xprv)));
+
 
     // Public construct
     let secp = secp256k1::Secp256k1::new();
@@ -620,8 +635,8 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
         .expect(&t!("error.master.create").to_string());
     let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
 
-    println!("Master Secret Key: {:?}", master_secret_key);
-    println!("Master Public Key (bytes): {:?}", master_public_key_bytes);
+    fancy_print(Some("master_secret_key"), Some(&format!("{:?}", master_secret_key)));
+    fancy_print(Some("master_public_key"), Some(&format!("{:?}", master_public_key_bytes)));
 
     let mut master_public_key = Vec::new();
 
@@ -632,22 +647,15 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     master_public_key.extend_from_slice(master_chain_code_bytes);                                   // Chain code     32 bytes
     master_public_key.extend_from_slice(&master_public_key_bytes);                                  // Key            33 bytes (compressed)
 
-    println!("Master Public Key: {:?}", master_public_key);
-
     let checksum: [u8; 4] = calculate_checksum(&master_public_key);                           // Checksum       4 bytes
     master_public_key.extend_from_slice(&checksum);
 
-    println!("Master Public Key (with checksum): {:?}", master_public_key);
-
     let master_xpub = bs58::encode(&master_public_key).into_string();                // Total      82 bytes
 
-    println!("Master XPUB: {}", master_xpub);
+    fancy_print(Some("master_public_key_xpub"), Some(&format!("{:?}", master_xpub)));
 
     ADDRESS_DATA.with(|data| {
         let mut data = data.borrow_mut();
-        println!("Master Private key bytes: {:?}", &master_private_key_bytes);
-        println!("Master Chain code bytes: {:?}", &master_chain_code_bytes);
-
         data.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
         data.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
     });
@@ -682,6 +690,7 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 
     // Step 1: Create the padded key
     let padded_key = if key.len() > BLOCK_SIZE {
+        fancy_print(Some("WARNING"), Some(&t!("error.entropy.create.file")));
         println!("Key length is greater than BLOCK_SIZE. Hashing the key.");
         let mut hasher = Sha512::new();
         hasher.update(key);
@@ -1057,6 +1066,7 @@ struct AppSettings {
     proxy_use_ssl: bool,
     proxy_ssl_certificate: String,
     log_output: String,
+    // log_file: String,
 }
 
 impl AppSettings {
@@ -1085,6 +1095,7 @@ impl AppSettings {
     /// 
     /// ```
     fn load_settings() -> io::Result<Self> {
+        // BUG: This will panic. Why?
         // fancy_print(Some("Loading settings:"), None);
 
         // FEATURE: Create local ($HOME) settings
@@ -1276,6 +1287,7 @@ impl AppSettings {
             .unwrap_or(*&LOG_OUTPUT[0])
             .to_string();
 
+        // let log_file = "".to_string();
 
         Ok(AppSettings {
             wallet_entropy_source,
@@ -1303,6 +1315,7 @@ impl AppSettings {
             proxy_use_ssl,
             proxy_ssl_certificate,
             log_output,
+            // log_file,
         })
     }
 
@@ -1355,6 +1368,7 @@ impl AppSettings {
             "proxy_ssl_certificate" => Some(self.proxy_ssl_certificate.clone()),
 
             "log_output" => Some(self.log_output.clone()),
+            // "log_file" => Some(get_log_file()),
             _ => None,
         }
     }
@@ -3321,8 +3335,12 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
 }
 
 fn main() {
-    print_program_info();
+    let start_time = SystemTime::now();
+    let timestamp = start_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+    let log_file = format!("{}{}-{}.log", APP_LOG_DIRECTORY, APP_NAME.unwrap(), timestamp);
+    set_log_file(log_file);
 
+    print_program_info();
     println!("{}", t!("hello"));
 
     let application = adw::Application::builder()
@@ -3665,15 +3683,10 @@ fn create_anu_timestamp(time: SystemTime) {
 fn write_api_response_to_log(response: &Option<String>) {
     fancy_print(Some(&t!("log.write_api_response_to_log").to_string()), None);
 
-    // IMPLEMENT: Check if log is enabled before writing it
-    let current_time = SystemTime::now();
-    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-    let log_file = format!("{}-{}.log", ANU_LOG_DIRECTORY, timestamp);
-
-    if let Some(parent) = Path::new(log_file.as_str()).parent() {
+    if let Some(parent) = Path::new(get_log_file().as_str()).parent() {
         match fs::create_dir_all(parent) {
             Ok(_) => {
-                let mut file = match File::create(&log_file) {
+                let mut file = match File::create(&get_log_file().as_str()) {
                     Ok(file) => file,
                     Err(e) => {
                         eprintln!("Error creating file: {}", e);
@@ -3819,12 +3832,8 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 
 
-
 // TESTING -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-thread_local! {
-    static ADDRESS_DATA: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
-}
 
 #[derive(Debug, Default)]
 struct WalletSettings {
