@@ -3872,7 +3872,8 @@ struct WalletSettings {
 }
 
 
-
+// right: "c437bf5fcdf768654b10914f5586a69b8e650704fe08c377363051dd1ae74e81" - CORRECT
+// left : "c337bf5fcdf768654a0f904e5586a69b8e640604fd08c376353051dc1ae64d81"
 
 fn derive_child_key(
     parent_key: &[u8], 
@@ -3895,7 +3896,6 @@ fn derive_child_key(
     let secp = secp256k1::Secp256k1::new();
 
     // ----------------------------------------------------------------------------------------------------
-
     // Part 1: Prepare data
 
     let mut data = Vec::with_capacity(37);
@@ -3915,39 +3915,56 @@ fn derive_child_key(
     // Part 2: HMAC-SHA512
 
     println!("Data for HMAC-SHA512: {:?}", &data);
+
     let result = hmac_sha512(parent_chain_code, &data);
-    let (child_key_data, child_chain_code) = result.split_at(32);
+    let (child_private_key_bytes, child_chain_code_bytes) = result.split_at(32);
 
-    println!("Derivated child key data: {:?}", &child_key_data);
-    println!("Derivated child chain code: {:?}", &child_chain_code);
-
-
+    println!("Derived child private key bytes: {:?}", &child_private_key_bytes);
+    println!("Derived child chain code bytes: {:?}", &child_chain_code_bytes);
 
 
-    // 
-    // Convert child key data to scalar
-    let mut child_key_data_array = [0u8; 32];
-    child_key_data_array.copy_from_slice(child_key_data);
-    let child_scalar = secp256k1::Scalar::from_be_bytes(child_key_data_array).ok()?;
+
+
+
+
 
 
     // ----------------------------------------------------------------------------------------------------
+    // Part 3: Scalars 
+
+    // Convert child key data to scalar
+    let mut child_key_data_array = [0u8; 32];
+    child_key_data_array.copy_from_slice(child_private_key_bytes);
+    let child_scalar = secp256k1::Scalar::from_be_bytes(child_key_data_array).ok()?;
+
+    // Create the child secret key by adding the parent secret key and the derived scalar
+    let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).ok()?;
+    let parent_scalar = secp256k1::SecretKey::from_slice(parent_key).ok()?;
+    
+    let child_scalar_value = secp256k1::SecretKey::from_slice(parent_key).ok()?;
+    child_scalar_value.add_tweak(&child_scalar).expect("Scalar addition failed");
+    let child_secret_key_bytes = child_scalar_value.secret_bytes();
+
+    let mut child_key_bytes = [0u8; 32];
+    for i in 0..32 {
+        child_key_bytes[i] = child_secret_key_bytes[i].wrapping_add(child_key_data_array[i]);
+    }
+
+
+
+
+
 
 
     
-    // Create the child secret key by adding the parent secret key and the derived scalar
-    let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).ok()?;
-    let mut parent_secret_key_bytes = parent_secret_key.secret_bytes();
-    let mut child_key_bytes = [0u8; 32];
-    for i in 0..32 {
-        child_key_bytes[i] = parent_secret_key_bytes[i].wrapping_add(child_key_data_array[i]);
-    }
+
+    // ----------------------------------------------------------------------------------------------------
+    // Part 4: Serialization
 
     let child_secret_key = secp256k1::SecretKey::from_slice(&child_key_bytes).ok()?;
 
     // Serialize child secret key and chain code to bytes
     let child_secret_key_bytes = child_secret_key.secret_bytes().to_vec();
-    let child_chain_code_bytes = child_chain_code.to_vec();
 
     // Derive the child public key from the child secret key
     let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
@@ -3957,7 +3974,7 @@ fn derive_child_key(
     println!("Child chain code bytes: {:?}", &child_chain_code_bytes);
     println!("Child public key bytes: {:?}", &child_public_key_bytes);
 
-    Some((child_secret_key_bytes, child_chain_code_bytes, child_public_key_bytes))
+    Some((child_secret_key_bytes, child_chain_code_bytes.to_vec(), child_public_key_bytes))
 }
 
 
@@ -4248,11 +4265,11 @@ mod tests {
             MasterChildVector {
                 master_private_key: "3e385c087ab3533637afa4cd893da06b624092bbee9d3221917138413d189686",
                 master_chain_code: "8c1070523d5ca058847690e55fe8b7071a9dcaa122ced574c58a55bbcde97bb2",
-                index: 0 as u32,
+                index: 0,
                 hardened: false,
                 expected_child_private_key_bytes: "c437bf5fcdf768654b10914f5586a69b8e650704fe08c377363051dd1ae74e81",
                 expected_child_chain_code_bytes: "3f63d8fe95e8eac18e72ddc0c9027551f280aa1d912a297a65f9b5d24b6ca4bf",
-                expected_child_public_key_bytes: "3f63d8fe95e8eac18e72ddc0c9027551f280aa1d912a297a65f9b5d24b6ca4bf",
+                expected_child_public_key_bytes: "02d881671a025c722e6c5e8752ad125214a6b8e015d402159d165058e0feac7f2e",
             },
             MasterChildVector {
                 master_private_key: "25e6fcfb4f2902507eb58e23752587621c5ec04354502a1d9989675ac3729578",
