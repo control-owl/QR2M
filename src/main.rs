@@ -28,6 +28,8 @@ use gtk::{gio, glib::clone, Stack, StackSidebar};
 use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 use rust_i18n::t;
 use lazy_static::lazy_static;
+use num_bigint::BigUint;
+
 
 // Multi-language support
 #[macro_use] extern crate rust_i18n;
@@ -3233,7 +3235,7 @@ fn create_main_window(application: &adw::Application) {
         println!("Received Master chain code bytes: {:?}", master_chain_code_bytes);
 
 
-        let path = "m/0";
+        let path = "m/44'/0'/0'/0";
 
         let derived = derive_from_path(&master_private_key_bytes, &master_chain_code_bytes, path).expect("Failed to derive key from path");
         let secp = secp256k1::Secp256k1::new();
@@ -3899,7 +3901,7 @@ fn derive_child_key(
     // Part 1: Prepare data
 
     let mut data = Vec::with_capacity(37);
-    
+
     if hardened {
         data.push(0x00); // Hardened child
         data.extend_from_slice(parent_key);
@@ -3908,7 +3910,16 @@ fn derive_child_key(
         let parent_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &parent_secret_key);
         data.extend_from_slice(&parent_pubkey.serialize()[..]);
     }
-    data.extend_from_slice(&index.to_be_bytes());
+
+    let index_bytes = if hardened {
+        // Hardened child: set the 31st bit of the index
+        let index = index + 2147483648;
+        index.to_be_bytes()
+    } else {
+        index.to_be_bytes()
+    };
+
+    data.extend_from_slice(&index_bytes);
 
 
     // ----------------------------------------------------------------------------------------------------
@@ -3931,24 +3942,25 @@ fn derive_child_key(
 
     // ----------------------------------------------------------------------------------------------------
     // Part 3: Scalars 
-
-    // Convert child key data to scalar
-    let mut child_key_data_array = [0u8; 32];
-    child_key_data_array.copy_from_slice(child_private_key_bytes);
-    let child_scalar = secp256k1::Scalar::from_be_bytes(child_key_data_array).ok()?;
-
-    // Create the child secret key by adding the parent secret key and the derived scalar
-    let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).ok()?;
-    let parent_scalar = secp256k1::SecretKey::from_slice(parent_key).ok()?;
+    // Convert child key data to a BigUint
+    let child_key_int = BigUint::from_bytes_be(child_private_key_bytes);
     
-    let child_scalar_value = secp256k1::SecretKey::from_slice(parent_key).ok()?;
-    child_scalar_value.add_tweak(&child_scalar).expect("Scalar addition failed");
-    let child_secret_key_bytes = child_scalar_value.secret_bytes();
+    // Convert parent secret key to a BigUint
+    let parent_key_int = BigUint::from_bytes_be(parent_key);
 
-    let mut child_key_bytes = [0u8; 32];
-    for i in 0..32 {
-        child_key_bytes[i] = child_secret_key_bytes[i].wrapping_add(child_key_data_array[i]);
-    }
+    let curve_order = BigUint::from_bytes_be(&secp256k1::constants::CURVE_ORDER);
+
+    let combined_int = (parent_key_int + child_key_int) % &curve_order;
+
+    // Convert the resulting integer back to bytes and then to a SecretKey
+    let combined_bytes = combined_int.to_bytes_be();
+    let combined_bytes_padded = {
+        let mut padded = [0u8; 32];
+        let offset = 32 - combined_bytes.len();
+        padded[offset..].copy_from_slice(&combined_bytes);
+        padded
+    };
+    let child_secret_key = secp256k1::SecretKey::from_slice(&combined_bytes_padded).ok()?;
 
 
 
@@ -3961,10 +3973,10 @@ fn derive_child_key(
     // ----------------------------------------------------------------------------------------------------
     // Part 4: Serialization
 
-    let child_secret_key = secp256k1::SecretKey::from_slice(&child_key_bytes).ok()?;
+    // let child_secret_key = secp256k1::SecretKey::from_slice(&child_key_bytes).ok()?;
 
     // Serialize child secret key and chain code to bytes
-    let child_secret_key_bytes = child_secret_key.secret_bytes().to_vec();
+    let child_secret_key_bytes = child_secret_key.secret_bytes();
 
     // Derive the child public key from the child secret key
     let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
@@ -3974,7 +3986,7 @@ fn derive_child_key(
     println!("Child chain code bytes: {:?}", &child_chain_code_bytes);
     println!("Child public key bytes: {:?}", &child_public_key_bytes);
 
-    Some((child_secret_key_bytes, child_chain_code_bytes.to_vec(), child_public_key_bytes))
+    Some((child_secret_key_bytes.to_vec(), child_chain_code_bytes.to_vec(), child_public_key_bytes))
 }
 
 
@@ -4276,9 +4288,9 @@ mod tests {
                 master_chain_code: "4cd3f7f0c79e7bc19ffc7de53a052b0e04ae79088e0903588d16409f1ee26f56",
                 index: 1,
                 hardened: false,
-                expected_child_private_key_bytes: "e99b3229b7811cc9e5bf7b96caca78c93e551548f870a6876ce9535f09f9fe1a",
-                expected_child_chain_code_bytes: "3d396ee7919face1091483e5fbd15ce238c1c236f03aa120d41ba2377f670a47",
-                expected_child_public_key_bytes: "028352f9732d8c124051739b00c008776bf547492880dc56eddfa0e78b15a971ef",
+                expected_child_private_key_bytes: "ff4e1a6d851e72b6310df496b607fdcda21ee2ed45ae79eee866cec546ea582b",
+                expected_child_chain_code_bytes: "808129578da2d8be8d68774a090adb3128e47e47ab120cbeaf05a12902eebe88",
+                expected_child_public_key_bytes: "020ea3869748f5cce012f571ccb356f411a7ce1a179af643638530da1981373227",
             },
             MasterChildVector {
                 master_private_key: "eec3b550d2ca1ada5122abf3af64ecd3727bccf461dd990cf30e3a564a7b21d6",
