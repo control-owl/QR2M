@@ -1,3 +1,8 @@
+# version 0.12.0 - Codename: Fucking yeah !!!!
+- finally, child keys are done
+- proper address output
+
+
 # version 0.11.3
 - nothing :(
 - still trying to produce proper address

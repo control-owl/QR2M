@@ -1,14 +1,10 @@
-# Primary focus
-
-- addresses !!!
-
 ## Active tasks
-
 
 ### Main window
 
 - [x] master private key (xprv)
 - [x] master public key (xpub)
+- [x] child keys
 - [x] address tab
 - [ ] get keccak256 support (Ethereum)
 - [x] multimedia as entropy
@@ -30,7 +26,8 @@
 - [ ] ShortcutsWindow
 - [ ] buy me a coffee
 - [ ] create filter for cointree
-- [ ] copy-button in major fields
+- [ ] copy-button in all major fields
+- [ ] remove unnecessary BIPs unless coin is BTC
 
 ---
 

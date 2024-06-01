@@ -1,1313 +1,1313 @@
-index,path,symbol,coin_name,key_derivation,xprv_priv_header,xprv_pub_header,pub_key_hash,script_hash,wif,evm,comment
-0,0x80000000,BTC,Bitcoin,secp256k1,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,FALSE,
-1,0x80000001,TEST,Testnet (all coins),,,,,,,,
-2,0x80000002,LTC,Litecoin,secp256k1,0x019D9CFE,0x019DA462,0x30,0x32,0xb0,FALSE,
-3,0x80000003,DOGE,Dogecoin,secp256k1,0x02FAC398,0x02FACAFD,0x1e,0x16,0x9e,FALSE,
-4,0x80000004,RDD,Reddcoin,secp256k1,0x0488ADE4,0x0488B21E,0x3d,0x05,0xbd,FALSE,
-5,0x80000005,DASH,Dash,secp256k1,0x0488ADE4,0x0488B21E,0x4c,0x10,0xcc,FALSE,
-6,0x80000006,PPC,Peercoin,secp256k1,0x0488ADE4,0x0488B21E,0x37,0x75,0xb7,FALSE,
-7,0x80000007,NMC,Namecoin,secp256k1,0x0488ADE4,0x0488B21E,0x34,0x0D,0xb4,FALSE,
-8,0x80000008,FTC,Feathercoin,secp256k1,0x0488DAEE,0x0488BC26,0x0e,0x05,0x8e,FALSE,
-9,0x80000009,XCP,Counterparty,,,,,,,,
-10,0x8000000a,BLK,Blackcoin,secp256k1,0x02CFBF60,0x02CFBEDE,0x19,0x55,0x99,FALSE,
-11,0x8000000b,NSR,NuShares,secp256k1,0x0488ADE4,0x0488B21E,0x3f,0x40,0x95,FALSE,
-12,0x8000000c,NBT,NuBits,secp256k1,0x0488ADE4,0x0488B21E,0x19,0x1a,0x96,FALSE,
-13,0x8000000d,MZC,Mazacoin,secp256k1,0x0488ADE4,0x0488B21E,0x32,0x09,0xe0,FALSE,
-14,0x8000000e,VIA,Viacoin,secp256k1,0x0488ADE4,0x0488B21E,0x47,0x21,0xc7,FALSE,
-15,0x8000000f,XCH,ClearingHouse,,,,,,,,
-16,0x80000010,RBY,Rubycoin,secp256k1,0x0488ADE4,0x0488B21E,0x3c,0x55,0xbc,FALSE,
-17,0x80000011,GRS,Groestlcoin,secp256k1,0x0488ADE4,0x0488B21E,0x24,0x05,0x80,FALSE,
-18,0x80000012,DGC,Digitalcoin,secp256k1,0x0488ADE4,0x9E0488B2,0x1e,0x05,0x9e,FALSE,
-19,0x80000013,CCN,Cannacoin,,,,,,,,
-20,0x80000014,DGB,DigiByte,secp256k1,0x0488ADE4,0x0488B21E,0x1e,0x05,0x80,FALSE,
-21,0x80000015,OA,Open Assets,secp256k1,,,,,,,
-22,0x80000016,MONA,Monacoin,secp256k1,0x0488ADE4,0x0488B21E,0x32,0x37,0xb0,FALSE,
-23,0x80000017,CLAM,Clams,secp256k1,0xA8C17826,0xA8C26D64,0x89,0x0D,0x85,FALSE,
-24,0x80000018,XPM,Primecoin,secp256k1,,,,,,FALSE,
-25,0x80000019,NEOS,Neoscoin,secp256k1,0x0488ADE4,0x0488B21E,0x35,0x05,0xb1,FALSE,
-26,0x8000001a,JBS,Jumbucks,secp256k1,0x037A6460,0x037A689A,0x2b,0x05,0xab,FALSE,
-27,0x8000001b,ZRC,ziftrCOIN,,,,,,,,
-28,0x8000001c,VTC,Vertcoin,secp256k1,0x0488ADE4,0x0488B21E,0x47,0x05,0x80,FALSE,
-29,0x8000001d,NXT,NXT,,,,,,,,
-30,0x8000001e,BURST,Burst,,,,,,,,
-31,0x8000001f,MUE,MonetaryUnit,,,,,,,,
-32,0x80000020,ZOOM,Zoom,,,,,,,,
-33,0x80000021,VASH,Virtual Cash,,,,,,,,
-34,0x80000022,CDN,Canada eCoin,secp256k1,0x0488ADE4,0x0488B21E,0x1c,0x05,0x9c,FALSE,
-35,0x80000023,SDC,ShadowCash,secp256k1,0xEE8031E8,0xEE80286A,0x3f,0x7d,0xbf,FALSE,
-36,0x80000024,PKB,ParkByte,,,,,,,,
-37,0x80000025,PND,Pandacoin,,,,,,,,
-38,0x80000026,START,StartCOIN,,,,,,,,
-39,0x80000027,MOIN,MOIN,,,,,,,,
-40,0x80000028,EXP,Expanse,,,,,,,,
-41,0x80000029,EMC2,Einsteinium,,0x0488ADE4,0x0488B21E,0x21,0x05,0xa1,FALSE,
-42,0x8000002a,DCR,Decred,,0x02FDA926,0x02FDA4E8,0x073f,0x071a,0x22de,FALSE,
-43,0x8000002b,XEM,NEM,,,,,,,,
-44,0x8000002c,PART,Particl,,0x8F1DAEB8,0x696E82D1,0x38,0x3c,0x6c,FALSE,
-45,0x8000002d,ARG,Argentum,,,,,,,,
-46,0x8000002e,LIBERTAS,Libertas Token,,,,,,,,
-47,0x8000002f,POSW,Posw coin,,0x0488ADE4,0x0488B21E,0x37,0x55,0xb7,FALSE,
-48,0x80000030,SHR,Shreeji,,,,,,,,
-49,0x80000031,GCR,Global Currency Reserve (GCRcoin),,0x0488ADE4,0x0488B21E,0x26,0x61,0x9a,FALSE,
-50,0x80000032,NVC,Novacoin,,0x0488ADE4,0x0488B21E,0x08,0x14,0x88,FALSE,
-51,0x80000033,AC,Asiacoin,,0x0488ADE4,0x0488B21E,0x17,0x08,0x97,FALSE,
-52,0x80000034,BTCD,BitcoinDark,,,,,,,,
-53,0x80000035,DOPE,Dopecoin,,,,,,,,
-54,0x80000036,TPC,Templecoin,,,,,,,,
-55,0x80000037,AIB,AIB,,,,,,,,
-56,0x80000038,EDRC,EDRCoin,,0x0488ADE4,0x0488B21E,0x5d,0x1c,0xdd,FALSE,
-57,0x80000039,SYS,Syscoin,secp256k1,0x0488ADE4,0x0488B21E,0x3f,0x05,0x80,FALSE,
-58,0x8000003a,SLR,Solarcoin,,0x0488ADE4,0x0488B21E,0x12,0x05,0x92,FALSE,
-59,0x8000003b,SMLY,Smileycoin,,0x1E5631BC,0x1E562D9A,0x19,0x05,0x05,FALSE,
-60,0x8000003c,ETH,Ethereum,keccak256,0x0488ADE4,0x0488B21E,,,,TRUE,
-61,0x8000003d,ETC,Ethereum Classic,keccak256,0x0488ADE4,0x0488B21E,,,,TRUE,
-62,0x8000003e,PSB,Pesobit,,0x0488ADE4,0x0488B21E,0x37,0x55,0xb7,,
-63,0x8000003f,LDCN,Landcoin,,0x0488ADE4,0x0488B21E,0x30,0x7a,0x7a,,
-64,0x80000040,,Open Chain,,,,,,,,
-65,0x80000041,XBC,Bitcoinplus,,0x0488ADE4,0x0488B21E,0x19,0x08,0x99,,
-66,0x80000042,IOP,Internet of People,,0xAE3416F6,0x2780915F,0x75,0xae,0x31,,
-67,0x80000043,NXS,Nexus,,,,,,,,
-68,0x80000044,INSN,InsaneCoin,,0x0488ADE4,0x0488B21E,0x66,0x39,0x37,,
-69,0x80000045,OK,OKCash,,0x03CC1C73,0x03CC23D7,0x37,0x1c,0x03,,
-70,0x80000046,BRIT,BritCoin,,0x0488ADE4,0x0488B21E,0x19,0x55,0x99,,
-71,0x80000047,CMP,Compcoin,,0x0488ADE4,0x0488B21E,0x1c,0x55,0x9c,,
-72,0x80000048,CRW,Crown,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,
-73,0x80000049,BELA,BelaCoin,,0x0488ADE4,0x0488B21E,0x19,0x05,0x99,,
-74,0x8000004a,ICX,ICON,,,,,,,,
-75,0x8000004b,FJC,FujiCoin,,0x0488ADE4,0x0488B21E,0x24,0x10,0xa4,,
-76,0x8000004c,MIX,MIX,,,,,,,,
-77,0x8000004d,XVG,Verge,,0x0488ADE4,0x0488B21E,0x1e,0x21,0x9e,,
-78,0x8000004e,EFL,Electronic Gulden,,0x0488ADE4,0x0488B21E,0x30,0x05,0xb0,,
-79,0x8000004f,CLUB,ClubCoin,,0x0488ADE4,0x0488B21E,0x1c,0x55,0x99,,
-80,0x80000050,RICHX,RichCoin,,,,,,,,
-81,0x80000051,POT,Potcoin,,0x0488ADE4,0x0488B21E,0x37,0x05,0xb7,,
-82,0x80000052,QRK,Quarkcoin,,,,,,,,
-83,0x80000053,TRC,Terracoin,,,,,,,,
-84,0x80000054,GRC,Gridcoin,,0x0488ADE4,0x0488B21E,0x3e,0x55,0xbe,,
-85,0x80000055,AUR,Auroracoin,,0x0488ADE4,0x0488B21E,0x17,0x05,0x97,,
-86,0x80000056,IXC,IXCoin,,0x0488ADE4,0x0488B21E,0x8a,0x05,0x05,,
-87,0x80000057,NLG,Gulden,,0x0488ADE4,0x0488B21E,0x26,0x62,0x62,,Maybe not correct
-88,0x80000058,BITB,BitBean,,,,,,,,
-89,0x80000059,BTA,Bata,secp256k1,0xA40B91BD,0xA40C86FA,0x19,0x05,0xa4,,
-90,0x8000005a,XMY,Myriadcoin,,0x0488ADE4,0x0488B21E,0x32,0x09,0xb2,,
-91,0x8000005b,BSD,BitSend,,0x0488ADE4,0x0488B21E,0x66,0x05,0xcc,,
-92,0x8000005c,UNO,Unobtanium,secp256k1,0x0488ADE4,0x0488B21E,0x82,0x1e,0xe0,,
-93,0x8000005d,MTR,MasterTrader,,,,,,,,
-94,0x8000005e,GB,GoldBlocks,,,,,,,,
-95,0x8000005f,SHM,Saham,,,,,,,,
-96,0x80000060,CRX,Chronos,,,,,,,,
-97,0x80000061,BIQ,Ubiquoin,,,,,,,,
-98,0x80000062,EVO,Evotion,,,,,,,,
-99,0x80000063,STO,SaveTheOcean,,,,,,,,
-100,0x80000064,BIGUP,BigUp,,,,,,,,
-101,0x80000065,GAME,GameCredits,,0x0488ADE4,0x0488B21E,0x26,0x05,0xa6,,
-102,0x80000066,DLC,Dollarcoins,,,,,,,,
-103,0x80000067,ZYD,Zayedcoin,,,,,,,,
-104,0x80000068,DBIC,Dubaicoin,,,,,,,,
-105,0x80000069,STRAT,Stratis,,0x0488ADE4,0x0488B21E,0x3f,0x7d,0xbf,,
-106,0x8000006a,SH,Shilling,,,,,,,,
-107,0x8000006b,MARS,MarsCoin,,,,,,,,
-108,0x8000006c,UBQ,Ubiq,,,,,,,,
-109,0x8000006d,PTC,Pesetacoin,,,,,,,,
-110,0x8000006e,NRO,Neurocoin,,0x0488ADE4,0x0488B21E,0x35,0x75,0xb5,,
-111,0x8000006f,ARK,ARK,,,,,,,,
-112,0x80000070,USC,UltimateSecureCashMain,,0xEE8031E8,0xEE80286A,0x44,0x7d,0xbf,,
-113,0x80000071,THC,Hempcoin,,0x0488ADE4,0x0488B21E,0x28,0x08,0xa8,,
-114,0x80000072,LINX,Linx,,0x0488ADE4,0x0488B21E,0x4b,0x05,0xcb,,
-115,0x80000073,ECN,Ecoin,,0x0488ADE4,0x0488B21E,0x5c,0x14,0xdc,,
-116,0x80000074,DNR,Denarius,,0x0488ADE4,0x0488B21E,0x1e,0x5a,0x9e,,
-117,0x80000075,PINK,Pinkcoin,,0x0488ADE4,0x0488B21E,0x03,0x1c,0x83,,
-118,0x80000076,ATOM,Cosmos,,0x0488ADE4,0x0488B21E,,,,,
-119,0x80000077,PIVX,Pivx,,0x0221312B,0x022D2533,0x1e,0x0d,0xd4,,
-120,0x80000078,FLASH,Flashcoin,,0x0488ADE4,0x0488B21E,0x44,0x82,0xc4,,
-121,0x80000079,ZEN,Zencash,,0x0488ADE4,0x0488B21E,0x2089,0x2096,0x80,,
-122,0x8000007a,PUT,Putincoin,,0x0488ADE4,0x0488B21E,0x37,0x14,0xb7,,
-123,0x8000007b,ZNY,BitZeny,,,,,,,,
-124,0x8000007c,UNIFY,Unify,,,,,,,,
-125,0x8000007d,XST,StealthCoin,,,,,,,,
-126,0x8000007e,BRK,Breakout Coin,,,,,,,,
-127,0x8000007f,VC,Vcash,,0x0488ADE4,0x0488B21E,0x47,0x08,0xc7,,
-128,0x80000080,XMR,Monero,,,,,,,,
-129,0x80000081,VOX,Voxels,,,,,,,,
-130,0x80000082,NAV,NavCoin,,0x0488ADE4,0x0488B21E,0x35,0x55,0x96,,
-131,0x80000083,FCT,Factom Factoids,,,,,,,,
-132,0x80000084,EC,Factom Entry Credits,,,,,,,,
-133,0x80000085,ZEC,Zcash,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,
-134,0x80000086,LSK,Lisk,,,,,,,,
-135,0x80000087,STEEM,Steem,,,,,,,,
-136,0x80000088,XZC,ZCoin,,0x0488ADE4,0x0488B21E,0x52,0x07,0xd2,,
-137,0x80000089,RBTC,RSK,,,,,,,,
-138,0x8000008a,,Giftblock,,,,,,,,
-139,0x8000008b,RPT,RealPointCoin,,,,,,,,
-140,0x8000008c,LBC,LBRY Credits,,0x0488ADE4,0x0488B21E,0x55,0x7a,0x1c,,
-141,0x8000008d,KMD,Komodo,,0x0488ADE4,0x0488B21E,0x3c,0x55,0xbc,,
-142,0x8000008e,BSQ,bisq Token,,,,,,,,
-143,0x8000008f,RIC,Riecoin,,,,,,,,
-144,0x80000090,XRP,Ripple,,0x0488ADE4,0x0488B21E,,,,,
-145,0x80000091,BCH,Bitcoin Cash,secp256k1,0x043587CF,0x04358394,0x6f,0xc4,0xef,,
-146,0x80000092,NEBL,Neblio,,0x0488ADE4,0x0488B21E,0x35,0x70,0xb5,,
-147,0x80000093,ZCL,ZClassic,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,
-148,0x80000094,XLM,Stellar Lumens,Non-secpk,,,,,,,
-149,0x80000095,NLC2,NoLimitCoin2,,,,,,,,
-150,0x80000096,WHL,WhaleCoin,,,,,,,,
-151,0x80000097,ERC,EuropeCoin,,0x0488ADE4,0x0488B21E,0x21,0x05,0xa8,,
-152,0x80000098,DMD,Diamond,,0x0488ADE4,0x0488B21E,0x5a,0x08,0xda,,
-153,0x80000099,BTM,Bytom,,,,,,,,
-154,0x8000009a,BIO,Biocoin,,,,,,,,
-155,0x8000009b,XWCC,Whitecoin Classic,,,,,,,,
-156,0x8000009c,BTG,Bitcoin Gold,secp256k1,0x0488ADE4,0x0488B21E,0x26,0x17,0x80,,
-157,0x8000009d,BTC2X,Bitcoin 2x,,,,,,,,
-158,0x8000009e,SSN,SuperSkynet,,,,,,,,
-159,0x8000009f,TOA,TOACoin,,0x0488ADE4,0x0488B21E,0x41,0x17,0xc1,,
-160,0x800000a0,BTX,Bitcore,secp256k1,0x0488ADE4,0x0488B21E,0x03,0x7D,0x80,,
-161,0x800000a1,ACC,Adcoin,,0x0488ADE4,0x0488B21E,0x17,0x05,0xb0,,
-162,0x800000a2,BCO,Bridgecoin,,,,,,,,
-163,0x800000a3,ELLA,Ellaism,,,,,,,,
-164,0x800000a4,PIRL,Pirl,,,,,,,,
-165,0x800000a5,XNO,Nano,,,,,,,,
-166,0x800000a6,VIVO,Vivo,,0x0488ADE4,0x0488B21E,0x46,0x0a,0xc6,,
-167,0x800000a7,FRST,Firstcoin,,0x0488ADE4,0x0488B21E,0x23,0x05,0xa3,,
-168,0x800000a8,HNC,Helleniccoin,,0x0488ADE4,0x0488B21E,0x30,0x05,0xb0,,
-169,0x800000a9,BUZZ,BUZZ,,,,,,,,
-170,0x800000aa,MBRS,Ember,,,,,,,,
-171,0x800000ab,HC,Hcash,,,,,,,,
-172,0x800000ac,HTML,HTMLCOIN,,,,,,,,
-173,0x800000ad,ODN,Obsidian,,,,,,,,
-174,0x800000ae,ONX,OnixCoin,,,,,,,,
-175,0x800000af,RVN,Ravencoin,,0x0488ADE4,0x0488B21E,0x3c,0x7a,0x80,,
-176,0x800000b0,GBX,GoByte,,0x0488ADE4,0x0488B21E,0x26,0x0a,0xc6,,
-177,0x800000b1,BTCZ,BitcoinZ,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,
-178,0x800000b2,POA,Poa,,,,,,,,
-179,0x800000b3,NYC,NewYorkCoin,,0x0488ADE4,0x0488B21E,0x3c,0x16,0xbc,,
-180,0x800000b4,MXT,MarteXcoin,,,,,,,,
-181,0x800000b5,WC,Wincoin,,0x0488ADE4,0x0488B21E,0x49,0x1c,0xc9,,
-182,0x800000b6,MNX,Minexcoin,,0x0488ADE4,0x0488B21E,0x4b,0x05,0x80,,
-183,0x800000b7,BTCP,Bitcoin Private,,0x0488ADE4,0x0488B21E,0x1325,0x13AF,0x80,,
-184,0x800000b8,MUSIC,Musicoin,,,,,,,,
-185,0x800000b9,BCA,Bitcoin Atom,,0x0488ADE4,0x0488B21E,0x17,0x0a,0x80,,
-186,0x800000ba,CRAVE,Crave,,0x0488ADE4,0x0488B21E,0x46,0x55,0x99,,
-187,0x800000bb,STAK,STRAKS,,,,,,,,
-188,0x800000bc,WBTC,World Bitcoin,,,,,,,,
-189,0x800000bd,LCH,LiteCash,,,,,,,,
-190,0x800000be,EXCL,ExclusiveCoin,,0x0488ADE4,0x0488B21E,0x21,0x89,0xa1,,
-191,0x800000bf,LYNX,Lynx,,0x0488ADE4,0x0488B21E,0x2d,0x32,0xad,,
-192,0x800000c0,LCC,LitecoinCash,,0x0488ADE4,0x0488B21E,0x1c,0x05,0xb0,,
-193,0x800000c1,XFE,Feirm,,,,,,,,
-194,0x800000c2,EOS,EOS,,,,,,,,
-195,0x800000c3,TRX,Tron,,,,,,,,
-196,0x800000c4,KOBO,Kobocoin,,0x0488ADE4,0x0488B21E,0x23,0x1c,0xa3,,
-197,0x800000c5,HUSH,HUSH,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,
-198,0x800000c6,BAN,Banano,,,,,,,,
-199,0x800000c7,ETF,ETF,,,,,,,,
-200,0x800000c8,OMNI,Omni,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,
-201,0x800000c9,BIFI,BitcoinFile,,,,,,,,
-202,0x800000ca,UFO,Uniform Fiscal Object,,,,,,,,
-203,0x800000cb,CNMC,Cryptonodes,,,,,,,,
-204,0x800000cc,BCN,Bytecoin,,,,,,,,
-205,0x800000cd,RIN,Ringo,,,,,,,,
-206,0x800000ce,ATP,Alaya,,,,,,,,
-207,0x800000cf,EVT,everiToken,,,,,,,,
-208,0x800000d0,ATN,ATN,,,,,,,,
-209,0x800000d1,BIS,Bismuth,,,,,,,,
-210,0x800000d2,NEET,NEETCOIN,,,,,,,,
-211,0x800000d3,BOPO,BopoChain,,,,,,,,
-212,0x800000d4,OOT,Utrum,,,,,,,,
-213,0x800000d5,ALIAS,Alias,,,,,,,,
-214,0x800000d6,MONK,Monkey Project,,0x0488DDE4,0x0488B21E,0x33,0x1c,0x37,,
-215,0x800000d7,BOXY,BoxyCoin,,,,,,,,
-216,0x800000d8,FLO,Flo,,,,,,,,
-217,0x800000d9,MEC,Megacoin,,0x0488ADE4,0x0488B21E,0x32,0x05,0xB2,,
-218,0x800000da,BTDX,BitCloud,,0x0488ADE4,0x0488B21E,0x19,0x05,0x99,,
-219,0x800000db,XAX,Artax,,0x0488ADE4,0x0488B21E,0x17,0x1CBD,0x97,,
-220,0x800000dc,ANON,ANON,,0x0488ADE4,0x0488B21E,0x0582,0x5389,0x80,,
-221,0x800000dd,LTZ,LitecoinZ,,0x0488ADE4,0x0488B21E,0x0AB3,0x0AB8,0x80,,
-222,0x800000de,BITG,Bitcoin Green,,0x0488ADE4,0x0488B21E,0x26,0x1CBD,0x2E,,
-223,0x800000df,ICP,Internet Computer,,,,,,,,
-224,0x800000e0,SMART,Smartcash,,,,,,,,
-225,0x800000e1,XUEZ,XUEZ,,0x0221312B,0x022D2533,0x4b,0x12,0xd4,,
-226,0x800000e2,HLM,Helium,,,,,,,,
-227,0x800000e3,WEB,Webchain,,,,,,,,
-228,0x800000e4,ACM,Actinium,,,,,,,,
-229,0x800000e5,NOS,NOS Stable Coins,,,,,,,,
-230,0x800000e6,BITC,BitCash,,,,,,,,
-231,0x800000e7,HTH,Help The Homeless Coin,,,,,,,,
-232,0x800000e8,TZC,Trezarcoin,,,,,,,,
-233,0x800000e9,VAR,Varda,,,,,,,,
-234,0x800000ea,IOV,IOV,,,,,,,,
-235,0x800000eb,FIO,FIO,,,,,,,,
-236,0x800000ec,BSV,BitcoinSV,secp256k1,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,
-237,0x800000ed,DXN,DEXON,Non-secpk,,,,,,,
-238,0x800000ee,QRL,Quantum Resistant Ledger,,,,,,,,
-239,0x800000ef,PCX,ChainX,,,,,,,,
-240,0x800000f0,LOKI,Loki,,,,,,,,
-241,0x800000f1,,Imagewallet,,,,,,,,
-242,0x800000f2,NIM,Nimiq,,,,,,,,
-243,0x800000f3,SOV,Sovereign Coin,,,,,,,,
-244,0x800000f4,JCT,Jibital Coin,,,,,,,,
-245,0x800000f5,SLP,Simple Ledger Protocol,,,,,,,,
-246,0x800000f6,EWT,Energy Web,,,,,,,,
-247,0x800000f7,UC,Ulord,,,,,,,,
-248,0x800000f8,EXOS,EXOS,,,,,,,,
-249,0x800000f9,ECA,Electra,,,,,,,,
-250,0x800000fa,SOOM,Soom,,,,,,,,
-251,0x800000fb,XRD,Redstone,,,,,,,,
-252,0x800000fc,FREE,FreeCoin,,,,,,,,
-253,0x800000fd,NPW,NewPowerCoin,,,,,,,,
-254,0x800000fe,BST,BlockStamp,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,
-255,0x800000ff,STH,SmartHoldem,,,,,,,,
-256,0x80000100,NANO,Bitcoin Nano,,,,,,,,
-257,0x80000101,BTCC,Bitcoin Core,,,,,,,,
-258,0x80000102,ZP,Zen Protocol,,,,,,,,
-259,0x80000103,ZEST,Zest,,,,,,,,
-260,0x80000104,ABT,ArcBlock,,,,,,,,
-261,0x80000105,PION,Pion,,,,,,,,
-262,0x80000106,DT3,DreamTeam3,,,,,,,,
-263,0x80000107,ZBUX,Zbux,,,,,,,,
-264,0x80000108,KPL,Kepler,,,,,,,,
-265,0x80000109,TPAY,TokenPay,,,,,,,,
-266,0x8000010a,ZILLA,ChainZilla,,,,,,,,
-267,0x8000010b,ANK,Anker,,,,,,,,
-268,0x8000010c,BCC,BCChain,,,,,,,,
-269,0x8000010d,HPB,HPB,,,,,,,,
-270,0x8000010e,ONE,ONE,,,,,,,,
-271,0x8000010f,SBC,SBC,,,,,,,,
-272,0x80000110,IPC,IPChain,,,,,,,,
-273,0x80000111,DMTC,Dominantchain,,,,,,,,
-274,0x80000112,OGC,Onegram,,,,,,,,
-275,0x80000113,SHIT,Shitcoin,,,,,,,,
-276,0x80000114,ANDES,Andescoin,,,,,,,,
-277,0x80000115,AREPA,Arepacoin,,,,,,,,
-278,0x80000116,BOLI,Bolivarcoin,,0x0488ADE4,0x0488B21E,0x55,0x05,0xD5,,
-279,0x80000117,RIL,Rilcoin,,,,,,,,
-280,0x80000118,HTR,Hathor Network,,,,,,,,
-281,0x80000119,ACME,Accumulate,,,,,,,,
-282,0x8000011a,BRAVO,BRAVO,,,,,,,,
-283,0x8000011b,ALGO,Algorand,,,,,,,,
-284,0x8000011c,BZX,Bitcoinzero,,,,,,,,
-285,0x8000011d,GXX,GravityCoin,,,,,,,,
-286,0x8000011e,HEAT,HEAT,,,,,,,,
-287,0x8000011f,XDN,DigitalNote,,,,,,,,
-288,0x80000120,FSN,FUSION,,,,,,,,
-289,0x80000121,CPC,Capricoin,,,,,,,,
-290,0x80000122,BOLD,Bold,,,,,,,,
-291,0x80000123,IOST,IOST,,,,,,,,
-292,0x80000124,TKEY,Tkeycoin,,,,,,,,
-293,0x80000125,USE,Usechain,,,,,,,,
-294,0x80000126,BCZ,BitcoinCZ,,,,,,,,
-295,0x80000127,IOC,Iocoin,,,,,,,,
-296,0x80000128,ASF,Asofe,,,,,,,,
-297,0x80000129,MASS,MASS,,,,,,,,
-298,0x8000012a,FAIR,FairCoin,,,,,,,,
-299,0x8000012b,NUKO,Nekonium,,,,,,,,
-300,0x8000012c,GNX,Genaro Network,,,,,,,,
-301,0x8000012d,DIVI,Divi Project,,0x0221312B,0x022D2533,0x1e,0x0d,0xd4,,
-302,0x8000012e,CMT,Community,,,,,,,,
-303,0x8000012f,EUNO,EUNO,,,,,,,,
-304,0x80000130,IOTX,IoTeX,,,,,,,,
-305,0x80000131,ONION,DeepOnion,,0x0488ADE4,0x0488B21E,0x1F,0x4E,0x9F,,
-306,0x80000132,8BIT,8Bit,,,,,,,,
-307,0x80000133,ATC,AToken Coin,,,,,,,,
-308,0x80000134,BTS,Bitshares,,,,,,,,
-309,0x80000135,CKB,Nervos CKB,,,,,,,,
-310,0x80000136,UGAS,Ultrain,,,,,,,,
-311,0x80000137,ADS,Adshares,,,,,,,,
-312,0x80000138,ARA,Aura,,,,,,,,
-313,0x80000139,ZIL,Zilliqa,,,,,,,,
-314,0x8000013a,MOAC,MOAC,,,,,,,,
-315,0x8000013b,SWTC,SWTC,,,,,,,,
-316,0x8000013c,VNSC,vnscoin,,,,,,,,
-317,0x8000013d,PLUG,PL^Gnet,,,,,,,,
-318,0x8000013e,MAN,Matrix AI Network,,,,,,,,
-319,0x8000013f,ECC,ECCoin,,,,,,,,
-320,0x80000140,RPD,Rapids,,0x0488ADE4,0x0488B21E,0x3d,0x06,0x2e,,
-321,0x80000141,RAP,Rapture,,,,,,,,
-322,0x80000142,GARD,Hashgard,,,,,,,,
-323,0x80000143,ZER,Zero,,,,,,,,
-324,0x80000144,EBST,eBoost,,,,,,,,
-325,0x80000145,SHARD,Shard,,,,,,,,
-326,0x80000146,MRX,Metrix Coin,,,,,,,,
-327,0x80000147,CMM,Commercium,,,,,,,,
-328,0x80000148,BLOCK,Blocknet,,,,,,,,
-329,0x80000149,AUDAX,AUDAX,,,,,,,,
-330,0x8000014a,LUNA,Terra,,,,,,,,
-331,0x8000014b,ZPM,zPrime,,,,,,,,
-332,0x8000014c,KUVA,Kuva Utility Note,,,,,,,,
-333,0x8000014d,MEM,MemCoin,,,,,,,,
-334,0x8000014e,CS,Credits,,,,,,,,
-335,0x8000014f,SWIFT,SwiftCash,,,,,,,,
-336,0x80000150,FIX,FIX,,0x0221312B,0x022D2533,0x23,0x5F,0x3C,,
-337,0x80000151,CPC,CPChain,,,,,,,,
-338,0x80000152,VGO,VirtualGoodsToken,,,,,,,,
-339,0x80000153,DVT,DeVault,,,,,,,,
-340,0x80000154,N8V,N8VCoin,,,,,,,,
-341,0x80000155,MTNS,OmotenashiCoin,,,,,,,,
-342,0x80000156,BLAST,BLAST,,,,,,,,
-343,0x80000157,DCT,DECENT,,,,,,,,
-344,0x80000158,AUX,Auxilium,,,,,,,,
-345,0x80000159,USDP,USDP,,,,,,,,
-346,0x8000015a,HTDF,HTDF,,,,,,,,
-347,0x8000015b,YEC,Ycash,,,,,,,,
-348,0x8000015c,QLC,QLC Chain,,,,,,,,
-349,0x8000015d,TEA,Icetea Blockchain,,,,,,,,
-350,0x8000015e,ARW,ArrowChain,,,,,,,,
-351,0x8000015f,MDM,Medium,,,,,,,,
-352,0x80000160,CYB,Cybex,,,,,,,,
-353,0x80000161,LTO,LTO Network,,,,,,,,
-354,0x80000162,DOT,Polkadot,,,,,,,,
-355,0x80000163,AEON,Aeon,,,,,,,,
-356,0x80000164,RES,Resistance,,,,,,,,
-357,0x80000165,AYA,Aryacoin,,0x0488ADE4,0x0488B21E,0x17,0x6f,0x97,,
-358,0x80000166,DAPS,Dapscoin,,,,,,,,
-359,0x80000167,CSC,CasinoCoin,,,,,,,,
-360,0x80000168,VSYS,V Systems,,,,,,,,
-361,0x80000169,NOLLAR,Nollar,,,,,,,,
-362,0x8000016a,XNOS,NOS,,,,,,,,
-363,0x8000016b,CPU,CPUchain,,0x0488ADE4,0x0488B21E,0x1C,0x1E,0x80,,
-364,0x8000016c,LAMB,Lambda Storage Chain,,,,,,,,
-365,0x8000016d,VCT,ValueCyber,,,,,,,,
-366,0x8000016e,CZR,Canonchain,,,,,,,,
-367,0x8000016f,ABBC,ABBC,,,,,,,,
-368,0x80000170,HET,HET,,,,,,,,
-369,0x80000171,XAS,Asch,,,,,,,,
-370,0x80000172,VDL,Vidulum,,,,,,,,
-371,0x80000173,MED,MediBloc,,,,,,,,
-372,0x80000174,ZVC,ZVChain,,,,,,,,
-373,0x80000175,VESTX,Vestx,,,,,,,,
-374,0x80000176,DBT,DarkBit,,,,,,,,
-375,0x80000177,SEOS,SuperEOS,,,,,,,,
-376,0x80000178,MXW,Maxonrow,,,,,,,,
-377,0x80000179,ZNZ,ZENZO,,,,,,,,
-378,0x8000017a,XCX,XChain,,,,,,,,
-379,0x8000017b,SOX,SonicX,,,,,,,,
-380,0x8000017c,NYZO,Nyzo,,,,,,,,
-381,0x8000017d,ULC,ULCoin,,,,,,,,
-382,0x8000017e,RYO,Ryo Currency,,,,,,,,
-383,0x8000017f,KAL,Kaleidochain,,,,,,,,
-384,0x80000180,XSN,Stakenet,,,,,,,,
-385,0x80000181,DOGEC,DogeCash,,,,,,,,
-386,0x80000182,BMV,Bitcoin Matteo's Vision,,,,,,,,
-387,0x80000183,QBC,Quebecoin,,,,,,,,
-388,0x80000184,IMG,ImageCoin,,,,,,,,
-389,0x80000185,QOS,QOS,,,,,,,,
-390,0x80000186,PKT,PKT,,,,,,,,
-391,0x80000187,LHD,LitecoinHD,,,,,,,,
-392,0x80000188,CENNZ,CENNZnet,,,,,,,,
-393,0x80000189,HSN,Hyper Speed Network,,,,,,,,
-394,0x8000018a,CRO,Crypto Chain,,,,,,,,
-395,0x8000018b,UMBRU,Umbru,,,,,,,,
-396,0x8000018c,EVER,Everscale,,,,,,,,
-397,0x8000018d,NEAR,NEAR Protocol,,,,,,,,
-398,0x8000018e,XPC,XPChain,,,,,,,,
-399,0x8000018f,ZOC,01coin,,,,,,,,
-400,0x80000190,NIX,NIX,,0x0488ADE4,0x0488B21E,0x26,0x35,0x80,,
-401,0x80000191,UC,Utopiacoin,,,,,,,,
-402,0x80000192,GALI,Galilel,,,,,,,,
-403,0x80000193,OLT,Oneledger,,,,,,,,
-404,0x80000194,XBI,XBI,,,,,,,,
-405,0x80000195,DONU,DONU,,,,,,,,
-406,0x80000196,EARTHS,Earths,,,,,,,,
-407,0x80000197,HDD,HDDCash,,,,,,,,
-408,0x80000198,SUGAR,Sugarchain,,0x0488ADE4,0x0488B21E,0x3f,0x7d,0x80,,
-409,0x80000199,AILE,AileCoin,,,,,,,,
-410,0x8000019a,TENT,TENT,,,,,,,,
-411,0x8000019b,TAN,Tangerine Network,,,,,,,,
-412,0x8000019c,AIN,AIN,,,,,,,,
-413,0x8000019d,MSR,Masari,,,,,,,,
-414,0x8000019e,SUMO,Sumokoin,,,,,,,,
-415,0x8000019f,ETN,Electroneum,,,,,,,,
-416,0x800001a0,BYTZ,BYTZ,,,,,,,,
-417,0x800001a1,WOW,Wownero,,,,,,,,
-418,0x800001a2,XTNC,XtendCash,,,,,,,,
-419,0x800001a3,LTHN,Lethean,,,,,,,,
-420,0x800001a4,NODE,NodeHost,,,,,,,,
-421,0x800001a5,AGM,Argoneum,,0x0488ADE4,0x0488B21E,0x32,0x61,0xbf,,
-422,0x800001a6,CCX,Conceal Network,,,,,,,,
-423,0x800001a7,TNET,Title Network,,,,,,,,
-424,0x800001a8,TELOS,TelosCoin,,,,,,,,
-425,0x800001a9,AION,Aion,,,,,,,,
-426,0x800001aa,BC,Bitcoin Confidential,,,,,,,,
-427,0x800001ab,KTV,KmushiCoin,,,,,,,,
-428,0x800001ac,ZCR,ZCore,,,,,,,,
-429,0x800001ad,ERG,Ergo,,,,,,,,
-430,0x800001ae,PESO,Criptopeso,,,,,,,,
-431,0x800001af,BTC2,Bitcoin 2,,,,,,,,
-432,0x800001b0,XRPHD,XRPHD,,,,,,,,
-433,0x800001b1,WE,WE Coin,,,,,,,,
-434,0x800001b2,KSM,Kusama,,,,,,,,
-435,0x800001b3,PCN,Peepcoin,,,,,,,,
-436,0x800001b4,NCH,NetCloth,,,,,,,,
-437,0x800001b5,ICU,CHIPO,,,,,,,,
-438,0x800001b6,FNSA,FINSCHIA,,,,,,,,
-439,0x800001b7,DTP,DeVault Token Protocol,,,,,,,,
-440,0x800001b8,BTCR,Bitcoin Royale,,,,,,,,
-441,0x800001b9,AERGO,AERGO,,,,,,,,
-442,0x800001ba,XTH,Dothereum,,,,,,,,
-443,0x800001bb,LV,Lava,,,,,,,,
-444,0x800001bc,PHR,Phore,,0x0221312B,0x022D2533,0x37,0x0D,0xD4,,
-445,0x800001bd,VITAE,Vitae,,,,,,,,
-446,0x800001be,COCOS,Cocos-BCX,,,,,,,,
-447,0x800001bf,DIN,Dinero,,,,,,,,
-448,0x800001c0,SPL,Simplicity,,,,,,,,
-449,0x800001c1,YCE,MYCE,,,,,,,,
-450,0x800001c2,XLR,Solaris,,,,,,,,
-451,0x800001c3,KTS,Klimatas,,,,,,,,
-452,0x800001c4,DGLD,DGLD,,,,,,,,
-453,0x800001c5,XNS,Insolar,,,,,,,,
-454,0x800001c6,EM,EMPOW,,,,,,,,
-455,0x800001c7,SHN,ShineBlocks,,,,,,,,
-456,0x800001c8,SEELE,Seele,,,,,,,,
-457,0x800001c9,AE,�ternity,,,,,,,,
-458,0x800001ca,ODX,ObsidianX,,,,,,,,
-459,0x800001cb,KAVA,Kava,,,,,,,TRUE,
-460,0x800001cc,GLEEC,GLEEC,,,,,,,,
-461,0x800001cd,FIL,Filecoin,,,,,,,TRUE,
-462,0x800001ce,RUTA,Rutanio,,,,,,,,
-463,0x800001cf,CSDT,CSDT,,,,,,,,
-464,0x800001d0,ETI,EtherInc,,,,,,,,
-465,0x800001d1,ZSLP,Zclassic Simple Ledger Protocol,,,,,,,,
-466,0x800001d2,ERE,EtherCore,,,,,,,,
-467,0x800001d3,DX,DxChain Token,,,,,,,,
-468,0x800001d4,CPS,Capricoin+,,,,,,,,
-469,0x800001d5,BTH,Bithereum,,,,,,,,
-470,0x800001d6,MESG,MESG,,,,,,,,
-471,0x800001d7,FIMK,FIMK,,,,,,,,
-472,0x800001d8,AR,Arweave,,,,,,,,
-473,0x800001d9,OGO,Origo,,,,,,,,
-474,0x800001da,ROSE,Oasis Network,,,,,,,,
-475,0x800001db,BARE,BARE Network,,,,,,,,
-476,0x800001dc,GLEEC,GleecBTC,,,,,,,,
-477,0x800001dd,CLR,Color Coin,,,,,,,,
-478,0x800001de,RNG,Ring,,,,,,,,
-479,0x800001df,OLO,Tool Global,,,,,,,,
-480,0x800001e0,PEXA,Pexa,,,,,,,,
-481,0x800001e1,MOON,Mooncoin,,,,,,,,
-482,0x800001e2,OCEAN,Ocean Protocol,,,,,,,,
-483,0x800001e3,BNT,Bluzelle Native,,,,,,,,
-484,0x800001e4,AMO,AMO Blockchain,,,,,,,,
-485,0x800001e5,FCH,FreeCash,,,,,,,,
-486,0x800001e6,LAT,PlatON,,,,,,,,
-487,0x800001e7,COIN,Bitcoin Bank,,,,,,,,
-488,0x800001e8,VEO,Amoveo,,,,,,,,
-489,0x800001e9,CCA,Counos Coin,,,,,,,,
-490,0x800001ea,GFN,Graphene,,,,,,,,
-491,0x800001eb,BIP,Minter Network,,,,,,,,
-492,0x800001ec,KPG,Kunpeng Network,,,,,,,,
-493,0x800001ed,FIN,FINL Chain,,,,,,,,
-494,0x800001ee,BAND,Band,,,,,,,,
-495,0x800001ef,DROP,Dropil,,,,,,,,
-496,0x800001f0,BHT,Bluehelix Chain,,,,,,,,
-497,0x800001f1,LYRA,Scrypta,,,,,,,,
-498,0x800001f2,CS,Credits,,,,,,,,
-499,0x800001f3,RUPX,Rupaya,,,,,,,,
-500,0x800001f4,THETA,Theta,,,,,,,TRUE,
-501,0x800001f5,SOL,Solana,,,,,,,,
-502,0x800001f6,THT,ThoughtAI,,0x5AEBD8C6,0xFBC6A00D,0x07,0x09,0x7B,,
-503,0x800001f7,CFX,Conflux,,,,,,,,
-504,0x800001f8,KUMA,Kumacoin,,,,,,,,
-505,0x800001f9,HASH,Provenance,,,,,,,,
-506,0x800001fa,CSPR,Casper,,,,,,,,
-507,0x800001fb,EARTH,EARTH,,,,,,,,
-508,0x800001fc,EGLD,MultiversX,,,,,,,,
-509,0x800001fd,CHI,Xaya,,,,,,,,
-510,0x800001fe,KOTO,Koto,,,,,,,,
-511,0x800001ff,OTC,?,,,,,,,,
-512,0x80000200,XRD,Radiant,,,,,,,,
-513,0x80000201,SEELEN,Seele-N,,,,,,,,
-514,0x80000202,AETH,AETH,,,,,,,,
-515,0x80000203,DNA,Idena,,,,,,,,
-516,0x80000204,VEE,Virtual Economy Era,,,,,,,,
-517,0x80000205,SIERRA,SierraCoin,,,,,,,,
-518,0x80000206,LET,Linkeye,,,,,,,,
-519,0x80000207,BSC,Bitcoin Smart Contract,Non-secpk,,,,,,,
-520,0x80000208,BTCV,BitcoinVIP,,,,,,,,
-521,0x80000209,ABA,Dabacus,,,,,,,,
-522,0x8000020a,SCC,StakeCubeCoin,,,,,,,,
-523,0x8000020b,EDG,Edgeware,,,,,,,,
-524,0x8000020c,AMS,AmsterdamCoin,,,,,,,,
-525,0x8000020d,GOSS,GOSSIP Coin,,,,,,,,
-526,0x8000020e,BU,BUMO,,,,,,,,
-527,0x8000020f,GRAM,GRAM,,,,,,,,
-528,0x80000210,YAP,Yapstone,,,,,,,,
-529,0x80000211,SCRT,Secret Network,,,,,,,,
-530,0x80000212,NOVO,Novo,,,,,,,,
-531,0x80000213,GHOST,Ghost,,,,,,,,
-532,0x80000214,HST,HST,,,,,,,,
-533,0x80000215,PRJ,ProjectCoin,,0x0221312B,0x022D2533,0x37,0x08,0x75,,
-534,0x80000216,YOU,YOUChain,,,,,,,,
-535,0x80000217,XHV,Haven Protocol,,,,,,,,
-536,0x80000218,BYND,Beyondcoin,,,,,,,,
-537,0x80000219,JOYS,Joys Digital,,,,,,,,
-538,0x8000021a,VAL,Valorbit,,,,,,,,
-539,0x8000021b,FLOW,Flow,,,,,,,,
-540,0x8000021c,SMESH,Spacemesh Coin,,,,,,,,
-541,0x8000021d,SCDO,SCDO,,,,,,,,
-542,0x8000021e,IQS,IQ-Cash,,,,,,,,
-543,0x8000021f,BIND,Compendia,,,,,,,,
-544,0x80000220,COINEVO,Coinevo,,,,,,,,
-545,0x80000221,SCRIBE,Scribe,,0x0488ADE4,0x0488B21E,0x3c,0x7d,0x6e,,
-546,0x80000222,HYN,Hyperion,,,,,,,,
-547,0x80000223,BHP,BHP,,,,,,,,
-548,0x80000224,BBC,BigBang Core,,,,,,,,
-549,0x80000225,MKF,MarketFinance,,,,,,,,
-550,0x80000226,XDC,XinFin,,,,,,,,
-551,0x80000227,STR,Straightedge,,,,,,,,
-552,0x80000228,SUM,Sumcoin,,,,,,,,
-553,0x80000229,HBC,HuobiChain,,,,,,,,
-554,0x8000022a,---,reserved,,,,,,,,
-555,0x8000022b,BCS,Bitcoin Smart,,,,,,,,
-556,0x8000022c,KTS,Kratos,,,,,,,,
-557,0x8000022d,LKR,Lkrcoin,,0x0488ADE4,0x0488B21E,0x30,0x55,0xB0,,
-558,0x8000022e,TAO,Tao,,,,,,,,
-559,0x8000022f,XWC,Whitecoin,,0x048894ED,0x04887F1E,0x49,0x57,0xc9,,
-560,0x80000230,DEAL,DEAL,,,,,,,,
-561,0x80000231,NTY,Nexty,,,,,,,,
-562,0x80000232,TOP,TOP NetWork,,,,,,,,
-563,0x80000233,---,reserved,,,,,,,,
-564,0x80000234,AG,Agoric,,,,,,,,
-565,0x80000235,CICO,Coinicles,,,,,,,,
-566,0x80000236,IRIS,Irisnet,,,,,,,,
-567,0x80000237,NCG,Nine Chronicles,,,,,,,,
-568,0x80000238,LRG,Large Coin,,,,,,,,
-569,0x80000239,SERO,Super Zero Protocol,,,,,,,,
-570,0x8000023a,BDX,Beldex,,,,,,,,
-571,0x8000023b,CCXX,Counos X,,,,,,,,
-572,0x8000023c,SLS,Saluscoin,,0x0488ADE4,0x0488B21E,0x3f,0xc4,0xbf,,
-573,0x8000023d,SRM,Serum,,,,,,,,
-574,0x8000023e,---,reserved,,,,,,,,
-575,0x8000023f,VIVT,VIDT Datalink,,,,,,,,
-576,0x80000240,BPS,BitcoinPoS,,,,,,,,
-577,0x80000241,NKN,NKN,,,,,,,,
-578,0x80000242,ICL,ILCOIN,,,,,,,,
-579,0x80000243,BONO,Bonorum,,,,,,,,
-580,0x80000244,PLC,PLATINCOIN,,,,,,,,
-581,0x80000245,DUN,Dune,,,,,,,,
-582,0x80000246,DMCH,Darmacash,,,,,,,,
-583,0x80000247,CTC,Creditcoin,,,,,,,,
-584,0x80000248,KELP,Haidai Network,,,,,,,,
-585,0x80000249,GBCR,GoldBCR,,,,,,,,
-586,0x8000024a,XDAG,XDAG,,,,,,,,
-587,0x8000024b,PRV,Incognito Privacy,,,,,,,,
-588,0x8000024c,SCAP,SafeCapital,,,,,,,,
-589,0x8000024d,TFUEL,Theta Fuel,,,,,,,,
-590,0x8000024e,GTM,Gentarium,,,,,,,,
-591,0x8000024f,RNL,RentalChain,,,,,,,,
-592,0x80000250,GRIN,Grin,,,,,,,,
-593,0x80000251,MWC,MimbleWimbleCoin,,,,,,,,
-594,0x80000252,DOCK,Dock,,,,,,,,
-595,0x80000253,POLYX,Polymesh,,,,,,,,
-596,0x80000254,DIVER,Divergenti,,,,,,,,
-597,0x80000255,XEP,Electra Protocol,,,,,,,,
-598,0x80000256,APN,Apron,,,,,,,,
-599,0x80000257,TFC,Turbo File Coin,,,,,,,,
-600,0x80000258,UTE,Unit-e,,,,,,,,
-601,0x80000259,MTC,Metacoin,,,,,,,,
-602,0x8000025a,NC,NobodyCash,,,,,,,,
-603,0x8000025b,XINY,Xinyuehu,,,,,,,,
-604,0x8000025c,DYN,Dynamo,,,,,,,,
-605,0x8000025d,BUFS,Buffer,,,,,,,,
-606,0x8000025e,STOS,Stratos,,,,,,,,
-607,0x8000025f,TON,TON,,,,,,,,
-608,0x80000260,TAFT,TAFT,,,,,,,,
-609,0x80000261,HYDRA,HYDRA,,,,,,,,
-610,0x80000262,NOR,Noir,,,,,,,,
-611,0x80000263,,Manta Network Private Asset,,,,,,,,
-612,0x80000264,,Calamari Network Private Asset,,,,,,,,
-613,0x80000265,WCN,Widecoin,,,,,,,,
-614,0x80000266,OPT,Optimistic Ethereum,,,,,,,,
-615,0x80000267,PSWAP,PolkaSwap,,,,,,,,
-616,0x80000268,VAL,Validator,,,,,,,,
-617,0x80000269,XOR,Sora,,,,,,,,
-618,0x8000026a,SSP,SmartShare,,,,,,,,
-619,0x8000026b,DEI,DeimosX,,,,,,,,
-620,0x8000026c,---,reserved,,,,,,,,
-621,0x8000026d,ZERO,Singularity,,,,,,,,
-622,0x8000026e,ALPHA,AlphaDAO,,,,,,,,
-623,0x8000026f,BDECO,BDCashProtocol Ecosystem,,,,,,,,
-624,0x80000270,NOBL,Nobility,,,,,,,,
-625,0x80000271,EAST,Eastcoin,,,,,,,,
-626,0x80000272,KDA,Kadena,,,,,,,,
-627,0x80000273,SOUL,Phantasma,,,,,,,,
-628,0x80000274,LORE,Gitopia,,,,,,,,
-629,0x80000275,FNR,Fincor,,,,,,,,
-630,0x80000276,NEXUS,Nexus,,,,,,,,
-631,0x80000277,QTZ,Quartz,,,,,,,,
-632,0x80000278,MAS,Massa,,,,,,,,
-633,0x80000279,CALL,Callchain,,,,,,,,
-634,0x8000027a,VAL,Validity,,,,,,,,
-635,0x8000027b,POKT,Pocket Network,,,,,,,,
-636,0x8000027c,EMIT,EMIT,,,,,,,,
-637,0x8000027d,APTOS,Aptos,,,,,,,,
-638,0x8000027e,ADON,ADON,,,,,,,,
-639,0x8000027f,BTSG,BitSong,,,,,,,,
-640,0x80000280,LFC,Leofcoin,,,,,,,,
-641,0x80000281,KCS,KuCoin Shares,,,,,,,,
-642,0x80000282,KCC,KuCoin Community Chain,,,,,,,,
-643,0x80000283,AZERO,Aleph Zero,,,,,,,,
-644,0x80000284,TREE,Tree,,,,,,,,
-645,0x80000285,LX,Lynx,,,,,,,,
-646,0x80000286,XLN,Lunarium,,,,,,,,
-647,0x80000287,CIC,CIC Chain,,,,,,,,
-648,0x80000288,ZRB,Zarb,,,,,,,,
-649,0x80000289,---,reserved,,,,,,,,
-650,0x8000028a,UCO,Archethic,,,,,,,,
-651,0x8000028b,SFX,Safex Cash,,,,,,,,
-652,0x8000028c,SFT,Safex Token,,,,,,,,
-653,0x8000028d,WSFX,Wrapped Safex Cash,,,,,,,,
-654,0x8000028e,USDG,US Digital Gold,,,,,,,,
-655,0x8000028f,WMP,WAMP,,,,,,,,
-656,0x80000290,EKTA,Ekta,,,,,,,,
-657,0x80000291,YDA,YadaCoin,,,,,,,,
-658,0x80000292,,,,,,,,,,
-659,0x80000293,KOIN,Koinos,,,,,,,,
-660,0x80000294,PIRATE,PirateCash,,,,,,,,
-661,0x80000295,UNQ,Unique,,,,,,,,
-662,0x80000296,,,,,,,,,,
-663,0x80000297,SFRX,EtherGem Sapphire,,,,,,,,
-664,0x80000298,BSTY,GlobalBoost-Y,,,,,,,,
-665,0x80000299,IMP,Impact Protocol,,,,,,,,
-666,0x8000029a,ACT,Achain,,,,,,,,
-667,0x8000029b,PRKL,Perkle,,,,,,,,
-668,0x8000029c,SSC,SelfSell,,,,,,,,
-669,0x8000029d,GC,GateChain,,,,,,,,
-670,0x8000029e,PLGR,Pledger,,,,,,,,
-671,0x8000029f,MPLGR,Pledger,,,,,,,,
-672,0x800002a0,KNOX,Knox,,,,,,,,
-673,0x800002a1,ZED,ZED,,,,,,,,
-674,0x800002a2,CNDL,Candle,,,,,,,,
-675,0x800002a3,WLKR,Walker Crypto Innovation Index,,,,,,,,
-676,0x800002a4,WLKRR,Walker,,,,,,,,
-677,0x800002a5,YUNGE,Yunge,,,,,,,,
-678,0x800002a6,Voken,Voken,,,,,,,,
-679,0x800002a7,APL,Apollo,,,,,,,,
-680,0x800002a8,Evrynet,Evrynet,,,,,,,,
-681,0x800002a9,NENG,Nengcoin,,,,,,,,
-682,0x800002aa,CHTA,Cheetahcoin,,,,,,,,
-683,0x800002ab,ALEO,Aleo Network,,,,,,,,
-684,0x800002ac,,,,,,,,,,
-685,0x800002ad,OAS,Oasys,,,,,,,,
-686,0x800002ae,KAR,Karura Network,,,,,,,,
-687,0x800002af,,,,,,,,,,
-688,0x800002b0,CET,CoinEx Chain,,,,,,,,
-689,0x800002b1,,,,,,,,,,
-690,0x800002b2,KLV,KleverChain,,,,,,,,
-691,0x800002b3,,,,,,,,,,
-692,0x800002b4,,,,,,,,,,
-693,0x800002b5,,,,,,,,,,
-694,0x800002b6,VTBC,VTB Community,,,,,,,,
-695,0x800002b7,,,,,,,,,,
-696,0x800002b8,,,,,,,,,,
-697,0x800002b9,,,,,,,,,,
-698,0x800002ba,VEIL,Veil,,,,,,,,
-699,0x800002bb,GTB,GotaBit,,,,,,,,
-700,0x800002bc,XDAI,xDai,,,,,,,TRUE,
-701,0x800002bd,COM,Commercio,,,,,,,,
-702,0x800002be,CCC,Commercio Cash Credit,,,,,,,,
-703,0x800002bf,,,,,,,,,,
-704,0x800002c0,RAQ,Ra Quantum,,,,,,,,
-705,0x800002c1,PEG,Pegasus Token,,,,,,,,
-706,0x800002c2,LKG,Lionking,,,,,,,,
-707,0x800002c3,MCOIN,Moneta Coin,,,,,,,,
-708,0x800002c4,,,,,,,,,,
-709,0x800002c5,,,,,,,,,,
-710,0x800002c6,FURY,Highbury,,,,,,,,
-711,0x800002c7,CHC,Chaincoin,,,,,,,,
-712,0x800002c8,SERF,Serfnet,,,,,,,,
-713,0x800002c9,XTL,Katal Chain,,,,,,,,
-714,0x800002ca,BNB,Binance,,,,,,,,
-715,0x800002cb,SIN,Sinovate,,,,,,,,
-716,0x800002cc,DLN,Delion,,,,,,,,
-717,0x800002cd,BONTE,Bontecoin,,,,,,,,
-718,0x800002ce,PEER,Peer,,,,,,,,
-719,0x800002cf,ZET,Zetacoin,,0x0488ADE4,0x0488B21E,0x50,0x09,0xe0,,
-720,0x800002d0,ABY,Artbyte,,,,,,,,
-721,0x800002d1,PGX,Mirai Chain,,,,,,,,
-722,0x800002d2,IL8P,InfiniLooP,,,,,,,,
-723,0x800002d3,,,,,,,,,,
-724,0x800002d4,XVC,Vanillacash,,,,,,,,
-725,0x800002d5,MCX,MultiCash,,,,,,,,
-726,0x800002d6,,,,,,,,,,
-727,0x800002d7,BLU,BluCrates,,,,,,,,
-728,0x800002d8,,,,,,,,,,
-729,0x800002d9,,,,,,,,,,
-730,0x800002da,HEALIOS,Tenacity,,,,,,,,
-731,0x800002db,BMK,Bitmark,,,,,,,,
-732,0x800002dc,,,,,,,,,,
-733,0x800002dd,,,,,,,,,,
-734,0x800002de,DENTX,DENTNet,,,,,,,,
-735,0x800002df,,,,,,,,,,
-736,0x800002e0,,,,,,,,,,
-737,0x800002e1,ATOP,Financial Blockchain,,,,,,,,
-738,0x800002e2,,,,,,,,,,
-739,0x800002e3,,,,,,,,,,
-740,0x800002e4,,,,,,,,,,
-741,0x800002e5,,,,,,,,,,
-742,0x800002e6,,,,,,,,,,
-743,0x800002e7,,,,,,,,,,
-744,0x800002e8,,,,,,,,,,
-745,0x800002e9,,,,,,,,,,
-746,0x800002ea,,,,,,,,,,
-747,0x800002eb,CFG,Centrifuge,,,,,,,,
-748,0x800002ec,,,,,,,,,,
-749,0x800002ed,,,,,,,,,,
-750,0x800002ee,XPRT,Persistence,,,,,,,,
-751,0x800002ef,,,,,,,,,,
-752,0x800002f0,,,,,,,,,,
-753,0x800002f1,,Age X25519 Encryption,,,,,,,,
-754,0x800002f2,,Age NIST Encryption,,,,,,,,
-755,0x800002f3,,,,,,,,,,
-756,0x800002f4,,,,,,,,,,
-757,0x800002f5,HONEY,HoneyWood,,,,,,,,
-758,0x800002f6,,,,,,,,,,
-759,0x800002f7,,,,,,,,,,
-760,0x800002f8,,,,,,,,,,
-761,0x800002f9,,,,,,,,,,
-762,0x800002fa,,,,,,,,,,
-763,0x800002fb,,,,,,,,,,
-764,0x800002fc,,,,,,,,,,
-765,0x800002fd,,,,,,,,,,
-766,0x800002fe,,,,,,,,,,
-767,0x800002ff,,,,,,,,,,
-768,0x80000300,BALLZ,Ballzcoin,,,,,,,,
-769,0x80000301,,,,,,,,,,
-770,0x80000302,COSA,Cosanta,,,,,,,,
-771,0x80000303,BR,BR,,,,,,,,
-772,0x80000304,,,,,,,,,,
-773,0x80000305,CSB,CosmoBliss,,,,,,,,
-774,0x80000306,,,,,,,,,,
-775,0x80000307,PLSR,Pulsar Coin,,,,,,,,
-776,0x80000308,KEY,Keymaker Coin,,,,,,,,
-777,0x80000309,BTW,Bitcoin World,,,,,,,,
-778,0x8000030a,,,,,,,,,,
-779,0x8000030b,,,,,,,,,,
-780,0x8000030c,PLCUC,PLC Ultima Classic,,,,,,,,
-781,0x8000030d,PLCUX,PLC Ultima X,,,,,,,,
-782,0x8000030e,PLCU,PLC Ultima,,,,,,,,
-783,0x8000030f,SMARTBC,SMART Blockchain,,,,,,,,
-784,0x80000310,SUI,Sui,,,,,,,,
-785,0x80000311,,,,,,,,,,
-786,0x80000312,UIDD,UIDD,,,,,,,,
-787,0x80000313,ACA,Acala,,,,,,,,
-788,0x80000314,BNC,Bifrost,,,,,,,,
-789,0x80000315,TAU,Lamden,,,,,,,,
-790,0x80000316,,,,,,,,,,
-791,0x80000317,,,,,,,,,,
-792,0x80000318,,,,,,,,,,
-793,0x80000319,,,,,,,,,,
-794,0x8000031a,INTR,Interlay,,,,,,,,
-795,0x8000031b,KINT,Kintsugi,,,,,,,,
-796,0x8000031c,,,,,,,,,,
-797,0x8000031d,,,,,,,,,,
-798,0x8000031e,,,,,,,,,,
-799,0x8000031f,PDEX,Polkadex,,,,,,,,
-800,0x80000320,BEET,Beetle Coin,,0x0488ADE4,0x0488B21E,0x1A,0x55,0x99,,
-801,0x80000321,DST,DSTRA,,,,,,,,
-802,0x80000322,CY,Cyberyen,,,,,,,,
-803,0x80000323,,,,,,,,,,
-804,0x80000324,ZKS,zkSync,,,,,,,,
-805,0x80000325,,,,,,,,,,
-806,0x80000326,,,,,,,,,,
-807,0x80000327,,,,,,,,,,
-808,0x80000328,QVT,Qvolta,,,,,,,,
-809,0x80000329,SDN,Shiden Network,,,,,,,,
-810,0x8000032a,ASTR,Astar Network,,,,,,,,
-811,0x8000032b,---,reserved,,,,,,,,
-812,0x8000032c,,,,,,,,,,
-813,0x8000032d,MEER,Qitmeer,,,,,,,,
-814,0x8000032e,,,,,,,,,,
-815,0x8000032f,,,,,,,,,,
-816,0x80000330,FSC,FSC,,,,,,,,
-817,0x80000331,,,,,,,,,,
-818,0x80000332,VET,VeChain Token,,,,,,,,
-819,0x80000333,REEF,Reef,,,,,,,,
-820,0x80000334,CLO,Callisto,Non-secpk,,,,,,,
-821,0x80000335,,,,,,,,,,
-822,0x80000336,BDB,BigchainDB,,,,,,,,
-823,0x80000337,,,,,,,,,,
-824,0x80000338,RBNT,Redbelly Network,,,,,,,,
-825,0x80000339,,,,,,,,,,
-826,0x8000033a,,,,,,,,,,
-827,0x8000033b,ACE,Endurance,,,,,,,,
-828,0x8000033c,CCN,ComputeCoin,,,,,,,,
-829,0x8000033d,BBA,BBACHAIN,,,,,,,,
-830,0x8000033e,,,,,,,,,,
-831,0x8000033f,CRUZ,cruzbit,,,,,,,,
-832,0x80000340,SAPP,Sapphire,,,,,,,,
-833,0x80000341,777,Jackpot,,,,,,,,
-834,0x80000342,KYAN,Kyanite,,,,,,,,
-835,0x80000343,AZR,Azzure,,,,,,,,
-836,0x80000344,CFL,CryptoFlow,,,,,,,,
-837,0x80000345,DASHD,Dash Diamond,,,,,,,,
-838,0x80000346,TRTT,Trittium,,,,,,,,
-839,0x80000347,UCR,Ultra Clear,,,,,,,,
-840,0x80000348,PNY,Peony,,,,,,,,
-841,0x80000349,BECN,Beacon,,,,,,,,
-842,0x8000034a,MONK,Monk,,,,,,,,
-843,0x8000034b,SAGA,CryptoSaga,,,,,,,,
-844,0x8000034c,SUV,Suvereno,,,,,,,,
-845,0x8000034d,ESK,EskaCoin,,,,,,,,
-846,0x8000034e,OWO,OneWorld Coin,,,,,,,,
-847,0x8000034f,PEPS,PEPS Coin,,,,,,,,
-848,0x80000350,BIR,Birake,,,,,,,,
-849,0x80000351,MOBIC,MobilityCoin,,,,,,,,
-850,0x80000352,FLS,Flits,,,,,,,,
-851,0x80000353,FRECO,Freco,,,,,,,,
-852,0x80000354,DSM,Desmos,,,,,,,,
-853,0x80000355,PRCY,PRCY Coin,,,,,,,,
-854,0x80000356,,,,,,,,,,
-855,0x80000357,,,,,,,,,,
-856,0x80000358,,,,,,,,,,
-857,0x80000359,,,,,,,,,,
-858,0x8000035a,HVH,HAVAH,,,,,,,,
-859,0x8000035b,,,,,,,,,,
-860,0x8000035c,,,,,,,,,,
-861,0x8000035d,,,,,,,,,,
-862,0x8000035e,,,,,,,,,,
-863,0x8000035f,,,,,,,,,,
-864,0x80000360,,,,,,,,,,
-865,0x80000361,,,,,,,,,,
-866,0x80000362,MOB,MobileCoin,,,,,,,,
-867,0x80000363,,,,,,,,,,
-868,0x80000364,IF,Infinitefuture,,,,,,,,
-869,0x80000365,,,,,,,,,,
-870,0x80000366,,,,,,,,,,
-871,0x80000367,,,,,,,,,,
-872,0x80000368,,,,,,,,,,
-873,0x80000369,,,,,,,,,,
-874,0x8000036a,,,,,,,,,,
-875,0x8000036b,,,,,,,,,,
-876,0x8000036c,,,,,,,,,,
-877,0x8000036d,NAM,Namada,,,,,,,,
-878,0x8000036e,SCR,Scorum Network,,,,,,,,
-879,0x8000036f,,,,,,,,,,
-880,0x80000370,LUM,Lum Network,,,,,,,,
-881,0x80000371,,,,,,,,,,
-882,0x80000372,,,,,,,,,,
-883,0x80000373,ZBC,ZooBC,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,Funny address
-884,0x80000374,,,,,,,,,,
-885,0x80000375,,,,,,,,,,
-886,0x80000376,ADF,AD Token,,,,,,,,
-887,0x80000377,,,,,,,,,,
-888,0x80000378,NEO,NEO,,,,,,,,
-889,0x80000379,TOMO,TOMO,,,,,,,,
-890,0x8000037a,XSEL,Seln,,,,,,,,
-891,0x8000037b,,,,,,,,,,
-892,0x8000037c,,,,,,,,,,
-893,0x8000037d,,,,,,,,,,
-894,0x8000037e,,,,,,,,,,
-895,0x8000037f,,,,,,,,,,
-896,0x80000380,LKSC,LKSCoin,,,,,,,,
-897,0x80000381,,,,,,,,,,
-898,0x80000382,AS,Assetchain,,,,,,,,
-899,0x80000383,XEC,eCash,,,,,,,,
-900,0x80000384,LMO,Lumeneo,,,,,,,,
-901,0x80000385,NXT,NxtMeta,,,,,,,,
-902,0x80000386,,,,,,,,,,
-903,0x80000387,,,,,,,,,,
-904,0x80000388,HNT,Helium,,,,,,,,
-905,0x80000389,,,,,,,,,,
-906,0x8000038a,,,,,,,,,,
-907,0x8000038b,FIS,StaFi,,,,,,,,
-908,0x8000038c,,,,,,,,,,
-909,0x8000038d,SGE,Saage,,,,,,,,
-910,0x8000038e,,,,,,,,,,
-911,0x8000038f,GERT,Gert,,,,,,,,
-912,0x80000390,,,,,,,,,,
-913,0x80000391,VARA,Vara Network,,,,,,,,
-914,0x80000392,,,,,,,,,,
-915,0x80000393,,,,,,,,,,
-916,0x80000394,META,Metadium,,,,,,,,
-917,0x80000395,FRA,Findora,,,,,,,,
-918,0x80000396,,,,,,,,,,
-919,0x80000397,CCD,Concordium,,,,,,,,
-920,0x80000398,,,,,,,,,,
-921,0x80000399,AVN,Avian Network,,,,,,,,
-922,0x8000039a,,,,,,,,,,
-923,0x8000039b,,,,,,,,,,
-924,0x8000039c,,,,,,,,,,
-925,0x8000039d,DIP,Dipper Network,,,,,,,,
-926,0x8000039e,,,,,,,,,,
-927,0x8000039f,,,,,,,,,,
-928,0x800003a0,GHM,HermitMatrixNetwork,,,,,,,,
-929,0x800003a1,,,,,,,,,,
-930,0x800003a2,,,,,,,,,,
-931,0x800003a3,RUNE,THORChain,,,,,,,,
-932,0x800003a4,,,,,,,,,,
-933,0x800003a5,,,,,,,,,,
-934,0x800003a6,,,,,,,,,,
-935,0x800003a7,,,,,,,,,,
-936,0x800003a8,,,,,,,,,,
-937,0x800003a9,,,,,,,,,,
-938,0x800003aa,,,,,,,,,,
-939,0x800003ab,,,,,,,,,,
-940,0x800003ac,,,,,,,,,,
-941,0x800003ad,---,reserved,,,,,,,,
-942,0x800003ae,,,,,,,,,,
-943,0x800003af,,,,,,,,,,
-944,0x800003b0,,,,,,,,,,
-945,0x800003b1,UNLOCK,Jasiri protocol,,,,,,,,
-946,0x800003b2,,,,,,,,,,
-947,0x800003b3,,,,,,,,,,
-948,0x800003b4,,,,,,,,,,
-949,0x800003b5,,,,,,,,,,
-950,0x800003b6,,,,,,,,,,
-951,0x800003b7,,,,,,,,,,
-952,0x800003b8,,,,,,,,,,
-953,0x800003b9,,,,,,,,,,
-954,0x800003ba,,,,,,,,,,
-955,0x800003bb,LTP,LifetionCoin,,,,,,,,
-956,0x800003bc,,,,,,,,,,
-957,0x800003bd,,,,,,,,,,
-958,0x800003be,KSOC,KickSoccer,,,,,,,,
-959,0x800003bf,,,,,,,,,,
-960,0x800003c0,VKAX,Vkax,,,,,,,,
-961,0x800003c1,,,,,,,,,,
-962,0x800003c2,,,,,,,,,,
-963,0x800003c3,,,,,,,,,,
-964,0x800003c4,,,,,,,,,,
-965,0x800003c5,,,,,,,,,,
-966,0x800003c6,MATIC,Matic,,,,,,,TRUE,
-967,0x800003c7,,,,,,,,,,
-968,0x800003c8,UNW,UNW,,,,,,,,
-969,0x800003c9,,,,,,,,,,
-970,0x800003ca,TWINS,TWINS,,0x0221312B,0x022D2533,0x49,0x53,0x42,,
-971,0x800003cb,,,,,,,,,,
-972,0x800003cc,,,,,,,,,,
-973,0x800003cd,,,,,,,,,,
-974,0x800003ce,,,,,,,,,,
-975,0x800003cf,,,,,,,,,,
-976,0x800003d0,,,,,,,,,,
-977,0x800003d1,TLOS,Telos,,,,,,,,
-978,0x800003d2,,,,,,,,,,
-979,0x800003d3,,,,,,,,,,
-980,0x800003d4,,,,,,,,,,
-981,0x800003d5,TAFECO,Taf ECO Chain,,,,,,,,
-982,0x800003d6,,,,,,,,,,
-983,0x800003d7,,,,,,,,,,
-984,0x800003d8,,,,,,,,,,
-985,0x800003d9,AU,Autonomy,,,,,,,,
-986,0x800003da,,,,,,,,,,
-987,0x800003db,VCG,VipCoin,,,,,,,,
-988,0x800003dc,XAZAB,Xazab core,,,,,,,,
-989,0x800003dd,AIOZ,AIOZ,,,,,,,,
-990,0x800003de,CORE,Coreum,,,,,,,,
-991,0x800003df,PEC,Phoenix,,,,,,,,
-992,0x800003e0,UNT,Unit,,,,,,,,
-993,0x800003e1,XRB,X Currency,,,,,,,,
-994,0x800003e2,QUAI,Quai Network,,,,,,,,
-995,0x800003e3,CAPS,Ternoa,,,,,,,,
-996,0x800003e4,OKT,OKChain Token,,,,,,,,
-997,0x800003e5,SUM,Solidum,,,,,,,,
-998,0x800003e6,LBTC,Lightning Bitcoin,,,,,,,,
-999,0x800003e7,BCD,Bitcoin Diamond,secp256k1,,,,,,,
-1000,0x800003e8,BTN,Bitcoin New,secp256k1,,,,,,,
-1001,0x800003e9,TT,ThunderCore,,,,,,,,
-1002,0x800003ea,BKT,BanKitt,,,,,,,,
-1003,0x800003eb,NODL,Nodle,,,,,,,,
-1004,0x800003ec,PCOIN,PCOIN,,,,,,,,
-1005,0x800003ed,TAO,Bittensor,,,,,,,,
-1006,0x800003ee,HSK,HashKey Chain,,,,,,,,
-1007,0x800003ef,FTM,Fantom,,,,,,,TRUE,
-1008,0x800003f0,RPG,RPG,,,,,,,,
-1009,0x800003f1,LAKE,iconLake,,,,,,,,
-1010,0x800003f2,HT,Huobi ECO Chain,,,,,,,,
-1011,0x800003f3,ELV,Eluvio,,,,,,,,
-1012,0x800003f4,JOC,Japan Open Chain,,,,,,,,
-1013,0x800003f5,BIC,Beincrypto,,,,,,,,
-1016,0x800003f8,---,reserved,,,,,,,,
-1020,0x800003fc,EVC,Evrice,,,,,,,,
-1022,0x800003fe,XRD,Radix DLT,,,,,,,,
-1023,0x800003ff,ONE,HARMONY-ONE (Legacy),,,,,,,TRUE,Maybe not correct
-1024,0x80000400,ONT,Ontology,,,,,,,,
-1025,0x80000401,CZZ,Classzz,,,,,,,,
-1026,0x80000402,KEX,Kira Exchange Token,,,,,,,,
-1027,0x80000403,MCM,Mochimo,,,,,,,,
-1028,0x80000404,PLS,Pulse Coin,,,,,,,,
-1032,0x80000408,BTCR,BTCR,,,,,,,,
-1042,0x80000412,MFID,Moonfish ID,,,,,,,,
-1111,0x80000457,BBC,Big Bitcoin,,,,,,,,
-1116,0x8000045c,CORE,Core,,,,,,,,
-1120,0x80000460,RISE,RISE,,,,,,,,
-1122,0x80000462,CMT,CyberMiles Token,,,,,,,,
-1128,0x80000468,ETSC,Ethereum Social,,,,,,,,
-1129,0x80000469,DFI,DeFiChain,,,,,,,,
-1130,0x8000046a,DFI,DeFiChain EVM Network,,,,,,,,
-1137,0x80000471,$DAG,Constellation Labs,,,,,,,,
-1145,0x80000479,CDY,Bitcoin Candy,,,,,,,,
-1155,0x80000483,ENJ,Enjin Coin,,,,,,,,
-1170,0x80000492,HOO,Hoo Smart Chain,,,,,,,,
-1234,0x800004d2,ALPH,Alephium,,,,,,,,
-1236,0x800004d4,,Masca,,,,,,,,
-1237,0x800004d5,NOSTR,Nostr,,,,,,,,
-1280,0x80000500,,Kudos Setler,,,,,,,,
-1284,0x80000504,GLMR,Moonbeam,,,,,,,TRUE,
-1285,0x80000505,MOVR,Moonriver,,,,,,,TRUE,
-1298,0x80000512,WPC,Wpc,,,,,,,,
-1308,0x8000051c,WEI,WEI,,,,,,,,
-1337,0x80000539,DFC,Defcoin,,0x0488ADE4,0x0488B21E,0x1e,0x05,0x9e,,
-1348,0x80000544,ISLM,IslamicCoin,,,,,,,,
-1397,0x80000575,HYC,Hycon,,,,,,,,
-1410,0x80000582,TENTSLP,TENT Simple Ledger Protocol,,,,,,,,
-1510,0x800005e6,XSC,XT Smart Chain,,,,,,,,
-1512,0x800005e8,AAC,Double-A Chain,,,,,,,,
-1524,0x800005f4,TLR,Taler,,,,,,,,
-1533,0x800005fd,BEAM,Beam,,,,,,,,
-1551,0x8000060f,SDK,Sovereign SDK,,,,,,,,
-1555,0x80000613,APC,Apc Chain,,,,,,,,
-1616,0x80000650,ELF,AELF,,,,,,,,
-1618,0x80000652,AUDL,AUDL,,,,,,,,
-1620,0x80000654,ATH,Atheios,,,,,,,,
-1627,0x8000065b,LUME,Lume Web,,,,,,,,
-1642,0x8000066a,NEW,Newton,,,,,,,,
-1657,0x80000679,BTA,Btachain,,,,,,,,
-1668,0x80000684,NEOX,Neoxa,,,,,,,,
-1669,0x80000685,MEWC,Meowcoin,,,,,,,,
-1688,0x80000698,BCX,BitcoinX,,,,,,,,
-1729,0x800006c1,XTZ,Tezos,,,,,,,,
-1776,0x800006f0,LBTC,Liquid BTC,,,,,,,,
-1777,0x800006f1,BBP,Biblepay,,,,,,,,
-1784,0x800006f8,JPYS,JPY Stablecoin,,,,,,,,
-1789,0x800006fd,VEGA,Vega Protocol,,,,,,,,
-1815,0x80000717,ADA,Cardano,,,,,,,,
-1818,0x8000071a,CUBE,Cube Chain Native Token,,,,,,,,
-1856,0x80000743,TES,Teslacoin,,,,,,,,
-1888,0x80000760,ZTX,Zetrix,,,,,,,,
-1899,0x8000076b,XEC,eCash token,,,,,,,,
-1901,0x8000076d,CLC,Classica,,,,,,,,
-1907,0x80000773,BITCI,Bitcicoin,,,,,,,,
-1919,0x8000077f,VIPS,VIPSTARCOIN,,,,,,,,
-1926,0x80000786,CITY,City Coin,,0x0488ADE4,0x0488B21E,0x1c,0x58,0xed,,
-1955,0x800007a3,XX,xx coin,,,,,,,,
-1977,0x800007b9,XMX,Xuma,,,,,,,,
-1984,0x800007c0,TRTL,TurtleCoin,,,,,,,,
-1985,0x800007c1,SLRT,Solarti Chain,,,,,,,,
-1986,0x800007c2,QTH,Qing Tong Horizon,,,,,,,,
-1987,0x800007c3,EGEM,EtherGem,,,,,,,,
-1988,0x800007c4,MIRA,Mira Chain,,,,,,,,
-1989,0x800007c5,HODL,HOdlcoin,,,,,,,,
-1990,0x800007c6,PHL,Placeholders,,,,,,,,
-1991,0x800007c7,SC,Sia,,,,,,,,
-1996,0x800007cc,MYT,Mineyourtime,,,,,,,,
-1997,0x800007cd,POLIS,Polis,,,,,,,,
-1998,0x800007ce,XMCC,Monoeci,,,,,,,,
-1999,0x800007cf,COLX,ColossusXT,,,,,,,,
-2000,0x800007d0,GIN,GinCoin,,,,,,,,
-2001,0x800007d1,MNP,MNPCoin,,,,,,,,
-2002,0x800007d2,MLN,Miraland,,,,,,,,
-2017,0x800007e1,KIN,Kin,,,,,,,,
-2018,0x800007e2,EOSC,EOSClassic,,,,,,,,
-2019,0x800007e3,GBT,GoldBean Token,,,,,,,,
-2020,0x800007e4,PKC,PKC,,,,,,,,
-2021,0x800007e5,SKT,Sukhavati,,,,,,,,
-2022,0x800007e6,XHT,Xinghuo Token,,,,,,,,
-2023,0x800007e7,COC,Chat On Chain,,,,,,,,
-2024,0x800007e8,USBC,Universal Ledger USBC,,,,,,,,
-2046,0x800007fe,ANY,Any,,,,,,,,
-2048,0x80000800,MCASH,MCashChain,,,,,,,,
-2049,0x80000801,TRUE,TrueChain,,,,,,,,
-2050,0x80000802,MOVO,Movo Smart Chain,,,,,,,,
-2086,0x80000826,KILT,KILT Spiritnet,,,,,,,,
-2109,0x8000083d,SAMA,Exosama Network,,,,,,,,
-2112,0x80000840,IoTE,IoTE,,,,,,,,
-2125,0x8000084d,BAY,BitBay,,,,,,,,
-2137,0x80000859,XRG,Ergon,,,,,,,,
-2182,0x80000888,CHZ,Chiliz,,,,,,,,
-2199,0x80000897,SAMA,Moonsama Network,,,,,,,,
-2221,0x800008ad,ASK,ASK,,,,,,,,
-2222,0x800008ae,CWEB,Coinweb,,,,,,,,
-2285,0x800008ed,QIYI,Qiyi Chain,,,,,,,,
-2301,0x800008fd,QTUM,QTUM,,0x0488ADE4,0x0488B21E,0x3A,0x32,0x80,,
-2302,0x800008fe,ETP,Metaverse,,,,,,,,
-2303,0x800008ff,GXC,GXChain,,,,,,,,
-2304,0x80000900,CRP,CranePay,,0x0488ADE4,0x0488B21E,0x1C,0x0A,0x7B,,Maybe not correct
-2305,0x80000901,ELA,Elastos,,0x0488ADE4,0x0488B21E,0x21,0xc4,0xef ,,Maybe not correct
-2338,0x80000922,SNOW,Snowblossom,,,,,,,,
-2365,0x8000093d,XIN,Mixin,,,,,,,,
-2500,0x800009c4,NEXI,Nexi,,,,,,,,
-2570,0x80000a0a,AOA,Aurora,,,,,,,,
-2718,0x80000a9e,NAS,Nebulas,,,,,,,,
-2894,0x80000b4e,REOSC,REOSC Ecosystem,,,,,,,,
-2941,0x80000b7d,BND,Blocknode,,0x0488ADE4,0x0488B21E,0x19,0x3F,0x4b,,
-3000,0x80000bb8,SM,Stealth Message,,,,,,,,
-3003,0x80000bbb,LUX,LUX,,,,,,,,
-3030,0x80000bd6,HBAR,Hedera HBAR,,,,,,,,
-3077,0x80000c05,COS,Contentos,,,,,,,,
-3276,0x80000ccc,CCC,CodeChain,,,,,,,,
-3333,0x80000d05,SXP,Solar,,,,,,,,
-3377,0x80000d31,ROI,ROIcoin,,,,,,,,
-3381,0x80000d35,DYN,Dynamic,,,,,,,,
-3383,0x80000d37,SEQ,Sequence,,,,,,,,
-3501,0x80000dad,JFIN,JFIN Coin,,,,,,,,
-3552,0x80000de0,DEO,Destocoin,,,,,,,,
-3564,0x80000dec,DST,DeStream,,,,,,,,
-3601,0x80000e11,CY,Cybits,,,,,,,,
-3757,0x80000ead,MPC,Partisia Blockchain,,,,,,,,
-4040,0x80000fc8,FC8,FCH Network,,,,,,,,
-4096,0x80001000,YEE,YeeCo,,,,,,,,
-4218,0x8000107a,IOTA,IOTA,,,,,,,,
-4219,0x8000107b,SMR,Shimmer,,,,,,,,
-4242,0x80001092,AXE,Axe,,0x0488ADE4,0x0488B21E,0x37,0x10,0xcc,,maybe not correct
-4343,0x800010f7,XYM,Symbol,,,,,,,,
-4444,0x8000115c,C4E,Chain4Energy,,,,,,,,
-4919,0x80001337,XVM,Venidium,,,,,,,,
-4999,0x80001387,BXN,BlackFort Exchange Network,,,,,,,,
-5000,0x80001388,V12,Vet The Vote,,,,,,,,
-5006,0x8000138e,SBC,Senior Blockchain,,,,,,,,
-5248,0x80001480,FIC,FIC,,,,,,,,
-5353,0x800014e9,HNS,Handshake,,,,,,,,
-5404,0x8000151c,ISK,ISKRA,,,,,,,,
-5467,0x8000155b,ALTME,ALTME,,,,,,,,
-5555,0x800015b3,FUND,Unification,,,,,,,,
-5757,0x8000167d,STX,Stacks,,,,,,,,
-5895,0x80001707,VOW,VowChain VOW,,,,,,,,
-5920,0x80001720,SLU,SILUBIUM,,,,,,,,
-5995,0x8000176B,DUSK,Dusk Network,,,,,,,,
-6060,0x800017ac,GO,GoChain GO,,,,,,,,
-6144,0x80001800,DTS,Datos,,,,,,,,
-6174,0x8000181e,MOI,My Own Internet,,,,,,,,
-6278,0x80001886,STEAMX,Rails Network Mainnet,,,,,,,,
-6532,0x80001984,UM,Penumbra,,,,,,,,
-6599,0x800019c7,RSC,Royal Sports City,,,,,,,,
-6666,0x80001a0a,BPA,Bitcoin Pizza,,,,,,,,
-6688,0x80001a20,SAFE,SAFE,,,,,,,,
-6779,0x80001a7b,COTI,COTI,,,,,,,,
-6969,0x80001b39,ROGER,TheHolyrogerCoin,,,,,,,,
-7000,0x80001b58,ZETA,ZetaChain,,,,,,,,
-7027,0x80001b73,ELLA,Ella the heart,,,,,,,,
-7028,0x80001b74,AA,Arthera,,,,,,,,
-7091,0x80001bb3,TOPL,Topl,,,,,,,,
-7331,0x80001ca3,KLY,KLYNTAR,,,,,,,,
-7341,0x80001cad,SHFT,Shyft,,,,,,,,
-7518,0x80001d5e,MEV,MEVerse,,,,,,,,
-7576,0x80001d98,ADIL,ADIL Chain,,,,,,,,
-7777,0x80001e61,BTV,Bitvote,,,,,,,,
-7779,0x80001e63,CPV,Compverse,,,,,,,,
-8000,0x80001f40,SKY,Skycoin,,,,,,,,
-8080,0x80001f90,DSRV,DSRV,,,,,,,,
-8181,0x80001ff5,BOC,BeOne Chain,,,,,,,,
-8192,0x80002000,PAC,pacprotocol,,,,,,,,
-8217,0x80002019,KLAY,KLAY,,,,,,,,
-8339,0x80002093,BTQ,BitcoinQuark,,,,,,,,
-8444,0x800020fc,XCH,Chia,,,,,,,,
-8520,0x80002148,---,reserved,,,,,,,,
-8680,0x800021e8,PLMNT,Planetmint,,,,,,,,
-8866,0x800022a2,GGX,Golden Gate,,,,,,,,
-8886,0x800022b6,GGXT,Golden Gate Sydney,,,,,,,,
-8888,0x800022b8,SBTC,Super Bitcoin,,,,,,,,
-8964,0x80002304,NULS,NULS,,,,,,,,
-8997,0x80002325,BBC,Babacoin,,,,,,,,
-8998,0x80002326,JGC,JagoanCoin,,,,,,,,
-8999,0x80002327,BTP,Bitcoin Pay,,,,,,,,
-9000,0x80002328,AVAX,Avalanche,,,,,,,,
-9001,0x80002329,ARB1,Arbitrum,,,,,,,TRUE,
-9002,0x8000232a,BOBA,Boba,,,,,,,,
-9003,0x8000232b,LOOP,Loopring,,,,,,,,
-9004,0x8000232c,STRK,StarkNet,,,,,,,,
-9005,0x8000232d,AVAXC,Avalanche C-Chain,,,,,,,TRUE,
-9006,0x8000232e,BSC,Binance Smart Chain,,,,,,,TRUE,
-9797,0x80002645,NRG,Energi,,0xD7DC6E9F,0x03B8C856,0x21,0x35,0x6a,,
-9888,0x800026a0,BTF,Bitcoin Faith,,,,,,,,
-9999,0x8000270f,GOD,Bitcoin God,,,,,,,,
-10000,0x80002710,FO,FIBOS,,,,,,,,
-10111,0x8000277f,DHP,dHealth,,,,,,,,
-10226,0x800027f2,RTM,Raptoreum,,,,,,,,
-10242,0x80002802,AA,Arthera,,,,,,,,
-10291,0x80002833,XRC,XRhodium,secp256k1,,,,,,,
-10507,0x8000290b,NUM,Numbers Protocol,,,,,,,,
-10605,0x8000296d,XPI,Lotus,,,,,,,,
-11111,0x80002b67,ESS,Essentia One,,,,,,,,
-11742,0x80002dde,VARCH,InvArch,,,,,,,,
-11743,0x80002ddf,TNKR,Tinkernet,,,,,,,,
-12345,0x80003039,IPOS,IPOS,,,,,,,,
-12586,0x8000312a,MINA,Mina,,,,,,,,
-13107,0x80003333,BTY,BitYuan,,,,,,,,
-13108,0x80003334,YCC,Yuan Chain Coin,,,,,,,,
-14001,0x800036b1,WAX,Worldwide Asset Exchange,,,,,,,,
-15845,0x80003de5,SDGO,SanDeGo,,,,,,,,
-16181,0x80003f35,XTX,Totem Live Network,,,,,,,,
-16754,0x80004172,ARDR,Ardor,,,,,,,,
-18000,0x80004650,MTR,Meter,,,,,,,,
-19165,0x80004add,SAFE,Safecoin,,0x0488ADE4,0x0488B21E,0x3d,0x56,0xbd,,
-19167,0x80004adf,FLUX,Flux,,,,,,,,
-19169,0x80004ae1,RITO,Ritocoin,,0x0488ADE4,0x0488B21E,0x19,0x69,0x8b,,
-19788,0x80004d4c,ML,Mintlayer,,,,,,,,
-20036,0x80004e44,XND,ndau,,,,,,,,
-21004,0x8000520c,C4EI,c4ei,,,,,,,,
-21888,0x80005580,PAC,Pactus,,,,,,,,
-22504,0x800057e8,PWR,PWRcoin,,,,,,,,
-23000,0x800059d8,EPIC,Epic Cash,,,,,,,,
-25252,0x800062a4,BELL,Bellcoin,,,,,,,,
-25718,0x80006476,CHX,Own,,,,,,,,
-29223,0x80007227,NEXA,Nexa,,,,,,,,
-30001,0x80007531,---,reserved,,,,,,,,
-31102,0x8000797e,ESN,EtherSocial Network,,,,,,,,
-31337,0x80007a69,,ThePower,,,,,,,,
-33416,0x80008288,TEO,Trust Eth reOrigin,,,,,,,,
-33878,0x80008456,BTCS,Bitcoin Stake,,,,,,,,
-34952,0x80008888,BTT,ByteTrade,,,,,,,,
-37992,0x80009468,FXTC,FixedTradeCoin,,,,,,,,
-39321,0x80009999,AMA,Amabig,,,,,,,,
-42069,0x8000a455,FACT,FACT0RN,,,,,,,,
-43028,0x8000a814,AXIV,AXIV,,,,,,,,
-47803,0x8000babb,BAX,BAX,,,,,,,,
-49262,0x8000c06e,EVE,evan,,,,,,,,
-49344,0x8000c0c0,STASH,STASH,,,,,,,,
-52752,0x8000ce10,CELO,Celo,,,,,,,,
-61616,0x8000f0b0,TH,TianHe,,,,,,,,
-65536,0x80010000,KETH,Krypton World,,,,,,,,
-69420,0x80010f2c,GRLC,Garlicoin,,,,,,,,
-70007,0x80011177,GWL,Gewel,,,,,,,,
-77777,0x80012fd1,ZYN,Wethio,,,,,,,,
-88888,0x80015b38,RYO,c0ban,,0x0488ADE4,0x0488B21E,0x12,0x1c ,0x88,,
-99999,0x8001869f,WICC,Waykichain,,,,,,,,
-100500,0x80018894,HOME,HomeCoin,,,,,,,,
-101010,0x80018a92,STC,Starcoin,,,,,,,,
-105105,0x80019a91,STRAX,Strax,,,,,,,,
-111111,0x8001b207,KAS,Kaspa,,,,,,,,
-161803,0x8002780b,APTA,Bloqs4Good,,,,,,,,
-200625,0x80030fb1,AKA,Akroma,,,,,,,,
-200665,0x80011000,GENOM,GENOM,,,,,,,,
-224433,0x80036cb1,CONET,CONET Holesky Network,,,,,,,,
-246529,0x8003c301,ATS,ARTIS sigma1,,,,,,,,
-261131,0x8003fc0b,ZAMA,Zama,,,,,,,,
-314159,0x8004cb2f,PI,Pi Network,,,,,,,,
-333332,0x80051614,VALUE,Value Chain,,,,,,,,
-333333,0x80051615,3333,Pi Value Consensus,,,,,,,,
-424242,0x80067932,X42,x42,,0x0488ADE4,0x0488B21E,0x4b,0x7d,0xcb,,
-534352,0x80082750,SCR,Scroll,,,,,,,,
-666666,0x800a2c2a,VITE,Vite,,,,,,,,
-888888,0x800d9038,SEA,Second Exchange Alliance,,,,,,,,
-999999,0x800c9061,WTC,WaltonChain,,,,,,,,
-1048576,0x80100000,AMAX,Armonia Meta Chain,,,,,,,,
-1171337,0x8011df89,ILT,iOlite,,,,,,,,
-1313114,0x8014095a,ETHO,Etho Protocol,,,,,,,,
-1313500,0x80140adc,XERO,Xerom,,,,,,,,
-1712144,0x801a2010,LAX,LAPO,,,,,,,,
-3924011,0x803be02b,EPK,EPIK Protocol,,,,,,,,
-4741444,0x80485944,HYD,Hydra Token,,,,,,,,
-5249353,0x80501949,BCO,BitcoinOre,,,,,,,,
-5249354,0x8050194a,BHD,BitcoinHD,,,,,,,,
-5264462,0x8050544e,PTN,PalletOne,,,,,,,,
-5655640,0x80564c58,VLX,Velas,,,,,,,,
-5718350,0x8057414e,WAN,Wanchain,,,,,,,,
-5741564,0x80579bfc,WAVES,Waves,,,,,,,,
-5741565,0x80579bfd,WEST,Waves Enterprise,,,,,,,,
-6382179,0x80616263,ABC,Abcmint,,,,,,,,
-6517357,0x8063726d,CRM,Creamcoin,,,,,,,,
-7171666,0x806d6e52,BROCK,Bitrock,,,,,,,,
-7562605,0x8073656d,SEM,Semux,,,,,,,,
-7567736,0x80737978,ION,ION,,,,,,,,
-7777777,0x8076adf1,FCT,FirmaChain,,,,,,,,
-7825266,0x80776772,WGR,Wagerr,,0x0221312B,0x022D2533,0x49,0x3f,0xc7,,
-7825267,0x80776773,OBSR,OBServer,,,,,,,,
-8163271,0x807c8fc7,AFS,ANFS,,,,,,,,
-11259375,0x80abcdef,LBR,0L,,,,,,,,
-15118976,0x80e6b280,XDS,XDS,,,,,,,,
-61717561,0x83adbc39,AQUA,Aquachain,,,,,,,,
-88888888,0x854c5638,HATCH,Hatch,,,,,,,,
-91927009,0x857ab1e1,kUSD,kUSD,,,,,,,,
-99999996,0x85f5e0fc,GENS,GENS,,,,,,,,
-99999997,0x85f5e0fd,EQ,EQ,,,,,,,,
-99999998,0x85f5e0fe,FLUID,Fluid Chains,,,,,,,,
-99999999,0x85f5e0ff,QKC,QuarkChain,,,,,,,,
-608589380,0xa4465644,FVDC,ForumCoin,,,,,,,,
-1179993420,0xc655454c,Fuel,Fuel,,,,,,,,
+index,path,symbol,coin_name,UCID,key_derivation,xprv_priv_header,xprv_pub_header,pub_key_hash,script_hash,wif,main_version_byte,test_version_bytes,evm,comment,status,level
+0,0x80000000,BTC,Bitcoin,,secp256k1,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,0x80,0xEF,FALSE,,active,1
+1,0x80000001,TEST,Testnet (all coins),,,,,,,,,,,,active,1
+2,0x80000002,LTC,Litecoin,2,secp256k1,0x019D9CFE,0x019DA462,0x30,0x32,0xb0,0xB0,0xEF,FALSE,,active,1
+3,0x80000003,DOGE,Dogecoin,74,secp256k1,0x02FAC398,0x02FACAFD,0x1e,0x16,0x9e,0x9E,0xF1,FALSE,,active,1
+4,0x80000004,RDD,Reddcoin,118,secp256k1,0x0488ADE4,0x0488B21E,0x3d,0x05,0xbd,0xB4,0xEF,FALSE,,zombie,1
+5,0x80000005,DASH,Dash,131,secp256k1,0x0488ADE4,0x0488B21E,0x4c,0x10,0xcc,0xCC,0xEF,FALSE,,active,1
+6,0x80000006,PPC,Peercoin,5,secp256k1,0x0488ADE4,0x0488B21E,0x37,0x75,0xb7,0xE0,0xEF,FALSE,,zombie,1
+7,0x80000007,NMC,Namecoin,3,secp256k1,0x0488ADE4,0x0488B21E,0x34,0x0D,0xb4,0xB9,0xEF,FALSE,,zombie,1
+8,0x80000008,FTC,Feathercoin,8,secp256k1,0x0488DAEE,0x0488BC26,0x0e,0x05,0x8e,0x8E,0xEF,FALSE,,zombie,1
+9,0x80000009,XCP,Counterparty,132,,,,,,,,,,,zombie,1
+10,0x8000000a,BLK,Blackcoin,170,secp256k1,0x02CFBF60,0x02CFBEDE,0x19,0x55,0x99,0x19,,FALSE,,,1
+11,0x8000000b,NSR,NuShares,,secp256k1,0x0488ADE4,0x0488B21E,0x3f,0x40,0x95,0x1C,,FALSE,,,1
+12,0x8000000c,NBT,NuBits,,secp256k1,0x0488ADE4,0x0488B21E,0x19,0x1a,0x96,0x19,,FALSE,,,1
+13,0x8000000d,MZC,Mazacoin,,secp256k1,0x0488ADE4,0x0488B21E,0x32,0x09,0xe0,0x32,,FALSE,,,1
+14,0x8000000e,VIA,Viacoin,470,secp256k1,0x0488ADE4,0x0488B21E,0x47,0x21,0xc7,0x47,,FALSE,,,1
+15,0x8000000f,XCH,ClearingHouse,,,,,,,,,,,,,1
+16,0x80000010,RBY,Rubycoin,215,secp256k1,0x0488ADE4,0x0488B21E,0x3c,0x55,0xbc,0x3C,,FALSE,,,1
+17,0x80000011,GRS,Groestlcoin,258,secp256k1,0x0488ADE4,0x0488B21E,0x24,0x05,0x80,0x24,,FALSE,,,1
+18,0x80000012,DGC,Digitalcoin,18,secp256k1,0x0488ADE4,0x9E0488B2,0x1e,0x05,0x9e,0x1E,,FALSE,,,1
+19,0x80000013,CCN,Cannacoin,,,,,,,,,,,,,1
+20,0x80000014,DGB,DigiByte,109,secp256k1,0x0488ADE4,0x0488B21E,0x1e,0x05,0x80,,,FALSE,,,1
+21,0x80000015,OA,Open Assets,,secp256k1,,,,,,,,,,,1
+22,0x80000016,MONA,Monacoin,213,secp256k1,0x0488ADE4,0x0488B21E,0x32,0x37,0xb0,,,FALSE,,,1
+23,0x80000017,CLAM,Clams,460,secp256k1,0xA8C17826,0xA8C26D64,0x89,0x0D,0x85,,,FALSE,,,1
+24,0x80000018,XPM,Primecoin,42,secp256k1,,,,,,,,FALSE,,,1
+25,0x80000019,NEOS,Neoscoin,,secp256k1,0x0488ADE4,0x0488B21E,0x35,0x05,0xb1,,,FALSE,,,1
+26,0x8000001a,JBS,Jumbucks,,secp256k1,0x037A6460,0x037A689A,0x2b,0x05,0xab,,,FALSE,,dead,1
+27,0x8000001b,ZRC,ziftrCOIN,,,,,,,,,,,,,1
+28,0x8000001c,VTC,Vertcoin,99,secp256k1,0x0488ADE4,0x0488B21E,0x47,0x05,0x80,,,FALSE,,,1
+29,0x8000001d,NXT,NXT,66,,,,,,,,,,,,1
+30,0x8000001e,BURST,Burst,,,,,,,,,,,,,1
+31,0x8000001f,MUE,MonetaryUnit,,,,,,,,,,,,,1
+32,0x80000020,ZOOM,Zoom,,,,,,,,,,,,,1
+33,0x80000021,VASH,Virtual Cash,,,,,,,,,,,,,1
+34,0x80000022,CDN,Canada eCoin,,secp256k1,0x0488ADE4,0x0488B21E,0x1c,0x05,0x9c,,,FALSE,,,1
+35,0x80000023,SDC,ShadowCash,,secp256k1,0xEE8031E8,0xEE80286A,0x3f,0x7d,0xbf,,,FALSE,,,1
+36,0x80000024,PKB,ParkByte,934,,,,,,,,,,,,1
+37,0x80000025,PND,Pandacoin,,,,,,,,,,,,,1
+38,0x80000026,START,StartCOIN,389,,,,,,,,,,,,1
+39,0x80000027,MOIN,MOIN,,,,,,,,,,,,,1
+40,0x80000028,EXP,Expanse,1070,,,,,,,,,,,,1
+41,0x80000029,EMC2,Einsteinium,,,0x0488ADE4,0x0488B21E,0x21,0x05,0xa1,,,FALSE,,,1
+42,0x8000002a,DCR,Decred,1168,,0x02FDA926,0x02FDA4E8,0x073f,0x071a,0x22de,,,FALSE,,,1
+43,0x8000002b,XEM,NEM,873,,,,,,,,,,,,1
+44,0x8000002c,PART,Particl,1826,,0x8F1DAEB8,0x696E82D1,0x38,0x3c,0x6c,,,FALSE,,,1
+45,0x8000002d,ARG,Argentum,,,,,,,,,,,,,1
+46,0x8000002e,LIBERTAS,Libertas Token,,,,,,,,,,,,,1
+47,0x8000002f,POSW,Posw coin,1495,,0x0488ADE4,0x0488B21E,0x37,0x55,0xb7,,,FALSE,,,1
+48,0x80000030,SHR,Shreeji,,,,,,,,,,,,,1
+49,0x80000031,GCR,Global Currency Reserve,,,0x0488ADE4,0x0488B21E,0x26,0x61,0x9a,,,FALSE,,,1
+50,0x80000032,NVC,Novacoin,6,,0x0488ADE4,0x0488B21E,0x08,0x14,0x88,,,FALSE,,,1
+51,0x80000033,AC,Asiacoin,,,0x0488ADE4,0x0488B21E,0x17,0x08,0x97,,,FALSE,,,1
+52,0x80000034,BTCD,BitcoinDark,,,,,,,,,,,,,1
+53,0x80000035,DOPE,Dopecoin,145,,,,,,,,,,,,1
+54,0x80000036,TPC,Templecoin,,,,,,,,,,,,,1
+55,0x80000037,AIB,AIB,,,,,,,,,,,,,1
+56,0x80000038,EDRC,EDRCoin,1216,,0x0488ADE4,0x0488B21E,0x5d,0x1c,0xdd,,,FALSE,,,1
+57,0x80000039,SYS,Syscoin,541,secp256k1,0x0488ADE4,0x0488B21E,0x3f,0x05,0x80,,,FALSE,,,1
+58,0x8000003a,SLR,Solarcoin,,,0x0488ADE4,0x0488B21E,0x12,0x05,0x92,,,FALSE,,,1
+59,0x8000003b,SMLY,Smileycoin,,,0x1E5631BC,0x1E562D9A,0x19,0x05,0x05,,,FALSE,,,1
+60,0x8000003c,ETH,Ethereum,1027,keccak256,0x0488ADE4,0x0488B21E,,,,,,TRUE,,,1
+61,0x8000003d,ETC,Ethereum Classic,1321,keccak256,0x0488ADE4,0x0488B21E,,,,,,TRUE,,,1
+62,0x8000003e,PSB,Pesobit,,,0x0488ADE4,0x0488B21E,0x37,0x55,0xb7,,,,,,1
+63,0x8000003f,LDCN,Landcoin,,,0x0488ADE4,0x0488B21E,0x30,0x7a,0x7a,,,,,,1
+64,0x80000040,OC,Open Chain,,,,,,,,,,,,,1
+65,0x80000041,XBC,Bitcoin Plus,293,,0x0488ADE4,0x0488B21E,0x19,0x08,0x99,,,,,,1
+66,0x80000042,IOP,Internet of People,,,0xAE3416F6,0x2780915F,0x75,0xae,0x31,,,,,,1
+67,0x80000043,NXS,Nexus,,,,,,,,,,,,,1
+68,0x80000044,INSN,InsaneCoin,1678,,0x0488ADE4,0x0488B21E,0x66,0x39,0x37,,,,,,1
+69,0x80000045,OK,OKCash,760,,0x03CC1C73,0x03CC23D7,0x37,0x1c,0x03,,,,,,1
+70,0x80000046,BRIT,BritCoin,,,0x0488ADE4,0x0488B21E,0x19,0x55,0x99,,,,,,1
+71,0x80000047,CMP,Compcoin,,,0x0488ADE4,0x0488B21E,0x1c,0x55,0x9c,,,,,,1
+72,0x80000048,CRW,Crown,720,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,,,,,1
+73,0x80000049,BELA,BelaCoin,,,0x0488ADE4,0x0488B21E,0x19,0x05,0x99,,,,,,1
+74,0x8000004a,ICX,ICON,2099,,,,,,,,,,,,1
+75,0x8000004b,FJC,FujiCoin,,,0x0488ADE4,0x0488B21E,0x24,0x10,0xa4,,,,,,1
+76,0x8000004c,MIX,MIX,,,,,,,,,,,,,1
+77,0x8000004d,XVG,Verge,693,,0x0488ADE4,0x0488B21E,0x1e,0x21,0x9e,,,,,,1
+78,0x8000004e,EFL,Electronic Gulden,,,0x0488ADE4,0x0488B21E,0x30,0x05,0xb0,,,,,,1
+79,0x8000004f,CLUB,ClubCoin,1135,,0x0488ADE4,0x0488B21E,0x1c,0x55,0x99,,,,,,1
+80,0x80000050,RICHX,RichCoin,,,,,,,,,,,,,1
+81,0x80000051,POT,Potcoin,122,,0x0488ADE4,0x0488B21E,0x37,0x05,0xb7,,,,,,1
+82,0x80000052,QRK,Quarkcoin,,,,,,,,,,,,,1
+83,0x80000053,TRC,Terracoin,,,,,,,,,,,,,1
+84,0x80000054,GRC,Gridcoin,,,0x0488ADE4,0x0488B21E,0x3e,0x55,0xbe,,,,,,1
+85,0x80000055,AUR,Auroracoin,148,,0x0488ADE4,0x0488B21E,0x17,0x05,0x97,,,,,,1
+86,0x80000056,IXC,IXCoin,13,,0x0488ADE4,0x0488B21E,0x8a,0x05,0x05,,,,,,1
+87,0x80000057,NLG,Gulden,,,0x0488ADE4,0x0488B21E,0x26,0x62,0x62,,,,Maybe not correct,,1
+88,0x80000058,BITB,Bean Cash,819,,,,,,,,,,,,1
+89,0x80000059,BTA,Bata,945,secp256k1,0xA40B91BD,0xA40C86FA,0x19,0x05,0xa4,,,,,,1
+90,0x8000005a,XMY,Myriadcoin,,,0x0488ADE4,0x0488B21E,0x32,0x09,0xb2,,,,,,1
+91,0x8000005b,BSD,BitSend,,,0x0488ADE4,0x0488B21E,0x66,0x05,0xcc,,,,,,1
+92,0x8000005c,UNO,Unobtanium,67,secp256k1,0x0488ADE4,0x0488B21E,0x82,0x1e,0xe0,,,,,,1
+93,0x8000005d,MTR,MasterTrader,,,,,,,,,,,,,1
+94,0x8000005e,GB,GoldBlocks,1285,,,,,,,,,,,,1
+95,0x8000005f,SHM,Saham,,,,,,,,,,,,,1
+96,0x80000060,CRX,Chronos,,,,,,,,,,,,,1
+97,0x80000061,BIQ,Ubiquoin,,,,,,,,,,,,,1
+98,0x80000062,EVO,Evotion,,,,,,,,,,,,,1
+99,0x80000063,STO,SaveTheOcean,,,,,,,,,,,,,1
+100,0x80000064,BIGUP,BigUp,,,,,,,,,,,,,1
+101,0x80000065,GAME,GameCredits,,,0x0488ADE4,0x0488B21E,0x26,0x05,0xa6,,,,,,1
+102,0x80000066,DLC,Dollarcoins,,,,,,,,,,,,,1
+103,0x80000067,ZYD,Zayedcoin,,,,,,,,,,,,,1
+104,0x80000068,DBIC,Dubaicoin,,,,,,,,,,,,,1
+105,0x80000069,STRAT,Stratis,,,0x0488ADE4,0x0488B21E,0x3f,0x7d,0xbf,,,,,,1
+106,0x8000006a,SH,Shilling,,,,,,,,,,,,,1
+107,0x8000006b,MARS,MarsCoin,,,,,,,,,,,,,1
+108,0x8000006c,UBQ,Ubiq,,,,,,,,,,,,,1
+109,0x8000006d,PTC,Pesetacoin,,,,,,,,,,,,,1
+110,0x8000006e,NRO,Neurocoin,,,0x0488ADE4,0x0488B21E,0x35,0x75,0xb5,,,,,,1
+111,0x8000006f,ARK,ARK,,,,,,,,,,,,,1
+112,0x80000070,USC,UltimateSecureCashMain,,,0xEE8031E8,0xEE80286A,0x44,0x7d,0xbf,,,,,,1
+113,0x80000071,THC,Hempcoin,,,0x0488ADE4,0x0488B21E,0x28,0x08,0xa8,,,,,,1
+114,0x80000072,LINX,Linx,,,0x0488ADE4,0x0488B21E,0x4b,0x05,0xcb,,,,,,1
+115,0x80000073,ECN,Ecoin,,,0x0488ADE4,0x0488B21E,0x5c,0x14,0xdc,,,,,,1
+116,0x80000074,DNR,Denarius,,,0x0488ADE4,0x0488B21E,0x1e,0x5a,0x9e,,,,,,1
+117,0x80000075,PINK,Pinkcoin,,,0x0488ADE4,0x0488B21E,0x03,0x1c,0x83,,,,,,1
+118,0x80000076,ATOM,Cosmos,,,0x0488ADE4,0x0488B21E,,,,,,,,,1
+119,0x80000077,PIVX,Pivx,,,0x0221312B,0x022D2533,0x1e,0x0d,0xd4,,,,,,1
+120,0x80000078,FLASH,Flashcoin,,,0x0488ADE4,0x0488B21E,0x44,0x82,0xc4,,,,,,1
+121,0x80000079,ZEN,Zencash,,,0x0488ADE4,0x0488B21E,0x2089,0x2096,0x80,,,,,,1
+122,0x8000007a,PUT,Putincoin,,,0x0488ADE4,0x0488B21E,0x37,0x14,0xb7,,,,,,1
+123,0x8000007b,ZNY,BitZeny,,,,,,,,,,,,,1
+124,0x8000007c,UNIFY,Unify,,,,,,,,,,,,,1
+125,0x8000007d,XST,StealthCoin,,,,,,,,,,,,,1
+126,0x8000007e,BRK,Breakout Coin,,,,,,,,,,,,,1
+127,0x8000007f,VC,Vcash,,,0x0488ADE4,0x0488B21E,0x47,0x08,0xc7,,,,,,1
+128,0x80000080,XMR,Monero,,,,,,,,,,,,,1
+129,0x80000081,VOX,Voxels,,,,,,,,,,,,,1
+130,0x80000082,NAV,NavCoin,,,0x0488ADE4,0x0488B21E,0x35,0x55,0x96,,,,,,1
+131,0x80000083,FCT,Factom Factoids,,,,,,,,,,,,,1
+132,0x80000084,EC,Factom Entry Credits,,,,,,,,,,,,,1
+133,0x80000085,ZEC,Zcash,,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,,,,,1
+134,0x80000086,LSK,Lisk,,,,,,,,,,,,,1
+135,0x80000087,STEEM,Steem,,,,,,,,,,,,,1
+136,0x80000088,XZC,ZCoin,,,0x0488ADE4,0x0488B21E,0x52,0x07,0xd2,,,,,,1
+137,0x80000089,RBTC,RSK,,,,,,,,,,,,,1
+138,0x8000008a,,Giftblock,,,,,,,,,,,,,1
+139,0x8000008b,RPT,RealPointCoin,,,,,,,,,,,,,1
+140,0x8000008c,LBC,LBRY Credits,,,0x0488ADE4,0x0488B21E,0x55,0x7a,0x1c,,,,,,1
+141,0x8000008d,KMD,Komodo,,,0x0488ADE4,0x0488B21E,0x3c,0x55,0xbc,,,,,,1
+142,0x8000008e,BSQ,bisq Token,,,,,,,,,,,,,1
+143,0x8000008f,RIC,Riecoin,,,,,,,,,,,,,1
+144,0x80000090,XRP,Ripple,,,0x0488ADE4,0x0488B21E,,,,,,,,,1
+145,0x80000091,BCH,Bitcoin Cash,,secp256k1,0x043587CF,0x04358394,0x6f,0xc4,0xef,0x80,,,,,1
+146,0x80000092,NEBL,Neblio,,,0x0488ADE4,0x0488B21E,0x35,0x70,0xb5,,,,,,1
+147,0x80000093,ZCL,ZClassic,,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,,,,,1
+148,0x80000094,XLM,Stellar Lumens,,Non-secpk,,,,,,,,,,,1
+149,0x80000095,NLC2,NoLimitCoin2,,,,,,,,,,,,,1
+150,0x80000096,WHL,WhaleCoin,,,,,,,,,,,,,1
+151,0x80000097,ERC,EuropeCoin,,,0x0488ADE4,0x0488B21E,0x21,0x05,0xa8,,,,,,1
+152,0x80000098,DMD,Diamond,,,0x0488ADE4,0x0488B21E,0x5a,0x08,0xda,,,,,,1
+153,0x80000099,BTM,Bytom,,,,,,,,,,,,,1
+154,0x8000009a,BIO,Biocoin,,,,,,,,,,,,,1
+155,0x8000009b,XWCC,Whitecoin Classic,,,,,,,,,,,,,1
+156,0x8000009c,BTG,Bitcoin Gold,,secp256k1,0x0488ADE4,0x0488B21E,0x26,0x17,0x80,,,,,,1
+157,0x8000009d,BTC2X,Bitcoin 2x,,,,,,,,,,,,,1
+158,0x8000009e,SSN,SuperSkynet,,,,,,,,,,,,,1
+159,0x8000009f,TOA,TOACoin,,,0x0488ADE4,0x0488B21E,0x41,0x17,0xc1,,,,,,1
+160,0x800000a0,BTX,Bitcore,,secp256k1,0x0488ADE4,0x0488B21E,0x03,0x7D,0x80,,,,,,1
+161,0x800000a1,ACC,Adcoin,,,0x0488ADE4,0x0488B21E,0x17,0x05,0xb0,,,,,,1
+162,0x800000a2,BCO,Bridgecoin,,,,,,,,,,,,,1
+163,0x800000a3,ELLA,Ellaism,,,,,,,,,,,,,1
+164,0x800000a4,PIRL,Pirl,,,,,,,,,,,,,1
+165,0x800000a5,XNO,Nano,,,,,,,,,,,,,1
+166,0x800000a6,VIVO,Vivo,,,0x0488ADE4,0x0488B21E,0x46,0x0a,0xc6,,,,,,1
+167,0x800000a7,FRST,Firstcoin,,,0x0488ADE4,0x0488B21E,0x23,0x05,0xa3,,,,,,1
+168,0x800000a8,HNC,Helleniccoin,,,0x0488ADE4,0x0488B21E,0x30,0x05,0xb0,,,,,,1
+169,0x800000a9,BUZZ,BUZZ,,,,,,,,,,,,,1
+170,0x800000aa,MBRS,Ember,,,,,,,,,,,,,1
+171,0x800000ab,HC,Hcash,,,,,,,,,,,,,1
+172,0x800000ac,HTML,HTMLCOIN,,,,,,,,,,,,,1
+173,0x800000ad,ODN,Obsidian,,,,,,,,,,,,,1
+174,0x800000ae,ONX,OnixCoin,,,,,,,,,,,,,1
+175,0x800000af,RVN,Ravencoin,,,0x0488ADE4,0x0488B21E,0x3c,0x7a,0x80,,,,,,1
+176,0x800000b0,GBX,GoByte,,,0x0488ADE4,0x0488B21E,0x26,0x0a,0xc6,,,,,,1
+177,0x800000b1,BTCZ,BitcoinZ,,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,,,,,1
+178,0x800000b2,POA,Poa,,,,,,,,,,,,,1
+179,0x800000b3,NYC,NewYorkCoin,,,0x0488ADE4,0x0488B21E,0x3c,0x16,0xbc,,,,,,1
+180,0x800000b4,MXT,MarteXcoin,,,,,,,,,,,,,1
+181,0x800000b5,WC,Wincoin,,,0x0488ADE4,0x0488B21E,0x49,0x1c,0xc9,,,,,,1
+182,0x800000b6,MNX,Minexcoin,,,0x0488ADE4,0x0488B21E,0x4b,0x05,0x80,,,,,,1
+183,0x800000b7,BTCP,Bitcoin Private,,,0x0488ADE4,0x0488B21E,0x1325,0x13AF,0x80,,,,,,1
+184,0x800000b8,MUSIC,Musicoin,,,,,,,,,,,,,1
+185,0x800000b9,BCA,Bitcoin Atom,,,0x0488ADE4,0x0488B21E,0x17,0x0a,0x80,,,,,,1
+186,0x800000ba,CRAVE,Crave,,,0x0488ADE4,0x0488B21E,0x46,0x55,0x99,,,,,,1
+187,0x800000bb,STAK,STRAKS,,,,,,,,,,,,,1
+188,0x800000bc,WBTC,World Bitcoin,,,,,,,,,,,,,1
+189,0x800000bd,LCH,LiteCash,,,,,,,,,,,,,1
+190,0x800000be,EXCL,ExclusiveCoin,,,0x0488ADE4,0x0488B21E,0x21,0x89,0xa1,,,,,,1
+191,0x800000bf,LYNX,Lynx,,,0x0488ADE4,0x0488B21E,0x2d,0x32,0xad,,,,,,1
+192,0x800000c0,LCC,LitecoinCash,,,0x0488ADE4,0x0488B21E,0x1c,0x05,0xb0,,,,,,1
+193,0x800000c1,XFE,Feirm,,,,,,,,,,,,,1
+194,0x800000c2,EOS,EOS,,,,,,,,,,,,,1
+195,0x800000c3,TRX,Tron,,,,,,,,,,,,,1
+196,0x800000c4,KOBO,Kobocoin,,,0x0488ADE4,0x0488B21E,0x23,0x1c,0xa3,,,,,,1
+197,0x800000c5,HUSH,HUSH,,,0x0488ADE4,0x0488B21E,0x1CB8,0x1CBD,0x80,,,,,,1
+198,0x800000c6,BAN,Banano,,,,,,,,,,,,,1
+199,0x800000c7,ETF,ETF,,,,,,,,,,,,,1
+200,0x800000c8,OMNI,Omni,,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,,,,,1
+201,0x800000c9,BIFI,BitcoinFile,,,,,,,,,,,,,1
+202,0x800000ca,UFO,Uniform Fiscal Object,,,,,,,,,,,,,1
+203,0x800000cb,CNMC,Cryptonodes,,,,,,,,,,,,,1
+204,0x800000cc,BCN,Bytecoin,,,,,,,,,,,,,1
+205,0x800000cd,RIN,Ringo,,,,,,,,,,,,,1
+206,0x800000ce,ATP,Alaya,,,,,,,,,,,,,1
+207,0x800000cf,EVT,everiToken,,,,,,,,,,,,,1
+208,0x800000d0,ATN,ATN,,,,,,,,,,,,,1
+209,0x800000d1,BIS,Bismuth,,,,,,,,,,,,,1
+210,0x800000d2,NEET,NEETCOIN,,,,,,,,,,,,,1
+211,0x800000d3,BOPO,BopoChain,,,,,,,,,,,,,1
+212,0x800000d4,OOT,Utrum,,,,,,,,,,,,,1
+213,0x800000d5,ALIAS,Alias,,,,,,,,,,,,,1
+214,0x800000d6,MONK,Monkey Project,,,0x0488DDE4,0x0488B21E,0x33,0x1c,0x37,,,,,,1
+215,0x800000d7,BOXY,BoxyCoin,,,,,,,,,,,,,1
+216,0x800000d8,FLO,Flo,,,,,,,,,,,,,1
+217,0x800000d9,MEC,Megacoin,,,0x0488ADE4,0x0488B21E,0x32,0x05,0xB2,,,,,,1
+218,0x800000da,BTDX,BitCloud,,,0x0488ADE4,0x0488B21E,0x19,0x05,0x99,,,,,,1
+219,0x800000db,XAX,Artax,,,0x0488ADE4,0x0488B21E,0x17,0x1CBD,0x97,,,,,,1
+220,0x800000dc,ANON,ANON,,,0x0488ADE4,0x0488B21E,0x0582,0x5389,0x80,,,,,,1
+221,0x800000dd,LTZ,LitecoinZ,,,0x0488ADE4,0x0488B21E,0x0AB3,0x0AB8,0x80,,,,,,1
+222,0x800000de,BITG,Bitcoin Green,,,0x0488ADE4,0x0488B21E,0x26,0x1CBD,0x2E,,,,,,1
+223,0x800000df,ICP,Internet Computer,,,,,,,,,,,,,1
+224,0x800000e0,SMART,Smartcash,,,,,,,,,,,,,1
+225,0x800000e1,XUEZ,XUEZ,,,0x0221312B,0x022D2533,0x4b,0x12,0xd4,,,,,,1
+226,0x800000e2,HLM,Helium,,,,,,,,,,,,,1
+227,0x800000e3,WEB,Webchain,,,,,,,,,,,,,1
+228,0x800000e4,ACM,Actinium,,,,,,,,,,,,,1
+229,0x800000e5,NOS,NOS Stable Coins,,,,,,,,,,,,,1
+230,0x800000e6,BITC,BitCash,,,,,,,,,,,,,1
+231,0x800000e7,HTH,Help The Homeless Coin,,,,,,,,,,,,,1
+232,0x800000e8,TZC,Trezarcoin,,,,,,,,,,,,,1
+233,0x800000e9,VAR,Varda,,,,,,,,,,,,,1
+234,0x800000ea,IOV,IOV,,,,,,,,,,,,,1
+235,0x800000eb,FIO,FIO,,,,,,,,,,,,,1
+236,0x800000ec,BSV,BitcoinSV,,secp256k1,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,,,,,1
+237,0x800000ed,DXN,DEXON,,Non-secpk,,,,,,,,,,,1
+238,0x800000ee,QRL,Quantum Resistant Ledger,,,,,,,,,,,,,1
+239,0x800000ef,PCX,ChainX,,,,,,,,,,,,,1
+240,0x800000f0,LOKI,Loki,,,,,,,,,,,,,1
+241,0x800000f1,,Imagewallet,,,,,,,,,,,,,1
+242,0x800000f2,NIM,Nimiq,,,,,,,,,,,,,1
+243,0x800000f3,SOV,Sovereign Coin,,,,,,,,,,,,,1
+244,0x800000f4,JCT,Jibital Coin,,,,,,,,,,,,,1
+245,0x800000f5,SLP,Simple Ledger Protocol,,,,,,,,,,,,,1
+246,0x800000f6,EWT,Energy Web,,,,,,,,,,,,,1
+247,0x800000f7,UC,Ulord,,,,,,,,,,,,,1
+248,0x800000f8,EXOS,EXOS,,,,,,,,,,,,,1
+249,0x800000f9,ECA,Electra,,,,,,,,,,,,,1
+250,0x800000fa,SOOM,Soom,,,,,,,,,,,,,1
+251,0x800000fb,XRD,Redstone,,,,,,,,,,,,,1
+252,0x800000fc,FREE,FreeCoin,,,,,,,,,,,,,1
+253,0x800000fd,NPW,NewPowerCoin,,,,,,,,,,,,,1
+254,0x800000fe,BST,BlockStamp,,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,,,,,1
+255,0x800000ff,STH,SmartHoldem,,,,,,,,,,,,,1
+256,0x80000100,NANO,Bitcoin Nano,,,,,,,,,,,,,1
+257,0x80000101,BTCC,Bitcoin Core,,,,,,,,,,,,,1
+258,0x80000102,ZP,Zen Protocol,,,,,,,,,,,,,1
+259,0x80000103,ZEST,Zest,,,,,,,,,,,,,1
+260,0x80000104,ABT,ArcBlock,,,,,,,,,,,,,1
+261,0x80000105,PION,Pion,,,,,,,,,,,,,1
+262,0x80000106,DT3,DreamTeam3,,,,,,,,,,,,,1
+263,0x80000107,ZBUX,Zbux,,,,,,,,,,,,,1
+264,0x80000108,KPL,Kepler,,,,,,,,,,,,,1
+265,0x80000109,TPAY,TokenPay,,,,,,,,,,,,,1
+266,0x8000010a,ZILLA,ChainZilla,,,,,,,,,,,,,1
+267,0x8000010b,ANK,Anker,,,,,,,,,,,,,1
+268,0x8000010c,BCC,BCChain,,,,,,,,,,,,,1
+269,0x8000010d,HPB,HPB,,,,,,,,,,,,,1
+270,0x8000010e,ONE,ONE,,,,,,,,,,,,,1
+271,0x8000010f,SBC,SBC,,,,,,,,,,,,,1
+272,0x80000110,IPC,IPChain,,,,,,,,,,,,,1
+273,0x80000111,DMTC,Dominantchain,,,,,,,,,,,,,1
+274,0x80000112,OGC,Onegram,,,,,,,,,,,,,1
+275,0x80000113,SHIT,Shitcoin,,,,,,,,,,,,,1
+276,0x80000114,ANDES,Andescoin,,,,,,,,,,,,,1
+277,0x80000115,AREPA,Arepacoin,,,,,,,,,,,,,1
+278,0x80000116,BOLI,Bolivarcoin,,,0x0488ADE4,0x0488B21E,0x55,0x05,0xD5,,,,,,1
+279,0x80000117,RIL,Rilcoin,,,,,,,,,,,,,1
+280,0x80000118,HTR,Hathor Network,,,,,,,,,,,,,1
+281,0x80000119,ACME,Accumulate,,,,,,,,,,,,,1
+282,0x8000011a,BRAVO,BRAVO,,,,,,,,,,,,,1
+283,0x8000011b,ALGO,Algorand,,,,,,,,,,,,,1
+284,0x8000011c,BZX,Bitcoinzero,,,,,,,,,,,,,1
+285,0x8000011d,GXX,GravityCoin,,,,,,,,,,,,,1
+286,0x8000011e,HEAT,HEAT,,,,,,,,,,,,,1
+287,0x8000011f,XDN,DigitalNote,,,,,,,,,,,,,1
+288,0x80000120,FSN,FUSION,,,,,,,,,,,,,1
+289,0x80000121,CPC,Capricoin,,,,,,,,,,,,,1
+290,0x80000122,BOLD,Bold,,,,,,,,,,,,,1
+291,0x80000123,IOST,IOST,,,,,,,,,,,,,1
+292,0x80000124,TKEY,Tkeycoin,,,,,,,,,,,,,1
+293,0x80000125,USE,Usechain,,,,,,,,,,,,,1
+294,0x80000126,BCZ,BitcoinCZ,,,,,,,,,,,,,1
+295,0x80000127,IOC,Iocoin,,,,,,,,,,,,,1
+296,0x80000128,ASF,Asofe,,,,,,,,,,,,,1
+297,0x80000129,MASS,MASS,,,,,,,,,,,,,1
+298,0x8000012a,FAIR,FairCoin,,,,,,,,,,,,,1
+299,0x8000012b,NUKO,Nekonium,,,,,,,,,,,,,1
+300,0x8000012c,GNX,Genaro Network,,,,,,,,,,,,,1
+301,0x8000012d,DIVI,Divi Project,,,0x0221312B,0x022D2533,0x1e,0x0d,0xd4,,,,,,1
+302,0x8000012e,CMT,Community,,,,,,,,,,,,,1
+303,0x8000012f,EUNO,EUNO,,,,,,,,,,,,,1
+304,0x80000130,IOTX,IoTeX,,,,,,,,,,,,,1
+305,0x80000131,ONION,DeepOnion,,,0x0488ADE4,0x0488B21E,0x1F,0x4E,0x9F,,,,,,1
+306,0x80000132,8BIT,8Bit,,,,,,,,,,,,,1
+307,0x80000133,ATC,AToken Coin,,,,,,,,,,,,,1
+308,0x80000134,BTS,Bitshares,,,,,,,,,,,,,1
+309,0x80000135,CKB,Nervos CKB,,,,,,,,,,,,,1
+310,0x80000136,UGAS,Ultrain,,,,,,,,,,,,,1
+311,0x80000137,ADS,Adshares,,,,,,,,,,,,,1
+312,0x80000138,ARA,Aura,,,,,,,,,,,,,1
+313,0x80000139,ZIL,Zilliqa,,,,,,,,,,,,,1
+314,0x8000013a,MOAC,MOAC,,,,,,,,,,,,,1
+315,0x8000013b,SWTC,SWTC,,,,,,,,,,,,,1
+316,0x8000013c,VNSC,vnscoin,,,,,,,,,,,,,1
+317,0x8000013d,PLUG,PL^Gnet,,,,,,,,,,,,,1
+318,0x8000013e,MAN,Matrix AI Network,,,,,,,,,,,,,1
+319,0x8000013f,ECC,ECCoin,,,,,,,,,,,,,1
+320,0x80000140,RPD,Rapids,,,0x0488ADE4,0x0488B21E,0x3d,0x06,0x2e,,,,,,1
+321,0x80000141,RAP,Rapture,,,,,,,,,,,,,1
+322,0x80000142,GARD,Hashgard,,,,,,,,,,,,,1
+323,0x80000143,ZER,Zero,,,,,,,,,,,,,1
+324,0x80000144,EBST,eBoost,,,,,,,,,,,,,1
+325,0x80000145,SHARD,Shard,,,,,,,,,,,,,1
+326,0x80000146,MRX,Metrix Coin,,,,,,,,,,,,,1
+327,0x80000147,CMM,Commercium,,,,,,,,,,,,,1
+328,0x80000148,BLOCK,Blocknet,,,,,,,,,,,,,1
+329,0x80000149,AUDAX,AUDAX,,,,,,,,,,,,,1
+330,0x8000014a,LUNA,Terra,,,,,,,,,,,,,1
+331,0x8000014b,ZPM,zPrime,,,,,,,,,,,,,1
+332,0x8000014c,KUVA,Kuva Utility Note,,,,,,,,,,,,,1
+333,0x8000014d,MEM,MemCoin,,,,,,,,,,,,,1
+334,0x8000014e,CS,Credits,,,,,,,,,,,,,1
+335,0x8000014f,SWIFT,SwiftCash,,,,,,,,,,,,,1
+336,0x80000150,FIX,FIX,,,0x0221312B,0x022D2533,0x23,0x5F,0x3C,,,,,,1
+337,0x80000151,CPC,CPChain,,,,,,,,,,,,,1
+338,0x80000152,VGO,VirtualGoodsToken,,,,,,,,,,,,,1
+339,0x80000153,DVT,DeVault,,,,,,,,,,,,,1
+340,0x80000154,N8V,N8VCoin,,,,,,,,,,,,,1
+341,0x80000155,MTNS,OmotenashiCoin,,,,,,,,,,,,,1
+342,0x80000156,BLAST,BLAST,,,,,,,,,,,,,1
+343,0x80000157,DCT,DECENT,,,,,,,,,,,,,1
+344,0x80000158,AUX,Auxilium,,,,,,,,,,,,,1
+345,0x80000159,USDP,USDP,,,,,,,,,,,,,1
+346,0x8000015a,HTDF,HTDF,,,,,,,,,,,,,1
+347,0x8000015b,YEC,Ycash,,,,,,,,,,,,,1
+348,0x8000015c,QLC,QLC Chain,,,,,,,,,,,,,1
+349,0x8000015d,TEA,Icetea Blockchain,,,,,,,,,,,,,1
+350,0x8000015e,ARW,ArrowChain,,,,,,,,,,,,,1
+351,0x8000015f,MDM,Medium,,,,,,,,,,,,,1
+352,0x80000160,CYB,Cybex,,,,,,,,,,,,,1
+353,0x80000161,LTO,LTO Network,,,,,,,,,,,,,1
+354,0x80000162,DOT,Polkadot,,,,,,,,,,,,,1
+355,0x80000163,AEON,Aeon,,,,,,,,,,,,,1
+356,0x80000164,RES,Resistance,,,,,,,,,,,,,1
+357,0x80000165,AYA,Aryacoin,,,0x0488ADE4,0x0488B21E,0x17,0x6f,0x97,,,,,,1
+358,0x80000166,DAPS,Dapscoin,,,,,,,,,,,,,1
+359,0x80000167,CSC,CasinoCoin,,,,,,,,,,,,,1
+360,0x80000168,VSYS,V Systems,,,,,,,,,,,,,1
+361,0x80000169,NOLLAR,Nollar,,,,,,,,,,,,,1
+362,0x8000016a,XNOS,NOS,,,,,,,,,,,,,1
+363,0x8000016b,CPU,CPUchain,,,0x0488ADE4,0x0488B21E,0x1C,0x1E,0x80,,,,,,1
+364,0x8000016c,LAMB,Lambda Storage Chain,,,,,,,,,,,,,1
+365,0x8000016d,VCT,ValueCyber,,,,,,,,,,,,,1
+366,0x8000016e,CZR,Canonchain,,,,,,,,,,,,,1
+367,0x8000016f,ABBC,ABBC,,,,,,,,,,,,,1
+368,0x80000170,HET,HET,,,,,,,,,,,,,1
+369,0x80000171,XAS,Asch,,,,,,,,,,,,,1
+370,0x80000172,VDL,Vidulum,,,,,,,,,,,,,1
+371,0x80000173,MED,MediBloc,,,,,,,,,,,,,1
+372,0x80000174,ZVC,ZVChain,,,,,,,,,,,,,1
+373,0x80000175,VESTX,Vestx,,,,,,,,,,,,,1
+374,0x80000176,DBT,DarkBit,,,,,,,,,,,,,1
+375,0x80000177,SEOS,SuperEOS,,,,,,,,,,,,,1
+376,0x80000178,MXW,Maxonrow,,,,,,,,,,,,,1
+377,0x80000179,ZNZ,ZENZO,,,,,,,,,,,,,1
+378,0x8000017a,XCX,XChain,,,,,,,,,,,,,1
+379,0x8000017b,SOX,SonicX,,,,,,,,,,,,,1
+380,0x8000017c,NYZO,Nyzo,,,,,,,,,,,,,1
+381,0x8000017d,ULC,ULCoin,,,,,,,,,,,,,1
+382,0x8000017e,RYO,Ryo Currency,,,,,,,,,,,,,1
+383,0x8000017f,KAL,Kaleidochain,,,,,,,,,,,,,1
+384,0x80000180,XSN,Stakenet,,,,,,,,,,,,,1
+385,0x80000181,DOGEC,DogeCash,,,,,,,,,,,,,1
+386,0x80000182,BMV,Bitcoin Matteo's Vision,,,,,,,,,,,,,1
+387,0x80000183,QBC,Quebecoin,,,,,,,,,,,,,1
+388,0x80000184,IMG,ImageCoin,,,,,,,,,,,,,1
+389,0x80000185,QOS,QOS,,,,,,,,,,,,,1
+390,0x80000186,PKT,PKT,,,,,,,,,,,,,1
+391,0x80000187,LHD,LitecoinHD,,,,,,,,,,,,,1
+392,0x80000188,CENNZ,CENNZnet,,,,,,,,,,,,,1
+393,0x80000189,HSN,Hyper Speed Network,,,,,,,,,,,,,1
+394,0x8000018a,CRO,Crypto Chain,,,,,,,,,,,,,1
+395,0x8000018b,UMBRU,Umbru,,,,,,,,,,,,,1
+396,0x8000018c,EVER,Everscale,,,,,,,,,,,,,1
+397,0x8000018d,NEAR,NEAR Protocol,,,,,,,,,,,,,1
+398,0x8000018e,XPC,XPChain,,,,,,,,,,,,,1
+399,0x8000018f,ZOC,01coin,,,,,,,,,,,,,1
+400,0x80000190,NIX,NIX,,,0x0488ADE4,0x0488B21E,0x26,0x35,0x80,,,,,,1
+401,0x80000191,UC,Utopiacoin,,,,,,,,,,,,,1
+402,0x80000192,GALI,Galilel,,,,,,,,,,,,,1
+403,0x80000193,OLT,Oneledger,,,,,,,,,,,,,1
+404,0x80000194,XBI,XBI,,,,,,,,,,,,,1
+405,0x80000195,DONU,DONU,,,,,,,,,,,,,1
+406,0x80000196,EARTHS,Earths,,,,,,,,,,,,,1
+407,0x80000197,HDD,HDDCash,,,,,,,,,,,,,1
+408,0x80000198,SUGAR,Sugarchain,,,0x0488ADE4,0x0488B21E,0x3f,0x7d,0x80,,,,,,1
+409,0x80000199,AILE,AileCoin,,,,,,,,,,,,,1
+410,0x8000019a,TENT,TENT,,,,,,,,,,,,,1
+411,0x8000019b,TAN,Tangerine Network,,,,,,,,,,,,,1
+412,0x8000019c,AIN,AIN,,,,,,,,,,,,,1
+413,0x8000019d,MSR,Masari,,,,,,,,,,,,,1
+414,0x8000019e,SUMO,Sumokoin,,,,,,,,,,,,,1
+415,0x8000019f,ETN,Electroneum,,,,,,,,,,,,,1
+416,0x800001a0,BYTZ,BYTZ,,,,,,,,,,,,,1
+417,0x800001a1,WOW,Wownero,,,,,,,,,,,,,1
+418,0x800001a2,XTNC,XtendCash,,,,,,,,,,,,,1
+419,0x800001a3,LTHN,Lethean,,,,,,,,,,,,,1
+420,0x800001a4,NODE,NodeHost,,,,,,,,,,,,,1
+421,0x800001a5,AGM,Argoneum,,,0x0488ADE4,0x0488B21E,0x32,0x61,0xbf,,,,,,1
+422,0x800001a6,CCX,Conceal Network,,,,,,,,,,,,,1
+423,0x800001a7,TNET,Title Network,,,,,,,,,,,,,1
+424,0x800001a8,TELOS,TelosCoin,,,,,,,,,,,,,1
+425,0x800001a9,AION,Aion,,,,,,,,,,,,,1
+426,0x800001aa,BC,Bitcoin Confidential,,,,,,,,,,,,,1
+427,0x800001ab,KTV,KmushiCoin,,,,,,,,,,,,,1
+428,0x800001ac,ZCR,ZCore,,,,,,,,,,,,,1
+429,0x800001ad,ERG,Ergo,,,,,,,,,,,,,1
+430,0x800001ae,PESO,Criptopeso,,,,,,,,,,,,,1
+431,0x800001af,BTC2,Bitcoin 2,,,,,,,,,,,,,1
+432,0x800001b0,XRPHD,XRPHD,,,,,,,,,,,,,1
+433,0x800001b1,WE,WE Coin,,,,,,,,,,,,,1
+434,0x800001b2,KSM,Kusama,,,,,,,,,,,,,1
+435,0x800001b3,PCN,Peepcoin,,,,,,,,,,,,,1
+436,0x800001b4,NCH,NetCloth,,,,,,,,,,,,,1
+437,0x800001b5,ICU,CHIPO,,,,,,,,,,,,,1
+438,0x800001b6,FNSA,FINSCHIA,,,,,,,,,,,,,1
+439,0x800001b7,DTP,DeVault Token Protocol,,,,,,,,,,,,,1
+440,0x800001b8,BTCR,Bitcoin Royale,,,,,,,,,,,,,1
+441,0x800001b9,AERGO,AERGO,,,,,,,,,,,,,1
+442,0x800001ba,XTH,Dothereum,,,,,,,,,,,,,1
+443,0x800001bb,LV,Lava,,,,,,,,,,,,,1
+444,0x800001bc,PHR,Phore,,,0x0221312B,0x022D2533,0x37,0x0D,0xD4,,,,,,1
+445,0x800001bd,VITAE,Vitae,,,,,,,,,,,,,1
+446,0x800001be,COCOS,Cocos-BCX,,,,,,,,,,,,,1
+447,0x800001bf,DIN,Dinero,,,,,,,,,,,,,1
+448,0x800001c0,SPL,Simplicity,,,,,,,,,,,,,1
+449,0x800001c1,YCE,MYCE,,,,,,,,,,,,,1
+450,0x800001c2,XLR,Solaris,,,,,,,,,,,,,1
+451,0x800001c3,KTS,Klimatas,,,,,,,,,,,,,1
+452,0x800001c4,DGLD,DGLD,,,,,,,,,,,,,1
+453,0x800001c5,XNS,Insolar,,,,,,,,,,,,,1
+454,0x800001c6,EM,EMPOW,,,,,,,,,,,,,1
+455,0x800001c7,SHN,ShineBlocks,,,,,,,,,,,,,1
+456,0x800001c8,SEELE,Seele,,,,,,,,,,,,,1
+457,0x800001c9,AE,Æternity,1700,,,,,,,,,,,,1
+458,0x800001ca,ODX,ObsidianX,,,,,,,,,,,,,1
+459,0x800001cb,KAVA,Kava,,,,,,,,,,TRUE,,,1
+460,0x800001cc,GLEEC,GLEEC,,,,,,,,,,,,,1
+461,0x800001cd,FIL,Filecoin,,,,,,,,,,TRUE,,,1
+462,0x800001ce,RUTA,Rutanio,,,,,,,,,,,,,1
+463,0x800001cf,CSDT,CSDT,,,,,,,,,,,,,1
+464,0x800001d0,ETI,EtherInc,,,,,,,,,,,,,1
+465,0x800001d1,ZSLP,Zclassic Simple Ledger Protocol,,,,,,,,,,,,,1
+466,0x800001d2,ERE,EtherCore,,,,,,,,,,,,,1
+467,0x800001d3,DX,DxChain Token,,,,,,,,,,,,,1
+468,0x800001d4,CPS,Capricoin+,,,,,,,,,,,,,1
+469,0x800001d5,BTH,Bithereum,,,,,,,,,,,,,1
+470,0x800001d6,MESG,MESG,,,,,,,,,,,,,1
+471,0x800001d7,FIMK,FIMK,,,,,,,,,,,,,1
+472,0x800001d8,AR,Arweave,,,,,,,,,,,,,1
+473,0x800001d9,OGO,Origo,,,,,,,,,,,,,1
+474,0x800001da,ROSE,Oasis Network,,,,,,,,,,,,,1
+475,0x800001db,BARE,BARE Network,,,,,,,,,,,,,1
+476,0x800001dc,GLEEC,GleecBTC,,,,,,,,,,,,,1
+477,0x800001dd,CLR,Color Coin,,,,,,,,,,,,,1
+478,0x800001de,RNG,Ring,,,,,,,,,,,,,1
+479,0x800001df,OLO,Tool Global,,,,,,,,,,,,,1
+480,0x800001e0,PEXA,Pexa,,,,,,,,,,,,,1
+481,0x800001e1,MOON,Mooncoin,,,,,,,,,,,,,1
+482,0x800001e2,OCEAN,Ocean Protocol,,,,,,,,,,,,,1
+483,0x800001e3,BNT,Bluzelle Native,,,,,,,,,,,,,1
+484,0x800001e4,AMO,AMO Blockchain,,,,,,,,,,,,,1
+485,0x800001e5,FCH,FreeCash,,,,,,,,,,,,,1
+486,0x800001e6,LAT,PlatON,,,,,,,,,,,,,1
+487,0x800001e7,COIN,Bitcoin Bank,,,,,,,,,,,,,1
+488,0x800001e8,VEO,Amoveo,,,,,,,,,,,,,1
+489,0x800001e9,CCA,Counos Coin,,,,,,,,,,,,,1
+490,0x800001ea,GFN,Graphene,,,,,,,,,,,,,1
+491,0x800001eb,BIP,Minter Network,,,,,,,,,,,,,1
+492,0x800001ec,KPG,Kunpeng Network,,,,,,,,,,,,,1
+493,0x800001ed,FIN,FINL Chain,,,,,,,,,,,,,1
+494,0x800001ee,BAND,Band,,,,,,,,,,,,,1
+495,0x800001ef,DROP,Dropil,,,,,,,,,,,,,1
+496,0x800001f0,BHT,Bluehelix Chain,,,,,,,,,,,,,1
+497,0x800001f1,LYRA,Scrypta,,,,,,,,,,,,,1
+498,0x800001f2,CS,Credits,,,,,,,,,,,,,1
+499,0x800001f3,RUPX,Rupaya,,,,,,,,,,,,,1
+500,0x800001f4,THETA,Theta,,,,,,,,,,TRUE,,,1
+501,0x800001f5,SOL,Solana,,,,,,,,,,,,,1
+502,0x800001f6,THT,ThoughtAI,,,0x5AEBD8C6,0xFBC6A00D,0x07,0x09,0x7B,,,,,,1
+503,0x800001f7,CFX,Conflux,,,,,,,,,,,,,1
+504,0x800001f8,KUMA,Kumacoin,,,,,,,,,,,,,1
+505,0x800001f9,HASH,Provenance,,,,,,,,,,,,,1
+506,0x800001fa,CSPR,Casper,,,,,,,,,,,,,1
+507,0x800001fb,EARTH,EARTH,,,,,,,,,,,,,1
+508,0x800001fc,EGLD,MultiversX,,,,,,,,,,,,,1
+509,0x800001fd,CHI,Xaya,,,,,,,,,,,,,1
+510,0x800001fe,KOTO,Koto,,,,,,,,,,,,,1
+511,0x800001ff,OTC,?,,,,,,,,,,,,,1
+512,0x80000200,XRD,Radiant,,,,,,,,,,,,,1
+513,0x80000201,SEELEN,Seele-N,,,,,,,,,,,,,1
+514,0x80000202,AETH,AETH,,,,,,,,,,,,,1
+515,0x80000203,DNA,Idena,,,,,,,,,,,,,1
+516,0x80000204,VEE,Virtual Economy Era,,,,,,,,,,,,,1
+517,0x80000205,SIERRA,SierraCoin,,,,,,,,,,,,,1
+518,0x80000206,LET,Linkeye,,,,,,,,,,,,,1
+519,0x80000207,BSC,Bitcoin Smart Contract,,Non-secpk,,,,,,,,,,,1
+520,0x80000208,BTCV,BitcoinVIP,,,,,,,,,,,,,1
+521,0x80000209,ABA,Dabacus,,,,,,,,,,,,,1
+522,0x8000020a,SCC,StakeCubeCoin,,,,,,,,,,,,,1
+523,0x8000020b,EDG,Edgeware,,,,,,,,,,,,,1
+524,0x8000020c,AMS,AmsterdamCoin,,,,,,,,,,,,,1
+525,0x8000020d,GOSS,GOSSIP Coin,,,,,,,,,,,,,1
+526,0x8000020e,BU,BUMO,,,,,,,,,,,,,1
+527,0x8000020f,GRAM,GRAM,,,,,,,,,,,,,1
+528,0x80000210,YAP,Yapstone,,,,,,,,,,,,,1
+529,0x80000211,SCRT,Secret Network,,,,,,,,,,,,,1
+530,0x80000212,NOVO,Novo,,,,,,,,,,,,,1
+531,0x80000213,GHOST,Ghost,,,,,,,,,,,,,1
+532,0x80000214,HST,HST,,,,,,,,,,,,,1
+533,0x80000215,PRJ,ProjectCoin,,,0x0221312B,0x022D2533,0x37,0x08,0x75,,,,,,1
+534,0x80000216,YOU,YOUChain,,,,,,,,,,,,,1
+535,0x80000217,XHV,Haven Protocol,,,,,,,,,,,,,1
+536,0x80000218,BYND,Beyondcoin,,,,,,,,,,,,,1
+537,0x80000219,JOYS,Joys Digital,,,,,,,,,,,,,1
+538,0x8000021a,VAL,Valorbit,,,,,,,,,,,,,1
+539,0x8000021b,FLOW,Flow,,,,,,,,,,,,,1
+540,0x8000021c,SMESH,Spacemesh Coin,,,,,,,,,,,,,1
+541,0x8000021d,SCDO,SCDO,,,,,,,,,,,,,1
+542,0x8000021e,IQS,IQ-Cash,,,,,,,,,,,,,1
+543,0x8000021f,BIND,Compendia,,,,,,,,,,,,,1
+544,0x80000220,COINEVO,Coinevo,,,,,,,,,,,,,1
+545,0x80000221,SCRIBE,Scribe,,,0x0488ADE4,0x0488B21E,0x3c,0x7d,0x6e,,,,,,1
+546,0x80000222,HYN,Hyperion,,,,,,,,,,,,,1
+547,0x80000223,BHP,BHP,,,,,,,,,,,,,1
+548,0x80000224,BBC,BigBang Core,,,,,,,,,,,,,1
+549,0x80000225,MKF,MarketFinance,,,,,,,,,,,,,1
+550,0x80000226,XDC,XinFin,,,,,,,,,,,,,1
+551,0x80000227,STR,Straightedge,,,,,,,,,,,,,1
+552,0x80000228,SUM,Sumcoin,,,,,,,,,,,,,1
+553,0x80000229,HBC,HuobiChain,,,,,,,,,,,,,1
+554,0x8000022a,---,reserved,,,,,,,,,,,,,1
+555,0x8000022b,BCS,Bitcoin Smart,,,,,,,,,,,,,1
+556,0x8000022c,KTS,Kratos,,,,,,,,,,,,,1
+557,0x8000022d,LKR,Lkrcoin,,,0x0488ADE4,0x0488B21E,0x30,0x55,0xB0,,,,,,1
+558,0x8000022e,TAO,Tao,,,,,,,,,,,,,1
+559,0x8000022f,XWC,Whitecoin,,,0x048894ED,0x04887F1E,0x49,0x57,0xc9,,,,,,1
+560,0x80000230,DEAL,DEAL,,,,,,,,,,,,,1
+561,0x80000231,NTY,Nexty,,,,,,,,,,,,,1
+562,0x80000232,TOP,TOP NetWork,,,,,,,,,,,,,1
+563,0x80000233,---,reserved,,,,,,,,,,,,,1
+564,0x80000234,AG,Agoric,,,,,,,,,,,,,1
+565,0x80000235,CICO,Coinicles,,,,,,,,,,,,,1
+566,0x80000236,IRIS,Irisnet,,,,,,,,,,,,,1
+567,0x80000237,NCG,Nine Chronicles,,,,,,,,,,,,,1
+568,0x80000238,LRG,Large Coin,,,,,,,,,,,,,1
+569,0x80000239,SERO,Super Zero Protocol,,,,,,,,,,,,,1
+570,0x8000023a,BDX,Beldex,,,,,,,,,,,,,1
+571,0x8000023b,CCXX,Counos X,,,,,,,,,,,,,1
+572,0x8000023c,SLS,Saluscoin,,,0x0488ADE4,0x0488B21E,0x3f,0xc4,0xbf,,,,,,1
+573,0x8000023d,SRM,Serum,,,,,,,,,,,,,1
+574,0x8000023e,---,reserved,,,,,,,,,,,,,1
+575,0x8000023f,VIVT,VIDT Datalink,,,,,,,,,,,,,1
+576,0x80000240,BPS,BitcoinPoS,,,,,,,,,,,,,1
+577,0x80000241,NKN,NKN,,,,,,,,,,,,,1
+578,0x80000242,ICL,ILCOIN,,,,,,,,,,,,,1
+579,0x80000243,BONO,Bonorum,,,,,,,,,,,,,1
+580,0x80000244,PLC,PLATINCOIN,,,,,,,,,,,,,1
+581,0x80000245,DUN,Dune,,,,,,,,,,,,,1
+582,0x80000246,DMCH,Darmacash,,,,,,,,,,,,,1
+583,0x80000247,CTC,Creditcoin,,,,,,,,,,,,,1
+584,0x80000248,KELP,Haidai Network,,,,,,,,,,,,,1
+585,0x80000249,GBCR,GoldBCR,,,,,,,,,,,,,1
+586,0x8000024a,XDAG,XDAG,,,,,,,,,,,,,1
+587,0x8000024b,PRV,Incognito Privacy,,,,,,,,,,,,,1
+588,0x8000024c,SCAP,SafeCapital,,,,,,,,,,,,,1
+589,0x8000024d,TFUEL,Theta Fuel,,,,,,,,,,,,,1
+590,0x8000024e,GTM,Gentarium,,,,,,,,,,,,,1
+591,0x8000024f,RNL,RentalChain,,,,,,,,,,,,,1
+592,0x80000250,GRIN,Grin,,,,,,,,,,,,,1
+593,0x80000251,MWC,MimbleWimbleCoin,,,,,,,,,,,,,1
+594,0x80000252,DOCK,Dock,,,,,,,,,,,,,1
+595,0x80000253,POLYX,Polymesh,,,,,,,,,,,,,1
+596,0x80000254,DIVER,Divergenti,,,,,,,,,,,,,1
+597,0x80000255,XEP,Electra Protocol,,,,,,,,,,,,,1
+598,0x80000256,APN,Apron,,,,,,,,,,,,,1
+599,0x80000257,TFC,Turbo File Coin,,,,,,,,,,,,,1
+600,0x80000258,UTE,Unit-e,,,,,,,,,,,,,1
+601,0x80000259,MTC,Metacoin,,,,,,,,,,,,,1
+602,0x8000025a,NC,NobodyCash,,,,,,,,,,,,,1
+603,0x8000025b,XINY,Xinyuehu,,,,,,,,,,,,,1
+604,0x8000025c,DYN,Dynamo,,,,,,,,,,,,,1
+605,0x8000025d,BUFS,Buffer,,,,,,,,,,,,,1
+606,0x8000025e,STOS,Stratos,,,,,,,,,,,,,1
+607,0x8000025f,TON,TON,,,,,,,,,,,,,1
+608,0x80000260,TAFT,TAFT,,,,,,,,,,,,,1
+609,0x80000261,HYDRA,HYDRA,,,,,,,,,,,,,1
+610,0x80000262,NOR,Noir,,,,,,,,,,,,,1
+611,0x80000263,,Manta Network Private Asset,,,,,,,,,,,,,1
+612,0x80000264,,Calamari Network Private Asset,,,,,,,,,,,,,1
+613,0x80000265,WCN,Widecoin,,,,,,,,,,,,,1
+614,0x80000266,OPT,Optimistic Ethereum,,,,,,,,,,,,,1
+615,0x80000267,PSWAP,PolkaSwap,,,,,,,,,,,,,1
+616,0x80000268,VAL,Validator,,,,,,,,,,,,,1
+617,0x80000269,XOR,Sora,,,,,,,,,,,,,1
+618,0x8000026a,SSP,SmartShare,,,,,,,,,,,,,1
+619,0x8000026b,DEI,DeimosX,,,,,,,,,,,,,1
+620,0x8000026c,---,reserved,,,,,,,,,,,,,1
+621,0x8000026d,ZERO,Singularity,,,,,,,,,,,,,1
+622,0x8000026e,ALPHA,AlphaDAO,,,,,,,,,,,,,1
+623,0x8000026f,BDECO,BDCashProtocol Ecosystem,,,,,,,,,,,,,1
+624,0x80000270,NOBL,Nobility,,,,,,,,,,,,,1
+625,0x80000271,EAST,Eastcoin,,,,,,,,,,,,,1
+626,0x80000272,KDA,Kadena,,,,,,,,,,,,,1
+627,0x80000273,SOUL,Phantasma,,,,,,,,,,,,,1
+628,0x80000274,LORE,Gitopia,,,,,,,,,,,,,1
+629,0x80000275,FNR,Fincor,,,,,,,,,,,,,1
+630,0x80000276,NEXUS,Nexus,,,,,,,,,,,,,1
+631,0x80000277,QTZ,Quartz,,,,,,,,,,,,,1
+632,0x80000278,MAS,Massa,,,,,,,,,,,,,1
+633,0x80000279,CALL,Callchain,,,,,,,,,,,,,1
+634,0x8000027a,VAL,Validity,,,,,,,,,,,,,1
+635,0x8000027b,POKT,Pocket Network,,,,,,,,,,,,,1
+636,0x8000027c,EMIT,EMIT,,,,,,,,,,,,,1
+637,0x8000027d,APTOS,Aptos,,,,,,,,,,,,,1
+638,0x8000027e,ADON,ADON,,,,,,,,,,,,,1
+639,0x8000027f,BTSG,BitSong,,,,,,,,,,,,,1
+640,0x80000280,LFC,Leofcoin,,,,,,,,,,,,,1
+641,0x80000281,KCS,KuCoin Shares,,,,,,,,,,,,,1
+642,0x80000282,KCC,KuCoin Community Chain,,,,,,,,,,,,,1
+643,0x80000283,AZERO,Aleph Zero,,,,,,,,,,,,,1
+644,0x80000284,TREE,Tree,,,,,,,,,,,,,1
+645,0x80000285,LX,Lynx,,,,,,,,,,,,,1
+646,0x80000286,XLN,Lunarium,,,,,,,,,,,,,1
+647,0x80000287,CIC,CIC Chain,,,,,,,,,,,,,1
+648,0x80000288,ZRB,Zarb,,,,,,,,,,,,,1
+649,0x80000289,---,reserved,,,,,,,,,,,,,1
+650,0x8000028a,UCO,Archethic,,,,,,,,,,,,,1
+651,0x8000028b,SFX,Safex Cash,,,,,,,,,,,,,1
+652,0x8000028c,SFT,Safex Token,,,,,,,,,,,,,1
+653,0x8000028d,WSFX,Wrapped Safex Cash,,,,,,,,,,,,,1
+654,0x8000028e,USDG,US Digital Gold,,,,,,,,,,,,,1
+655,0x8000028f,WMP,WAMP,,,,,,,,,,,,,1
+656,0x80000290,EKTA,Ekta,,,,,,,,,,,,,1
+657,0x80000291,YDA,YadaCoin,,,,,,,,,,,,,1
+658,0x80000292,,,,,,,,,,,,,,,1
+659,0x80000293,KOIN,Koinos,,,,,,,,,,,,,1
+660,0x80000294,PIRATE,PirateCash,,,,,,,,,,,,,1
+661,0x80000295,UNQ,Unique,,,,,,,,,,,,,1
+662,0x80000296,,,,,,,,,,,,,,,1
+663,0x80000297,SFRX,EtherGem Sapphire,,,,,,,,,,,,,1
+664,0x80000298,BSTY,GlobalBoost-Y,,,,,,,,,,,,,1
+665,0x80000299,IMP,Impact Protocol,,,,,,,,,,,,,1
+666,0x8000029a,ACT,Achain,,,,,,,,,,,,,1
+667,0x8000029b,PRKL,Perkle,,,,,,,,,,,,,1
+668,0x8000029c,SSC,SelfSell,,,,,,,,,,,,,1
+669,0x8000029d,GC,GateChain,,,,,,,,,,,,,1
+670,0x8000029e,PLGR,Pledger,,,,,,,,,,,,,1
+671,0x8000029f,MPLGR,Pledger,,,,,,,,,,,,,1
+672,0x800002a0,KNOX,Knox,,,,,,,,,,,,,1
+673,0x800002a1,ZED,ZED,,,,,,,,,,,,,1
+674,0x800002a2,CNDL,Candle,,,,,,,,,,,,,1
+675,0x800002a3,WLKR,Walker Crypto Innovation Index,,,,,,,,,,,,,1
+676,0x800002a4,WLKRR,Walker,,,,,,,,,,,,,1
+677,0x800002a5,YUNGE,Yunge,,,,,,,,,,,,,1
+678,0x800002a6,Voken,Voken,,,,,,,,,,,,,1
+679,0x800002a7,APL,Apollo,,,,,,,,,,,,,1
+680,0x800002a8,Evrynet,Evrynet,,,,,,,,,,,,,1
+681,0x800002a9,NENG,Nengcoin,,,,,,,,,,,,,1
+682,0x800002aa,CHTA,Cheetahcoin,,,,,,,,,,,,,1
+683,0x800002ab,ALEO,Aleo Network,,,,,,,,,,,,,1
+684,0x800002ac,,,,,,,,,,,,,,,1
+685,0x800002ad,OAS,Oasys,,,,,,,,,,,,,1
+686,0x800002ae,KAR,Karura Network,,,,,,,,,,,,,1
+687,0x800002af,,,,,,,,,,,,,,,1
+688,0x800002b0,CET,CoinEx Chain,,,,,,,,,,,,,1
+689,0x800002b1,,,,,,,,,,,,,,,1
+690,0x800002b2,KLV,KleverChain,,,,,,,,,,,,,1
+691,0x800002b3,,,,,,,,,,,,,,,1
+692,0x800002b4,,,,,,,,,,,,,,,1
+693,0x800002b5,,,,,,,,,,,,,,,1
+694,0x800002b6,VTBC,VTB Community,,,,,,,,,,,,,1
+695,0x800002b7,,,,,,,,,,,,,,,1
+696,0x800002b8,,,,,,,,,,,,,,,1
+697,0x800002b9,,,,,,,,,,,,,,,1
+698,0x800002ba,VEIL,Veil,,,,,,,,,,,,,1
+699,0x800002bb,GTB,GotaBit,,,,,,,,,,,,,1
+700,0x800002bc,XDAI,xDai,,,,,,,,,,TRUE,,,1
+701,0x800002bd,COM,Commercio,,,,,,,,,,,,,1
+702,0x800002be,CCC,Commercio Cash Credit,,,,,,,,,,,,,1
+703,0x800002bf,,,,,,,,,,,,,,,1
+704,0x800002c0,RAQ,Ra Quantum,,,,,,,,,,,,,1
+705,0x800002c1,PEG,Pegasus Token,,,,,,,,,,,,,1
+706,0x800002c2,LKG,Lionking,,,,,,,,,,,,,1
+707,0x800002c3,MCOIN,Moneta Coin,,,,,,,,,,,,,1
+708,0x800002c4,,,,,,,,,,,,,,,1
+709,0x800002c5,,,,,,,,,,,,,,,1
+710,0x800002c6,FURY,Highbury,,,,,,,,,,,,,1
+711,0x800002c7,CHC,Chaincoin,,,,,,,,,,,,,1
+712,0x800002c8,SERF,Serfnet,,,,,,,,,,,,,1
+713,0x800002c9,XTL,Katal Chain,,,,,,,,,,,,,1
+714,0x800002ca,BNB,Binance,,,,,,,,,,,,,1
+715,0x800002cb,SIN,Sinovate,,,,,,,,,,,,,1
+716,0x800002cc,DLN,Delion,,,,,,,,,,,,,1
+717,0x800002cd,BONTE,Bontecoin,,,,,,,,,,,,,1
+718,0x800002ce,PEER,Peer,,,,,,,,,,,,,1
+719,0x800002cf,ZET,Zetacoin,,,0x0488ADE4,0x0488B21E,0x50,0x09,0xe0,,,,,,1
+720,0x800002d0,ABY,Artbyte,,,,,,,,,,,,,1
+721,0x800002d1,PGX,Mirai Chain,,,,,,,,,,,,,1
+722,0x800002d2,IL8P,InfiniLooP,,,,,,,,,,,,,1
+723,0x800002d3,,,,,,,,,,,,,,,1
+724,0x800002d4,XVC,Vanillacash,,,,,,,,,,,,,1
+725,0x800002d5,MCX,MultiCash,,,,,,,,,,,,,1
+726,0x800002d6,,,,,,,,,,,,,,,1
+727,0x800002d7,BLU,BluCrates,,,,,,,,,,,,,1
+728,0x800002d8,,,,,,,,,,,,,,,1
+729,0x800002d9,,,,,,,,,,,,,,,1
+730,0x800002da,HEALIOS,Tenacity,,,,,,,,,,,,,1
+731,0x800002db,BMK,Bitmark,,,,,,,,,,,,,1
+732,0x800002dc,,,,,,,,,,,,,,,1
+733,0x800002dd,,,,,,,,,,,,,,,1
+734,0x800002de,DENTX,DENTNet,,,,,,,,,,,,,1
+735,0x800002df,,,,,,,,,,,,,,,1
+736,0x800002e0,,,,,,,,,,,,,,,1
+737,0x800002e1,ATOP,Financial Blockchain,,,,,,,,,,,,,1
+738,0x800002e2,,,,,,,,,,,,,,,1
+739,0x800002e3,,,,,,,,,,,,,,,1
+740,0x800002e4,,,,,,,,,,,,,,,1
+741,0x800002e5,,,,,,,,,,,,,,,1
+742,0x800002e6,,,,,,,,,,,,,,,1
+743,0x800002e7,,,,,,,,,,,,,,,1
+744,0x800002e8,,,,,,,,,,,,,,,1
+745,0x800002e9,,,,,,,,,,,,,,,1
+746,0x800002ea,,,,,,,,,,,,,,,1
+747,0x800002eb,CFG,Centrifuge,,,,,,,,,,,,,1
+748,0x800002ec,,,,,,,,,,,,,,,1
+749,0x800002ed,,,,,,,,,,,,,,,1
+750,0x800002ee,XPRT,Persistence,,,,,,,,,,,,,1
+751,0x800002ef,,,,,,,,,,,,,,,1
+752,0x800002f0,,,,,,,,,,,,,,,1
+753,0x800002f1,,Age X25519 Encryption,,,,,,,,,,,,,1
+754,0x800002f2,,Age NIST Encryption,,,,,,,,,,,,,1
+755,0x800002f3,,,,,,,,,,,,,,,1
+756,0x800002f4,,,,,,,,,,,,,,,1
+757,0x800002f5,HONEY,HoneyWood,,,,,,,,,,,,,1
+758,0x800002f6,,,,,,,,,,,,,,,1
+759,0x800002f7,,,,,,,,,,,,,,,1
+760,0x800002f8,,,,,,,,,,,,,,,1
+761,0x800002f9,,,,,,,,,,,,,,,1
+762,0x800002fa,,,,,,,,,,,,,,,1
+763,0x800002fb,,,,,,,,,,,,,,,1
+764,0x800002fc,,,,,,,,,,,,,,,1
+765,0x800002fd,,,,,,,,,,,,,,,1
+766,0x800002fe,,,,,,,,,,,,,,,1
+767,0x800002ff,,,,,,,,,,,,,,,1
+768,0x80000300,BALLZ,Ballzcoin,,,,,,,,,,,,,1
+769,0x80000301,,,,,,,,,,,,,,,1
+770,0x80000302,COSA,Cosanta,,,,,,,,,,,,,1
+771,0x80000303,BR,BR,,,,,,,,,,,,,1
+772,0x80000304,,,,,,,,,,,,,,,1
+773,0x80000305,CSB,CosmoBliss,,,,,,,,,,,,,1
+774,0x80000306,,,,,,,,,,,,,,,1
+775,0x80000307,PLSR,Pulsar Coin,,,,,,,,,,,,,1
+776,0x80000308,KEY,Keymaker Coin,,,,,,,,,,,,,1
+777,0x80000309,BTW,Bitcoin World,,,,,,,,,,,,,1
+778,0x8000030a,,,,,,,,,,,,,,,1
+779,0x8000030b,,,,,,,,,,,,,,,1
+780,0x8000030c,PLCUC,PLC Ultima Classic,,,,,,,,,,,,,1
+781,0x8000030d,PLCUX,PLC Ultima X,,,,,,,,,,,,,1
+782,0x8000030e,PLCU,PLC Ultima,,,,,,,,,,,,,1
+783,0x8000030f,SMARTBC,SMART Blockchain,,,,,,,,,,,,,1
+784,0x80000310,SUI,Sui,,,,,,,,,,,,,1
+785,0x80000311,,,,,,,,,,,,,,,1
+786,0x80000312,UIDD,UIDD,,,,,,,,,,,,,1
+787,0x80000313,ACA,Acala,,,,,,,,,,,,,1
+788,0x80000314,BNC,Bifrost,,,,,,,,,,,,,1
+789,0x80000315,TAU,Lamden,,,,,,,,,,,,,1
+790,0x80000316,,,,,,,,,,,,,,,1
+791,0x80000317,,,,,,,,,,,,,,,1
+792,0x80000318,,,,,,,,,,,,,,,1
+793,0x80000319,,,,,,,,,,,,,,,1
+794,0x8000031a,INTR,Interlay,,,,,,,,,,,,,1
+795,0x8000031b,KINT,Kintsugi,,,,,,,,,,,,,1
+796,0x8000031c,,,,,,,,,,,,,,,1
+797,0x8000031d,,,,,,,,,,,,,,,1
+798,0x8000031e,,,,,,,,,,,,,,,1
+799,0x8000031f,PDEX,Polkadex,,,,,,,,,,,,,1
+800,0x80000320,BEET,Beetle Coin,,,0x0488ADE4,0x0488B21E,0x1A,0x55,0x99,,,,,,1
+801,0x80000321,DST,DSTRA,,,,,,,,,,,,,1
+802,0x80000322,CY,Cyberyen,,,,,,,,,,,,,1
+803,0x80000323,,,,,,,,,,,,,,,1
+804,0x80000324,ZKS,zkSync,,,,,,,,,,,,,1
+805,0x80000325,,,,,,,,,,,,,,,1
+806,0x80000326,,,,,,,,,,,,,,,1
+807,0x80000327,,,,,,,,,,,,,,,1
+808,0x80000328,QVT,Qvolta,,,,,,,,,,,,,1
+809,0x80000329,SDN,Shiden Network,,,,,,,,,,,,,1
+810,0x8000032a,ASTR,Astar Network,,,,,,,,,,,,,1
+811,0x8000032b,---,reserved,,,,,,,,,,,,,1
+812,0x8000032c,,,,,,,,,,,,,,,1
+813,0x8000032d,MEER,Qitmeer,,,,,,,,,,,,,1
+814,0x8000032e,,,,,,,,,,,,,,,1
+815,0x8000032f,,,,,,,,,,,,,,,1
+816,0x80000330,FSC,FSC,,,,,,,,,,,,,1
+817,0x80000331,,,,,,,,,,,,,,,1
+818,0x80000332,VET,VeChain Token,,,,,,,,,,,,,1
+819,0x80000333,REEF,Reef,,,,,,,,,,,,,1
+820,0x80000334,CLO,Callisto,,Non-secpk,,,,,,,,,,,1
+821,0x80000335,,,,,,,,,,,,,,,1
+822,0x80000336,BDB,BigchainDB,,,,,,,,,,,,,1
+823,0x80000337,,,,,,,,,,,,,,,1
+824,0x80000338,RBNT,Redbelly Network,,,,,,,,,,,,,1
+825,0x80000339,,,,,,,,,,,,,,,1
+826,0x8000033a,,,,,,,,,,,,,,,1
+827,0x8000033b,ACE,Endurance,,,,,,,,,,,,,1
+828,0x8000033c,CCN,ComputeCoin,,,,,,,,,,,,,1
+829,0x8000033d,BBA,BBACHAIN,,,,,,,,,,,,,1
+830,0x8000033e,,,,,,,,,,,,,,,1
+831,0x8000033f,CRUZ,cruzbit,,,,,,,,,,,,,1
+832,0x80000340,SAPP,Sapphire,,,,,,,,,,,,,1
+833,0x80000341,777,Jackpot,7305,,,,,,,,,,,,1
+834,0x80000342,KYAN,Kyanite,,,,,,,,,,,,,1
+835,0x80000343,AZR,Azzure,,,,,,,,,,,,,1
+836,0x80000344,CFL,CryptoFlow,,,,,,,,,,,,,1
+837,0x80000345,DASHD,Dash Diamond,,,,,,,,,,,,,1
+838,0x80000346,TRTT,Trittium,,,,,,,,,,,,,1
+839,0x80000347,UCR,Ultra Clear,,,,,,,,,,,,,1
+840,0x80000348,PNY,Peony,,,,,,,,,,,,,1
+841,0x80000349,BECN,Beacon,,,,,,,,,,,,,1
+842,0x8000034a,MONK,Monk,,,,,,,,,,,,,1
+843,0x8000034b,SAGA,CryptoSaga,,,,,,,,,,,,,1
+844,0x8000034c,SUV,Suvereno,,,,,,,,,,,,,1
+845,0x8000034d,ESK,EskaCoin,,,,,,,,,,,,,1
+846,0x8000034e,OWO,OneWorld Coin,,,,,,,,,,,,,1
+847,0x8000034f,PEPS,PEPS Coin,,,,,,,,,,,,,1
+848,0x80000350,BIR,Birake,,,,,,,,,,,,,1
+849,0x80000351,MOBIC,MobilityCoin,,,,,,,,,,,,,1
+850,0x80000352,FLS,Flits,,,,,,,,,,,,,1
+851,0x80000353,FRECO,Freco,,,,,,,,,,,,,1
+852,0x80000354,DSM,Desmos,,,,,,,,,,,,,1
+853,0x80000355,PRCY,PRCY Coin,,,,,,,,,,,,,1
+854,0x80000356,,,,,,,,,,,,,,,1
+855,0x80000357,,,,,,,,,,,,,,,1
+856,0x80000358,,,,,,,,,,,,,,,1
+857,0x80000359,,,,,,,,,,,,,,,1
+858,0x8000035a,HVH,HAVAH,,,,,,,,,,,,,1
+859,0x8000035b,,,,,,,,,,,,,,,1
+860,0x8000035c,,,,,,,,,,,,,,,1
+861,0x8000035d,,,,,,,,,,,,,,,1
+862,0x8000035e,,,,,,,,,,,,,,,1
+863,0x8000035f,,,,,,,,,,,,,,,1
+864,0x80000360,,,,,,,,,,,,,,,1
+865,0x80000361,,,,,,,,,,,,,,,1
+866,0x80000362,MOB,MobileCoin,,,,,,,,,,,,,1
+867,0x80000363,,,,,,,,,,,,,,,1
+868,0x80000364,IF,Infinitefuture,,,,,,,,,,,,,1
+869,0x80000365,,,,,,,,,,,,,,,1
+870,0x80000366,,,,,,,,,,,,,,,1
+871,0x80000367,,,,,,,,,,,,,,,1
+872,0x80000368,,,,,,,,,,,,,,,1
+873,0x80000369,,,,,,,,,,,,,,,1
+874,0x8000036a,,,,,,,,,,,,,,,1
+875,0x8000036b,,,,,,,,,,,,,,,1
+876,0x8000036c,,,,,,,,,,,,,,,1
+877,0x8000036d,NAM,Namada,,,,,,,,,,,,,1
+878,0x8000036e,SCR,Scorum Network,,,,,,,,,,,,,1
+879,0x8000036f,,,,,,,,,,,,,,,1
+880,0x80000370,LUM,Lum Network,,,,,,,,,,,,,1
+881,0x80000371,,,,,,,,,,,,,,,1
+882,0x80000372,,,,,,,,,,,,,,,1
+883,0x80000373,ZBC,ZooBC,,,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,,,Funny address,,1
+884,0x80000374,,,,,,,,,,,,,,,1
+885,0x80000375,,,,,,,,,,,,,,,1
+886,0x80000376,ADF,AD Token,,,,,,,,,,,,,1
+887,0x80000377,,,,,,,,,,,,,,,1
+888,0x80000378,NEO,NEO,,,,,,,,,,,,,1
+889,0x80000379,TOMO,TOMO,,,,,,,,,,,,,1
+890,0x8000037a,XSEL,Seln,,,,,,,,,,,,,1
+891,0x8000037b,,,,,,,,,,,,,,,1
+892,0x8000037c,,,,,,,,,,,,,,,1
+893,0x8000037d,,,,,,,,,,,,,,,1
+894,0x8000037e,,,,,,,,,,,,,,,1
+895,0x8000037f,,,,,,,,,,,,,,,1
+896,0x80000380,LKSC,LKSCoin,,,,,,,,,,,,,1
+897,0x80000381,,,,,,,,,,,,,,,1
+898,0x80000382,AS,Assetchain,,,,,,,,,,,,,1
+899,0x80000383,XEC,eCash,,,,,,,,,,,,,1
+900,0x80000384,LMO,Lumeneo,,,,,,,,,,,,,1
+901,0x80000385,NXT,NxtMeta,,,,,,,,,,,,,1
+902,0x80000386,,,,,,,,,,,,,,,1
+903,0x80000387,,,,,,,,,,,,,,,1
+904,0x80000388,HNT,Helium,,,,,,,,,,,,,1
+905,0x80000389,,,,,,,,,,,,,,,1
+906,0x8000038a,,,,,,,,,,,,,,,1
+907,0x8000038b,FIS,StaFi,,,,,,,,,,,,,1
+908,0x8000038c,,,,,,,,,,,,,,,1
+909,0x8000038d,SGE,Saage,,,,,,,,,,,,,1
+910,0x8000038e,,,,,,,,,,,,,,,1
+911,0x8000038f,GERT,Gert,,,,,,,,,,,,,1
+912,0x80000390,,,,,,,,,,,,,,,1
+913,0x80000391,VARA,Vara Network,,,,,,,,,,,,,1
+914,0x80000392,,,,,,,,,,,,,,,1
+915,0x80000393,,,,,,,,,,,,,,,1
+916,0x80000394,META,Metadium,,,,,,,,,,,,,1
+917,0x80000395,FRA,Findora,,,,,,,,,,,,,1
+918,0x80000396,,,,,,,,,,,,,,,1
+919,0x80000397,CCD,Concordium,,,,,,,,,,,,,1
+920,0x80000398,,,,,,,,,,,,,,,1
+921,0x80000399,AVN,Avian Network,,,,,,,,,,,,,1
+922,0x8000039a,,,,,,,,,,,,,,,1
+923,0x8000039b,,,,,,,,,,,,,,,1
+924,0x8000039c,,,,,,,,,,,,,,,1
+925,0x8000039d,DIP,Dipper Network,,,,,,,,,,,,,1
+926,0x8000039e,,,,,,,,,,,,,,,1
+927,0x8000039f,,,,,,,,,,,,,,,1
+928,0x800003a0,GHM,HermitMatrixNetwork,,,,,,,,,,,,,1
+929,0x800003a1,,,,,,,,,,,,,,,1
+930,0x800003a2,,,,,,,,,,,,,,,1
+931,0x800003a3,RUNE,THORChain,,,,,,,,,,,,,1
+932,0x800003a4,,,,,,,,,,,,,,,1
+933,0x800003a5,,,,,,,,,,,,,,,1
+934,0x800003a6,,,,,,,,,,,,,,,1
+935,0x800003a7,,,,,,,,,,,,,,,1
+936,0x800003a8,,,,,,,,,,,,,,,1
+937,0x800003a9,,,,,,,,,,,,,,,1
+938,0x800003aa,,,,,,,,,,,,,,,1
+939,0x800003ab,,,,,,,,,,,,,,,1
+940,0x800003ac,,,,,,,,,,,,,,,1
+941,0x800003ad,---,reserved,,,,,,,,,,,,,1
+942,0x800003ae,,,,,,,,,,,,,,,1
+943,0x800003af,,,,,,,,,,,,,,,1
+944,0x800003b0,,,,,,,,,,,,,,,1
+945,0x800003b1,UNLOCK,Jasiri protocol,,,,,,,,,,,,,1
+946,0x800003b2,,,,,,,,,,,,,,,1
+947,0x800003b3,,,,,,,,,,,,,,,1
+948,0x800003b4,,,,,,,,,,,,,,,1
+949,0x800003b5,,,,,,,,,,,,,,,1
+950,0x800003b6,,,,,,,,,,,,,,,1
+951,0x800003b7,,,,,,,,,,,,,,,1
+952,0x800003b8,,,,,,,,,,,,,,,1
+953,0x800003b9,,,,,,,,,,,,,,,1
+954,0x800003ba,,,,,,,,,,,,,,,1
+955,0x800003bb,LTP,LifetionCoin,,,,,,,,,,,,,1
+956,0x800003bc,,,,,,,,,,,,,,,1
+957,0x800003bd,,,,,,,,,,,,,,,1
+958,0x800003be,KSOC,KickSoccer,,,,,,,,,,,,,1
+959,0x800003bf,,,,,,,,,,,,,,,1
+960,0x800003c0,VKAX,Vkax,,,,,,,,,,,,,1
+961,0x800003c1,,,,,,,,,,,,,,,1
+962,0x800003c2,,,,,,,,,,,,,,,1
+963,0x800003c3,,,,,,,,,,,,,,,1
+964,0x800003c4,,,,,,,,,,,,,,,1
+965,0x800003c5,,,,,,,,,,,,,,,1
+966,0x800003c6,MATIC,Matic,,,,,,,,,,TRUE,,,1
+967,0x800003c7,,,,,,,,,,,,,,,1
+968,0x800003c8,UNW,UNW,,,,,,,,,,,,,1
+969,0x800003c9,,,,,,,,,,,,,,,1
+970,0x800003ca,TWINS,TWINS,,,0x0221312B,0x022D2533,0x49,0x53,0x42,,,,,,1
+971,0x800003cb,,,,,,,,,,,,,,,1
+972,0x800003cc,,,,,,,,,,,,,,,1
+973,0x800003cd,,,,,,,,,,,,,,,1
+974,0x800003ce,,,,,,,,,,,,,,,1
+975,0x800003cf,,,,,,,,,,,,,,,1
+976,0x800003d0,,,,,,,,,,,,,,,1
+977,0x800003d1,TLOS,Telos,,,,,,,,,,,,,1
+978,0x800003d2,,,,,,,,,,,,,,,1
+979,0x800003d3,,,,,,,,,,,,,,,1
+980,0x800003d4,,,,,,,,,,,,,,,1
+981,0x800003d5,TAFECO,Taf ECO Chain,,,,,,,,,,,,,1
+982,0x800003d6,,,,,,,,,,,,,,,1
+983,0x800003d7,,,,,,,,,,,,,,,1
+984,0x800003d8,,,,,,,,,,,,,,,1
+985,0x800003d9,AU,Autonomy,,,,,,,,,,,,,1
+986,0x800003da,,,,,,,,,,,,,,,1
+987,0x800003db,VCG,VipCoin,,,,,,,,,,,,,1
+988,0x800003dc,XAZAB,Xazab core,,,,,,,,,,,,,1
+989,0x800003dd,AIOZ,AIOZ,,,,,,,,,,,,,1
+990,0x800003de,CORE,Coreum,,,,,,,,,,,,,1
+991,0x800003df,PEC,Phoenix,,,,,,,,,,,,,1
+992,0x800003e0,UNT,Unit,,,,,,,,,,,,,1
+993,0x800003e1,XRB,X Currency,,,,,,,,,,,,,1
+994,0x800003e2,QUAI,Quai Network,,,,,,,,,,,,,1
+995,0x800003e3,CAPS,Ternoa,,,,,,,,,,,,,1
+996,0x800003e4,OKT,OKChain Token,,,,,,,,,,,,,1
+997,0x800003e5,SUM,Solidum,,,,,,,,,,,,,1
+998,0x800003e6,LBTC,Lightning Bitcoin,,,,,,,,,,,,,1
+999,0x800003e7,BCD,Bitcoin Diamond,,secp256k1,,,,,,,,,,,1
+1000,0x800003e8,BTN,Bitcoin New,,secp256k1,,,,,,,,,,,1
+1001,0x800003e9,TT,ThunderCore,,,,,,,,,,,,,1
+1002,0x800003ea,BKT,BanKitt,,,,,,,,,,,,,1
+1003,0x800003eb,NODL,Nodle,,,,,,,,,,,,,1
+1004,0x800003ec,PCOIN,PCOIN,,,,,,,,,,,,,1
+1005,0x800003ed,TAO,Bittensor,,,,,,,,,,,,,1
+1006,0x800003ee,HSK,HashKey Chain,,,,,,,,,,,,,1
+1007,0x800003ef,FTM,Fantom,,,,,,,,,,TRUE,,,1
+1008,0x800003f0,RPG,RPG,,,,,,,,,,,,,1
+1009,0x800003f1,LAKE,iconLake,,,,,,,,,,,,,1
+1010,0x800003f2,HT,Huobi ECO Chain,,,,,,,,,,,,,1
+1011,0x800003f3,ELV,Eluvio,,,,,,,,,,,,,1
+1012,0x800003f4,JOC,Japan Open Chain,,,,,,,,,,,,,1
+1013,0x800003f5,BIC,Beincrypto,,,,,,,,,,,,,1
+1016,0x800003f8,---,reserved,,,,,,,,,,,,,1
+1020,0x800003fc,EVC,Evrice,,,,,,,,,,,,,1
+1022,0x800003fe,XRD,Radix DLT,,,,,,,,,,,,,1
+1023,0x800003ff,ONE,HARMONY-ONE (Legacy),,,,,,,,,,TRUE,Maybe not correct,,1
+1024,0x80000400,ONT,Ontology,,,,,,,,,,,,,1
+1025,0x80000401,CZZ,Classzz,,,,,,,,,,,,,1
+1026,0x80000402,KEX,Kira Exchange Token,,,,,,,,,,,,,1
+1027,0x80000403,MCM,Mochimo,,,,,,,,,,,,,1
+1028,0x80000404,PLS,Pulse Coin,,,,,,,,,,,,,1
+1032,0x80000408,BTCR,BTCR,,,,,,,,,,,,,1
+1042,0x80000412,MFID,Moonfish ID,,,,,,,,,,,,,1
+1111,0x80000457,BBC,Big Bitcoin,,,,,,,,,,,,,1
+1116,0x8000045c,CORE,Core,,,,,,,,,,,,,1
+1120,0x80000460,RISE,RISE,,,,,,,,,,,,,1
+1122,0x80000462,CMT,CyberMiles Token,,,,,,,,,,,,,1
+1128,0x80000468,ETSC,Ethereum Social,,,,,,,,,,,,,1
+1129,0x80000469,DFI,DeFiChain,,,,,,,,,,,,,1
+1130,0x8000046a,DFI,DeFiChain EVM Network,,,,,,,,,,,,,1
+1137,0x80000471,$DAG,Constellation Labs,,,,,,,,,,,,,1
+1145,0x80000479,CDY,Bitcoin Candy,,,,,,,,,,,,,1
+1155,0x80000483,ENJ,Enjin Coin,,,,,,,,,,,,,1
+1170,0x80000492,HOO,Hoo Smart Chain,,,,,,,,,,,,,1
+1234,0x800004d2,ALPH,Alephium,,,,,,,,,,,,,1
+1236,0x800004d4,,Masca,,,,,,,,,,,,,1
+1237,0x800004d5,NOSTR,Nostr,,,,,,,,,,,,,1
+1280,0x80000500,,Kudos Setler,,,,,,,,,,,,,1
+1284,0x80000504,GLMR,Moonbeam,,,,,,,,,,TRUE,,,1
+1285,0x80000505,MOVR,Moonriver,,,,,,,,,,TRUE,,,1
+1298,0x80000512,WPC,Wpc,,,,,,,,,,,,,1
+1308,0x8000051c,WEI,WEI,,,,,,,,,,,,,1
+1337,0x80000539,DFC,Defcoin,,,0x0488ADE4,0x0488B21E,0x1e,0x05,0x9e,,,,,,1
+1348,0x80000544,ISLM,IslamicCoin,,,,,,,,,,,,,1
+1397,0x80000575,HYC,Hycon,,,,,,,,,,,,,1
+1410,0x80000582,TENTSLP,TENT Simple Ledger Protocol,,,,,,,,,,,,,1
+1510,0x800005e6,XSC,XT Smart Chain,,,,,,,,,,,,,1
+1512,0x800005e8,AAC,Double-A Chain,,,,,,,,,,,,,1
+1524,0x800005f4,TLR,Taler,,,,,,,,,,,,,1
+1533,0x800005fd,BEAM,Beam,,,,,,,,,,,,,1
+1551,0x8000060f,SDK,Sovereign SDK,,,,,,,,,,,,,1
+1555,0x80000613,APC,Apc Chain,,,,,,,,,,,,,1
+1616,0x80000650,ELF,AELF,,,,,,,,,,,,,1
+1618,0x80000652,AUDL,AUDL,,,,,,,,,,,,,1
+1620,0x80000654,ATH,Atheios,,,,,,,,,,,,,1
+1627,0x8000065b,LUME,Lume Web,,,,,,,,,,,,,1
+1642,0x8000066a,NEW,Newton,,,,,,,,,,,,,1
+1657,0x80000679,BTA,Btachain,,,,,,,,,,,,,1
+1668,0x80000684,NEOX,Neoxa,,,,,,,,,,,,,1
+1669,0x80000685,MEWC,Meowcoin,,,,,,,,,,,,,1
+1688,0x80000698,BCX,BitcoinX,,,,,,,,,,,,,1
+1729,0x800006c1,XTZ,Tezos,,,,,,,,,,,,,1
+1776,0x800006f0,LBTC,Liquid BTC,,,,,,,,,,,,,1
+1777,0x800006f1,BBP,Biblepay,,,,,,,,,,,,,1
+1784,0x800006f8,JPYS,JPY Stablecoin,,,,,,,,,,,,,1
+1789,0x800006fd,VEGA,Vega Protocol,,,,,,,,,,,,,1
+1815,0x80000717,ADA,Cardano,,,,,,,,,,,,,1
+1818,0x8000071a,CUBE,Cube Chain Native Token,,,,,,,,,,,,,1
+1856,0x80000743,TES,Teslacoin,,,,,,,,,,,,,1
+1888,0x80000760,ZTX,Zetrix,,,,,,,,,,,,,1
+1899,0x8000076b,XEC,eCash token,,,,,,,,,,,,,1
+1901,0x8000076d,CLC,Classica,,,,,,,,,,,,,1
+1907,0x80000773,BITCI,Bitcicoin,,,,,,,,,,,,,1
+1919,0x8000077f,VIPS,VIPSTARCOIN,,,,,,,,,,,,,1
+1926,0x80000786,CITY,City Coin,,,0x0488ADE4,0x0488B21E,0x1c,0x58,0xed,,,,,,1
+1955,0x800007a3,XX,xx coin,,,,,,,,,,,,,1
+1977,0x800007b9,XMX,Xuma,,,,,,,,,,,,,1
+1984,0x800007c0,TRTL,TurtleCoin,,,,,,,,,,,,,1
+1985,0x800007c1,SLRT,Solarti Chain,,,,,,,,,,,,,1
+1986,0x800007c2,QTH,Qing Tong Horizon,,,,,,,,,,,,,1
+1987,0x800007c3,EGEM,EtherGem,,,,,,,,,,,,,1
+1988,0x800007c4,MIRA,Mira Chain,,,,,,,,,,,,,1
+1989,0x800007c5,HODL,HOdlcoin,,,,,,,,,,,,,1
+1990,0x800007c6,PHL,Placeholders,,,,,,,,,,,,,1
+1991,0x800007c7,SC,Sia,,,,,,,,,,,,,1
+1996,0x800007cc,MYT,Mineyourtime,,,,,,,,,,,,,1
+1997,0x800007cd,POLIS,Polis,,,,,,,,,,,,,1
+1998,0x800007ce,XMCC,Monoeci,,,,,,,,,,,,,1
+1999,0x800007cf,COLX,ColossusXT,,,,,,,,,,,,,1
+2000,0x800007d0,GIN,GinCoin,,,,,,,,,,,,,1
+2001,0x800007d1,MNP,MNPCoin,,,,,,,,,,,,,1
+2002,0x800007d2,MLN,Miraland,,,,,,,,,,,,,1
+2017,0x800007e1,KIN,Kin,,,,,,,,,,,,,1
+2018,0x800007e2,EOSC,EOSClassic,,,,,,,,,,,,,1
+2019,0x800007e3,GBT,GoldBean Token,,,,,,,,,,,,,1
+2020,0x800007e4,PKC,PKC,,,,,,,,,,,,,1
+2021,0x800007e5,SKT,Sukhavati,,,,,,,,,,,,,1
+2022,0x800007e6,XHT,Xinghuo Token,,,,,,,,,,,,,1
+2023,0x800007e7,COC,Chat On Chain,,,,,,,,,,,,,1
+2024,0x800007e8,USBC,Universal Ledger USBC,,,,,,,,,,,,,1
+2046,0x800007fe,ANY,Any,,,,,,,,,,,,,1
+2048,0x80000800,MCASH,MCashChain,,,,,,,,,,,,,1
+2049,0x80000801,TRUE,TrueChain,,,,,,,,,,,,,1
+2050,0x80000802,MOVO,Movo Smart Chain,,,,,,,,,,,,,1
+2086,0x80000826,KILT,KILT Spiritnet,,,,,,,,,,,,,1
+2109,0x8000083d,SAMA,Exosama Network,,,,,,,,,,,,,1
+2112,0x80000840,IoTE,IoTE,,,,,,,,,,,,,1
+2125,0x8000084d,BAY,BitBay,,,,,,,,,,,,,1
+2137,0x80000859,XRG,Ergon,,,,,,,,,,,,,1
+2182,0x80000888,CHZ,Chiliz,,,,,,,,,,,,,1
+2199,0x80000897,SAMA,Moonsama Network,,,,,,,,,,,,,1
+2221,0x800008ad,ASK,ASK,,,,,,,,,,,,,1
+2222,0x800008ae,CWEB,Coinweb,,,,,,,,,,,,,1
+2285,0x800008ed,QIYI,Qiyi Chain,,,,,,,,,,,,,1
+2301,0x800008fd,QTUM,QTUM,,,0x0488ADE4,0x0488B21E,0x3A,0x32,0x80,,,,,,1
+2302,0x800008fe,ETP,Metaverse,,,,,,,,,,,,,1
+2303,0x800008ff,GXC,GXChain,,,,,,,,,,,,,1
+2304,0x80000900,CRP,CranePay,,,0x0488ADE4,0x0488B21E,0x1C,0x0A,0x7B,,,,Maybe not correct,,1
+2305,0x80000901,ELA,Elastos,,,0x0488ADE4,0x0488B21E,0x21,0xc4,0xef ,,,,Maybe not correct,,1
+2338,0x80000922,SNOW,Snowblossom,,,,,,,,,,,,,1
+2365,0x8000093d,XIN,Mixin,,,,,,,,,,,,,1
+2500,0x800009c4,NEXI,Nexi,,,,,,,,,,,,,1
+2570,0x80000a0a,AOA,Aurora,,,,,,,,,,,,,1
+2718,0x80000a9e,NAS,Nebulas,,,,,,,,,,,,,1
+2894,0x80000b4e,REOSC,REOSC Ecosystem,,,,,,,,,,,,,1
+2941,0x80000b7d,BND,Blocknode,,,0x0488ADE4,0x0488B21E,0x19,0x3F,0x4b,,,,,,1
+3000,0x80000bb8,SM,Stealth Message,,,,,,,,,,,,,1
+3003,0x80000bbb,LUX,LUX,,,,,,,,,,,,,1
+3030,0x80000bd6,HBAR,Hedera HBAR,,,,,,,,,,,,,1
+3077,0x80000c05,COS,Contentos,,,,,,,,,,,,,1
+3276,0x80000ccc,CCC,CodeChain,,,,,,,,,,,,,1
+3333,0x80000d05,SXP,Solar,,,,,,,,,,,,,1
+3377,0x80000d31,ROI,ROIcoin,,,,,,,,,,,,,1
+3381,0x80000d35,DYN,Dynamic,,,,,,,,,,,,,1
+3383,0x80000d37,SEQ,Sequence,,,,,,,,,,,,,1
+3501,0x80000dad,JFIN,JFIN Coin,,,,,,,,,,,,,1
+3552,0x80000de0,DEO,Destocoin,,,,,,,,,,,,,1
+3564,0x80000dec,DST,DeStream,,,,,,,,,,,,,1
+3601,0x80000e11,CY,Cybits,,,,,,,,,,,,,1
+3757,0x80000ead,MPC,Partisia Blockchain,,,,,,,,,,,,,1
+4040,0x80000fc8,FC8,FCH Network,,,,,,,,,,,,,1
+4096,0x80001000,YEE,YeeCo,,,,,,,,,,,,,1
+4218,0x8000107a,IOTA,IOTA,,,,,,,,,,,,,1
+4219,0x8000107b,SMR,Shimmer,,,,,,,,,,,,,1
+4242,0x80001092,AXE,Axe,,,0x0488ADE4,0x0488B21E,0x37,0x10,0xcc,,,,maybe not correct,,1
+4343,0x800010f7,XYM,Symbol,,,,,,,,,,,,,1
+4444,0x8000115c,C4E,Chain4Energy,,,,,,,,,,,,,1
+4919,0x80001337,XVM,Venidium,,,,,,,,,,,,,1
+4999,0x80001387,BXN,BlackFort Exchange Network,,,,,,,,,,,,,1
+5000,0x80001388,V12,Vet The Vote,,,,,,,,,,,,,1
+5006,0x8000138e,SBC,Senior Blockchain,,,,,,,,,,,,,1
+5248,0x80001480,FIC,FIC,,,,,,,,,,,,,1
+5353,0x800014e9,HNS,Handshake,,,,,,,,,,,,,1
+5404,0x8000151c,ISK,ISKRA,,,,,,,,,,,,,1
+5467,0x8000155b,ALTME,ALTME,,,,,,,,,,,,,1
+5555,0x800015b3,FUND,Unification,,,,,,,,,,,,,1
+5757,0x8000167d,STX,Stacks,,,,,,,,,,,,,1
+5895,0x80001707,VOW,VowChain VOW,,,,,,,,,,,,,1
+5920,0x80001720,SLU,SILUBIUM,,,,,,,,,,,,,1
+5995,0x8000176B,DUSK,Dusk Network,,,,,,,,,,,,,1
+6060,0x800017ac,GO,GoChain GO,,,,,,,,,,,,,1
+6144,0x80001800,DTS,Datos,,,,,,,,,,,,,1
+6174,0x8000181e,MOI,My Own Internet,,,,,,,,,,,,,1
+6278,0x80001886,STEAMX,Rails Network Mainnet,,,,,,,,,,,,,1
+6532,0x80001984,UM,Penumbra,,,,,,,,,,,,,1
+6599,0x800019c7,RSC,Royal Sports City,,,,,,,,,,,,,1
+6666,0x80001a0a,BPA,Bitcoin Pizza,,,,,,,,,,,,,1
+6688,0x80001a20,SAFE,SAFE,,,,,,,,,,,,,1
+6779,0x80001a7b,COTI,COTI,,,,,,,,,,,,,1
+6969,0x80001b39,ROGER,TheHolyrogerCoin,,,,,,,,,,,,,1
+7000,0x80001b58,ZETA,ZetaChain,,,,,,,,,,,,,1
+7027,0x80001b73,ELLA,Ella the heart,,,,,,,,,,,,,1
+7028,0x80001b74,AA,Arthera,,,,,,,,,,,,,1
+7091,0x80001bb3,TOPL,Topl,,,,,,,,,,,,,1
+7331,0x80001ca3,KLY,KLYNTAR,,,,,,,,,,,,,1
+7341,0x80001cad,SHFT,Shyft,,,,,,,,,,,,,1
+7518,0x80001d5e,MEV,MEVerse,,,,,,,,,,,,,1
+7576,0x80001d98,ADIL,ADIL Chain,,,,,,,,,,,,,1
+7777,0x80001e61,BTV,Bitvote,,,,,,,,,,,,,1
+7779,0x80001e63,CPV,Compverse,,,,,,,,,,,,,1
+8000,0x80001f40,SKY,Skycoin,,,,,,,,,,,,,1
+8080,0x80001f90,DSRV,DSRV,,,,,,,,,,,,,1
+8181,0x80001ff5,BOC,BeOne Chain,,,,,,,,,,,,,1
+8192,0x80002000,PAC,pacprotocol,,,,,,,,,,,,,1
+8217,0x80002019,KLAY,KLAY,,,,,,,,,,,,,1
+8339,0x80002093,BTQ,BitcoinQuark,,,,,,,,,,,,,1
+8444,0x800020fc,XCH,Chia,,,,,,,,,,,,,1
+8520,0x80002148,---,reserved,,,,,,,,,,,,,1
+8680,0x800021e8,PLMNT,Planetmint,,,,,,,,,,,,,1
+8866,0x800022a2,GGX,Golden Gate,,,,,,,,,,,,,1
+8886,0x800022b6,GGXT,Golden Gate Sydney,,,,,,,,,,,,,1
+8888,0x800022b8,SBTC,Super Bitcoin,,,,,,,,,,,,,1
+8964,0x80002304,NULS,NULS,,,,,,,,,,,,,1
+8997,0x80002325,BBC,Babacoin,,,,,,,,,,,,,1
+8998,0x80002326,JGC,JagoanCoin,,,,,,,,,,,,,1
+8999,0x80002327,BTP,Bitcoin Pay,,,,,,,,,,,,,1
+9000,0x80002328,AVAX,Avalanche,,,,,,,,,,,,,1
+9001,0x80002329,ARB1,Arbitrum,,,,,,,,,,TRUE,,,1
+9002,0x8000232a,BOBA,Boba,,,,,,,,,,,,,1
+9003,0x8000232b,LOOP,Loopring,,,,,,,,,,,,,1
+9004,0x8000232c,STRK,StarkNet,,,,,,,,,,,,,1
+9005,0x8000232d,AVAXC,Avalanche C-Chain,,,,,,,,,,TRUE,,,1
+9006,0x8000232e,BSC,Binance Smart Chain,,,,,,,,,,TRUE,,,1
+9797,0x80002645,NRG,Energi,,,0xD7DC6E9F,0x03B8C856,0x21,0x35,0x6a,,,,,,1
+9888,0x800026a0,BTF,Bitcoin Faith,,,,,,,,,,,,,1
+9999,0x8000270f,GOD,Bitcoin God,,,,,,,,,,,,,1
+10000,0x80002710,FO,FIBOS,,,,,,,,,,,,,1
+10111,0x8000277f,DHP,dHealth,,,,,,,,,,,,,1
+10226,0x800027f2,RTM,Raptoreum,,,,,,,,,,,,,1
+10242,0x80002802,AA,Arthera,,,,,,,,,,,,,1
+10291,0x80002833,XRC,XRhodium,,secp256k1,,,,,,,,,,,1
+10507,0x8000290b,NUM,Numbers Protocol,,,,,,,,,,,,,1
+10605,0x8000296d,XPI,Lotus,,,,,,,,,,,,,1
+11111,0x80002b67,ESS,Essentia One,,,,,,,,,,,,,1
+11742,0x80002dde,VARCH,InvArch,,,,,,,,,,,,,1
+11743,0x80002ddf,TNKR,Tinkernet,,,,,,,,,,,,,1
+12345,0x80003039,IPOS,IPOS,,,,,,,,,,,,,1
+12586,0x8000312a,MINA,Mina,,,,,,,,,,,,,1
+13107,0x80003333,BTY,BitYuan,,,,,,,,,,,,,1
+13108,0x80003334,YCC,Yuan Chain Coin,,,,,,,,,,,,,1
+14001,0x800036b1,WAX,Worldwide Asset Exchange,,,,,,,,,,,,,1
+15845,0x80003de5,SDGO,SanDeGo,,,,,,,,,,,,,1
+16181,0x80003f35,XTX,Totem Live Network,,,,,,,,,,,,,1
+16754,0x80004172,ARDR,Ardor,,,,,,,,,,,,,1
+18000,0x80004650,MTR,Meter,,,,,,,,,,,,,1
+19165,0x80004add,SAFE,Safecoin,,,0x0488ADE4,0x0488B21E,0x3d,0x56,0xbd,,,,,,1
+19167,0x80004adf,FLUX,Flux,,,,,,,,,,,,,1
+19169,0x80004ae1,RITO,Ritocoin,,,0x0488ADE4,0x0488B21E,0x19,0x69,0x8b,,,,,,1
+19788,0x80004d4c,ML,Mintlayer,,,,,,,,,,,,,1
+20036,0x80004e44,XND,ndau,,,,,,,,,,,,,1
+21004,0x8000520c,C4EI,c4ei,,,,,,,,,,,,,1
+21888,0x80005580,PAC,Pactus,,,,,,,,,,,,,1
+22504,0x800057e8,PWR,PWRcoin,,,,,,,,,,,,,1
+23000,0x800059d8,EPIC,Epic Cash,,,,,,,,,,,,,1
+25252,0x800062a4,BELL,Bellcoin,,,,,,,,,,,,,1
+25718,0x80006476,CHX,Own,,,,,,,,,,,,,1
+29223,0x80007227,NEXA,Nexa,,,,,,,,,,,,,1
+30001,0x80007531,---,reserved,,,,,,,,,,,,,1
+31102,0x8000797e,ESN,EtherSocial Network,,,,,,,,,,,,,1
+31337,0x80007a69,,ThePower,,,,,,,,,,,,,1
+33416,0x80008288,TEO,Trust Eth reOrigin,,,,,,,,,,,,,1
+33878,0x80008456,BTCS,Bitcoin Stake,,,,,,,,,,,,,1
+34952,0x80008888,BTT,ByteTrade,,,,,,,,,,,,,1
+37992,0x80009468,FXTC,FixedTradeCoin,,,,,,,,,,,,,1
+39321,0x80009999,AMA,Amabig,,,,,,,,,,,,,1
+42069,0x8000a455,FACT,FACT0RN,,,,,,,,,,,,,1
+43028,0x8000a814,AXIV,AXIV,,,,,,,,,,,,,1
+47803,0x8000babb,BAX,BAX,,,,,,,,,,,,,1
+49262,0x8000c06e,EVE,evan,,,,,,,,,,,,,1
+49344,0x8000c0c0,STASH,STASH,,,,,,,,,,,,,1
+52752,0x8000ce10,CELO,Celo,,,,,,,,,,,,,1
+61616,0x8000f0b0,TH,TianHe,,,,,,,,,,,,,1
+65536,0x80010000,KETH,Krypton World,,,,,,,,,,,,,1
+69420,0x80010f2c,GRLC,Garlicoin,,,,,,,,,,,,,1
+70007,0x80011177,GWL,Gewel,,,,,,,,,,,,,1
+77777,0x80012fd1,ZYN,Wethio,,,,,,,,,,,,,1
+88888,0x80015b38,RYO,c0ban,,,0x0488ADE4,0x0488B21E,0x12,0x1c ,0x88,,,,,,1
+99999,0x8001869f,WICC,Waykichain,,,,,,,,,,,,,1
+100500,0x80018894,HOME,HomeCoin,,,,,,,,,,,,,1
+101010,0x80018a92,STC,Starcoin,,,,,,,,,,,,,1
+105105,0x80019a91,STRAX,Strax,,,,,,,,,,,,,1
+111111,0x8001b207,KAS,Kaspa,,,,,,,,,,,,,1
+161803,0x8002780b,APTA,Bloqs4Good,,,,,,,,,,,,,1
+200625,0x80030fb1,AKA,Akroma,,,,,,,,,,,,,1
+200665,0x80011000,GENOM,GENOM,,,,,,,,,,,,,1
+224433,0x80036cb1,CONET,CONET Holesky Network,,,,,,,,,,,,,1
+246529,0x8003c301,ATS,ARTIS sigma1,,,,,,,,,,,,,1
+261131,0x8003fc0b,ZAMA,Zama,,,,,,,,,,,,,1
+314159,0x8004cb2f,PI,Pi Network,,,,,,,,,,,,,1
+333332,0x80051614,VALUE,Value Chain,,,,,,,,,,,,,1
+333333,0x80051615,3333,Pi Value Consensus,,,,,,,,,,,,,1
+424242,0x80067932,X42,x42,,,0x0488ADE4,0x0488B21E,0x4b,0x7d,0xcb,,,,,,1
+534352,0x80082750,SCR,Scroll,,,,,,,,,,,,,1
+666666,0x800a2c2a,VITE,Vite,,,,,,,,,,,,,1
+888888,0x800d9038,SEA,Second Exchange Alliance,,,,,,,,,,,,,1
+999999,0x800c9061,WTC,WaltonChain,,,,,,,,,,,,,1
+1048576,0x80100000,AMAX,Armonia Meta Chain,,,,,,,,,,,,,1
+1171337,0x8011df89,ILT,iOlite,,,,,,,,,,,,,1
+1313114,0x8014095a,ETHO,Etho Protocol,,,,,,,,,,,,,1
+1313500,0x80140adc,XERO,Xerom,,,,,,,,,,,,,1
+1712144,0x801a2010,LAX,LAPO,,,,,,,,,,,,,1
+3924011,0x803be02b,EPK,EPIK Protocol,,,,,,,,,,,,,1
+4741444,0x80485944,HYD,Hydra Token,,,,,,,,,,,,,1
+5249353,0x80501949,BCO,BitcoinOre,,,,,,,,,,,,,1
+5249354,0x8050194a,BHD,BitcoinHD,,,,,,,,,,,,,1
+5264462,0x8050544e,PTN,PalletOne,,,,,,,,,,,,,1
+5655640,0x80564c58,VLX,Velas,,,,,,,,,,,,,1
+5718350,0x8057414e,WAN,Wanchain,,,,,,,,,,,,,1
+5741564,0x80579bfc,WAVES,Waves,,,,,,,,,,,,,1
+5741565,0x80579bfd,WEST,Waves Enterprise,,,,,,,,,,,,,1
+6382179,0x80616263,ABC,Abcmint,,,,,,,,,,,,,1
+6517357,0x8063726d,CRM,Creamcoin,,,,,,,,,,,,,1
+7171666,0x806d6e52,BROCK,Bitrock,,,,,,,,,,,,,1
+7562605,0x8073656d,SEM,Semux,,,,,,,,,,,,,1
+7567736,0x80737978,ION,ION,,,,,,,,,,,,,1
+7777777,0x8076adf1,FCT,FirmaChain,,,,,,,,,,,,,1
+7825266,0x80776772,WGR,Wagerr,,,0x0221312B,0x022D2533,0x49,0x3f,0xc7,,,,,,1
+7825267,0x80776773,OBSR,OBServer,,,,,,,,,,,,,1
+8163271,0x807c8fc7,AFS,ANFS,,,,,,,,,,,,,1
+11259375,0x80abcdef,LBR,0L,,,,,,,,,,,,,1
+15118976,0x80e6b280,XDS,XDS,,,,,,,,,,,,,1
+61717561,0x83adbc39,AQUA,Aquachain,,,,,,,,,,,,,1
+88888888,0x854c5638,HATCH,Hatch,,,,,,,,,,,,,1
+91927009,0x857ab1e1,kUSD,kUSD,,,,,,,,,,,,,1
+99999996,0x85f5e0fc,GENS,GENS,,,,,,,,,,,,,1
+99999997,0x85f5e0fd,EQ,EQ,,,,,,,,,,,,,1
+99999998,0x85f5e0fe,FLUID,Fluid Chains,,,,,,,,,,,,,1
+99999999,0x85f5e0ff,QKC,QuarkChain,,,,,,,,,,,,,1
+608589380,0xa4465644,FVDC,ForumCoin,,,,,,,,,,,,,1
+1179993420,0xc655454c,Fuel,Fuel,,,,,,,,,,,,,1

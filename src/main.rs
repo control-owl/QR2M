@@ -2335,47 +2335,39 @@ fn create_about_window() {
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     fancy_print(Some(&t!("log.update_derivation_label").to_string()), None);
 
-    // println!("New derivation_path: {:?}", DP);
-
     let mut path = String::new();
+    path.push_str("m");
 
     if DP.bip.unwrap() == 32  {
-        // BIP      m/32[']
-        path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
-        if DP.hardened_bip.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-        // COIN     m/32[']/0[']
         path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
         if DP.hardened_coin.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
-        // ADDRESS  m/32[']/0[']/0[']
+
         path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
         if DP.hardened_address.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
     } else {
-        // BIP      m/!32[']
-        path.push_str(&format!("m/{}", DP.bip.unwrap_or_default()));
+        path.push_str(&format!("/{}", DP.bip.unwrap_or_default()));
         if DP.hardened_bip.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
-        // COIN     m/!32[']/0[']
+
         path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
         if DP.hardened_coin.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
-        // ADDRESS  m/!32[']/0[']/0[']
+
         path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
         if DP.hardened_address.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
-        // PURPOSE  m/!32[']/0[']/0[']/[0,1]
-        path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
 
+        path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
     }
     
+    fancy_print(Some(&t!("log.new_derivation_path").to_string()), Some(&path));
     label.set_text(&path);
 }
 
@@ -2763,7 +2755,7 @@ fn create_main_window(application: &adw::Application) {
     main_address_box.set_margin_end(10);
     main_address_box.set_margin_bottom(10);
 
-    // Derivation labels
+    // Derivation options
     // TODO: Show derivation boxes according to BIP number
     let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -2858,6 +2850,8 @@ fn create_main_window(application: &adw::Application) {
     coin_hardened_frame.set_child(Some(&coin_hardened_checkbox));
     address_hardened_frame.set_child(Some(&address_hardened_checkbox));
 
+
+    // Derivation label
     let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let derivation_label_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation").to_string()));
     derivation_label_frame.set_hexpand(true);
@@ -2877,16 +2871,28 @@ fn create_main_window(application: &adw::Application) {
         .css_classes(["large-title"])
         .build();
 
+    
+    // Generate address button
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
 
     generate_addresses_button_box.append(&generate_addresses_button);
     generate_addresses_button_box.set_halign(gtk::Align::Center);
 
+
+    // Address tree
+    let address_scrolled_window = gtk::ScrolledWindow::new();
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_treeview_frame = gtk::Frame::new(Some(&t!("UI.main.address").to_string()));
     address_treeview_frame.set_hexpand(true);
     address_treeview_frame.set_vexpand(true);
+
+    let address_store = gtk::ListStore::new(&[
+        gtk4::glib::Type::STRING, // Derivation Path
+        gtk4::glib::Type::STRING, // Address
+        gtk4::glib::Type::STRING, // Public Key
+        gtk4::glib::Type::STRING, // Private Key
+    ]);
 
     let address_treeview = gtk::TreeView::new();
     address_treeview.set_headers_visible(true);
@@ -2906,6 +2912,43 @@ fn create_main_window(application: &adw::Application) {
         address_treeview.append_column(&column);
     }
 
+    address_treeview.set_model(Some(&address_store));
+
+
+    // Address options
+    let address_options_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
+    let address_options_content = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    
+    
+    
+    let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_options_adjustment = gtk::Adjustment::new(
+        10.0, // initial value
+        1.0, // minimum value
+        2147483647.0, // maximum value
+        1.0, // step increment
+        10.0, // page increment
+        0.0, // page size
+    );
+    let address_options_spinbutton = gtk::SpinButton::new(Some(&address_options_adjustment), 1.0, 0);
+
+    address_options_address_count_box.append(&address_options_spinbutton);
+    address_options_content.append(&address_options_address_count_box);
+    address_options_box.append(&address_options_frame);
+    address_options_frame.set_child(Some(&address_options_content));
+
+    // Items
+    // Label: Generate
+    // Scroll_box: address_count
+    // Label: Start index
+    // Scroll_box: address_start_index
+
+
+
+
+
+
     // Connections
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
@@ -2924,12 +2967,24 @@ fn create_main_window(application: &adw::Application) {
     derivation_box.append(&main_purpose_frame);
     derivation_label_box.append(&derivation_label_frame);
     derivation_label_frame.set_child(Some(&derivation_label_text));
-    address_treeview_frame.set_child(Some(&address_treeview));
+
+
     address_treeview_box.append(&address_treeview_frame);
+    address_treeview_frame.set_child(Some(&address_scrolled_window));
+    address_scrolled_window.set_child(Some(&address_treeview));
+
+
+
+    // address_treeview_box.append(&address_scrolled_window);
+    
+
+
+
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
     main_address_box.append(&generate_addresses_button_box);
     main_address_box.append(&address_treeview_box);
+    main_address_box.append(&address_options_box);
     
     stack.add_titled(
         &main_address_box,
@@ -3055,10 +3110,6 @@ fn create_main_window(application: &adw::Application) {
                     let end_iter = buffer.end_iter();
                     let seed_string = buffer.text(&start_iter, &end_iter, true);
                     
-
-        
-
-
                     match derive_master_keys(
                         &seed_string, 
                         &private_header,
@@ -3071,7 +3122,33 @@ fn create_main_window(application: &adw::Application) {
                         Err(err) => eprintln!("{}: {}", &t!("error.master.create"), err),
                     }
 
+                    let trimmed_public_key_hash;
+                    
+                    // Remove the "0x" prefix
+                    if !public_key_hash.is_empty() {
+                        trimmed_public_key_hash = &public_key_hash[2..];
+                    } else {
+                        trimmed_public_key_hash = "00";
+                    }
+
+                    // Convert the hexadecimal string to a u8 value
+                    // BUG: When pub_key_has is bigger then 0xFF: Failed to convert number too large to fit in target type
+                    // Come coins have WIF > 0xFF
+                    let phk = match u8::from_str_radix(trimmed_public_key_hash, 16) {
+                        Ok(value) => value,
+                        Err(e) => {
+                            println!("Failed to convert: {}", e);
+                            return
+                        },
+                    };
+
                     coin_entry.set_text(&coin_type);
+                    ADDRESS_DATA.with(|data| {
+                        let mut data = data.borrow_mut();
+                        println!("public_key_hash_vec: {:?}", &phk);
+                        data.public_key_hash = Some(phk.clone());
+                        data.wallet_import_format = Some(wif.clone());
+                    });
                 }  
             }
         }
@@ -3126,8 +3203,10 @@ fn create_main_window(application: &adw::Application) {
     
             if *bip == 32 {
                 main_purpose_frame.set_visible(false);
+                bip_hardened_frame.set_visible(false);
             } else {
                 main_purpose_frame.set_visible(true);
+                bip_hardened_frame.set_visible(true);
             }
     
             dp_clone.borrow_mut().update_field("bip", Some(FieldValue::U32(*bip)));
@@ -3216,43 +3295,85 @@ fn create_main_window(application: &adw::Application) {
         }
     ));
 
+    let derivation_label_text_clone = derivation_label_text.clone();
+
     // JUMP: Generate Addresses button
     generate_addresses_button.connect_clicked(move |_| {
         println!("\n#### Generating addresses button ####");
     
         let master_private_key_bytes = ADDRESS_DATA.with(|data| {
             let data = data.borrow();
-            // BUG: called `Option::unwrap()` on a `None` value
             data.master_private_key_bytes.clone().unwrap_or_default()
         });
-        println!("Received Master private bytes: {:?}", master_private_key_bytes);
-
-
+        // println!("Received Master private bytes: {:?}", master_private_key_bytes);
+    
         let master_chain_code_bytes = ADDRESS_DATA.with(|data| {
             let data = data.borrow();
             data.master_chain_code_bytes.clone().unwrap_or_default()
         });
-        println!("Received Master chain code bytes: {:?}", master_chain_code_bytes);
+        // println!("Received Master chain code bytes: {:?}", master_chain_code_bytes);
+    
+        let wallet_import_format = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.wallet_import_format.clone().unwrap_or_default()
+        });
 
-
-        let path = "m/44'/0'/0'/0";
-
-        let derived = derive_from_path(&master_private_key_bytes, &master_chain_code_bytes, path).expect("Failed to derive key from path");
+        let DP = derivation_label_text_clone.text();
+        let path = DP.to_string();
+    
+        let address_count: u32 = 1;
+        let hardened = true;
+    
         let secp = secp256k1::Secp256k1::new();
-        let public_key = secp256k1::PublicKey::from_secret_key(&secp, &derived.0);
-        let address = generate_address(&public_key);
-        println!("Generated address: {}", address);
+        let public_key_hash = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.public_key_hash.clone().unwrap_or_default()
+        });
+    
+        let mut addresses = Vec::new();
+    
+        for i in 0..address_count {
+            // Construct the derivation path with address index and hardened flag
+            let full_path = if hardened {
+                format!("{}/{}'", path, i)
+            } else {
+                format!("{}/{}", path, i)
+            };
+    
+            println!("full:path: {}", full_path);
+            
+            let derived = derive_from_path(&master_private_key_bytes, &master_chain_code_bytes, &full_path)
+                .expect("Failed to derive key from path");
+    
+            let public_key = secp256k1::PublicKey::from_secret_key(&secp, &derived.0);
+            let pub_key = hex::encode(&public_key.serialize());
+            let address = generate_address(&public_key, public_key_hash.clone());
 
-
-
-
-
-        // Bitcoin crate
-        let master_private_key = bitcoin::PrivateKey::from_slice(&derived.0.secret_bytes(), bitcoin::Network::Bitcoin).unwrap();
-        let master_public_key = bitcoin::PublicKey::from_private_key(&secp, &master_private_key);
-        let bitcoin_address = bitcoin::Address::p2pkh(master_public_key.pubkey_hash(), bitcoin::Network::Bitcoin);
-        println!("Generated Bitcoin address: {}", bitcoin_address);
-
+            let compressed = true;
+            
+            let priv_key_wif = private_key_to_wif(
+                    Some(&derived.0), 
+                    Some(compressed),
+                    Some(&wallet_import_format), 
+            ).expect("Failed to convert private key to WIF");
+            
+            addresses.push(CryptoAddresses {
+                derivation_path: full_path,
+                address: address.clone(),
+                public_key: pub_key.clone(),
+                private_key: priv_key_wif.clone(),
+            });
+        }
+    
+        for address in addresses {
+            let iter = address_store.append();
+            address_store.set(&iter, &[
+                (0, &address.derivation_path),
+                (1, &address.address),
+                (2, &address.public_key),
+                (3, &address.private_key),
+            ]);
+        }
     });
     
     
@@ -3844,8 +3965,7 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 
 
-// TESTING -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
+// ADDRESSES -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 #[derive(Debug, Default)]
 struct WalletSettings {
@@ -3858,6 +3978,10 @@ struct WalletSettings {
     master_private_key_bytes: Option<Vec<u8>>,
     master_chain_code_bytes: Option<Vec<u8>>,
     master_public_key_bytes: Option<Vec<u8>>,
+    wallet_import_format: Option<String>,
+    
+    // BUG: Some coins are not u8 (Decred: 0x071a)
+    public_key_hash: Option<u8>,
 
     // SEND:
     // ADDRESS_DATA.with(|data| {
@@ -3873,10 +3997,6 @@ struct WalletSettings {
     // });
 }
 
-
-// right: "c437bf5fcdf768654b10914f5586a69b8e650704fe08c377363051dd1ae74e81" - CORRECT
-// left : "c337bf5fcdf768654a0f904e5586a69b8e640604fd08c376353051dc1ae64d81"
-
 fn derive_child_key(
     parent_key: &[u8], 
     parent_chain_code: &[u8], 
@@ -3884,11 +4004,10 @@ fn derive_child_key(
     hardened: bool
 ) -> Option<(Vec<u8>, Vec<u8>, Vec<u8>)> {
     fancy_print(Some(&t!("log.derive_child_key").to_string()), None);
-
-    println!("Start parent key: {:?}", &parent_key);
-    println!("Start parent chain code: {:?}", &parent_chain_code);
-    println!("Start index: {:?}", &index);
-    println!("Start hardened?: {:?}", &hardened);
+    fancy_print(Some("parent_key"), Some(&format!("{:?}", parent_key)));
+    fancy_print(Some("parent_chain_code"), Some(&format!("{:?}", parent_chain_code)));
+    fancy_print(Some("index"), Some(&format!("{:?}", index)));
+    fancy_print(Some("hardened"), Some(&format!("{:?}", hardened)));
     
     // Check if index is hardened and validate accordingly
     if index & 0x80000000 != 0 && !hardened {
@@ -3896,14 +4015,10 @@ fn derive_child_key(
     }
 
     let secp = secp256k1::Secp256k1::new();
-
-    // ----------------------------------------------------------------------------------------------------
-    // Part 1: Prepare data
-
     let mut data = Vec::with_capacity(37);
 
     if hardened {
-        data.push(0x00); // Hardened child
+        data.push(0x00);
         data.extend_from_slice(parent_key);
     } else {
         let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).ok()?;
@@ -3912,7 +4027,6 @@ fn derive_child_key(
     }
 
     let index_bytes = if hardened {
-        // Hardened child: set the 31st bit of the index
         let index = index + 2147483648;
         index.to_be_bytes()
     } else {
@@ -3921,38 +4035,14 @@ fn derive_child_key(
 
     data.extend_from_slice(&index_bytes);
 
-
-    // ----------------------------------------------------------------------------------------------------
-    // Part 2: HMAC-SHA512
-
-    println!("Data for HMAC-SHA512: {:?}", &data);
-
+    fancy_print(Some("data_for_hmac_sha512"), Some(&format!("{:?}", data)));
+    
     let result = hmac_sha512(parent_chain_code, &data);
     let (child_private_key_bytes, child_chain_code_bytes) = result.split_at(32);
-
-    println!("Derived child private key bytes: {:?}", &child_private_key_bytes);
-    println!("Derived child chain code bytes: {:?}", &child_chain_code_bytes);
-
-
-
-
-
-
-
-
-    // ----------------------------------------------------------------------------------------------------
-    // Part 3: Scalars 
-    // Convert child key data to a BigUint
     let child_key_int = BigUint::from_bytes_be(child_private_key_bytes);
-    
-    // Convert parent secret key to a BigUint
     let parent_key_int = BigUint::from_bytes_be(parent_key);
-
     let curve_order = BigUint::from_bytes_be(&secp256k1::constants::CURVE_ORDER);
-
     let combined_int = (parent_key_int + child_key_int) % &curve_order;
-
-    // Convert the resulting integer back to bytes and then to a SecretKey
     let combined_bytes = combined_int.to_bytes_be();
     let combined_bytes_padded = {
         let mut padded = [0u8; 32];
@@ -3961,74 +4051,67 @@ fn derive_child_key(
         padded
     };
     let child_secret_key = secp256k1::SecretKey::from_slice(&combined_bytes_padded).ok()?;
-
-
-
-
-
-
-
-    
-
-    // ----------------------------------------------------------------------------------------------------
-    // Part 4: Serialization
-
-    // let child_secret_key = secp256k1::SecretKey::from_slice(&child_key_bytes).ok()?;
-
-    // Serialize child secret key and chain code to bytes
     let child_secret_key_bytes = child_secret_key.secret_bytes();
-
-    // Derive the child public key from the child secret key
     let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
     let child_public_key_bytes = child_pubkey.serialize().to_vec();
 
-    println!("Child secret key bytes: {:?}", &child_secret_key_bytes);
-    println!("Child chain code bytes: {:?}", &child_chain_code_bytes);
-    println!("Child public key bytes: {:?}", &child_public_key_bytes);
+    fancy_print(Some("child_private_key_bytes"), Some(&format!("{:?}", child_secret_key_bytes)));
+    fancy_print(Some("child_chain_code_bytes"), Some(&format!("{:?}", child_chain_code_bytes)));
+    fancy_print(Some("child_public_key_bytes"), Some(&format!("{:?}", child_public_key_bytes)));
 
     Some((child_secret_key_bytes.to_vec(), child_chain_code_bytes.to_vec(), child_public_key_bytes))
 }
 
+fn private_key_to_wif(
+    private_key: Option<&secp256k1::SecretKey>, 
+    compressed: Option<bool>,
+    wallet_import_format: Option<&str>,
+) -> Result<String, String> {
+    fancy_print(Some("Private key to WIF"), None);
+
+    let compressed = compressed.unwrap_or(true);
+    let wallet_import_format = match wallet_import_format {
+        Some(vb) => {
+            let vb_str = vb.trim_start_matches("0x");
+            u8::from_str_radix(vb_str, 16).map_err(|_| "Invalid WIF format".to_string())?
+        },
+        None => 0x80, // Default to Bitcoin mainnet version byte
+    };
+
+    let mut extended_key = Vec::with_capacity(34);
+    extended_key.push(wallet_import_format);
+
+    if let Some(private_key) = private_key {
+        extended_key.extend_from_slice(&private_key.secret_bytes());
+
+        if compressed {
+            extended_key.push(0x01); // Add compression flag
+        }
+    } else {
+        return Err("Private key must be provided".to_string());
+    }
+
+    let checksum = double_sha256(&extended_key);
+    let address_checksum = &checksum[0..4];
+    extended_key.extend_from_slice(address_checksum);
+
+    Ok(bs58::encode(extended_key).into_string())
+}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-fn derive_from_path(master_key: &[u8], master_chain_code: &[u8], path: &str) -> Option<(secp256k1::SecretKey, [u8; 32])> {
+fn derive_from_path(
+    master_key: &[u8], 
+    master_chain_code: &[u8], 
+    path: &str
+) -> Option<(secp256k1::SecretKey, [u8; 32], [u8; 33])> {
     fancy_print(Some(&t!("log.derive_from_path").to_string()), None);
 
-    println!("Derivation path: {:?}", path);
+    fancy_print(Some("Derivation path"), Some(&format!("{:?}", path)));
 
-    let mut key = master_key.to_vec();
+    let mut private_key = master_key.to_vec();
     let mut chain_code = master_chain_code.to_vec();
+    let mut public_key = Vec::new();
+
 
     for part in path.split('/') {
         if part == "m" {
@@ -4037,36 +4120,56 @@ fn derive_from_path(master_key: &[u8], master_chain_code: &[u8], path: &str) -> 
 
         let hardened = part.ends_with("'");
         let index: u32 = match part.trim_end_matches("'").parse() {
-            Ok(index) => index,
+            Ok(index) => {
+                println!("Index: {:?}", &index);
+                index
+            },
             Err(_) => {
                 eprintln!("Error: Unable to parse index from path part: {}", part);
                 return None;
             }
         };
-
-        let derived = derive_child_key(&key, &chain_code, index, hardened)?;
-        key = derived.0;
+        
+        let derived = derive_child_key(&private_key, &chain_code, index, hardened)?;
+        private_key = derived.0;
         chain_code = derived.1;
+        public_key = derived.2;
     }
+    
+    let secret_key = match secp256k1::SecretKey::from_slice(&private_key) {
+        Ok(sk) => sk,
+        Err(e) => {
+            eprintln!("Error: Unable to create SecretKey from key slice: {}", e);
+            return None;
+        }
+    };
 
-    let secret_key = secp256k1::SecretKey::from_slice(&key)
-        .expect("Error: Unable to create SecretKey from key slice");
+    if chain_code.len() != 32 {
+        eprintln!("Error: Invalid chain code length");
+        return None;
+    }
 
     let mut chain_code_array = [0u8; 32];
     chain_code_array.copy_from_slice(&chain_code);
 
-    Some((secret_key, chain_code_array))
+    let mut public_key_array = [0u8; 33];
+    public_key_array.copy_from_slice(&public_key);
+
+    Some((secret_key, chain_code_array, public_key_array))
 }
 
-fn generate_address(pk: &secp256k1::PublicKey) -> String {
+fn generate_address(
+    public_key: &secp256k1::PublicKey,
+    public_key_hash: u8,
+) -> String {
     fancy_print(Some(&t!("log.generate_address").to_string()), None);
 
-    let pk_bytes = pk.serialize();
-    println!("Public key bytes: {:?}", &pk_bytes);
+    let public_key_bytes = public_key.serialize();
+    println!("Public key bytes: {:?}", &public_key_bytes);
     
-    let hash160 = sha256_and_ripemd160(&pk_bytes);
+    let hash160 = sha256_and_ripemd160(&public_key_bytes);
     
-    let mut payload = vec![0x00];
+    let mut payload = vec![public_key_hash];
     payload.extend(&hash160);
     println!("Extended sha256_and_ripemd160 payload: {:?}", &payload);
     
@@ -4119,11 +4222,12 @@ fn double_sha256(input: &[u8]) -> Vec<u8> {
     final_hash
 }
 
-
-
-
-
-
+struct CryptoAddresses {
+    derivation_path: String,
+    address: String,
+    public_key: String,
+    private_key: String,
+}
 
 
 
@@ -4147,12 +4251,12 @@ fn double_sha256(input: &[u8]) -> Vec<u8> {
 
 
 // Test vectors -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-struct EntropyMnemonicVector {
+struct _EntropyMnemonicVector {
     entropy: &'static str,
     mnemonic: &'static str,
 }
 
-struct SeedMasterVector {
+struct _SeedMasterVector {
     seed: &'static str,
     expected_master_xprv: &'static str,
     expected_master_xpub: &'static str,
@@ -4161,7 +4265,7 @@ struct SeedMasterVector {
     expected_master_public_key: &'static str,
 }
 
-struct MasterChildVector {
+struct _MasterChildVector {
     master_private_key: &'static str,
     master_chain_code: &'static str,
     index: u32,
@@ -4178,23 +4282,23 @@ mod tests {
     #[test]
     fn test_entropy_to_mnemonic() {
         let entropy_mnemonic_vectors = vec![
-            EntropyMnemonicVector {
+            _EntropyMnemonicVector {
                 entropy: "110111111000101110000100111100111001101001010110101000001010011001000010110111000011100010110010100110011010101101111001100111000011100011010101110000100001110100011001001111001110001000001101100011111110000011100011100001011101000001011111011111111011101010011101",
                 mnemonic: "test found diagram cruise head farm arena mandate raw snap taxi debris minute three inner chest tilt hockey wealth shove fringe cook year father",
             },
-            EntropyMnemonicVector {
+            _EntropyMnemonicVector {
                 entropy: "000011101001110000101101010100001000010110010001110011010010100010111111010001010010010100101111011111011101110110011000001001110100010001101011000111101000011011001110000111101111101101011111110011110100001001000110111110110011111",
                 mnemonic: "attend thumb feature arctic broom nephew wonder pigeon control upon gravity excess effort monster brass sense win wrist spatial mistake recycle",
             },
-            EntropyMnemonicVector {
+            _EntropyMnemonicVector {
                 entropy: "111111110111010001000010110000110101001000101000111100010100101000000100111010000110011000000010010000001101111111010100110001110100010001011000110000001010111010100101100111110011111010000001101100",
                 mnemonic: "youth pear radio picture monitor pink beauty art across alone vivid model easily gate ritual recycle direct assault",
             },
-            EntropyMnemonicVector {
+            _EntropyMnemonicVector {
                 entropy: "000100011010011110110011001110010100001011010001111000101100001001101011101001100000100110010101111100000101100110100100010001011111000111011101010101110110110111010",
                 mnemonic: "balance diesel soft mad bullet gentle purse scorpion nominee lizard harbor message build produce resemble",
             },
-            EntropyMnemonicVector {
+            _EntropyMnemonicVector {
                 entropy: "110000010110110110000101110000100101100101100101110100110000011001011110111110000010001101100000001011111100100111000000010000011110",
                 mnemonic: "scrap history identify ready frog lobster know afford gasp layer hybrid long",
             },
@@ -4209,7 +4313,7 @@ mod tests {
     #[test]
     fn test_seed_to_master_keys() {
         let test_vectors = vec![
-            SeedMasterVector {
+            _SeedMasterVector {
                 seed: "39419d7fcbdbaac882d6328ae818ebde151b8e62909443a7ae93ac9c55efb3455448c8b5740421dbd0540871b0060e3b430464d6c15074b80abf38a7cc8b00da",
                 expected_master_xprv: "xprv9s21ZrQH143K3TEiL1wgxEGA1rsJHYMxB9oRjUX3iqt7iCSftmxuULDk4kDMqZbhKoAa6yFC4AxaoYwD3QUAYCEJwDm4WhAoPLz3JAWUGTc",
                 expected_master_xpub: "xpub661MyMwAqRbcFwKBS3UhKNCtZthnh15oYNj2XrvfHBR6azmpSKHA28YDv1g6YB24fpTRVG2SJNXu4NmKyobK5CSjPn5vGSgJZovoxbYhYrD",
@@ -4217,7 +4321,7 @@ mod tests {
                 expected_master_chain_code: "8c1070523d5ca058847690e55fe8b7071a9dcaa122ced574c58a55bbcde97bb2",
                 expected_master_public_key: "0276eae2a8e4045cf52e7661648d761ecb0a4d8a58930c11e980586ef6d21ac7a9",
             },
-            SeedMasterVector {
+            _SeedMasterVector {
                 seed: "21680d2f50dfca7388a0a73508822d0528eb81a4ac723dc3b011077da58a31a525dc74eaab5b49f0e243a71ca13f0e344b6b676dcf7a25eef66729d2d9e36677",
                 expected_master_xprv: "xprv9s21ZrQH143K2pioPHmagrDuZpvg5CRmKmbojSzo5Nyyy5ZWwhkFt9NuCV47kWWX1Z3uU5yuqUSHUwAp11XPEd8jnFTLFFZVSuTdjeUBLBF",
                 expected_master_xpub: "xpub661MyMwAqRbcFJoGVKJb3zAe7rmAUf9cgzXQXqQQdiWxqstfVF4WRwhP3nCKpt542gqqWHHHxmLNk4gV58Pwzqr3NLsTMW6iH4LRjgdeBYd",
@@ -4225,7 +4329,7 @@ mod tests {
                 expected_master_chain_code: "4cd3f7f0c79e7bc19ffc7de53a052b0e04ae79088e0903588d16409f1ee26f56",
                 expected_master_public_key: "033bebf6ae13342f1499932c3df632624856ed4e9060f7be2a296e045479b761e3",
             },
-            SeedMasterVector {
+            _SeedMasterVector {
                 seed: "05d4e7038722fe540b0bdd23ea96f6ad9d2eacfacc604d44530b7307e104d42d8abc4892b09f20ee69cced9f32309cee7c0649e43a58a5d09ab06551787f444f",
                 expected_master_xprv: "xprv9s21ZrQH143K3gXPWvra1s8pgLTGQetSKi9NXphAeRf6WjDNHGmj1uJvn6qpTA9WqBo71nM87v4AAQP4sx2GKmEwoYQsSW4GwbBbf4x8Ydt",
                 expected_master_xpub: "xpub661MyMwAqRbcGAbrcxPaP15ZENHkp7cHgw4yLD6nCmC5PXYWpp5yZhdQdNDy9eDhWX64RVo1zTA49k9Sj5GV75gA8ms398FcqyeNvJwv19E",
@@ -4233,7 +4337,7 @@ mod tests {
                 expected_master_chain_code: "a3132c1739b3c3f06d78afe7e1467ec0b80878738e967e65e925e6ec333e6752",
                 expected_master_public_key: "031d0c5854dbf98ed8a715ce5faf7536e39384340ee05d027bbba60c73ce2d2513",
             },
-            SeedMasterVector {
+            _SeedMasterVector {
                 seed: "dc78c60654bddfa5318f81b3d3ada03eb56566359e8cff8cd2fc7b3d18d6561f5d71d59393ea878182f0cada90ee4e4a4d98465cd57f9661a7e20e7c4591ff6f",
                 expected_master_xprv: "xprv9s21ZrQH143K3nPojzmnguncr2WomcqukHPycwLWXwSAwBsYfrKFFNMqcEfvGrBdcA6bRwFsjWZiyUHW7nQjf3WDW1siRBztGzvJDbS4tii",
                 expected_master_xpub: "xpub661MyMwAqRbcGGUGr2Jo43jMQ4MJB5Zm7WKaRKk86Gy9ozChDPdVoAgKTXgzLESFknm4atJUDXLzUmzkqyv6NZapEmwQeTZnpq9BY93NTrt",
@@ -4241,7 +4345,7 @@ mod tests {
                 expected_master_chain_code: "ad3d2ffe38a5d9d37536c87c11309c2d78c2f70419b99259f1b76bf770885cdd",
                 expected_master_public_key: "03ece1b613f9c8236e49c1f31331b81da730506d3dfb9bb7d7bd6d27177e8239e4",
             },
-            SeedMasterVector {
+            _SeedMasterVector {
                 seed: "5b6682e4f735bba225b96384cf635658f885ee807dc39effd332a4d8ae6fd74b8af73e21dad9fc498b6448874ad403d5274b74347a4de5d2e86cc9cb95880826",
                 expected_master_xprv: "xprv9s21ZrQH143K38CL4qJjhCwvQA1Dqt1CLmTH1RxoLjgEJw4xEMALcve8DsXjhXetmHRQpKJNvciB2ApU4KodF9tK1bbTcaypogqiiCpyzt9",
                 expected_master_xpub: "xpub661MyMwAqRbcFcGoArqk4LtexBqiFLj3hzNsopNQu5DDBjQ6mtUbAixc58JyAbWgZ9xkciNRLYctW2VeVz4rqWsdYBKmZ6sfHDRJjBKmTPo",
@@ -4274,7 +4378,7 @@ mod tests {
     #[test]
     fn test_master_to_child_keys() {
         let test_vectors = vec![
-            MasterChildVector {
+            _MasterChildVector {
                 master_private_key: "3e385c087ab3533637afa4cd893da06b624092bbee9d3221917138413d189686",
                 master_chain_code: "8c1070523d5ca058847690e55fe8b7071a9dcaa122ced574c58a55bbcde97bb2",
                 index: 0,
@@ -4283,7 +4387,7 @@ mod tests {
                 expected_child_chain_code_bytes: "3f63d8fe95e8eac18e72ddc0c9027551f280aa1d912a297a65f9b5d24b6ca4bf",
                 expected_child_public_key_bytes: "02d881671a025c722e6c5e8752ad125214a6b8e015d402159d165058e0feac7f2e",
             },
-            MasterChildVector {
+            _MasterChildVector {
                 master_private_key: "25e6fcfb4f2902507eb58e23752587621c5ec04354502a1d9989675ac3729578",
                 master_chain_code: "4cd3f7f0c79e7bc19ffc7de53a052b0e04ae79088e0903588d16409f1ee26f56",
                 index: 1,
@@ -4292,7 +4396,7 @@ mod tests {
                 expected_child_chain_code_bytes: "808129578da2d8be8d68774a090adb3128e47e47ab120cbeaf05a12902eebe88",
                 expected_child_public_key_bytes: "020ea3869748f5cce012f571ccb356f411a7ce1a179af643638530da1981373227",
             },
-            MasterChildVector {
+            _MasterChildVector {
                 master_private_key: "eec3b550d2ca1ada5122abf3af64ecd3727bccf461dd990cf30e3a564a7b21d6",
                 master_chain_code: "a3132c1739b3c3f06d78afe7e1467ec0b80878738e967e65e925e6ec333e6752",
                 index: 0,
@@ -4301,7 +4405,7 @@ mod tests {
                 expected_child_chain_code_bytes: "8b76cbd0bebdf189faa2dfdd9006c38ef9746cfc9d62fc0d56e5c7f8543d0650",
                 expected_child_public_key_bytes: "021a4289aec328c46afee6fae8ad1a3a4144321751d5166d6af31ad6d208b610fa",
             },
-            MasterChildVector {
+            _MasterChildVector {
                 master_private_key: "e71209cc2aa6c595319945a9372f742e79a8c0ebaa041ba02e076c288e2d463d",
                 master_chain_code: "ad3d2ffe38a5d9d37536c87c11309c2d78c2f70419b99259f1b76bf770885cdd",
                 index: 0,
@@ -4310,7 +4414,7 @@ mod tests {
                 expected_child_chain_code_bytes: "838a78c11057703c549c5e8b1271fa4631b8675214efc17d05dbee60d0c65bc2",
                 expected_child_public_key_bytes: "03171a30df44abec9fb33ae9f9eda64e4024bc325fb24d280cc928586d3f2a228e",
             },
-            MasterChildVector {
+            _MasterChildVector {
                 master_private_key: "be8485b648f574f9ed9624e75d45d37f239b793df9b517d3815aeae7aadfcedf",
                 master_chain_code: "6b16f98e9e26351d6a19e7e811b8d4647e3e656d8f5731e8ba4d27918991d36f",
                 index: 1,

@@ -249,6 +249,11 @@ UI:
           en: "Private key"
           de: "Privatschlüssel"
           hr: "Privatni ključ"
+      options:
+        count:
+          en: "Address count"
+          de: "Adressanzahl"
+          hr: "Broj adresa"
     database:
       column:
         index:
@@ -423,6 +428,12 @@ error:
       en: "One request per 2 minutes. You have to wait '%{value}' seconds more"
       de: "Eine Anfrage alle 2 Minuten. Sie müssen '%{value}' Sekunden mehr warten"
       hr: "Jedan zahtjev svake 2 minute. Morate pričekati još ''%{value}' sekundi"
+  address:
+    wif:
+      length:
+        en: "Invalid WIF length: '%{value}'"
+        de: ""
+        hr: ""
 log:
   generate_entropy:
     en: "Generating entropy:"
@@ -546,6 +557,10 @@ log:
     hr: ""
   double_sha256:
     en: "Generating double sha256 hash"
+    de: ""
+    hr: ""
+  new_derivation_path:
+    en: "New derivation path"
     de: ""
     hr: ""
 
