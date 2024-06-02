@@ -254,6 +254,14 @@ UI:
           en: "Address count"
           de: "Adressanzahl"
           hr: "Broj adresa"
+        hardened:
+          en: "Hardened address"
+          de: "Gehärtete Adresse"
+          hr: "Tvrda adresa"
+        clean:
+          en: "Clean addresses"
+          de: "Entferne Adressen"
+          hr: "Obriši adrese"
     database:
       column:
         index:

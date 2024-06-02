@@ -23,9 +23,9 @@
     - [x] settings
     - [x] about
 - [x] theme (auto)
-- [ ] ShortcutsWindow
+- [ ] Shortcuts Window
 - [ ] buy me a coffee
-- [ ] create filter for cointree
+- [ ] create filters for cointree
 - [ ] copy-button in all major fields
 - [ ] remove unnecessary BIPs unless coin is BTC
 
@@ -39,7 +39,7 @@
     - [ ] local settings ($HOME)
 - [ ] set theme color in settings
 - [ ] proxy support
-- [ ] verify local config before applying it
+- [ ] verify local config before applying it, if missing get from default
 - [ ] log directory (file chooser dialog)
 - [ ] notification timeout
 
@@ -56,7 +56,7 @@
 
 ### Advance
 - [ ] buy USB QRNG and make support for it
-- [x] log output
+- [x] log outpu^
 - [x] translate app to another language
 - [ ] multi-threading
 - [ ] extend bip44-extended-coin-list.csv with:
@@ -64,3 +64,5 @@
     - [ ] top100
     - [ ] token support
 - [ ] advance view for main window for all possible values
+- [ ] main window is advance window
+    - [ ] create basic wallet window

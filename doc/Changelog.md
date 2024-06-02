@@ -1,3 +1,7 @@
+# version 0.20.0
+- almost all address output
+- no more panic when nothing is provided
+
 # version 0.12.0 - Codename: Fucking yeah !!!!
 - finally, child keys are done
 - proper address output
@@ -78,7 +82,7 @@
 - new argument: import-seed (-s, --import-seed)
 
 # version 0.2.0
-- optimisation: better error handling (?)
+- optimization: better error handling (?)
 - new argument: entropy-source (-3, --entropy-source)
 
 # version 0.1.4
@@ -95,7 +99,7 @@
 
 # version 0.1.2
 - new converter: hex->binary
-- BIP32 Master Private Key (xpriv) 
+- BIP32 Master Private Key (xprv) 
 - new file: src/debugger.rs
 - new file: doc/Arguments.md
 
