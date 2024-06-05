@@ -46,7 +46,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
-const COINLIST_FILE: &str = "lib/bip44-extended-coin-list.csv";
+const COINLIST_FILE: &str = "lib/bip44-extended-coin-list-new.csv";
 const APP_LOG_DIRECTORY: &str = "log/";
 const LOG_OUTPUT: &'static [&'static str] = &[
     "Default", 
@@ -816,18 +816,19 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
 
 /// This struct holds information about a particular coin.
 struct CoinDatabase {
-    index: u32,
-    path: u32,
-    symbol: String,
-    name: String,
+    coin_index: u32,
+    coin_symbol: String,
+    coin_name: String,
     key_derivation: String,
+    hash: String,
     private_header: String,
     public_header: String,
     public_key_hash: String,
     script_hash: String,
-    wif: String,
+    wallet_import_format: String,
     evm: String,
-    comment: String,
+    UCID: String,
+    cmc_top: String,
 }
 
 /// Creates a vector of `CoinDatabase` from a CSV file.
@@ -843,39 +844,37 @@ fn create_coin_store() -> Vec<CoinDatabase> {
     let mut coin_store = Vec::new();
 
     for result in rdr.records() {
-        let record = result
-            .expect(&t!("error.csv.read").to_string());
+        let record = result.expect(&t!("error.csv.read").to_string());
         
-        let index: u32 = record[0].parse()
-            .expect(&t!("error.csv.parse", value = "index").to_string());
-        
-        let path: u32 = u32::from_str_radix(&record[1][2..], 16)
-            .expect(&t!("error.csv.parse", value = "path").to_string());
+        let coin_index: u32 = record[0].parse().expect(&t!("error.csv.parse", value = "coin_index").to_string());
+        let coin_symbol = record[1].to_string();
+        let coin_name = record[2].to_string();
+        let key_derivation = record[3].to_string();
+        let hash = record[4].to_string();
+        let private_header = record[5].to_string();
+        let public_header = record[6].to_string();
+        let public_key_hash = record[7].to_string();
+        let script_hash = record[8].to_string();
+        let wallet_import_format = record[9].to_string();
+        let evm = record[10].to_string();
+        let UCID = record[11].to_string();
+        let cmc_top = record[12].to_string();
 
-        let symbol: String = if record[2].is_empty()            {"".to_string()} else {record[2].to_string()};
-        let name: String = if record[3].is_empty()              {"".to_string()} else {record[3].to_string()};
-        let key_derivation:String = if record[4].is_empty()     {"".to_string()} else {record[4].to_string()};
-        let private_header: String = if record[5].is_empty()    {"".to_string()} else {record[5].to_string()};
-        let public_header: String = if record[6].is_empty()     {"".to_string()} else {record[6].to_string()};
-        let public_key_hash: String = if record[7].is_empty()   {"".to_string()} else {record[7].to_string()};
-        let script_hash: String = if record[8].is_empty()       {"".to_string()} else {record[8].to_string()};
-        let wif: String = if record[9].is_empty()               {"".to_string()} else {record[9].to_string()};
-        let evm: String = if record[10].is_empty()              {"".to_string()} else {record[10].to_string()};
-        let comment: String = if record[11].is_empty()          {"".to_string()} else {record[11].to_string()};
         
         let coin_type = CoinDatabase { 
-            index, 
-            path, 
-            symbol, 
-            name, 
+            coin_index, 
+            coin_symbol, 
+            coin_name, 
             key_derivation, 
+            hash,
             private_header, 
             public_header, 
             public_key_hash, 
             script_hash, 
-            wif,
+            wallet_import_format,
             evm,
-            comment 
+            UCID,
+            cmc_top, 
         };
 
         coin_store.push(coin_type);
@@ -897,41 +896,44 @@ fn create_coin_completion_model() -> gtk::ListStore {
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
 
     let store = gtk::ListStore::new(&[
-        glib::Type::U32,    // Index
-        glib::Type::U32,    // Path
-        glib::Type::STRING, // Symbol
-        glib::Type::STRING, // Name
+        glib::Type::U32,    // index
+        glib::Type::STRING, // coin_symbol
+        glib::Type::STRING, // coin_name
         glib::Type::STRING, // key_derivation
+        glib::Type::STRING, // hash
         glib::Type::STRING, // private_header
         glib::Type::STRING, // public_header
         glib::Type::STRING, // public_key_hash
         glib::Type::STRING, // script_hash
-        glib::Type::STRING, // Wif
-        glib::Type::STRING, // EVM
-        glib::Type::STRING, // Comment
+        glib::Type::STRING, // wallet_import_format
+        glib::Type::STRING, // evm
+        glib::Type::STRING, // UCID
+        glib::Type::STRING, // cmc_top
     ]);
 
     for coin_symbol in valid_coin_symbols.iter() {
         let iter = store.append();
         store.set(&iter, &[
-            (0, &coin_symbol.index), 
-            (1, &coin_symbol.path), 
-            (2, &coin_symbol.symbol), 
-            (3, &coin_symbol.name),
-            (4, &coin_symbol.key_derivation),
+            (0, &coin_symbol.coin_index), 
+            (1, &coin_symbol.coin_symbol), 
+            (2, &coin_symbol.coin_name),
+            (3, &coin_symbol.key_derivation),
+            (4, &coin_symbol.hash),
             (5, &coin_symbol.private_header),
             (6, &coin_symbol.public_header),
             (7, &coin_symbol.public_key_hash),
             (8, &coin_symbol.script_hash),
-            (9, &coin_symbol.wif),
+            (9, &coin_symbol.wallet_import_format),
             (10, &coin_symbol.evm),
-            (11, &coin_symbol.comment),
+            (11, &coin_symbol.UCID),
+            (12, &coin_symbol.cmc_top),
         ]);
     }
 
     store
 }
 
+// TODO: search by coin name and maybe symbol also
 /// Retrieves coins starting with the specified prefix from the coin store.
 ///
 /// # Arguments
@@ -945,7 +947,8 @@ fn create_coin_completion_model() -> gtk::ListStore {
 fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix: &'a str) -> Vec<&'a CoinDatabase> {
     coin_store
         .iter()
-        .filter(|&coin_type| coin_type.symbol.starts_with(target_prefix))
+        // .filter(|&coin_type| coin_type.coin_symbol.starts_with(target_prefix))
+        .filter(|&coin_type| coin_type.coin_name.to_lowercase().contains(target_prefix))
         .collect()
 }
 
@@ -966,48 +969,40 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
 
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
 
-    let coin_types: Vec<CoinDatabase> = rdr
-        .records()
+    let coin_types: Vec<CoinDatabase> = rdr.records()
         .filter_map(|record| record.ok())
         .enumerate()
         .map(|(index, record)| {
-            
-            let path: u32 = index as u32;
-            let index: u32 = index.try_into()
-                .expect(
-                    &t!(
-                        "error.converter.IO", 
-                        input = "usize",
-                        output="u32").to_string());
-
-            let symbol: String = record.get(2).unwrap_or_default().to_string();
-            let name: String = record.get(3).unwrap_or_default().to_string();
-            let key_derivation: String = record.get(4).unwrap_or_default().to_string();
+            let coin_index: u32 = index.try_into().expect(&t!("error.converter.IO", input = "usize", output = "u32").to_string());
+            let coin_symbol: String = record.get(1).unwrap_or_default().to_string();
+            let coin_name: String = record.get(2).unwrap_or_default().to_string();
+            let key_derivation: String = record.get(3).unwrap_or_default().to_string();
+            let hash: String = record.get(4).unwrap_or_default().to_string();
             let private_header: String = record.get(5).unwrap_or_default().to_string();
             let public_header: String = record.get(6).unwrap_or_default().to_string();
             let public_key_hash: String = record.get(7).unwrap_or_default().to_string();
             let script_hash: String = record.get(8).unwrap_or_default().to_string();
-            let wif: String = record.get(9).unwrap_or_default().to_string();
+            let wallet_import_format: String = record.get(9).unwrap_or_default().to_string();
             let evm: String = record.get(10).unwrap_or_default().to_string();
-            let comment: String = record.get(11).unwrap_or_default().to_string();
+            let UCID: String = record.get(11).unwrap_or_default().to_string();
+            let cmc_top: String = record.get(12).unwrap_or_default().to_string();
 
             CoinDatabase {
-                index,
-                path,
-                symbol,
-                name,
+                coin_index,
+                coin_symbol,
+                coin_name,
                 key_derivation,
+                hash,
                 private_header,
                 public_header,
                 public_key_hash,
                 script_hash,
-                wif, 
-                evm, 
-                comment
+                wallet_import_format,
+                evm,
+                UCID,
+                cmc_top,
             }
-        }
-        )
-        .collect();
+        }).collect();
 
     coin_types
 }
@@ -2014,7 +2009,9 @@ fn create_settings_window() {
     // Proxy manual settings
     let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    if settings.proxy_status == "manual" {
+    // IMPLEMENT non-case sensitive input Manual/manual
+
+    if settings.proxy_status == "Manual" {
         proxy_manual_settings_box.set_visible(true);
     } else {
         proxy_manual_settings_box.set_visible(false);
@@ -2239,6 +2236,9 @@ fn create_settings_window() {
     proxy_manual_settings_box.append(&use_proxy_ssl_certificate_content_box);
 
     content_proxy_box.append(&proxy_manual_settings_box);
+
+
+    
     stack.add_titled(
         &scrolled_window,
         Some("sidebar-settings-proxy"),
@@ -2252,7 +2252,7 @@ fn create_settings_window() {
             let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
             let settings = selected_proxy_settings_value.unwrap();
             
-            if *settings == "manual" {
+            if *settings == "Manual" {
                 proxy_manual_settings_box.set_visible(true);
             } else {
                 proxy_manual_settings_box.set_visible(false);
@@ -2680,7 +2680,7 @@ fn create_main_window(application: &adw::Application) {
     // Coin treeview
     create_coin_completion_model();
     let coin_store = create_coin_store();
-    let tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 12]);
+    let tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 13]);
     let coins = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let coin_treeview = gtk::TreeView::new();
     coin_treeview.set_vexpand(true);
@@ -2688,17 +2688,18 @@ fn create_main_window(application: &adw::Application) {
 
     let columns = [
         &t!("UI.main.database.column.index").to_string(),
-        &t!("UI.main.database.column.path").to_string(),
         &t!("UI.main.database.column.symbol").to_string(),
-        &t!("UI.main.database.column.name").to_string(),
-        &t!("UI.main.database.column.deriv").to_string(),
+        &t!("UI.main.database.column.coin").to_string(),
+        &t!("UI.main.database.column.key_derivation").to_string(),
+        &t!("UI.main.database.column.hash").to_string(),
         &t!("UI.main.database.column.priv_header").to_string(),
         &t!("UI.main.database.column.pub_header").to_string(),
         &t!("UI.main.database.column.pub_hash").to_string(),
         &t!("UI.main.database.column.script").to_string(),
         &t!("UI.main.database.column.wif").to_string(),
         &t!("UI.main.database.column.evm").to_string(),
-        &t!("UI.main.database.column.comment").to_string(),
+        &t!("UI.main.database.column.UCID").to_string(),
+        &t!("UI.main.database.column.cmc").to_string(),
     ];
 
     for (i, column_title) in columns.iter().enumerate() {
@@ -3065,60 +3066,64 @@ fn create_main_window(application: &adw::Application) {
         @weak stack   => move |_| {
             // TODO: Check if seed is empty, show error dialog
             if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
-                let coin = model.get_value(&iter, 0);
-                let header = model.get_value(&iter, 1);
-                let symbol = model.get_value(&iter, 2);
-                let name = model.get_value(&iter, 3);
-                let key_derivation = model.get_value(&iter, 4);
+                let coin_index = model.get_value(&iter, 0);
+                let coin_symbol = model.get_value(&iter, 1);
+                let coin_name = model.get_value(&iter, 2);
+                let key_derivation = model.get_value(&iter, 3);
+                let hash = model.get_value(&iter, 4);
                 let private_header = model.get_value(&iter, 5);
                 let public_header = model.get_value(&iter, 6);
                 let public_key_hash = model.get_value(&iter, 7);
                 let script_hash = model.get_value(&iter, 8);
-                let wif = model.get_value(&iter, 9);
+                let wallet_import_format = model.get_value(&iter, 9);
                 let evm = model.get_value(&iter, 10);
-                let comment = model.get_value(&iter, 11);
+                let UCID = model.get_value(&iter, 11);
+                let cmc_top = model.get_value(&iter, 12);
 
                 if let (
-                    Ok(coin_type),
-                    Ok(coin_header),
+                    Ok(coin_index),
                     Ok(coin_symbol),
                     Ok(coin_name),
                     Ok(key_derivation),
+                    Ok(hash),
                     Ok(private_header),
                     Ok(public_header),
                     Ok(public_key_hash),
                     Ok(script_hash),
-                    Ok(wif),
+                    Ok(wallet_import_format),
                     Ok(evm),
-                    Ok(comment),
+                    Ok(UCID),
+                    Ok(cmc_top),
                 ) = (
-                    coin.get::<String>(), 
-                    header.get::<String>(), 
-                    symbol.get::<String>(), 
-                    name.get::<String>(),
+                    coin_index.get::<String>(), 
+                    coin_symbol.get::<String>(), 
+                    coin_name.get::<String>(),
                     key_derivation.get::<String>(),
+                    hash.get::<String>(),
                     private_header.get::<String>(),
                     public_header.get::<String>(),
                     public_key_hash.get::<String>(),
                     script_hash.get::<String>(),
-                    wif.get::<String>(),
+                    wallet_import_format.get::<String>(),
                     evm.get::<String>(),
-                    comment.get::<String>(),
+                    UCID.get::<String>(),
+                    cmc_top.get::<String>(),
                 ) {
                     println!("\n#### Coin info ####");
 
-                    println!("coin_type: {}", coin_type);
-                    println!("coin_header: {}", coin_header);
+                    println!("index: {}", coin_index);
                     println!("coin_symbol: {}", coin_symbol);
                     println!("coin_name: {}", coin_name);
                     println!("key_derivation: {}", key_derivation);
+                    println!("hash: {}", hash);
                     println!("private_header: {}", private_header);
                     println!("public_header: {}", public_header);
                     println!("public_key_hash: {}", public_key_hash);
                     println!("script_hash: {}", script_hash);
-                    println!("wif: {}", wif);
+                    println!("wallet_import_format: {}", wallet_import_format);
                     println!("EVM: {}", evm);
-                    println!("comment: {}", comment);
+                    println!("UCID: {}", UCID);
+                    println!("cmc_top: {}", cmc_top);
                     let buffer = master_seed_text_clone.buffer();
                     let start_iter = buffer.start_iter();
                     let end_iter = buffer.end_iter();
@@ -3136,12 +3141,12 @@ fn create_main_window(application: &adw::Application) {
                         Err(err) => eprintln!("{}: {}", &t!("error.master.create"), err),
                     }
 
-                    coin_entry.set_text(&coin_type);
+                    coin_entry.set_text(&coin_index);
 
                     ADDRESS_DATA.with(|data| {
                         let mut data = data.borrow_mut();
                         data.public_key_hash = Some(public_key_hash.clone());
-                        data.wallet_import_format = Some(wif.to_string());
+                        data.wallet_import_format = Some(wallet_import_format.to_string());
                     });
                 }  
             }
@@ -3149,7 +3154,8 @@ fn create_main_window(application: &adw::Application) {
     ));
 
     coin_search.connect_search_changed(move|coin_search| {
-        let search_text = coin_search.text().to_uppercase();
+        // let search_text = coin_search.text().to_uppercase();
+        let search_text = coin_search.text().to_lowercase();
         tree_store.clear();
     
         if search_text.len() >= 2 {
@@ -3161,18 +3167,19 @@ fn create_main_window(application: &adw::Application) {
                 for found_coin in matching_coins {
                     let iter = tree_store.append(None);
                     tree_store.set(&iter, &[
-                        (0, &found_coin.index.to_string()),
-                        (1, &format!("0x{:X}", found_coin.path)),
-                        (2, &found_coin.symbol),
-                        (3, &found_coin.name),
-                        (4, &found_coin.key_derivation),
+                        (0, &found_coin.coin_index.to_string()),
+                        (1, &found_coin.coin_symbol),
+                        (2, &found_coin.coin_name),
+                        (3, &found_coin.key_derivation),
+                        (4, &found_coin.hash),
                         (5, &found_coin.private_header),
                         (6, &found_coin.public_header),
                         (7, &found_coin.public_key_hash),
                         (8, &found_coin.script_hash),
-                        (9, &found_coin.wif),
+                        (9, &found_coin.wallet_import_format),
                         (10, &found_coin.evm),
-                        (11, &found_coin.comment),
+                        (11, &found_coin.UCID),
+                        (12, &found_coin.cmc_top),
                     ]);
                 }
                 coin_treeview.set_model(Some(&tree_store));

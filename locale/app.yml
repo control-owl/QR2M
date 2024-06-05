@@ -268,46 +268,50 @@ UI:
           en: "Index"
           de: "Index"
           hr: "Indeks"
-        path:
-          en: "Path"
-          de: "Pfad"
-          hr: "Putanja"
+        # path:
+        #   en: "Path"
+        #   de: "Pfad"
+        #   hr: "Putanja"
         symbol:
           en: "Symbol"
           de: "Zeichen"
           hr: "Simbol"
-        name:
-          en: "Coin name"
-          de: "Coinname"
-          hr: "Ime coina"
-        deriv:
+        coin:
+          en: "Coin"
+          # de: "Coin"
+          # hr: "Coin"
+        key_derivation:
           en: "Algorithm"
           de: "Algorithmus"
           hr: "Algoritam"
+        hash:
+          en: "Hash"
+          # de: "Hash"
+          # hr: "Hash"
         priv_header:
-          en: "xprv-priv-header"
+          en: "XPRV"
           # de: "Private Header"
           # hr: "Privatno zaglavlje"
         pub_header:
-          en: "xprv-pub-header"
+          en: "XPUB"
           # de: "Öffentliche Header"
           # hr: "Javno zaglavlje"
         pub_hash:
-          en: "pub-key-hash"
+          en: "Pub key hash"
           # de: "Öffentlicher Schlüssel Hash"
           # hr: "Javni hash algoritam"
         script:
-          en: "script-hash"
+          en: "Script hash"
           # de: "Skript-Hash"
           # hr: "Hash skripte"
         wif:
-          en: "wif"
+          en: "Wallet import format"
         evm:
-          en: "EVM"
-        comment:
-          en: "Comment"
-          de: "Kommentar"
-          hr: "Komentar"
+          en: "Ethereum Virtual Machine"
+        UCID:
+          en: "Unified Crypto ID"
+        cmc:
+          en: "CMC top rank"
     anu:
       download:
         en: "Trying to retrieve QRNG from ANU API"
