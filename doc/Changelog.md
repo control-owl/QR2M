@@ -1,3 +1,8 @@
+# version 0.20.1
+- new coin view
+- preparing for EVM address support
+
+
 # version 0.20.0
 - almost all address output
 - no more panic when nothing is provided

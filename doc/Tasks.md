@@ -1,5 +1,8 @@
 ## Active tasks
 
+- get all algorithms and hashing !
+
+
 ### Main window
 
 - [x] master private key (xprv)
@@ -56,7 +59,7 @@
 
 ### Advance
 - [ ] buy USB QRNG and make support for it
-- [x] log outpu^
+- [x] log output
 - [x] translate app to another language
 - [ ] multi-threading
 - [ ] extend bip44-extended-coin-list.csv with:

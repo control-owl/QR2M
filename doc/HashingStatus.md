@@ -1,13 +1,29 @@
 ## Crypto status
 
 
+### Algorithms
+
+- [x] secp256k1
+- [ ] ed25519
+- [ ] Curve25519
+
+
+### Hash Function
+
+- [x] SHA-256
+- [ ] Keccak-256
+- [ ] RIPEMD-160
+- [ ] Blake256
+- [ ] Blake2b
+
+
+### Examples
+
 | Rank | Crypto                | Symbol | Algorithm  | Hash Function       | Status |
 | ---- | --------------------- | ------ | ---------- | ------------------- | ------ |
 | 1    | Bitcoin               | BTC    | secp256k1  | SHA-256             |        |
 | 2    | Ethereum              | ETH    | secp256k1  | Keccak-256          |        |
-| 3    | Tether                | USDT   | secp256k1  | SHA-256             |        |
 | 4    | Binance Coin          | BNB    | secp256k1  | SHA-256             |        |
-| 5    | USD Coin              | USDC   | secp256k1  | SHA-256             |        |
 | 6    | XRP                   | XRP    | secp256k1  | SHA-256, RIPEMD-160 |        |
 | 7    | Cardano               | ADA    | ed25519    | -                   |        |
 | 8    | Dogecoin              | DOGE   | secp256k1  | SHA-256             |        |
@@ -16,26 +32,19 @@
 | 11   | Litecoin              | LTC    | secp256k1  | SHA-256             |        |
 | 12   | Polkadot              | DOT    | ed25519    | -                   |        |
 | 13   | Avalanche             | AVAX   | secp256k1  | SHA-256             |        |
-| 14   | Shiba Inu             | SHIB   | secp256k1  | Keccak-256          |        |
-| 15   | Dai                   | DAI    | secp256k1  | SHA-256             |        |
 | 16   | Chainlink             | LINK   | secp256k1  | Keccak-256          |        |
-| 17   | Wrapped Bitcoin       | WBTC   | secp256k1  | SHA-256             |        |
-| 18   | Uniswap               | UNI    | secp256k1  | Keccak-256          |        |
 | 19   | Toncoin               | TON    | ed25519    | -                   |        |
 | 20   | Cosmos                | ATOM   | ed25519    | -                   |        |
 | 21   | Monero                | XMR    | ed25519    | -                   |        |
 | 22   | Stellar               | XLM    | ed25519    | -                   |        |
-| 23   | Binance USD           | BUSD   | secp256k1  | SHA-256             |        |
 | 24   | Ethereum Classic      | ETC    | secp256k1  | Keccak-256          |        |
 | 25   | Internet Computer     | ICP    | ed25519    | -                   |        |
 | 26   | Filecoin              | FIL    | secp256k1  | -                   |        |
-| 27   | Lido DAO              | LDO    | secp256k1  | Keccak-256          |        |
 | 28   | Quant                 | QNT    | secp256k1  | Keccak-256          |        |
 | 29   | Hedera                | HBAR   | ed25519    | -                   |        |
 | 30   | Cronos                | CRO    | secp256k1  | Keccak-256          |        |
 | 31   | VeChain               | VET    | secp256k1  | Keccak-256          |        |
 | 32   | NEAR Protocol         | NEAR   | ed25519    | -                   |        |
-| 33   | ApeCoin               | APE    | secp256k1  | Keccak-256          |        |
 | 34   | The Graph             | GRT    | secp256k1  | Keccak-256          |        |
 | 35   | Algorand              | ALGO   | ed25519    | -                   |        |
 | 36   | Aave                  | AAVE   | secp256k1  | Keccak-256          |        |

@@ -1,7 +1,7 @@
 [package]
 name = "QR2M"
 description = "Quantum Random Rust Mnemonic"
-version = "0.20.0"
+version = "0.20.1"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 # copyright = "Copyright © 2023-2024 D3BUG"
 license-file = "LICENSE.txt"
