@@ -188,9 +188,9 @@ UI:
     coin:
       en: "Coin"
       search:
-        en: "Find a coin by entering its symbol (BTC, LTC, ETH...)"
-        de: "Finden Sie eine Coin durch Eingabe ihres Symbols (BTC, LTC, ETH...)"
-        hr: "Pronađite coin tako da unesete njegov simbol (BTC, LTC, ETH...)"
+        en: "Find a coin by entering its name"
+        de: "Finden Sie eine Coin, indem Sie ihren Namen eingeben"
+        hr: "Pronađite coin tako da unesete njegovo ime"
       generate:
         en: "Generate master keys"
         de: "Masterschlüssel generieren"
@@ -268,10 +268,6 @@ UI:
           en: "Index"
           de: "Index"
           hr: "Indeks"
-        # path:
-        #   en: "Path"
-        #   de: "Pfad"
-        #   hr: "Putanja"
         symbol:
           en: "Symbol"
           de: "Zeichen"

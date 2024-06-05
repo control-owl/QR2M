@@ -46,7 +46,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
-const COINLIST_FILE: &str = "lib/bip44-extended-coin-list-new.csv";
+const COINLIST_FILE: &str = "lib/CKDB.csv";
 const APP_LOG_DIRECTORY: &str = "log/";
 const LOG_OUTPUT: &'static [&'static str] = &[
     "Default", 
