@@ -264,6 +264,10 @@ UI:
           hr: "Obriši adrese"
     database:
       column:
+        status:
+          en: "Supported"
+          de: "Unterstützt"
+          hr: "Podržan"
         index:
           en: "Index"
           de: "Index"

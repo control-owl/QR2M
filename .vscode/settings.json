@@ -132,5 +132,7 @@
         "xprv",
         "xpub"
     ],
+    "outline-map.region.startRegion": "",
+    "outline-map.region.endRegion": "",
 
 }

@@ -21,17 +21,17 @@
 
 | Rank | Crypto                | Symbol | Algorithm  | Hash Function       | Status |
 | ---- | --------------------- | ------ | ---------- | ------------------- | ------ |
-| 1    | Bitcoin               | BTC    | secp256k1  | SHA-256             | Done   |
-| 2    | Ethereum              | ETH    | secp256k1  | Keccak-256          | Next one |
-| 4    | Binance Coin          | BNB    | secp256k1  | SHA-256             | Done   |
+| 1    | Bitcoin               | BTC    | secp256k1  | SHA-256             |   🟢   |
+| 2    | Ethereum              | ETH    | secp256k1  | Keccak-256          |        |
+| 4    | Binance Coin          | BNB    | secp256k1  | SHA-256             |        |
 | 6    | XRP                   | XRP    | secp256k1  | SHA-256, RIPEMD-160 |        |
-| 7    | Cardano               | ADA    | ed25519    | -                   |         |
-| 8    | Dogecoin              | DOGE   | secp256k1  | SHA-256             | Done       |
+| 7    | Cardano               | ADA    | ed25519    | -                   |        |
+| 8    | Dogecoin              | DOGE   | secp256k1  | SHA-256             |   🟢   |
 | 9    | Solana                | SOL    | ed25519    | -                   |        |
-| 10   | TRON                  | TRX    | secp256k1  | SHA-256             | Done       |
-| 11   | Litecoin              | LTC    | secp256k1  | SHA-256             | Done       |
+| 10   | TRON                  | TRX    | secp256k1  | SHA-256             |        |
+| 11   | Litecoin              | LTC    | secp256k1  | SHA-256             |   🟢   |
 | 12   | Polkadot              | DOT    | ed25519    | -                   |        |
-| 13   | Avalanche             | AVAX   | secp256k1  | SHA-256             | ?       |
+| 13   | Avalanche             | AVAX   | secp256k1  | SHA-256             |        |
 | 16   | Chainlink             | LINK   | secp256k1  | Keccak-256          |        |
 | 19   | Toncoin               | TON    | ed25519    | -                   |        |
 | 20   | Cosmos                | ATOM   | ed25519    | -                   |        |

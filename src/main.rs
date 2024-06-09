@@ -29,6 +29,7 @@ use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
 use rust_i18n::t;
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
+use sha3::Keccak256;
 mod test_vectors;
 
 // Multi-language support
@@ -46,7 +47,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
-const COINLIST_FILE: &str = "lib/CKDB.csv";
+const COINLIST_FILE: &str = "lib/CKDB2.csv";
 const APP_LOG_DIRECTORY: &str = "log/";
 const LOG_OUTPUT: &'static [&'static str] = &[
     "Default", 
@@ -816,6 +817,7 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
 
 /// This struct holds information about a particular coin.
 struct CoinDatabase {
+    status: String,
     coin_index: u32,
     coin_symbol: String,
     coin_name: String,
@@ -846,22 +848,24 @@ fn create_coin_store() -> Vec<CoinDatabase> {
     for result in rdr.records() {
         let record = result.expect(&t!("error.csv.read").to_string());
         
-        let coin_index: u32 = record[0].parse().expect(&t!("error.csv.parse", value = "coin_index").to_string());
-        let coin_symbol = record[1].to_string();
-        let coin_name = record[2].to_string();
-        let key_derivation = record[3].to_string();
-        let hash = record[4].to_string();
-        let private_header = record[5].to_string();
-        let public_header = record[6].to_string();
-        let public_key_hash = record[7].to_string();
-        let script_hash = record[8].to_string();
-        let wallet_import_format = record[9].to_string();
-        let evm = record[10].to_string();
-        let UCID = record[11].to_string();
-        let cmc_top = record[12].to_string();
+        let status = record[0].to_string();
+        let coin_index: u32 = record[1].parse().expect(&t!("error.csv.parse", value = "coin_index").to_string());
+        let coin_symbol = record[2].to_string();
+        let coin_name = record[3].to_string();
+        let key_derivation = record[4].to_string();
+        let hash = record[5].to_string();
+        let private_header = record[6].to_string();
+        let public_header = record[7].to_string();
+        let public_key_hash = record[8].to_string();
+        let script_hash = record[9].to_string();
+        let wallet_import_format = record[10].to_string();
+        let evm = record[11].to_string();
+        let UCID = record[12].to_string();
+        let cmc_top = record[13].to_string();
 
         
         let coin_type = CoinDatabase { 
+            status, 
             coin_index, 
             coin_symbol, 
             coin_name, 
@@ -896,6 +900,7 @@ fn create_coin_completion_model() -> gtk::ListStore {
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
 
     let store = gtk::ListStore::new(&[
+        glib::Type::STRING, // status
         glib::Type::U32,    // index
         glib::Type::STRING, // coin_symbol
         glib::Type::STRING, // coin_name
@@ -914,19 +919,20 @@ fn create_coin_completion_model() -> gtk::ListStore {
     for coin_symbol in valid_coin_symbols.iter() {
         let iter = store.append();
         store.set(&iter, &[
-            (0, &coin_symbol.coin_index), 
-            (1, &coin_symbol.coin_symbol), 
-            (2, &coin_symbol.coin_name),
-            (3, &coin_symbol.key_derivation),
-            (4, &coin_symbol.hash),
-            (5, &coin_symbol.private_header),
-            (6, &coin_symbol.public_header),
-            (7, &coin_symbol.public_key_hash),
-            (8, &coin_symbol.script_hash),
-            (9, &coin_symbol.wallet_import_format),
-            (10, &coin_symbol.evm),
-            (11, &coin_symbol.UCID),
-            (12, &coin_symbol.cmc_top),
+            (0, &coin_symbol.status),
+            (1, &coin_symbol.coin_index), 
+            (2, &coin_symbol.coin_symbol), 
+            (3, &coin_symbol.coin_name),
+            (4, &coin_symbol.key_derivation),
+            (5, &coin_symbol.hash),
+            (6, &coin_symbol.private_header),
+            (7, &coin_symbol.public_header),
+            (8, &coin_symbol.public_key_hash),
+            (9, &coin_symbol.script_hash),
+            (10, &coin_symbol.wallet_import_format),
+            (11, &coin_symbol.evm),
+            (12, &coin_symbol.UCID),
+            (13, &coin_symbol.cmc_top),
         ]);
     }
 
@@ -939,11 +945,11 @@ fn create_coin_completion_model() -> gtk::ListStore {
 /// # Arguments
 ///
 /// * `coin_store` - A reference to a vector of `CoinDatabase`.
-/// * `target_prefix` - The prefix to match with coin symbols.
+/// * `target_prefix` - The prefix to match with coin name.
 ///
 /// # Returns
 ///
-/// Returns a vector containing references to `CoinDatabase` entries whose symbols start with the specified prefix.
+/// Returns a vector containing references to `CoinDatabase` entries whose name start with the specified prefix.
 fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix: &'a str) -> Vec<&'a CoinDatabase> {
     coin_store
         .iter()
@@ -973,21 +979,23 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
         .filter_map(|record| record.ok())
         .enumerate()
         .map(|(index, record)| {
-            let coin_index: u32 = index.try_into().expect(&t!("error.converter.IO", input = "usize", output = "u32").to_string());
-            let coin_symbol: String = record.get(1).unwrap_or_default().to_string();
-            let coin_name: String = record.get(2).unwrap_or_default().to_string();
-            let key_derivation: String = record.get(3).unwrap_or_default().to_string();
-            let hash: String = record.get(4).unwrap_or_default().to_string();
-            let private_header: String = record.get(5).unwrap_or_default().to_string();
-            let public_header: String = record.get(6).unwrap_or_default().to_string();
-            let public_key_hash: String = record.get(7).unwrap_or_default().to_string();
-            let script_hash: String = record.get(8).unwrap_or_default().to_string();
-            let wallet_import_format: String = record.get(9).unwrap_or_default().to_string();
-            let evm: String = record.get(10).unwrap_or_default().to_string();
-            let UCID: String = record.get(11).unwrap_or_default().to_string();
-            let cmc_top: String = record.get(12).unwrap_or_default().to_string();
+            let status: String = record.get(0).unwrap_or_default().to_string();
+            let coin_index: u32 = record.get(1).unwrap_or_default().parse().unwrap();
+            let coin_symbol: String = record.get(2).unwrap_or_default().to_string();
+            let coin_name: String = record.get(3).unwrap_or_default().to_string();
+            let key_derivation: String = record.get(4).unwrap_or_default().to_string();
+            let hash: String = record.get(5).unwrap_or_default().to_string();
+            let private_header: String = record.get(6).unwrap_or_default().to_string();
+            let public_header: String = record.get(7).unwrap_or_default().to_string();
+            let public_key_hash: String = record.get(8).unwrap_or_default().to_string();
+            let script_hash: String = record.get(9).unwrap_or_default().to_string();
+            let wallet_import_format: String = record.get(10).unwrap_or_default().to_string();
+            let evm: String = record.get(11).unwrap_or_default().to_string();
+            let UCID: String = record.get(12).unwrap_or_default().to_string();
+            let cmc_top: String = record.get(13).unwrap_or_default().to_string();
 
             CoinDatabase {
+                status,
                 coin_index,
                 coin_symbol,
                 coin_name,
@@ -2680,13 +2688,14 @@ fn create_main_window(application: &adw::Application) {
     // Coin treeview
     create_coin_completion_model();
     let coin_store = create_coin_store();
-    let tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 13]);
+    let tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 14]);
     let coins = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let coin_treeview = gtk::TreeView::new();
     coin_treeview.set_vexpand(true);
     coin_treeview.set_headers_visible(true);
 
     let columns = [
+        &t!("UI.main.database.column.status").to_string(),
         &t!("UI.main.database.column.index").to_string(),
         &t!("UI.main.database.column.symbol").to_string(),
         &t!("UI.main.database.column.coin").to_string(),
@@ -3043,6 +3052,7 @@ fn create_main_window(application: &adw::Application) {
                 
                 let mnemonic_words = generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                fancy_print(Some("mnemonic_words"), Some(&format!("{:?}", mnemonic_words)));
                 
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
                 fancy_print(Some("mnemonic_passphrase"), Some(&format!("{:?}", passphrase_text)));
@@ -3050,6 +3060,16 @@ fn create_main_window(application: &adw::Application) {
                 let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
+                fancy_print(Some("seed_hex"), Some(&format!("{:?}", seed_hex)));
+
+                ADDRESS_DATA.with(|data| {
+                    let mut data = data.borrow_mut();
+                    data.entropy_string = Some(full_entropy.clone());
+                    data.mnemonic_words = Some(mnemonic_words.clone());
+                    data.mnemonic_passphrase = Some(passphrase_text.clone());
+                    data.seed = Some(seed_hex.clone());
+                });
+
             } else {
                 // TODO: If entropy is empty show error dialog
                 eprintln!("{}", &t!("error.entropy.empty"))
@@ -3066,21 +3086,23 @@ fn create_main_window(application: &adw::Application) {
         @weak stack   => move |_| {
             // TODO: Check if seed is empty, show error dialog
             if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
-                let coin_index = model.get_value(&iter, 0);
-                let coin_symbol = model.get_value(&iter, 1);
-                let coin_name = model.get_value(&iter, 2);
-                let key_derivation = model.get_value(&iter, 3);
-                let hash = model.get_value(&iter, 4);
-                let private_header = model.get_value(&iter, 5);
-                let public_header = model.get_value(&iter, 6);
-                let public_key_hash = model.get_value(&iter, 7);
-                let script_hash = model.get_value(&iter, 8);
-                let wallet_import_format = model.get_value(&iter, 9);
-                let evm = model.get_value(&iter, 10);
-                let UCID = model.get_value(&iter, 11);
-                let cmc_top = model.get_value(&iter, 12);
+                let status = model.get_value(&iter, 0);
+                let coin_index = model.get_value(&iter, 1);
+                let coin_symbol = model.get_value(&iter, 2);
+                let coin_name = model.get_value(&iter, 3);
+                let key_derivation = model.get_value(&iter, 4);
+                let hash = model.get_value(&iter, 5);
+                let private_header = model.get_value(&iter, 6);
+                let public_header = model.get_value(&iter, 7);
+                let public_key_hash = model.get_value(&iter, 8);
+                let script_hash = model.get_value(&iter, 9);
+                let wallet_import_format = model.get_value(&iter, 10);
+                let evm = model.get_value(&iter, 11);
+                let UCID = model.get_value(&iter, 12);
+                let cmc_top = model.get_value(&iter, 13);
 
                 if let (
+                    Ok(status),
                     Ok(coin_index),
                     Ok(coin_symbol),
                     Ok(coin_name),
@@ -3095,6 +3117,7 @@ fn create_main_window(application: &adw::Application) {
                     Ok(UCID),
                     Ok(cmc_top),
                 ) = (
+                    status.get::<String>(),
                     coin_index.get::<String>(), 
                     coin_symbol.get::<String>(), 
                     coin_name.get::<String>(),
@@ -3111,6 +3134,7 @@ fn create_main_window(application: &adw::Application) {
                 ) {
                     println!("\n#### Coin info ####");
 
+                    println!("status: {}", status);
                     println!("index: {}", coin_index);
                     println!("coin_symbol: {}", coin_symbol);
                     println!("coin_name: {}", coin_name);
@@ -3144,9 +3168,14 @@ fn create_main_window(application: &adw::Application) {
                     coin_entry.set_text(&coin_index);
 
                     ADDRESS_DATA.with(|data| {
+                        // TODO: Implement all coin parameters in address struct
                         let mut data = data.borrow_mut();
                         data.public_key_hash = Some(public_key_hash.clone());
                         data.wallet_import_format = Some(wallet_import_format.to_string());
+                        data.key_derivation = Some(key_derivation.to_string());
+                        data.hash = Some(hash.to_string());
+                        data.coin_index = Some(coin_index.parse().unwrap());
+
                     });
                 }  
             }
@@ -3167,19 +3196,20 @@ fn create_main_window(application: &adw::Application) {
                 for found_coin in matching_coins {
                     let iter = tree_store.append(None);
                     tree_store.set(&iter, &[
-                        (0, &found_coin.coin_index.to_string()),
-                        (1, &found_coin.coin_symbol),
-                        (2, &found_coin.coin_name),
-                        (3, &found_coin.key_derivation),
-                        (4, &found_coin.hash),
-                        (5, &found_coin.private_header),
-                        (6, &found_coin.public_header),
-                        (7, &found_coin.public_key_hash),
-                        (8, &found_coin.script_hash),
-                        (9, &found_coin.wallet_import_format),
-                        (10, &found_coin.evm),
-                        (11, &found_coin.UCID),
-                        (12, &found_coin.cmc_top),
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.UCID),
+                        (13, &found_coin.cmc_top),
                     ]);
                 }
                 coin_treeview.set_model(Some(&tree_store));
@@ -3299,7 +3329,6 @@ fn create_main_window(application: &adw::Application) {
     let derivation_label_text_clone = derivation_label_text.clone();
 
     // JUMP: Generate Addresses button
-
     let address_store_clone = address_store.clone();
 
     generate_addresses_button.connect_clicked(move |_| {
@@ -3309,18 +3338,37 @@ fn create_main_window(application: &adw::Application) {
             let data = data.borrow();
             data.master_private_key_bytes.clone().unwrap_or_default()
         });
-        // println!("Received Master private bytes: {:?}", master_private_key_bytes);
     
         let master_chain_code_bytes = ADDRESS_DATA.with(|data| {
             let data = data.borrow();
             data.master_chain_code_bytes.clone().unwrap_or_default()
         });
-        // println!("Received Master chain code bytes: {:?}", master_chain_code_bytes);
-    
+        
+        let key_derivation = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.key_derivation.clone().unwrap_or_default()
+        });
+
+        let hash = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.hash.clone().unwrap_or_default()
+        });
+
         let wallet_import_format = ADDRESS_DATA.with(|data| {
             let data = data.borrow();
             data.wallet_import_format.clone().unwrap_or_default()
         });
+
+        let public_key_hash = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.public_key_hash.clone().unwrap_or_default()
+        });
+
+        let coin_index = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.coin_index.clone().unwrap_or_default()
+        });
+
 
         let DP = derivation_label_text_clone.text();
         let path = DP.to_string();
@@ -3332,10 +3380,6 @@ fn create_main_window(application: &adw::Application) {
         let hardened = address_options_hardened_address_checkbox.is_active();
     
         let secp = secp256k1::Secp256k1::new();
-        let public_key_hash = ADDRESS_DATA.with(|data| {
-            let data = data.borrow();
-            data.public_key_hash.clone().unwrap_or_default()
-        });
     
         let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
             &public_key_hash[2..]
@@ -3351,8 +3395,6 @@ fn create_main_window(application: &adw::Application) {
             },
         };
 
-
-
         let mut addresses = Vec::new();
     
         for i in 0..address_count_int {
@@ -3365,25 +3407,90 @@ fn create_main_window(application: &adw::Application) {
     
             println!("full:path: {}", full_path);
             
-            let derived = derive_from_path(&master_private_key_bytes, &master_chain_code_bytes, &full_path)
-                .expect("Failed to derive key from path");
-    
-            let public_key = secp256k1::PublicKey::from_secret_key(&secp, &derived.0);
-            let pub_key = hex::encode(&public_key.serialize());
-            let address = generate_address(&public_key, &public_key_hash_vec);
+            let derived = match key_derivation.as_str() {
+                "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
+                // "secp256r1" => ,
+                // "ed25519" => ,
+                // "bls12-381" => ,
+                // "ed25519|secp256k1" => ,
+                _ => {
+                    println!("Unsupported key derivation method: {}", key_derivation);
+                    derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path)
+                }
+            }.expect("Failed to derive key from path");
 
+
+
+            // let public_key = secp256k1::PublicKey::from_secret_key(&secp, &derived.0);
+            let public_key = match key_derivation.as_str() {
+                "secp256k1" => secp256k1::PublicKey::from_secret_key(&secp, &derived.0),
+                // "secp256r1" => ,
+                // "ed25519" => ,
+                // "bls12-381" => ,
+                // "ed25519|secp256k1" => ,
+                _ => {
+                    println!("Unsupported key derivation method: {}", key_derivation);
+                    secp256k1::PublicKey::from_secret_key(&secp, &derived.0)
+                }
+            };
+
+            // let public_key_encoded = hex::encode(&public_key.serialize());
+            let public_key_encoded = match hash.as_str() {
+                "sha256" => hex::encode(&public_key.serialize()),
+                "keccak256" => format!("0x{}", hex::encode(&public_key.serialize())),
+                "sha256+ripemd160" => hex::encode(&public_key.serialize()),
+                // "blake2b" => ,
+                // "k12" => ,
+                // "pedersen" => ,
+                // "ripemd160" => ,
+                // "sha3-256" => ,
+                // "sha3-384" => ,
+                // "sha512" => ,
+                _ => {
+                    println!("Unsupported key derivation method: {}", key_derivation);
+                    hex::encode(&public_key.serialize())
+                }
+            };
+            // let address = generate_address_sha256(&public_key, &public_key_hash_vec);
+            let address = match hash.as_str() {
+                "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
+                "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
+                "sha256+ripemd160" => match generate_sha256_ripemd160_address(coin_index, &public_key.serialize()) {
+                    Ok(addr) => addr,
+                    Err(e) => {
+                        println!("Error generating address: {}", e);
+                        return;
+                    }
+                },
+                // "blake2b" => ,
+                // "k12" => ,
+                // "pedersen" => ,
+                // "ripemd160" => ,
+                // "sha3-256" => ,
+                // "sha3-384" => ,
+                // "sha512" => ,
+                _ => {
+                    println!("Unsupported hash method: {}", hash);
+                    generate_address_sha256(&public_key, &public_key_hash_vec)
+                }
+            };
+            println!("Crypto address: {:?}", address);
+
+
+            // IMPLEMENT: remove hard-coding
             let compressed = true;
             
-            let priv_key_wif = private_key_to_wif(
-                    Some(&derived.0), 
-                    Some(compressed),
-                    Some(&wallet_import_format), 
+            let priv_key_wif = create_private_key_for_address(
+                Some(&derived.0),
+                Some(compressed),
+                Some(&wallet_import_format),
+                &hash,
             ).expect("Failed to convert private key to WIF");
             
             addresses.push(CryptoAddresses {
                 derivation_path: full_path,
                 address: address.clone(),
-                public_key: pub_key.clone(),
+                public_key: public_key_encoded.clone(),
                 private_key: priv_key_wif.clone(),
             });
         }
@@ -3400,7 +3507,6 @@ fn create_main_window(application: &adw::Application) {
     });
     
     address_options_clear_addresses_button.connect_clicked(move |_| {
-        println!("\n#### Cleaning ####");
         address_store_clone.clear();
     });
 
@@ -3990,8 +4096,6 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
 
 
-
-
 // ADDRESSES -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 #[derive(Debug, Default)]
@@ -3999,14 +4103,18 @@ struct WalletSettings {
     entropy_string: Option<String>,
     entropy_checksum: Option<String>,
     mnemonic_words: Option<String>,
+    mnemonic_passphrase: Option<String>,
     seed: Option<String>,
     master_xprv: Option<String>,
     master_xpub: Option<String>,
     master_private_key_bytes: Option<Vec<u8>>,
     master_chain_code_bytes: Option<Vec<u8>>,
     master_public_key_bytes: Option<Vec<u8>>,
+    coin_index: Option<u32>,
     wallet_import_format: Option<String>,
     public_key_hash: Option<String>,
+    key_derivation: Option<String>,
+    hash: Option<String>,
 
     // SEND:
     // ADDRESS_DATA.with(|data| {
@@ -4087,15 +4195,14 @@ fn derive_child_key(
     Some((child_secret_key_bytes.to_vec(), child_chain_code_bytes.to_vec(), child_public_key_bytes))
 }
 
-fn private_key_to_wif(
+fn create_private_key_for_address(
     private_key: Option<&secp256k1::SecretKey>, 
     compressed: Option<bool>,
     wif: Option<&str>,
+    hash: &str,
 ) -> Result<String, String> {
     fancy_print(Some("Private key to WIF"), None);
 
-    let compressed = compressed.unwrap_or(true);
-    
     let wallet_import_format = match wif {
         Some(w) => {
             if w.is_empty() {
@@ -4107,38 +4214,68 @@ fn private_key_to_wif(
         None => "80", // Default to Bitcoin mainnet version byte if no WIF is provided
     };
 
+    let compressed = compressed.unwrap_or(true);
+    
     let wallet_import_format_bytes = match hex::decode(wallet_import_format) {
         Ok(bytes) => bytes,
         Err(_) => return Err("Invalid WIF format".to_string()),
     };
 
-    let mut extended_key = Vec::with_capacity(34);
-    extended_key.extend_from_slice(&wallet_import_format_bytes);
+    // if wallet_import_format_bytes.len() != 1 {
+    //     return Err("Invalid length for WIF version byte".to_string());
+    // }
 
-    if let Some(private_key) = private_key {
-        extended_key.extend_from_slice(&private_key.secret_bytes());
+    match hash {
+        "sha256" => {
+            let mut extended_key = Vec::with_capacity(34);
+            extended_key.extend_from_slice(&wallet_import_format_bytes);
 
-        if compressed {
-            extended_key.push(0x01); // Add compression flag
-        }
-    } else {
-        return Err("Private key must be provided".to_string());
+            if let Some(private_key) = private_key {
+                extended_key.extend_from_slice(&private_key.secret_bytes());
+
+                if compressed {
+                    extended_key.push(0x01); // Add compression flag
+                }
+            } else {
+                return Err("Private key must be provided".to_string());
+            }
+
+            let checksum = double_sha256(&extended_key);
+            let address_checksum = &checksum[0..4];
+            extended_key.extend_from_slice(address_checksum);
+
+            Ok(bs58::encode(extended_key).into_string())
+        },
+        "keccak256" => {
+            if let Some(private_key) = private_key {
+                Ok(format!("0x{}", hex::encode(private_key.secret_bytes())))
+            } else {
+                Err("Private key must be provided".to_string())
+            }
+        },
+        "sha256+ripemd160" => {
+            match private_key {
+                Some(key) => {
+                    let private_key_hex = hex::encode(key.secret_bytes());
+                    println!("Private key hex: {}", private_key_hex);
+                    Ok(private_key_hex)
+                },
+                None => {
+                    println!("Private key must be provided");
+                    Err("Private key must be provided".to_string())
+                },
+            }
+        },
+        _ => Err(format!("Unsupported hash method: {}", hash)),
     }
-
-    let checksum = double_sha256(&extended_key);
-    let address_checksum = &checksum[0..4];
-    extended_key.extend_from_slice(address_checksum);
-
-    Ok(bs58::encode(extended_key).into_string())
 }
 
-
-fn derive_from_path(
+fn derive_from_path_secp256k1(
     master_key: &[u8], 
     master_chain_code: &[u8], 
     path: &str
 ) -> Option<(secp256k1::SecretKey, [u8; 32], [u8; 33])> {
-    fancy_print(Some(&t!("log.derive_from_path").to_string()), None);
+    fancy_print(Some(&t!("log.derive_from_path_secp256k1").to_string()), None);
 
     fancy_print(Some("Derivation path"), Some(&format!("{:?}", path)));
 
@@ -4198,11 +4335,11 @@ fn derive_from_path(
     Some((secret_key, chain_code_array, public_key_array))
 }
 
-fn generate_address(
+fn generate_address_sha256(
     public_key: &secp256k1::PublicKey,
     public_key_hash: &[u8],
 ) -> String {
-    fancy_print(Some(&t!("log.generate_address").to_string()), None);
+    fancy_print(Some(&t!("log.generate_address_sha256").to_string()), None);
 
     let public_key_bytes = public_key.serialize();
     println!("Public key bytes: {:?}", &public_key_bytes);
@@ -4270,6 +4407,50 @@ struct CryptoAddresses {
     private_key: String,
 }
 
+fn generate_address_keccak256(public_key: &secp256k1::PublicKey, _public_key_hash: &[u8]) -> String {
+    let public_key_bytes = public_key.serialize_uncompressed();
+    println!("Public key bytes: {:?}", &public_key_bytes);
+
+    let mut keccak = Keccak256::new();
+    keccak.update(&public_key_bytes[1..]);
+    let keccak_result = keccak.finalize();
+    println!("Keccak256 hash result: {:?}", &keccak_result);
+
+    let address_bytes = &keccak_result[12..];
+    println!("Address bytes: {:?}", address_bytes);
+
+    let address = format!("0x{}", hex::encode(address_bytes));
+    println!("Generated Ethereum address: {:?}", address);
+
+    address
+}
+
+
+fn generate_sha256_ripemd160_address(coin_index: u32, public_key: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+    let hash = sha256_and_ripemd160(public_key);
+    let mut address_bytes = vec![0x00];
+
+    address_bytes.extend(&hash);
+    
+    let checksum = Sha256::digest(&Sha256::digest(&address_bytes));
+    let checksum = &checksum[0..4];
+
+    let mut full_address_bytes = address_bytes.clone();
+    full_address_bytes.extend(checksum);
+    
+
+    let alphabet; 
+
+    match coin_index {
+        144 => alphabet = bs58::Alphabet::RIPPLE,
+        _ => alphabet = bs58::Alphabet::DEFAULT,
+    }
+
+    let encoded_address = bs58::encode(full_address_bytes).with_alphabet(alphabet).into_string();
+    println!("Base58 encoded address: {}", encoded_address);
+    
+    Ok(encoded_address)
+}
 
 
 
@@ -4277,6 +4458,7 @@ struct CryptoAddresses {
 
 
 
+// PROTOCOLS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 
