@@ -47,7 +47,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
-const COINLIST_FILE: &str = "lib/CKDB2.csv";
+const COINLIST_FILE: &str = "lib/CKDB.csv";
 const APP_LOG_DIRECTORY: &str = "log/";
 const LOG_OUTPUT: &'static [&'static str] = &[
     "Default", 
@@ -95,6 +95,11 @@ const VALID_GUI_THEMES: &'static [&'static str] = &[
     "Light", 
     "Dark",
 ];
+const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
+    "Name", 
+    "Symbol", 
+    "Index",
+];
 
 thread_local! {
     static ADDRESS_DATA: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
@@ -111,7 +116,6 @@ lazy_static! {
 fn print_program_info() {
     let current_time = SystemTime::now();
     let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-    let sig = "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.";
 
     println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
     println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
@@ -120,78 +124,10 @@ fn print_program_info() {
     println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
-    fancy_print(Some(&format!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap())), None);
-    fancy_print(Some(&format!("Start time {}", &timestamp.to_string())), None);
-    fancy_print(Some(sig), None);
+    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
+    println!("Start time {}", &timestamp.to_string());
+    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
 
-}
-
-// fancy_print(Some("entropy_source"), Some(&format!("{:?}", source)));
-// fancy_print(Some("ERROR"), Some(&t!("error.entropy.create.file")));
-fn fancy_print(value: Option<&str>, msg: Option<&str>) {
-    let settings = AppSettings::load_settings()
-                .expect(&t!("error.settings.read"));
-
-    let log_output = match settings.get_value("log_output") {
-        Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-            fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "log_output", value = "String")));
-            String::from(*&LOG_OUTPUT[0])
-        }),
-        None => {
-            fancy_print(Some("ERROR"), Some(&t!("error.settings.read", part = "log_output")));
-            String::from(*&LOG_OUTPUT[0])
-        }
-    };
-
-    let mut formatted_output = String::new();
-
-    if let Some(value) = value {
-        if let Some(msg) = msg {
-            formatted_output.push_str(&format!("\t{} = {}", value, msg));
-        } else {
-            formatted_output.push_str(&format!("{}", value));
-        }
-    }
-
-    match value.unwrap() {
-        "ERROR" => {
-            create_message_window(value.unwrap(), &msg.unwrap(), None, None);
-        },
-        _ => {}
-    }
-    match log_output.as_str() {
-        "Default" => {
-            println!("{}", formatted_output);
-        },
-        "File" => {
-            println!("{}", formatted_output);
-
-            // let local_log_file = get_log_file().as_str();
-
-            if let Some(parent) = Path::new(get_log_file().as_str()).parent() {
-                match fs::create_dir_all(parent) {
-                    Ok(_) => {
-                        let mut file = match std::fs::OpenOptions::new().create(true).append(true).open(&get_log_file().as_str()) {
-                            Ok(file) => file,
-                            Err(e) => {
-                                eprintln!("Error creating file: {}", e);
-                                return;
-                            }
-                        };
-        
-                        formatted_output.push_str("\n");
-                        file.write_all(formatted_output.as_bytes())
-                                .expect(&t!("error.file.write", value = &get_log_file().as_str()).to_string());
-                            
-                    }
-                    Err(err) => {
-                        eprintln!("Error creating directory {}: {}", parent.display(), err);
-                    }
-                }
-            }
-        },
-        _ => {},
-    }
 }
 
 fn get_log_file() -> String {
@@ -224,10 +160,10 @@ fn set_log_file(file: String) {
 /// println!("Random entropy: {}", rng_entropy);
 /// ```
 fn generate_entropy(source: &str, entropy_length: u64) -> String {
-    fancy_print(Some(&t!("log.generate_entropy").to_string()), None);
+    println!("{}", &t!("log.generate_entropy").to_string());
 
-    fancy_print(Some("entropy_source"), Some(&format!("{:?}", source)));
-    fancy_print(Some("entropy_length"), Some(&format!("{:?}", entropy_length)));
+    println!("entropy_source {:?}", source);
+    println!("entropy_length {:?}", entropy_length);
 
     match source {
         "RNG" => {
@@ -239,7 +175,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 
             ADDRESS_DATA.with(|data| {
                 let mut data = data.borrow_mut();
-                fancy_print(Some("entropy_initial"), Some(&format!("{:?}", rng_entropy_string)));
+                println!("entropy_initial {:?}", rng_entropy_string);
                 data.entropy_string = Some(rng_entropy_string.clone());
             });
 
@@ -251,40 +187,40 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 
             let anu_format = match settings.get_value("anu_data_format") {
                 Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-                    fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "anu_data_format", value = "String")));
+                    println!("{}", &t!("error.settings.wrong", element = "anu_data_format", value = "String"));
                     String::from("uint8")
                 }),
                 None => {
-                    fancy_print(Some("ERROR"), Some(&t!("error.settings.read", value = "anu_data_format")));
+                    println!("{}", &t!("error.settings.read", value = "anu_data_format"));
                     String::from("uint8")
                 }
             };
             
             let array_length = match settings.get_value("anu_array_length") {
                 Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
-                    fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "anu_array_length", value = "String")));
+                println!("{}", &t!("error.settings.wrong", element = "anu_array_length", value = "String"));
                     ANU_DEFAULT_ARRAY_LENGTH
                 }),
                 None => {
-                    fancy_print(Some("ERROR"), Some(&t!("error.settings.read", value = "anu_array_length")));
+                     println!("{}", &t!("error.settings.read", value = "anu_array_length"));
                     ANU_DEFAULT_ARRAY_LENGTH
                 }
             };
             
             let hex_block_size = match settings.get_value("anu_hex_block_size") {
                 Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
-                    fancy_print(Some("ERROR"), Some(&t!("error.settings.wrong", element = "hex_block_size", value = "u32")));
+                    println!("{}", &t!("error.settings.wrong", element = "hex_block_size", value = "u32"));
                     ANU_DEFAULT_HEX_BLOCK_SIZE
                 }),
                 None => {
-                    fancy_print(Some("ERROR"), Some(&t!("error.settings.read", value = "hex_block_size")));
+                    println!("{}", &t!("error.settings.read", value = "hex_block_size"));
                     ANU_DEFAULT_HEX_BLOCK_SIZE
                 }
             };
 
-            fancy_print(Some("anu_data_format"), Some(&format!("{:?}", anu_format)));
-            fancy_print(Some("anu_array_length"), Some(&format!("{:?}", array_length)));
-            fancy_print(Some("anu_hex_block_size"), Some(&format!("{:?}", hex_block_size)));
+            println!("anu_data_format {:?}", anu_format);
+            println!("anu_array_length {:?}", array_length);
+            println!("anu_hex_block_size {:?}", hex_block_size);
             
             let qrng_entropy_string = get_entropy_from_anu(
                 entropy_length.try_into().unwrap(),
@@ -295,7 +231,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 
             ADDRESS_DATA.with(|data| {
                 let mut data = data.borrow_mut();
-                fancy_print(Some("entropy_initial"), Some(&format!("{:?}", qrng_entropy_string)));
+                println!("entropy_initial {:?}", qrng_entropy_string);
                 data.entropy_string = Some(qrng_entropy_string.clone());
             });
 
@@ -322,12 +258,12 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                     if let Some(file) = dialog.file() {
                         if let Some(path) = file.path() {
                             let file_path = path.to_string_lossy().to_string();
-                            fancy_print(Some("entropy_file_name"), Some(&format!("{:?}", file_path)));
+                            println!("entropy_file_name {:?}", file_path);
                             
                             let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
                             
                             if let Err(err) = tx.send(file_entropy_string) {
-                                fancy_print(Some("ERROR"), Some(&t!("error.mpsc.send", value = err)));
+                                 println!("{}", &t!("error.mpsc.send", value = err));
 
                             } else {
                                 main_loop.quit();
@@ -351,13 +287,13 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                     received_file_entropy_string
                 },
                 Err(_) => {
-                    fancy_print(Some("ERROR"), Some(&t!("error.entropy.create.file")));
+                     println!("{}", &t!("error.entropy.create.file"));
                     String::new()
                 }
             }
         },
         _ => {
-            fancy_print(Some("ERROR"), Some(&t!("error.entropy.create.source")));
+             println!("{}", &t!("error.entropy.create.source"));
             return String::new()
         }
     }
@@ -381,19 +317,19 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 /// assert_eq!(checksum.len(), 1);
 /// ```
 fn generate_entropy_checksum(entropy: &str, entropy_length: &u32) -> String {
-    fancy_print(Some(&t!("log.generate_entropy_checksum").to_string()), None);
+    println!("{}", &t!("log.generate_entropy_checksum").to_string());
 
     let entropy_binary = convert_string_to_binary(&entropy);
-    fancy_print(Some("entropy_as_binary"), Some(&format!("{:?}", entropy_binary)));
+    println!("entropy_as_binary {:?}", entropy_binary);
     
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
-    fancy_print(Some("entropy_sha256_hash"), Some(&format!("{:?}", hash_raw_binary)));
+    println!("entropy_sha256_hash {:?}", hash_raw_binary);
     
     let checksum_length = entropy_length / 32;
-    fancy_print(Some("entropy_checksum_length"), Some(&format!("{:?}", checksum_length)));
+    println!("entropy_checksum_length {:?}", checksum_length);
     
     let entropy_checksum: String = hash_raw_binary.chars().take(checksum_length.try_into().unwrap()).collect();
-    fancy_print(Some("entropy_checksum"), Some(&format!("{:?}", entropy_checksum)));
+    println!("entropy_checksum {:?}", entropy_checksum);
     
     ADDRESS_DATA.with(|data| {
         let mut data = data.borrow_mut();
@@ -420,25 +356,25 @@ fn generate_entropy_checksum(entropy: &str, entropy_length: &u32) -> String {
 /// assert!(!mnemonic.is_empty());
 /// ```
 fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
-    fancy_print(Some(&t!("log.generate_mnemonic_words").to_string()), None);
+    println!("{}", &t!("log.generate_mnemonic_words").to_string());
 
     let chunks: Vec<String> = final_entropy_binary.chars()
         .collect::<Vec<char>>()
         .chunks(11)
         .map(|chunk| chunk.iter().collect())
         .collect();
-    fancy_print(Some("entropy_final_chunks"), Some(&format!("{:?}", chunks)));
+    println!("entropy_final_chunks {:?}", chunks);
 
 
     let mnemonic_decimal: Vec<u32> = chunks.iter()
         .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
         .collect();
-    fancy_print(Some("mnemonic_as_decimal"), Some(&format!("{:?}", mnemonic_decimal)));
+    println!("mnemonic_as_decimal {:?}", mnemonic_decimal);
 
     let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
         Ok(content) => content,
         Err(err) => {
-            fancy_print(Some("ERROR"), Some(&t!("error.wordlist.read", value = err)));
+            println!("{}", &t!("error.wordlist.read", value = err));
             return String::new();
         }
     };
@@ -457,7 +393,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 
     ADDRESS_DATA.with(|data| {
         let mut data = data.borrow_mut();
-        fancy_print(Some("mnemonic_words"), Some(&format!("{:?}", mnemonic_words_as_string)));
+        println!("mnemonic_words {:?}", mnemonic_words_as_string);
         data.mnemonic_words = Some(mnemonic_words_as_string.clone());
     });
 
@@ -482,13 +418,13 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 /// assert_eq!(seed.len(), 64);
 /// ```
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-    fancy_print(Some(&t!("log.generate_bip39_seed").to_string()), None);
+    println!("{}", &t!("log.generate_bip39_seed").to_string());
 
     let entropy_vector = convert_string_to_binary(&entropy);
     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
         Ok(mnemonic) => mnemonic,
         Err(err) => {
-            fancy_print(Some("ERROR"), Some(&t!("error.bip.mnemonic", error = err)));
+            println!("{}", &t!("error.bip.mnemonic", error = err));
             return [0; 64];
         },
     };
@@ -496,7 +432,7 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     let seed_hex = hex::encode(&seed[..]);
     
     ADDRESS_DATA.with(|data| {
-        fancy_print(Some("seed_as_hex"), Some(&format!("{:?}", seed_hex)));
+        println!("seed_as_hex {:?}", seed_hex);
         let mut data = data.borrow_mut();
         data.seed = Some(seed_hex);
     });
@@ -518,12 +454,12 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
 /// println!("{}", entropy);
 /// ```
 fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
-    fancy_print(Some(&t!("log.generate_entropy_from_file").to_string()), None);
+    println!("{}", &t!("log.generate_entropy_from_file").to_string());
 
     let mut file = match File::open(file_path) {
         Ok(file) => file,
         Err(err) => {
-            fancy_print(Some("ERROR"), Some(&t!("error.file.open", value = file_path, error = err)));
+            println!("{}", &t!("error.file.open", value = file_path, error = err));
             return String::new()
         },
     };
@@ -533,12 +469,12 @@ fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
     match file.read_to_end(&mut buffer) {
         Ok(_) => {},
         Err(err) => {
-            fancy_print(Some("ERROR"), Some(&t!("error.file.read", value = file_path, error = err)));
+            println!("{}", &t!("error.file.read", value = file_path, error = err));
         },
     };
 
     let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
-    fancy_print(Some("entropy_sha256_hash"), Some(&format!("{:?}", hash)));
+    println!("entropy_sha256_hash {:?}", hash);
 
     let mut entropy = String::new();
     for byte in hash {
@@ -547,7 +483,7 @@ fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
 
     entropy = entropy.chars().take(entropy_length as usize).collect();
 
-    fancy_print(Some("entropy_initial"), Some(&format!("{:?}", entropy)));
+    println!("entropy_initial {:?}", entropy);
     entropy
 }
 
@@ -582,7 +518,7 @@ fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
 /// }
 /// ```
 fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
-    fancy_print(Some(&t!("log.derive_master_keys").to_string()), None);
+    println!("{}", &t!("log.derive_master_keys").to_string());
 
     // Reverting to Bitcoin in case that coin is undefined
     if private_header.is_empty() {
@@ -595,25 +531,25 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
     // Default message for all blockchains ? Why ?
     let message = "Bitcoin seed";
 
-    fancy_print(Some("master_key_private_header"), Some(&format!("{:?}", private_header)));
-    fancy_print(Some("master_key_public_header"), Some(&format!("{:?}", public_header)));
+    println!("master_key_private_header {:?}", private_header);
+    println!("master_key_public_header {:?}", public_header);
 
     let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
         .expect(&t!("error.master.parse.header", value = "private").to_string());
     let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
         .expect(&t!("error.master.parse.header", value = "public").to_string());
 
-    fancy_print(Some("master_key_parsed_private_header"), Some(&format!("{:?}", private_header)));
-    fancy_print(Some("master_key_parsed_public_header"), Some(&format!("{:?}", public_header)));
+    println!("master_key_parsed_private_header {:?}", private_header);
+    println!("master_key_parsed_public_header {:?}", public_header);
 
     let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
     let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
     let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
 
-    fancy_print(Some("seed_as_bytes"), Some(&format!("{:?}", seed_bytes)));
-    fancy_print(Some("hmac_sha512_hash"), Some(&format!("{:?}", hmac_result)));
-    fancy_print(Some("master_key_private_bytes"), Some(&format!("{:?}", master_private_key_bytes)));
-    fancy_print(Some("master_key_chain_code"), Some(&format!("{:?}", master_chain_code_bytes)));
+    println!("seed_as_bytes {:?}", seed_bytes);
+    println!("hmac_sha512_hash {:?}", hmac_result);
+    println!("master_key_private_bytes {:?}", master_private_key_bytes);
+    println!("master_key_chain_code {:?}", master_chain_code_bytes);
 
     // Private construct
     let mut master_private_key = Vec::new();
@@ -631,7 +567,7 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
 
     let master_xprv = bs58::encode(&master_private_key).into_string();              // Total      82 bytes
 
-    fancy_print(Some("master_private_key_xprv"), Some(&format!("{:?}", master_xprv)));
+    println!("master_private_key_xprv {:?}", master_xprv);
 
 
     // Public construct
@@ -640,8 +576,8 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
         .expect(&t!("error.master.create").to_string());
     let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
 
-    fancy_print(Some("master_secret_key"), Some(&format!("{:?}", master_secret_key)));
-    fancy_print(Some("master_public_key"), Some(&format!("{:?}", master_public_key_bytes)));
+    println!("master_secret_key {:?}", master_secret_key);
+    println!("master_public_key {:?}", master_public_key_bytes);
 
     let mut master_public_key = Vec::new();
 
@@ -657,7 +593,7 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
 
     let master_xpub = bs58::encode(&master_public_key).into_string();                // Total      82 bytes
 
-    fancy_print(Some("master_public_key_xpub"), Some(&format!("{:?}", master_xpub)));
+    println!("master_public_key_xpub {:?}", master_xpub);
 
     ADDRESS_DATA.with(|data| {
         let mut data = data.borrow_mut();
@@ -698,14 +634,14 @@ fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &
 /// println!("HMAC-SHA512 Hash: {:?}", hmac);
 /// ```
 fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
-    fancy_print(Some(&t!("log.hmac_sha512").to_string()), None);
+    println!("{}", &t!("log.hmac_sha512").to_string());
 
     const BLOCK_SIZE: usize = 128;
     const HASH_SIZE: usize = 64;
 
     // Step 1: Create the padded key
     let padded_key = if key.len() > BLOCK_SIZE {
-        fancy_print(Some("WARNING"), Some(&t!("error.entropy.create.file")));
+        println!("{}", &t!("error.entropy.create.file"));
         println!("Key length is greater than BLOCK_SIZE. Hashing the key.");
         let mut hasher = Sha512::new();
         hasher.update(key);
@@ -776,7 +712,7 @@ fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
 /// println!("SHA-256 Hash: {:?}", hash);
 /// ```
 fn sha256_hash(data: &[u8]) -> Vec<u8> {
-    fancy_print(Some(&t!("log.sha256_hash").to_string()), None);
+    println!("{}", &t!("log.sha256_hash").to_string());
 
     let mut hasher = Sha256::new();
 
@@ -802,7 +738,7 @@ fn sha256_hash(data: &[u8]) -> Vec<u8> {
 /// println!("Checksum: {:?}", checksum);
 /// ```
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
-    fancy_print(Some(&t!("log.calculate_checksum").to_string()), None);
+    println!("{}", &t!("log.calculate_checksum").to_string());
     
     let hash = Sha256::digest(data);
     let double_hash = Sha256::digest(&hash);
@@ -816,6 +752,7 @@ fn calculate_checksum(data: &[u8]) -> [u8; 4] {
 // COINS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 /// This struct holds information about a particular coin.
+#[derive(Clone)]
 struct CoinDatabase {
     status: String,
     coin_index: u32,
@@ -839,7 +776,7 @@ struct CoinDatabase {
 ///
 /// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_store() -> Vec<CoinDatabase> {
-    fancy_print(Some(&t!("log.create_coin_store").to_string()), None);
+    println!("{}", &t!("log.create_coin_store").to_string());
 
     let file = File::open(&COINLIST_FILE).expect("can not open bip44 coin file");
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
@@ -895,7 +832,7 @@ fn create_coin_store() -> Vec<CoinDatabase> {
 ///
 /// Returns a `gtk::ListStore` containing coin information.
 fn create_coin_completion_model() -> gtk::ListStore {
-    fancy_print(Some(&t!("log.create_coin_completion_model").to_string()), None);
+    println!("{}", &t!("log.create_coin_completion_model").to_string());
 
     let valid_coin_symbols = create_coin_database(COINLIST_FILE);
 
@@ -950,12 +887,65 @@ fn create_coin_completion_model() -> gtk::ListStore {
 /// # Returns
 ///
 /// Returns a vector containing references to `CoinDatabase` entries whose name start with the specified prefix.
-fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix: &'a str) -> Vec<&'a CoinDatabase> {
-    coin_store
-        .iter()
-        // .filter(|&coin_type| coin_type.coin_symbol.starts_with(target_prefix))
-        .filter(|&coin_type| coin_type.coin_name.to_lowercase().contains(target_prefix))
-        .collect()
+fn fetch_coins_from_database<'a>(
+    part: &'a str,
+    coin_store: &'a Vec<CoinDatabase>, 
+    target_value: &'a str
+) -> Vec<&'a CoinDatabase> {
+
+    let mut result: Vec<&'a CoinDatabase> = match part {
+        "Symbol" => {
+            coin_store
+                .iter()
+                .filter(|&coin_type| coin_type.coin_symbol.to_lowercase().contains(target_value))
+                .collect()
+        },
+        "Cmc_top" => {
+            match target_value {
+                "10" => {
+                    coin_store
+                        .iter()
+                        .filter(|&coin| coin.cmc_top.to_lowercase() == "10")
+                        .collect()
+                },
+                "100" => {
+                    coin_store
+                        .iter()
+                        .filter(|&coin| coin.cmc_top.to_lowercase() == "10" || coin.cmc_top.to_lowercase() == "100")
+                        .collect()
+                },
+                _ => {
+                    coin_store
+                        .iter()
+                        .filter(|&coin| coin.cmc_top.to_lowercase() == target_value.to_lowercase())
+                        .collect()
+                }
+            }
+        },
+        "Status" => {
+            coin_store
+                .iter()
+                .filter(|&coin| coin.status.to_lowercase() == target_value.to_lowercase())
+                .collect()
+        },
+        "Index" => {
+            coin_store
+                .iter()
+                .filter(|&coin_type| coin_type.coin_index == target_value.parse().unwrap_or(0))
+                .collect()
+        },
+        "Name" | _ => {
+            coin_store
+                .iter()
+                .filter(|&coin_type| coin_type.coin_name.to_lowercase().contains(target_value))
+                .collect()
+        },
+    };
+
+    // Sort the result by cmc_top in ascending order
+    result.sort_by_key(|coin| coin.cmc_top.parse::<usize>().unwrap_or(usize::MAX));
+
+    result
 }
 
 /// Creates a vector of `CoinDatabase` from a CSV file.
@@ -968,7 +958,7 @@ fn get_coins_starting_with<'a>(coin_store: &'a Vec<CoinDatabase>, target_prefix:
 ///
 /// Returns a vector containing `CoinDatabase` entries read from the CSV file.
 fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
-    fancy_print(Some(&t!("log.create_coin_database").to_string()), None);
+    println!("{}", &t!("log.create_coin_database").to_string());
 
     let file = File::open(&file_path)
         .expect(&t!("error.file.read", value = file_path).to_string());
@@ -978,7 +968,7 @@ fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
     let coin_types: Vec<CoinDatabase> = rdr.records()
         .filter_map(|record| record.ok())
         .enumerate()
-        .map(|(index, record)| {
+        .map(|(_index, record)| {
             let status: String = record.get(0).unwrap_or_default().to_string();
             let coin_index: u32 = record.get(1).unwrap_or_default().parse().unwrap();
             let coin_symbol: String = record.get(2).unwrap_or_default().to_string();
@@ -1069,6 +1059,7 @@ struct AppSettings {
     gui_window_maximized: bool,
     gui_theme: String,
     gui_language: String,
+    gui_search: String,
     anu_enabled: bool,
     anu_data_format: String,
     anu_array_length: u32,
@@ -1115,7 +1106,7 @@ impl AppSettings {
     /// ```
     fn load_settings() -> io::Result<Self> {
         // BUG: This will panic. Why?
-        // fancy_print(Some("Loading settings:"), None);
+        println!("Loading settings:");
 
         // FEATURE: Create local ($HOME) settings
         let config_file = "config/custom.conf";
@@ -1141,7 +1132,7 @@ impl AppSettings {
                 value
             },
             Err(err) => {
-                fancy_print(Some("ERROR"), Some(&t!("error.settings.config", error = err)));
+                println!("{}", &t!("error.settings.config", error = err));
                 toml::Value::Table(toml::value::Table::new())
             }
         };
@@ -1187,6 +1178,11 @@ impl AppSettings {
         let gui_language = gui_section.get("language")
             .and_then(|v| v.as_str())
             .unwrap_or(*&APP_LANGUAGE[0])
+            .to_string();
+
+        let gui_search = gui_section.get("search")
+            .and_then(|v| v.as_str())
+            .unwrap_or(*&VALID_COIN_SEARCH_PARAMETER[0])
             .to_string();
 
         // Wallet settings
@@ -1329,6 +1325,7 @@ impl AppSettings {
             gui_window_maximized,
             gui_theme,
             gui_language,
+            gui_search,
             anu_enabled,
             anu_data_format,
             anu_array_length,
@@ -1382,6 +1379,7 @@ impl AppSettings {
             "gui_window_maximized" => Some(self.gui_window_maximized.to_string()),
             "gui_theme" => Some(self.gui_theme.to_string()),
             "gui_language" => Some(self.gui_language.to_string()),
+            "gui_search" => Some(self.gui_search.to_string()),
 
             "anu_enabled" => Some(self.anu_enabled.to_string()),
             "anu_data_format" => Some(self.anu_data_format.clone()),
@@ -1487,7 +1485,7 @@ impl FieldValue {
 /// assert!(!icon_bytes.is_empty());
 /// ```
 fn load_icon_bytes(path: &str) -> Vec<u8> {
-    fancy_print(Some(&t!("log.load_icon_bytes").to_string()), Some(path));
+    println!("{} = {}", &t!("log.load_icon_bytes").to_string(), path);
 
     let mut file = std::fs::File::open(path).expect(&t!("error.file.open", value = path).to_string());
     let mut buffer = Vec::new();
@@ -1511,7 +1509,7 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
 /// // Use the retrieved icons to set up the application window.
 /// ```
 fn get_window_theme_icons() -> [gtk::Image; 5] {
-    fancy_print(Some(&t!("log.get_window_theme_icons").to_string()), None);
+    println!("{}", &t!("log.get_window_theme_icons").to_string());
 
     // IMPLEMENT: auto detect system theme color switch, change my icons also
     let settings = gtk::Settings::default().unwrap();
@@ -1579,7 +1577,7 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
 /// create_settings_window();
 /// ```
 fn create_settings_window() {
-    fancy_print(Some(&t!("log.create_settings_window").to_string()), None);
+    println!("{}", &t!("log.create_settings_window").to_string());
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
@@ -2332,7 +2330,7 @@ fn create_settings_window() {
 /// create_settings_window();
 /// ```
 fn create_about_window() {
-    fancy_print(Some(&t!("log.create_about_window").to_string()), None);
+    println!("{}", &t!("log.create_about_window").to_string());
 
     let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.png")).expect("msg");
     let license = fs::read_to_string("LICENSE.txt").unwrap();
@@ -2358,7 +2356,7 @@ fn create_about_window() {
 }
 
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
-    fancy_print(Some(&t!("log.update_derivation_label").to_string()), None);
+    println!("{}", &t!("log.update_derivation_label").to_string());
 
     let mut path = String::new();
     path.push_str("m");
@@ -2392,7 +2390,7 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
         path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
     }
     
-    fancy_print(Some(&t!("log.new_derivation_path").to_string()), Some(&path));
+    println!("{} = {}", &t!("log.new_derivation_path").to_string(), &path);
     label.set_text(&path);
 }
 
@@ -2414,7 +2412,7 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
 /// create_main_window(&application);
 /// ```
 fn create_main_window(application: &adw::Application) {
-    fancy_print(Some(&t!("log.create_main_window").to_string()), None);
+    println!("{}", &t!("log.create_main_window").to_string());
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.file.read").to_string());
@@ -2670,29 +2668,134 @@ fn create_main_window(application: &adw::Application) {
         &t!("UI.main.seed").to_string());
 
 
+
+
+
+
+
+
+
     // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 2: Coin
     // -.-. --- .--. -.-- .-. .. --. .... -
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let coin_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin").to_string()));
+    let coin_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    // coin_frame.set_child(Some(&coin_main_content_box));
+    coin_main_box.append(&coin_main_content_box);
     coin_main_box.set_margin_top(10);
     coin_main_box.set_margin_start(10);
     coin_main_box.set_margin_end(10);
     coin_main_box.set_margin_bottom(10);
 
-    // Create scrolled window
-    let scrolled_window = gtk::ScrolledWindow::new();
-    scrolled_window.set_max_content_height(400);
+    
+    // JUMP: Filter coins
+    // ✅      verified
+    // 🟧      not verified
+    // 🟦      in plan
+    // 🟥      not supported
+    // Coin filter
+    let coin_filter_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.filter").to_string()));
+    let coin_filter_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    coin_filter_main_frame.set_child(Some(&coin_filter_content_box));
+    coin_filter_main_box.append(&coin_filter_main_frame);
+    coin_filter_main_box.set_hexpand(true);
+    coin_filter_main_frame.set_hexpand(true);
+    coin_filter_content_box.set_hexpand(true);
+
+    let filter_top10_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let filter_top10_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.top", value = 10).to_string());
+    filter_top10_coins_button_box.append(&filter_top10_coins_button);
+    coin_filter_content_box.append(&filter_top10_coins_button_box);
+    filter_top10_coins_button_box.set_hexpand(true);
+    
+    let filter_top100_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let filter_top100_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.top", value = 100).to_string());
+    filter_top100_coins_button_box.append(&filter_top100_coins_button);
+    coin_filter_content_box.append(&filter_top100_coins_button_box);
+    filter_top100_coins_button_box.set_hexpand(true);
+    
+    let filter_verified_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let filter_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.verified", value = "✅").to_string());
+    filter_verified_coins_button_box.append(&filter_verified_coins_button);
+    coin_filter_content_box.append(&filter_verified_coins_button_box);
+    filter_verified_coins_button_box.set_hexpand(true);
+    
+    let filter_not_verified_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let filter_not_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-verified", value = "🟧").to_string());
+    filter_not_verified_coins_button_box.append(&filter_not_verified_coins_button);
+    coin_filter_content_box.append(&filter_not_verified_coins_button_box);
+    filter_not_verified_coins_button_box.set_hexpand(true);
+    
+    let filter_in_plan_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let filter_in_plan_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.future", value = "🟦").to_string());
+    filter_in_plan_coins_button_box.append(&filter_in_plan_coins_button);
+    coin_filter_content_box.append(&filter_in_plan_coins_button_box);
+    filter_in_plan_coins_button_box.set_hexpand(true);
+    
+    let filter_not_supported_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let filter_not_supported_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-supported", value = "🟥").to_string());
+    filter_not_supported_coins_button_box.append(&filter_not_supported_coins_button);
+    coin_filter_content_box.append(&filter_not_supported_coins_button_box);
+    filter_not_supported_coins_button_box.set_hexpand(true);
+    coin_main_content_box.append(&coin_filter_main_box);
+
+
+    // Coin search
+    let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.search").to_string()));
+    let search_coin_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    coin_filter_main_frame.set_child(Some(&search_coin_content_box));
+    
+    // Search entry
+    let coin_search = gtk::SearchEntry::new();
+    search_coin_content_box.append(&coin_search);
+    coin_search.set_hexpand(true);
+
+    // Advance search
+    let advance_search_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let advance_search_label = gtk::Label::new(Some(&t!("UI.main.coin.search.advance").to_string()));
+    let advance_search_checkbox = gtk::CheckButton::new();
+
+    advance_search_content_box.append(&advance_search_label);
+    advance_search_content_box.append(&advance_search_checkbox);
+
+    search_coin_content_box.append(&advance_search_content_box);
+    
+    // Search filter
+    let advance_search_filter_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let valid_coin_search_filter_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
+    let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings.iter().map(|s| s.as_ref()).collect();
+    let coin_search_filter_dropdown = gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
+    let default_coin_search_filter = valid_coin_search_filter_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_search) 
+        .unwrap_or(0);
+    if let Ok(index) = default_coin_search_filter.try_into() {
+        coin_search_filter_dropdown.set_selected(index);
+    } else {
+        eprintln!("Invalid index for coin_search_filter_dropdown");
+    }    
+    // coin_search_filter_dropdown.set_selected(default_coin_search_filter.try_into().unwrap());
+    advance_search_filter_box.set_visible(false);
+    advance_search_filter_box.append(&coin_search_filter_dropdown);
+    search_coin_content_box.append(&advance_search_filter_box);
+    coin_main_content_box.append(&coin_filter_main_frame);
+    coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = valid_coin_search_filter_as_strings[default_coin_search_filter]).to_string()));
+
 
     // Coin treeview
+    let scrolled_window = gtk::ScrolledWindow::new();
+    let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin").to_string()));
+
     create_coin_completion_model();
     let coin_store = create_coin_store();
-    let tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 14]);
-    let coins = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let coin_store = std::rc::Rc::new(std::cell::RefCell::new(coin_store));
+    let coin_tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 14]);
+    let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
     let coin_treeview = gtk::TreeView::new();
-    coin_treeview.set_vexpand(true);
-    coin_treeview.set_headers_visible(true);
+    let coin_treeview = std::rc::Rc::new(std::cell::RefCell::new(coin_treeview));
+    coin_treeview.borrow().set_vexpand(true);
+    coin_treeview.borrow().set_headers_visible(true);
 
     let columns = [
         &t!("UI.main.database.column.status").to_string(),
@@ -2717,12 +2820,11 @@ fn create_main_window(application: &adw::Application) {
         column.set_title(column_title);
         column.pack_start(&cell, true);
         column.add_attribute(&cell, "text", i as i32);
-        coin_treeview.append_column(&column);
+        coin_treeview.borrow().append_column(&column);
     }
-
-    // Coin search
-    let coin_search = gtk::SearchEntry::new();
-    coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search").to_string()));
+    scrolled_window.set_child(Some(&*coin_treeview.borrow()));
+    coin_frame.set_child(Some(&scrolled_window));
+    coin_main_content_box.append(&coin_frame);
 
     // Generate master keys button
     let generate_master_keys_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -2730,8 +2832,9 @@ fn create_main_window(application: &adw::Application) {
     generate_master_keys_button.set_label(&t!("UI.main.coin.generate").to_string());
     generate_master_keys_box.set_halign(gtk::Align::Center);
     generate_master_keys_box.append(&generate_master_keys_button);
+    coin_main_content_box.append(&generate_master_keys_box);
 
-    // Master private keys
+    // Master private keys entries
     let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let master_xprv_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.priv").to_string()));
     let master_xpub_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.pub").to_string()));
@@ -2748,21 +2851,13 @@ fn create_main_window(application: &adw::Application) {
     master_public_key_text.set_editable(false);
     master_public_key_text.set_left_margin(5);
     master_public_key_text.set_top_margin(5);
-
-    // Connections
-    coins.append(&coin_search);
-    scrolled_window.set_child(Some(&coin_treeview));
-    coins.append(&scrolled_window);
-    coin_frame.set_child(Some(&coins));
-    coin_box.append(&coin_frame);
     master_xprv_frame.set_child(Some(&master_private_key_text));
     master_xpub_frame.set_child(Some(&master_public_key_text));
     master_keys_box.append(&master_xprv_frame);
     master_keys_box.append(&master_xpub_frame);
-    coin_main_box.append(&coin_box);
-    coin_main_box.append(&generate_master_keys_box);
-    coin_main_box.append(&master_keys_box);
+    coin_main_content_box.append(&master_keys_box);
     
+
     stack.add_titled(
         &coin_main_box, 
         Some("sidebar-coin"), 
@@ -3047,20 +3142,20 @@ fn create_main_window(application: &adw::Application) {
                 let checksum = generate_entropy_checksum(&pre_entropy, entropy_length.unwrap());
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
-                fancy_print(Some("entropy_final"), Some(&format!("{:?}", full_entropy)));
+                println!("entropy_final {:?}", full_entropy);
                 entropy_text.buffer().set_text(&full_entropy);
                 
                 let mnemonic_words = generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                fancy_print(Some("mnemonic_words"), Some(&format!("{:?}", mnemonic_words)));
+                println!("mnemonic_words {:?}", mnemonic_words);
                 
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                fancy_print(Some("mnemonic_passphrase"), Some(&format!("{:?}", passphrase_text)));
+                println!("mnemonic_passphrase {:?}", passphrase_text);
                 
                 let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
-                fancy_print(Some("seed_hex"), Some(&format!("{:?}", seed_hex)));
+                println!("seed_hex {:?}", seed_hex);
 
                 ADDRESS_DATA.with(|data| {
                     let mut data = data.borrow_mut();
@@ -3085,7 +3180,7 @@ fn create_main_window(application: &adw::Application) {
         @strong coin_entry,
         @weak stack   => move |_| {
             // TODO: Check if seed is empty, show error dialog
-            if let Some((model, iter)) = coin_treeview_clone.selection().selected() {
+            if let Some((model, iter)) = coin_treeview_clone.borrow().selection().selected() {
                 let status = model.get_value(&iter, 0);
                 let coin_index = model.get_value(&iter, 1);
                 let coin_symbol = model.get_value(&iter, 2);
@@ -3132,6 +3227,9 @@ fn create_main_window(application: &adw::Application) {
                     UCID.get::<String>(),
                     cmc_top.get::<String>(),
                 ) {
+                    master_private_key_text.buffer().set_text("");
+                    master_public_key_text.buffer().set_text("");
+
                     println!("\n#### Coin info ####");
 
                     println!("status: {}", status);
@@ -3182,20 +3280,97 @@ fn create_main_window(application: &adw::Application) {
         }
     ));
 
-    coin_search.connect_search_changed(move|coin_search| {
-        // let search_text = coin_search.text().to_uppercase();
-        let search_text = coin_search.text().to_lowercase();
-        tree_store.clear();
-    
-        if search_text.len() >= 2 {
-            let matching_coins = get_coins_starting_with(&coin_store, &search_text);
+
+    advance_search_checkbox.connect_active_notify(clone!(
+        @weak advance_search_checkbox => move |checkbox| {
+        if checkbox.is_active() {
+            advance_search_filter_box.set_visible(true);
+        } else {
             
+            advance_search_filter_box.set_visible(false);
+        }
+    }));
+
+    coin_search_filter_dropdown.connect_selected_notify(clone!(
+        @weak coin_search,
+        @weak bip_dropdown => move |dropdown| {
+            let selected: usize = dropdown.selected().try_into().unwrap_or(0);
+            coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = VALID_COIN_SEARCH_PARAMETER[selected])));
+            coin_search.set_text("");
+    }));
+
+    coin_search.connect_search_changed({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+        // let search_parameter = std::rc::Rc::clone(&coin_search_filter_dropdown);
+
+        move |coin_search| {
+            let search_text = coin_search.text().to_lowercase();
+            coin_tree_store.borrow_mut().clear();
+
+            // TODO: Remove hardcoding
+            let selected = coin_search_filter_dropdown.selected() as usize;
+            let selected_search_parameter = VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
+
+            let min_search_length = if selected_search_parameter == &"Index" { 1 } else { 2 };
+
+            if search_text.len() >= min_search_length {
+                let store = coin_store.borrow();
+                let matching_coins = fetch_coins_from_database(selected_search_parameter, &store, &search_text);
+
+                if !matching_coins.is_empty() {
+                    let store = coin_tree_store.borrow_mut();
+                    store.clear();
+
+                    for found_coin in matching_coins {
+                        let iter = store.append(None);
+                        store.set(&iter, &[
+                            (0, &found_coin.status),
+                            (1, &found_coin.coin_index.to_string()),
+                            (2, &found_coin.coin_symbol),
+                            (3, &found_coin.coin_name),
+                            (4, &found_coin.key_derivation),
+                            (5, &found_coin.hash),
+                            (6, &found_coin.private_header),
+                            (7, &found_coin.public_header),
+                            (8, &found_coin.public_key_hash),
+                            (9, &found_coin.script_hash),
+                            (10, &found_coin.wallet_import_format),
+                            (11, &found_coin.evm),
+                            (12, &found_coin.UCID),
+                            (13, &found_coin.cmc_top),
+                        ]);
+                    }
+                    coin_treeview.borrow().set_model(Some(&*store));
+                } else {
+                    coin_tree_store.borrow_mut().clear();
+                }
+            } else {
+                coin_tree_store.borrow_mut().clear();
+            }
+        }
+    });
+    
+    
+    filter_top10_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "10";
+            let search_parameter = "Cmc_top";
+            let store = coin_store.borrow();
+            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
             if !matching_coins.is_empty() {
-                tree_store.clear();
-                
                 for found_coin in matching_coins {
-                    let iter = tree_store.append(None);
-                    tree_store.set(&iter, &[
+                    let iter = store.append(None);
+                    store.set(&iter, &[
                         (0, &found_coin.status),
                         (1, &found_coin.coin_index.to_string()),
                         (2, &found_coin.coin_symbol),
@@ -3212,16 +3387,219 @@ fn create_main_window(application: &adw::Application) {
                         (13, &found_coin.cmc_top),
                     ]);
                 }
-                coin_treeview.set_model(Some(&tree_store));
+                coin_treeview.borrow().set_model(Some(&*store));
             } else {
-                tree_store.clear();
+                store.clear();
             }
-        } else {
-            tree_store.clear();
         }
     });
     
     
+    filter_top100_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "100";
+            let search_parameter = "Cmc_top";
+            let store = coin_store.borrow();
+            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.UCID),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_verified_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "✅";
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.UCID),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_not_verified_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "🟧";
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.UCID),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_in_plan_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "🟦";
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.UCID),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_not_supported_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "🟥";
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.UCID),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
     let derivation_path = std::rc::Rc::new(std::cell::RefCell::new(DerivationPath::default()));
     let dp_clone = std::rc::Rc::clone(&derivation_path);
 
@@ -3398,24 +3776,18 @@ fn create_main_window(application: &adw::Application) {
         let mut addresses = Vec::new();
     
         for i in 0..address_count_int {
-            // Construct the derivation path with address index and hardened flag
             let full_path = if hardened {
                 format!("{}/{}'", path, i)
             } else {
                 format!("{}/{}", path, i)
             };
     
-            println!("full:path: {}", full_path);
-            
             let derived = match key_derivation.as_str() {
                 "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                // "secp256r1" => ,
                 // "ed25519" => ,
-                // "bls12-381" => ,
-                // "ed25519|secp256k1" => ,
-                _ => {
-                    println!("Unsupported key derivation method: {}", key_derivation);
-                    derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path)
+                "N/A" | _ => {
+                    println!("Unsupported key derivation method: {:?}", key_derivation);
+                    return
                 }
             }.expect("Failed to derive key from path");
 
@@ -3424,38 +3796,32 @@ fn create_main_window(application: &adw::Application) {
             // let public_key = secp256k1::PublicKey::from_secret_key(&secp, &derived.0);
             let public_key = match key_derivation.as_str() {
                 "secp256k1" => secp256k1::PublicKey::from_secret_key(&secp, &derived.0),
-                // "secp256r1" => ,
                 // "ed25519" => ,
-                // "bls12-381" => ,
-                // "ed25519|secp256k1" => ,
-                _ => {
-                    println!("Unsupported key derivation method: {}", key_derivation);
-                    secp256k1::PublicKey::from_secret_key(&secp, &derived.0)
+                "N/A" | _ => {
+                    println!("Unsupported key derivation method: {:?}", key_derivation);
+                    return
                 }
             };
 
-            // let public_key_encoded = hex::encode(&public_key.serialize());
             let public_key_encoded = match hash.as_str() {
                 "sha256" => hex::encode(&public_key.serialize()),
                 "keccak256" => format!("0x{}", hex::encode(&public_key.serialize())),
                 "sha256+ripemd160" => hex::encode(&public_key.serialize()),
                 // "blake2b" => ,
-                // "k12" => ,
-                // "pedersen" => ,
-                // "ripemd160" => ,
-                // "sha3-256" => ,
-                // "sha3-384" => ,
-                // "sha512" => ,
-                _ => {
-                    println!("Unsupported key derivation method: {}", key_derivation);
-                    hex::encode(&public_key.serialize())
+                "N/A" | _ => {
+                    println!("Unsupported hash method: {:?}", hash);
+                    return
                 }
             };
             // let address = generate_address_sha256(&public_key, &public_key_hash_vec);
             let address = match hash.as_str() {
                 "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
                 "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
-                "sha256+ripemd160" => match generate_sha256_ripemd160_address(coin_index, &public_key.serialize()) {
+                "sha256+ripemd160" => match generate_sha256_ripemd160_address(
+                    coin_index, 
+                    &public_key.serialize(), 
+                    &public_key_hash_vec
+                ) {
                     Ok(addr) => addr,
                     Err(e) => {
                         println!("Error generating address: {}", e);
@@ -3463,19 +3829,13 @@ fn create_main_window(application: &adw::Application) {
                     }
                 },
                 // "blake2b" => ,
-                // "k12" => ,
-                // "pedersen" => ,
-                // "ripemd160" => ,
-                // "sha3-256" => ,
-                // "sha3-384" => ,
-                // "sha512" => ,
-                _ => {
-                    println!("Unsupported hash method: {}", hash);
-                    generate_address_sha256(&public_key, &public_key_hash_vec)
+                "N/A" | _ => {
+                    println!("Unsupported hash method: {:?}", hash);
+                    return
+                    // generate_address_sha256(&public_key, &public_key_hash_vec)
                 }
             };
             println!("Crypto address: {:?}", address);
-
 
             // IMPLEMENT: remove hard-coding
             let compressed = true;
@@ -3520,7 +3880,7 @@ fn create_main_window(application: &adw::Application) {
 }
 
 fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
-    fancy_print(Some(&t!("log.create_message_window").to_string()), None);
+    println!("{}", &t!("log.create_message_window").to_string());
         
     let message_window = gtk::MessageDialog::builder()
         .title(title)
@@ -3706,7 +4066,7 @@ fn main() {
 ///
 /// A string containing the fetched entropy data, or an empty string if the fetch fails.
 fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
-    fancy_print(Some(&t!("log.get_entropy_from_anu").to_string()), None);
+    println!("{}", &t!("log.get_entropy_from_anu").to_string());
 
     let start_time = SystemTime::now();
 
@@ -3808,7 +4168,7 @@ fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: 
 ///
 /// An optional string containing the fetched data, or None if the fetch fails.
 fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) -> Option<String> {
-    fancy_print(Some(&t!("log.fetch_anu_qrng_data").to_string()), None);
+    println!("{}", &t!("log.fetch_anu_qrng_data").to_string());
 
     let current_time = SystemTime::now();
     let last_request_time = load_last_anu_request().unwrap();
@@ -3900,7 +4260,7 @@ fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) ->
 ///
 /// An optional `SystemTime` representing the timestamp of the last request, or None if the file does not exist.
 fn load_last_anu_request() -> Option<SystemTime> {
-    fancy_print(Some(&t!("log.load_last_anu_request").to_string()), None);
+    println!("{}", &t!("log.load_last_anu_request").to_string());
 
     let path = Path::new(ANU_TIMESTAMP_FILE);
     if path.exists() {
@@ -3924,7 +4284,7 @@ fn load_last_anu_request() -> Option<SystemTime> {
 ///
 /// * `time` - The current time for the ANU request.
 fn create_anu_timestamp(time: SystemTime) {
-    fancy_print(Some(&t!("log.create_anu_timestamp").to_string()), None);
+    println!("{}", &t!("log.create_anu_timestamp").to_string());
 
     let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
 
@@ -3947,7 +4307,7 @@ fn create_anu_timestamp(time: SystemTime) {
 ///
 /// * `response` - The ANU API response.
 fn write_api_response_to_log(response: &Option<String>) {
-    fancy_print(Some(&t!("log.write_api_response_to_log").to_string()), None);
+    println!("{}", &t!("log.write_api_response_to_log").to_string());
 
     if let Some(parent) = Path::new(get_log_file().as_str()).parent() {
         match fs::create_dir_all(parent) {
@@ -3989,7 +4349,7 @@ fn write_api_response_to_log(response: &Option<String>) {
 ///
 /// An optional `Vec<u8>` containing the extracted uint8 data, or None if extraction fails.
 fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
-    fancy_print(Some(&t!("log.extract_uint8_data").to_string()), None);
+    println!("{}", &t!("log.extract_uint8_data").to_string());
 
     // Check if the API response is present
     let api_response = match api_response {
@@ -4070,7 +4430,7 @@ fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
 ///
 /// A string containing the processed binary data.
 fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
-    fancy_print(Some(&t!("log.process_uint8_data").to_string()), None);
+    println!("{}", &t!("log.process_uint8_data").to_string());
 
     let data = match data {
         Some(data) => data,
@@ -4136,11 +4496,11 @@ fn derive_child_key(
     index: u32, 
     hardened: bool
 ) -> Option<(Vec<u8>, Vec<u8>, Vec<u8>)> {
-    fancy_print(Some(&t!("log.derive_child_key").to_string()), None);
-    fancy_print(Some("parent_key"), Some(&format!("{:?}", parent_key)));
-    fancy_print(Some("parent_chain_code"), Some(&format!("{:?}", parent_chain_code)));
-    fancy_print(Some("index"), Some(&format!("{:?}", index)));
-    fancy_print(Some("hardened"), Some(&format!("{:?}", hardened)));
+    println!("{}", &t!("log.derive_child_key").to_string());
+    println!("parent_key {:?}", parent_key);
+    println!("parent_chain_code {:?}", parent_chain_code);
+    println!("index {:?}", index);
+    println!("hardened {:?}", hardened);
     
     // Check if index is hardened and validate accordingly
     if index & 0x80000000 != 0 && !hardened {
@@ -4168,7 +4528,7 @@ fn derive_child_key(
 
     data.extend_from_slice(&index_bytes);
 
-    fancy_print(Some("data_for_hmac_sha512"), Some(&format!("{:?}", data)));
+    println!("data_for_hmac_sha512 {:?}", data);
     
     let result = hmac_sha512(parent_chain_code, &data);
     let (child_private_key_bytes, child_chain_code_bytes) = result.split_at(32);
@@ -4188,9 +4548,9 @@ fn derive_child_key(
     let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
     let child_public_key_bytes = child_pubkey.serialize().to_vec();
 
-    fancy_print(Some("child_private_key_bytes"), Some(&format!("{:?}", child_secret_key_bytes)));
-    fancy_print(Some("child_chain_code_bytes"), Some(&format!("{:?}", child_chain_code_bytes)));
-    fancy_print(Some("child_public_key_bytes"), Some(&format!("{:?}", child_public_key_bytes)));
+    println!("child_private_key_bytes {:?}", child_secret_key_bytes);
+    println!("child_chain_code_bytes {:?}", child_chain_code_bytes);
+    println!("child_public_key_bytes {:?}", child_public_key_bytes);
 
     Some((child_secret_key_bytes.to_vec(), child_chain_code_bytes.to_vec(), child_public_key_bytes))
 }
@@ -4201,7 +4561,7 @@ fn create_private_key_for_address(
     wif: Option<&str>,
     hash: &str,
 ) -> Result<String, String> {
-    fancy_print(Some("Private key to WIF"), None);
+    println!("Private key to WIF");
 
     let wallet_import_format = match wif {
         Some(w) => {
@@ -4275,9 +4635,9 @@ fn derive_from_path_secp256k1(
     master_chain_code: &[u8], 
     path: &str
 ) -> Option<(secp256k1::SecretKey, [u8; 32], [u8; 33])> {
-    fancy_print(Some(&t!("log.derive_from_path_secp256k1").to_string()), None);
+    println!("{}", &t!("log.derive_from_path_secp256k1").to_string());
 
-    fancy_print(Some("Derivation path"), Some(&format!("{:?}", path)));
+    println!("Derivation path {:?}", path);
 
     let mut private_key = master_key.to_vec();
     let mut chain_code = master_chain_code.to_vec();
@@ -4339,7 +4699,7 @@ fn generate_address_sha256(
     public_key: &secp256k1::PublicKey,
     public_key_hash: &[u8],
 ) -> String {
-    fancy_print(Some(&t!("log.generate_address_sha256").to_string()), None);
+    println!("{}", &t!("log.generate_address_sha256").to_string());
 
     let public_key_bytes = public_key.serialize();
     println!("Public key bytes: {:?}", &public_key_bytes);
@@ -4364,7 +4724,7 @@ fn generate_address_sha256(
 }
 
 fn sha256_and_ripemd160(input: &[u8]) -> Vec<u8> {
-    fancy_print(Some(&t!("log.sha256_and_ripemd160").to_string()), None);
+    println!("{}", &t!("log.sha256_and_ripemd160").to_string());
 
     println!("\n#### sha256_and_ripemd160 ####");
     println!("Received data: {:?}", input);
@@ -4383,7 +4743,7 @@ fn sha256_and_ripemd160(input: &[u8]) -> Vec<u8> {
 }
 
 fn double_sha256(input: &[u8]) -> Vec<u8> {
-    fancy_print(Some(&t!("log.double_sha256").to_string()), None);
+    println!("{}", &t!("log.double_sha256").to_string());
 
     println!("Received data: {:?}", input);
 
@@ -4426,9 +4786,15 @@ fn generate_address_keccak256(public_key: &secp256k1::PublicKey, _public_key_has
 }
 
 
-fn generate_sha256_ripemd160_address(coin_index: u32, public_key: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+fn generate_sha256_ripemd160_address(
+    coin_index: u32, 
+    public_key: &[u8], 
+    public_key_hash: &[u8]
+) -> Result<String, Box<dyn std::error::Error>> {
     let hash = sha256_and_ripemd160(public_key);
-    let mut address_bytes = vec![0x00];
+    let mut address_bytes = Vec::new();
+
+    address_bytes.extend_from_slice(&public_key_hash);
 
     address_bytes.extend(&hash);
     

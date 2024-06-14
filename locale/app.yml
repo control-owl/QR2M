@@ -188,9 +188,17 @@ UI:
     coin:
       en: "Coin"
       search:
-        en: "Find a coin by entering its name"
-        de: "Finden Sie eine Coin, indem Sie ihren Namen eingeben"
-        hr: "Pronađite coin tako da unesete njegovo ime"
+        en: "Search"
+        de: "Suchen"
+        hr: "Tražilica"
+        text:
+          en: "Find a coin by entering its %{value}"
+          de: "Finden Sie eine Coin, indem Sie ihren %{value} eingeben"
+          hr: "Pronađite coin tako da unesete njegovo %{value}"
+        advance:
+          en: "Advance"
+          de: "Erweitert"
+          hr: "Napredno"
       generate:
         en: "Generate master keys"
         de: "Masterschlüssel generieren"
@@ -204,6 +212,31 @@ UI:
           en: "Master public key"
           de: "Master Public Schlüssel"
           hr: "Glavni javni ključ"
+      filter:
+        en: "Filter coins"
+        de: "Coins filtern"
+        hr: "Filtriraj coine"
+        status:
+          top:
+            en: "Top %{value}"
+            de: "Top %{value}"
+            hr: "Top %{value}"
+          verified:
+            en: "Verified %{value}"
+            de: "Verifizierte %{value}"
+            hr: "Verificirani %{value}"
+          not-verified:
+            en: "Not verified %{value}"
+            de: "Unverifizierte %{value}"
+            hr: "Ne verificirani %{value}"
+          future:
+            en: "In plan %{value}"
+            de: "Im Plan %{value}"
+            hr: "U planu %{value}"
+          not-supported:
+            en: "Not supported %{value}"
+            de: "Nicht unterstützte %{value}"
+            hr: "Ne podržani %{value}"
     address:
       en: "Address"
       de: "Adresse"

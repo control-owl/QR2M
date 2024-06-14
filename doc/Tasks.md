@@ -1,15 +1,22 @@
-## Active tasks
-
-- get all algorithms and hashing !
-
-
 ### Main window
 
 - [x] master private key (xprv)
 - [x] master public key (xpub)
 - [x] child keys
 - [x] address tab
-- [ ] get keccak256 support (Ethereum)
+- [ ] hash support
+    - [x] secp256k1
+    - [x] sha256
+    - [x] ripemd160
+    - [x] keccak256
+    - [ ] ed25519
+    - [ ] p256
+    - [ ] curve25519
+    - [ ] sha512
+    - [ ] blake256
+    - [ ] blake2b
+    - [ ] pedersen
+    - [ ] k12
 - [x] multimedia as entropy
     - [x] add get_entropy_from_image
     - [x] add get_entropy_from_sound
