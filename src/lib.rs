@@ -1,24 +1,7 @@
-/// Converts a slice of bytes representing binary data into a string of binary digits.
-///
-/// This function takes a slice of bytes `input_value` and converts each byte into a binary string
-/// representation. Each byte is transformed into 8 binary digits (bits), and the resulting strings
-/// are concatenated together to form the final output string.
-///
-/// # Arguments
-///
-/// * `input_value` - A slice of bytes (`&[u8]`) representing binary data to be converted.
-///
-/// # Returns
-///
-/// A `String` containing the binary representation of the input bytes.
-///
-/// # Examples
-///
-/// ```
-/// let input = [208, 230, 220, 52];
-/// let result = qr2m_converters::convert_binary_to_string(&input);
-/// assert_eq!(result, "11010000111001101101110000110100");
-/// ```
+use sha2::{Digest, Sha256, Sha512};
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 pub fn convert_binary_to_string(input_value: &[u8]) -> String {
     input_value
         .iter()
@@ -26,26 +9,6 @@ pub fn convert_binary_to_string(input_value: &[u8]) -> String {
         .collect()
 }
 
-/// Converts a binary string representation into a vector of bytes.
-///
-/// This function takes a binary string (`input_value`) and converts it into a vector of bytes.
-/// Each byte in the output vector corresponds to 8 bits of the input string.
-///
-/// # Arguments
-///
-/// * `input_value` - A reference to a string slice (`&str`) containing the binary representation.
-///
-/// # Returns
-///
-/// A vector (`Vec<u8>`) containing the binary representation converted into bytes.
-///
-/// # Examples
-///
-/// ```
-/// let input = "01000111010110111001000110110101";
-/// let result = qr2m_converters::convert_string_to_binary(input);
-/// assert_eq!(result, [71, 91, 145, 181]);
-/// ```
 pub fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
     input_value
         .chars()
@@ -56,34 +19,95 @@ pub fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
 }
 
 
-pub fn shannon_entropy(binary_string: &str) -> f64 {
-    let mut frequency_map: std::collections::HashMap<char, usize> = std::collections::HashMap::new();
-    let mut entropy: f64 = 0.0;
-    let length = binary_string.len() as f64;
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-    for c in binary_string.chars() {
-        *frequency_map.entry(c).or_insert(0) += 1;
-    }
 
-    for (_, &frequency) in frequency_map.iter() {
-        let probability = frequency as f64 / length;
-        entropy -= probability * probability.log2();
-    }
+pub fn calculate_sha256_hash(data: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
 
-    entropy
+    hasher.update(data);
+    hasher.finalize().iter().cloned().collect()
 }
 
-pub fn find_best_entropy(entropy_strings: &[&str]) -> Option<(usize, f64)> {
-    let mut best_index: Option<usize> = None;
-    let mut best_entropy: f64 = std::f64::NEG_INFINITY;
+pub fn calculate_double_sha256_hash(input: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let first_hash = hasher.finalize();
+    
+    let mut hasher = Sha256::new();
+    hasher.update(&first_hash);
+    let final_hash = hasher.finalize().to_vec();
 
-    for (index, &entropy_string) in entropy_strings.iter().enumerate() {
-        let entropy = shannon_entropy(entropy_string);
-        if entropy > best_entropy {
-            best_entropy = entropy;
-            best_index = Some(index);
-        }
+    final_hash
+}
+
+pub fn calculate_sha256_and_ripemd160_hash(input: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let hash = hasher.finalize();
+    
+    let mut ripemd = ripemd::Ripemd160::new();
+    ripemd.update(&hash);
+    let final_hash = ripemd.finalize().to_vec();
+
+    final_hash
+}
+
+pub fn calculate_hmac_sha512_hash(key: &[u8], data: &[u8]) -> Vec<u8> {
+    const BLOCK_SIZE: usize = 128;
+    const HASH_SIZE: usize = 64;
+
+    let padded_key = if key.len() > BLOCK_SIZE {
+        let mut hasher = Sha512::new();
+        hasher.update(key);
+        let mut hashed_key = vec![0u8; HASH_SIZE];
+        hashed_key.copy_from_slice(&hasher.finalize());
+        hashed_key.resize(BLOCK_SIZE, 0x00);
+        hashed_key
+    } else {
+        let mut padded_key = vec![0x00; BLOCK_SIZE];
+        padded_key[..key.len()].copy_from_slice(key);
+        padded_key
+    };
+
+    assert_eq!(padded_key.len(), BLOCK_SIZE, "Padded key length mismatch");
+
+    let mut inner_pad = vec![0x36; BLOCK_SIZE];
+    let mut outer_pad = vec![0x5c; BLOCK_SIZE];
+    for (i, &b) in padded_key.iter().enumerate() {
+        inner_pad[i] ^= b;
+        outer_pad[i] ^= b;
     }
 
-    best_index.map(|index| (index, best_entropy))
+    let mut hasher = Sha512::new();
+    hasher.update(&inner_pad);
+    hasher.update(data);
+    let inner_hash = hasher.finalize();
+    let mut hasher = Sha512::new();
+    hasher.update(&outer_pad);
+    hasher.update(&inner_hash);
+    let final_hash = hasher.finalize().to_vec();
+
+    assert_eq!(final_hash.len(), HASH_SIZE, "Final hash length mismatch");
+
+    final_hash
 }
+
+pub fn calculate_checksum_for_master_keys(data: &[u8]) -> [u8; 4] {
+    let hash = Sha256::digest(data);
+    let double_hash = Sha256::digest(&hash);
+    let mut checksum = [0u8; 4];
+    checksum.copy_from_slice(&double_hash[..4]);
+    checksum
+}
+
+pub fn calculate_checksum_for_entropy(entropy: &str, entropy_length: &u32) -> String {
+    let entropy_binary = convert_string_to_binary(&entropy);
+    let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
+    let checksum_length = entropy_length / 32;
+    let entropy_checksum: String = hash_raw_binary.chars().take(checksum_length.try_into().unwrap()).collect();
+    entropy_checksum
+}
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

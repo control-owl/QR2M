@@ -11,32 +11,35 @@
 // Crates
 use std::{
     fs::{self, File}, 
-    io::{self, BufRead, BufReader, Read, Write}, 
-    net::{TcpStream,ToSocketAddrs}, 
+    io::{self, Read}, 
     path::Path, 
-    time::{Duration, SystemTime}
+    time::SystemTime,
 };
 use hex;
 use rand::Rng;
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256};
 use bip39;
-use csv::ReaderBuilder;
 use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
-use qr2m_converters::{convert_binary_to_string, convert_string_to_binary};
-use rust_i18n::t;
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use sha3::Keccak256;
+use rust_i18n::t;
+
+// Mods
+mod anu;
+mod coin_db;
+mod dev;
 mod test_vectors;
 
-// Multi-language support
+
 #[macro_use] extern crate rust_i18n;
 i18n!("locale", fallback = "en");
 
 // Default settings
+// TODO: Translate strings also
 const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
@@ -47,7 +50,6 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
-const COINLIST_FILE: &str = "lib/CKDB.csv";
 const APP_LOG_DIRECTORY: &str = "log/";
 const LOG_OUTPUT: &'static [&'static str] = &[
     "Default", 
@@ -65,8 +67,6 @@ const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
     "Internal", 
     "External", 
 ];
-const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
-const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
     "uint8", 
     "uint16", 
@@ -78,8 +78,6 @@ const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
 const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_DEFAULT_HEX_BLOCK_SIZE: u32 = 16;
-const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
-const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 const WINDOW_MAIN_DEFAULT_WIDTH: u32 = 1000;
 const WINDOW_MAIN_DEFAULT_HEIGHT: u32 = 800;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
@@ -89,7 +87,6 @@ const VALID_PROXY_STATUS: &'static [&'static str] = &[
     "Auto", 
     "Manual",
 ];
-// TODO: Translate
 const VALID_GUI_THEMES: &'static [&'static str] = &[
     "System", 
     "Light", 
@@ -109,944 +106,6 @@ lazy_static! {
     static ref LOG_FILE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 }
 
-
-
-// BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-fn print_program_info() {
-    let current_time = SystemTime::now();
-    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-
-    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
-    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
-    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
-    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
-    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
-    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
-
-    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
-    println!("Start time {}", &timestamp.to_string());
-    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
-
-}
-
-fn get_log_file() -> String {
-    LOG_FILE.lock().unwrap().clone()
-}
-
-fn set_log_file(file: String) {
-    *LOG_FILE.lock().unwrap() = file;
-}
-
-/// Generates entropy based on the specified source and length.
-///
-/// # Arguments
-///
-/// * `source` - A reference to a string specifying the entropy source. Supported values are:
-///   * `"RNG"`: Generates entropy using the local random number generator.
-///   * `"QRNG"`: Retrieves entropy from the ANU Quantum Random Number Generator.
-///   * `"File"`: Reads entropy from a selected file.
-///
-/// * `entropy_length` - The length of the entropy to generate.
-///
-/// # Returns
-///
-/// A string containing the generated entropy.
-///
-/// # Examples
-///
-/// ```
-/// let rng_entropy = generate_entropy("RNG", 256);
-/// println!("Random entropy: {}", rng_entropy);
-/// ```
-fn generate_entropy(source: &str, entropy_length: u64) -> String {
-    println!("{}", &t!("log.generate_entropy").to_string());
-
-    println!("entropy_source {:?}", source);
-    println!("entropy_length {:?}", entropy_length);
-
-    match source {
-        "RNG" => {
-            let mut rng = rand::thread_rng();
-            let rng_entropy_string: String = (0..entropy_length)
-                .map(|_| rng.gen_range(0..=1))
-                .map(|bit| char::from_digit(bit, 10).unwrap())
-                .collect();
-
-            ADDRESS_DATA.with(|data| {
-                let mut data = data.borrow_mut();
-                println!("entropy_initial {:?}", rng_entropy_string);
-                data.entropy_string = Some(rng_entropy_string.clone());
-            });
-
-            rng_entropy_string
-        },
-        "QRNG" => {
-            let settings = AppSettings::load_settings()
-                .expect(&t!("error.settings.read"));
-
-            let anu_format = match settings.get_value("anu_data_format") {
-                Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-                    println!("{}", &t!("error.settings.wrong", element = "anu_data_format", value = "String"));
-                    String::from("uint8")
-                }),
-                None => {
-                    println!("{}", &t!("error.settings.read", value = "anu_data_format"));
-                    String::from("uint8")
-                }
-            };
-            
-            let array_length = match settings.get_value("anu_array_length") {
-                Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
-                println!("{}", &t!("error.settings.wrong", element = "anu_array_length", value = "String"));
-                    ANU_DEFAULT_ARRAY_LENGTH
-                }),
-                None => {
-                     println!("{}", &t!("error.settings.read", value = "anu_array_length"));
-                    ANU_DEFAULT_ARRAY_LENGTH
-                }
-            };
-            
-            let hex_block_size = match settings.get_value("anu_hex_block_size") {
-                Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
-                    println!("{}", &t!("error.settings.wrong", element = "hex_block_size", value = "u32"));
-                    ANU_DEFAULT_HEX_BLOCK_SIZE
-                }),
-                None => {
-                    println!("{}", &t!("error.settings.read", value = "hex_block_size"));
-                    ANU_DEFAULT_HEX_BLOCK_SIZE
-                }
-            };
-
-            println!("anu_data_format {:?}", anu_format);
-            println!("anu_array_length {:?}", array_length);
-            println!("anu_hex_block_size {:?}", hex_block_size);
-            
-            let qrng_entropy_string = get_entropy_from_anu(
-                entropy_length.try_into().unwrap(),
-                &anu_format, 
-                array_length, 
-                Some(hex_block_size)
-            );
-
-            ADDRESS_DATA.with(|data| {
-                let mut data = data.borrow_mut();
-                println!("entropy_initial {:?}", qrng_entropy_string);
-                data.entropy_string = Some(qrng_entropy_string.clone());
-            });
-
-            qrng_entropy_string
-        },
-        "File" => {
-            let main_context = glib::MainContext::default();
-            let main_loop = glib::MainLoop::new(Some(&main_context), false);
-            let (tx, rx) = std::sync::mpsc::channel();
-            
-            let window = gtk::Window::new();
-
-            let dialog = gtk::FileChooserDialog::new(
-            Some(t!("UI.dialog.select").to_string()),
-            Some(&window),
-            gtk::FileChooserAction::Open,
-            &[(&t!("UI.element.button.open").to_string(), gtk::ResponseType::Accept), (&t!("UI.element.button.cancel").to_string(), gtk::ResponseType::Cancel)],
-            );
-
-            let main_loop_clone = main_loop.clone();
-
-            dialog.connect_response(move |dialog, response| {
-                if response == gtk::ResponseType::Accept {
-                    if let Some(file) = dialog.file() {
-                        if let Some(path) = file.path() {
-                            let file_path = path.to_string_lossy().to_string();
-                            println!("entropy_file_name {:?}", file_path);
-                            
-                            let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
-                            
-                            if let Err(err) = tx.send(file_entropy_string) {
-                                 println!("{}", &t!("error.mpsc.send", value = err));
-
-                            } else {
-                                main_loop.quit();
-                            }
-                        }
-                    }
-                }
-                dialog.close();
-            });
-            
-            dialog.show();
-            main_loop_clone.run();
-            
-            match rx.recv() {
-                Ok(received_file_entropy_string) => {
-                    ADDRESS_DATA.with(|data| {
-                        let mut data = data.borrow_mut();
-                        data.entropy_string = Some(received_file_entropy_string.clone());
-                    });
-
-                    received_file_entropy_string
-                },
-                Err(_) => {
-                     println!("{}", &t!("error.entropy.create.file"));
-                    String::new()
-                }
-            }
-        },
-        _ => {
-             println!("{}", &t!("error.entropy.create.source"));
-            return String::new()
-        }
-    }
-}
-
-/// Generates a checksum for the provided entropy.
-///
-/// # Arguments
-///
-/// * `entropy` - The entropy for which the checksum is generated.
-/// * `entropy_length` - The length of the entropy in bits.
-///
-/// # Returns
-///
-/// The generated checksum as a string.
-///
-/// # Examples
-///
-/// ```rust
-/// let checksum = generate_entropy_checksum("0101010101", &10);
-/// assert_eq!(checksum.len(), 1);
-/// ```
-fn generate_entropy_checksum(entropy: &str, entropy_length: &u32) -> String {
-    println!("{}", &t!("log.generate_entropy_checksum").to_string());
-
-    let entropy_binary = convert_string_to_binary(&entropy);
-    println!("entropy_as_binary {:?}", entropy_binary);
-    
-    let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
-    println!("entropy_sha256_hash {:?}", hash_raw_binary);
-    
-    let checksum_length = entropy_length / 32;
-    println!("entropy_checksum_length {:?}", checksum_length);
-    
-    let entropy_checksum: String = hash_raw_binary.chars().take(checksum_length.try_into().unwrap()).collect();
-    println!("entropy_checksum {:?}", entropy_checksum);
-    
-    ADDRESS_DATA.with(|data| {
-        let mut data = data.borrow_mut();
-        data.entropy_checksum = Some(entropy_checksum.clone());
-    });
-    
-    entropy_checksum
-}
-
-/// Generates mnemonic words from the final entropy binary.
-///
-/// # Arguments
-///
-/// * `final_entropy_binary` - The final entropy in binary format.
-///
-/// # Returns
-///
-/// The generated mnemonic words as a string.
-///
-/// # Examples
-///
-/// ```rust
-/// let mnemonic = generate_mnemonic_words("01010101010101010101");
-/// assert!(!mnemonic.is_empty());
-/// ```
-fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
-    println!("{}", &t!("log.generate_mnemonic_words").to_string());
-
-    let chunks: Vec<String> = final_entropy_binary.chars()
-        .collect::<Vec<char>>()
-        .chunks(11)
-        .map(|chunk| chunk.iter().collect())
-        .collect();
-    println!("entropy_final_chunks {:?}", chunks);
-
-
-    let mnemonic_decimal: Vec<u32> = chunks.iter()
-        .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
-        .collect();
-    println!("mnemonic_as_decimal {:?}", mnemonic_decimal);
-
-    let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
-        Ok(content) => content,
-        Err(err) => {
-            println!("{}", &t!("error.wordlist.read", value = err));
-            return String::new();
-        }
-    };
-
-    let bad_word = t!("error.wordlist.word").to_string();
-    let mnemonic_words_vector: Vec<&str> = mnemonic_file_content.lines().collect();
-    let mnemonic_words_vector: Vec<&str> = mnemonic_decimal.iter().map(|&decimal| {
-        if (decimal as usize) < mnemonic_words_vector.len() {
-            mnemonic_words_vector[decimal as usize]
-        } else {
-            &bad_word
-        }
-    }).collect();
-
-    let mnemonic_words_as_string = mnemonic_words_vector.join(" ");
-
-    ADDRESS_DATA.with(|data| {
-        let mut data = data.borrow_mut();
-        println!("mnemonic_words {:?}", mnemonic_words_as_string);
-        data.mnemonic_words = Some(mnemonic_words_as_string.clone());
-    });
-
-    mnemonic_words_as_string
-}
-
-/// Generates a BIP39 seed from the provided entropy and passphrase.
-///
-/// # Arguments
-///
-/// * `entropy` - The entropy used for seed generation.
-/// * `passphrase` - The passphrase used for seed generation.
-///
-/// # Returns
-///
-/// The generated BIP39 seed as a fixed-size array of bytes.
-///
-/// # Examples
-///
-/// ```rust
-/// let seed = generate_bip39_seed("0101010101", "passphrase");
-/// assert_eq!(seed.len(), 64);
-/// ```
-fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-    println!("{}", &t!("log.generate_bip39_seed").to_string());
-
-    let entropy_vector = convert_string_to_binary(&entropy);
-    let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
-        Ok(mnemonic) => mnemonic,
-        Err(err) => {
-            println!("{}", &t!("error.bip.mnemonic", error = err));
-            return [0; 64];
-        },
-    };
-    let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
-    let seed_hex = hex::encode(&seed[..]);
-    
-    ADDRESS_DATA.with(|data| {
-        println!("seed_as_hex {:?}", seed_hex);
-        let mut data = data.borrow_mut();
-        data.seed = Some(seed_hex);
-    });
-    
-    seed
-}
-
-/// Reads the contents of a file located at the specified path and generates entropy based on it.
-///
-/// # Arguments
-///
-/// * `file_path` - A string slice that holds the path to the file.
-/// * `entropy_length` - An unsigned 64-bit integer specifying the length of entropy to be generated.
-///
-/// # Examples
-///
-/// ```
-/// let entropy = generate_entropy_from_file("example.txt", 256);
-/// println!("{}", entropy);
-/// ```
-fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
-    println!("{}", &t!("log.generate_entropy_from_file").to_string());
-
-    let mut file = match File::open(file_path) {
-        Ok(file) => file,
-        Err(err) => {
-            println!("{}", &t!("error.file.open", value = file_path, error = err));
-            return String::new()
-        },
-    };
-    
-    let mut buffer = Vec::new();
-    
-    match file.read_to_end(&mut buffer) {
-        Ok(_) => {},
-        Err(err) => {
-            println!("{}", &t!("error.file.read", value = file_path, error = err));
-        },
-    };
-
-    let hash = sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
-    println!("entropy_sha256_hash {:?}", hash);
-
-    let mut entropy = String::new();
-    for byte in hash {
-        entropy.push_str(&format!("{:08b}", byte));
-    }
-
-    entropy = entropy.chars().take(entropy_length as usize).collect();
-
-    println!("entropy_initial {:?}", entropy);
-    entropy
-}
-
-/// Derives master private and public keys from a seed using the provided headers.
-///
-/// # Arguments
-///
-/// * `seed` - A hexadecimal string representing the seed.
-/// * `private_header` - A hexadecimal string representing the private header.
-/// * `public_header` - A hexadecimal string representing the public header.
-///
-/// # Returns
-///
-/// A tuple containing the derived master private and public keys as strings, or an error message string.
-///
-/// # Errors
-///
-/// Returns an error if parsing headers or creating keys fails.
-///
-/// # Example
-///
-/// ```
-/// let seed = "12ab34cd56ef";
-/// let private_header = "0x0488ADE4";
-/// let public_header = "0x0488B21E";
-/// match derive_master_keys(seed, private_header, public_header) {
-///     Ok((master_xprv, master_xpub)) => {
-///         println!("Master Private Key: {}", master_xprv);
-///         println!("Master Public Key: {}", master_xpub);
-///     },
-///     Err(err) => println!("Error: {}", err),
-/// }
-/// ```
-fn derive_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
-    println!("{}", &t!("log.derive_master_keys").to_string());
-
-    // Reverting to Bitcoin in case that coin is undefined
-    if private_header.is_empty() {
-        private_header = "0x0488ADE4";
-    }
-    if public_header.is_empty() {
-        public_header = "0x0488B21E";
-    }
-
-    // Default message for all blockchains ? Why ?
-    let message = "Bitcoin seed";
-
-    println!("master_key_private_header {:?}", private_header);
-    println!("master_key_public_header {:?}", public_header);
-
-    let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", value = "private").to_string());
-    let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", value = "public").to_string());
-
-    println!("master_key_parsed_private_header {:?}", private_header);
-    println!("master_key_parsed_public_header {:?}", public_header);
-
-    let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
-    let hmac_result = hmac_sha512(message.as_bytes(), &seed_bytes);
-    let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
-
-    println!("seed_as_bytes {:?}", seed_bytes);
-    println!("hmac_sha512_hash {:?}", hmac_result);
-    println!("master_key_private_bytes {:?}", master_private_key_bytes);
-    println!("master_key_chain_code {:?}", master_chain_code_bytes);
-
-    // Private construct
-    let mut master_private_key = Vec::new();
-
-    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));                  // Version        4 bytes
-    master_private_key.push(0x00);                                                                 // Depth          1 byte
-    master_private_key.extend([0x00; 4].iter());                                                   // Parent finger  4 bytes
-    master_private_key.extend([0x00; 4].iter());                                                   // Index/child    4 bytes
-    master_private_key.extend_from_slice(master_chain_code_bytes);                                 // Chain code     32 bytes
-    master_private_key.push(0x00);                                                                 // Key prefix     1 byte
-    master_private_key.extend_from_slice(master_private_key_bytes);                                // Key            32 bytes
-
-    let checksum: [u8; 4] = calculate_checksum(&master_private_key);                         // Checksum       4 bytes
-    master_private_key.extend_from_slice(&checksum);
-
-    let master_xprv = bs58::encode(&master_private_key).into_string();              // Total      82 bytes
-
-    println!("master_private_key_xprv {:?}", master_xprv);
-
-
-    // Public construct
-    let secp = secp256k1::Secp256k1::new();
-    let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
-        .expect(&t!("error.master.create").to_string());
-    let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
-
-    println!("master_secret_key {:?}", master_secret_key);
-    println!("master_public_key {:?}", master_public_key_bytes);
-
-    let mut master_public_key = Vec::new();
-
-    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));                    // Version        4 bytes
-    master_public_key.push(0x00);                                                                   // Depth          1 byte
-    master_public_key.extend([0x00; 4].iter());                                                     // Parent finger  4 bytes
-    master_public_key.extend([0x00; 4].iter());                                                     // Index/child    4 bytes
-    master_public_key.extend_from_slice(master_chain_code_bytes);                                   // Chain code     32 bytes
-    master_public_key.extend_from_slice(&master_public_key_bytes);                                  // Key            33 bytes (compressed)
-
-    let checksum: [u8; 4] = calculate_checksum(&master_public_key);                           // Checksum       4 bytes
-    master_public_key.extend_from_slice(&checksum);
-
-    let master_xpub = bs58::encode(&master_public_key).into_string();                // Total      82 bytes
-
-    println!("master_public_key_xpub {:?}", master_xpub);
-
-    ADDRESS_DATA.with(|data| {
-        let mut data = data.borrow_mut();
-        data.master_xprv = Some(master_xprv.clone());
-        data.master_xpub = Some(master_xpub.clone());
-        data.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
-        data.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
-        data.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
-    });
-
-    // Ok((master_xprv, master_xpub))
-    Ok((
-        master_xprv, 
-        master_xpub,
-        master_private_key_bytes.to_vec(), 
-        master_chain_code_bytes.to_vec(), 
-        master_public_key_bytes.to_vec(), 
-    ))
-}
-
-/// Computes the HMAC-SHA512 hash of the given key and data.
-///
-/// # Arguments
-///
-/// * `key` - A reference to a byte slice containing the key.
-/// * `data` - A reference to a byte slice containing the data.
-///
-/// # Returns
-///
-/// A vector of bytes representing the HMAC-SHA512 hash.
-///
-/// # Example
-///
-/// ```
-/// let key = b"secret";
-/// let data = b"hello world";
-/// let hmac = hmac_sha512(key, data);
-/// println!("HMAC-SHA512 Hash: {:?}", hmac);
-/// ```
-fn hmac_sha512(key: &[u8], data: &[u8]) -> Vec<u8> {
-    println!("{}", &t!("log.hmac_sha512").to_string());
-
-    const BLOCK_SIZE: usize = 128;
-    const HASH_SIZE: usize = 64;
-
-    // Step 1: Create the padded key
-    let padded_key = if key.len() > BLOCK_SIZE {
-        println!("{}", &t!("error.entropy.create.file"));
-        println!("Key length is greater than BLOCK_SIZE. Hashing the key.");
-        let mut hasher = Sha512::new();
-        hasher.update(key);
-        let mut hashed_key = vec![0u8; HASH_SIZE];
-        hashed_key.copy_from_slice(&hasher.finalize());
-        hashed_key.resize(BLOCK_SIZE, 0x00);
-        println!("Hashed key: {:?}", hashed_key);
-        hashed_key
-    } else {
-        println!("Key length ({}) is less than or equal to BLOCK_SIZE ({}). Padding the key.", key.len(), BLOCK_SIZE);
-        let mut padded_key = vec![0x00; BLOCK_SIZE];
-        padded_key[..key.len()].copy_from_slice(key);
-        println!("Padded key: {:?}", padded_key);
-        padded_key
-    };
-
-    // Verify the padded key length
-    assert_eq!(padded_key.len(), BLOCK_SIZE, "Padded key length mismatch");
-
-    // Step 2: Create inner and outer paddings
-    let mut inner_pad = vec![0x36; BLOCK_SIZE];
-    let mut outer_pad = vec![0x5c; BLOCK_SIZE];
-    for (i, &b) in padded_key.iter().enumerate() {
-        inner_pad[i] ^= b;
-        outer_pad[i] ^= b;
-    }
-
-    println!("Inner padding (inner_pad): {:?}", inner_pad);
-    println!("Outer padding (outer_pad): {:?}", outer_pad);
-
-    // Step 3: Perform inner hash
-    let mut hasher = Sha512::new();
-    hasher.update(&inner_pad);
-    hasher.update(data);
-    let inner_hash = hasher.finalize();
-
-    println!("Inner hash result: {:?}", inner_hash);
-
-    // Step 4: Perform outer hash
-    let mut hasher = Sha512::new();
-    hasher.update(&outer_pad);
-    hasher.update(&inner_hash);
-    let final_hash = hasher.finalize().to_vec();
-
-    // Verify the final hash length
-    assert_eq!(final_hash.len(), HASH_SIZE, "Final hash length mismatch");
-
-    println!("Final HMAC result: {:?}", final_hash);
-
-    final_hash
-}
-
-/// Computes the SHA-256 hash of the given byte slice.
-///
-/// # Arguments
-///
-/// * `data` - A reference to a byte slice containing the data to be hashed.
-///
-/// # Returns
-///
-/// A vector of bytes representing the SHA-256 hash.
-///
-/// # Example
-///
-/// ```
-/// let data = b"hello world";
-/// let hash = sha256_hash(data);
-/// println!("SHA-256 Hash: {:?}", hash);
-/// ```
-fn sha256_hash(data: &[u8]) -> Vec<u8> {
-    println!("{}", &t!("log.sha256_hash").to_string());
-
-    let mut hasher = Sha256::new();
-
-    hasher.update(data);
-    hasher.finalize().iter().cloned().collect()
-}
-
-/// Calculates the checksum of the given data using SHA-256.
-///
-/// # Arguments
-///
-/// * `data` - A reference to a byte slice containing the data.
-///
-/// # Returns
-///
-/// An array of 4 bytes representing the checksum.
-///
-/// # Example
-///
-/// ```
-/// let data = b"hello world";
-/// let checksum = calculate_checksum(data);
-/// println!("Checksum: {:?}", checksum);
-/// ```
-fn calculate_checksum(data: &[u8]) -> [u8; 4] {
-    println!("{}", &t!("log.calculate_checksum").to_string());
-    
-    let hash = Sha256::digest(data);
-    let double_hash = Sha256::digest(&hash);
-    let mut checksum = [0u8; 4];
-    checksum.copy_from_slice(&double_hash[..4]);
-    checksum
-}
-
-
-
-// COINS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-/// This struct holds information about a particular coin.
-#[derive(Clone)]
-struct CoinDatabase {
-    status: String,
-    coin_index: u32,
-    coin_symbol: String,
-    coin_name: String,
-    key_derivation: String,
-    hash: String,
-    private_header: String,
-    public_header: String,
-    public_key_hash: String,
-    script_hash: String,
-    wallet_import_format: String,
-    evm: String,
-    UCID: String,
-    cmc_top: String,
-}
-
-/// Creates a vector of `CoinDatabase` from a CSV file.
-///
-/// # Returns
-///
-/// Returns a vector containing `CoinDatabase` entries read from the CSV file.
-fn create_coin_store() -> Vec<CoinDatabase> {
-    println!("{}", &t!("log.create_coin_store").to_string());
-
-    let file = File::open(&COINLIST_FILE).expect("can not open bip44 coin file");
-    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
-    let mut coin_store = Vec::new();
-
-    for result in rdr.records() {
-        let record = result.expect(&t!("error.csv.read").to_string());
-        
-        let status = record[0].to_string();
-        let coin_index: u32 = record[1].parse().expect(&t!("error.csv.parse", value = "coin_index").to_string());
-        let coin_symbol = record[2].to_string();
-        let coin_name = record[3].to_string();
-        let key_derivation = record[4].to_string();
-        let hash = record[5].to_string();
-        let private_header = record[6].to_string();
-        let public_header = record[7].to_string();
-        let public_key_hash = record[8].to_string();
-        let script_hash = record[9].to_string();
-        let wallet_import_format = record[10].to_string();
-        let evm = record[11].to_string();
-        let UCID = record[12].to_string();
-        let cmc_top = record[13].to_string();
-
-        
-        let coin_type = CoinDatabase { 
-            status, 
-            coin_index, 
-            coin_symbol, 
-            coin_name, 
-            key_derivation, 
-            hash,
-            private_header, 
-            public_header, 
-            public_key_hash, 
-            script_hash, 
-            wallet_import_format,
-            evm,
-            UCID,
-            cmc_top, 
-        };
-
-        coin_store.push(coin_type);
-    }
-
-    coin_store
-}
-
-/// Creates a `gtk::ListStore` for displaying coin information in a GTK application.
-///
-/// This function populates the list store with coin information retrieved from the CSV file.
-///
-/// # Returns
-///
-/// Returns a `gtk::ListStore` containing coin information.
-fn create_coin_completion_model() -> gtk::ListStore {
-    println!("{}", &t!("log.create_coin_completion_model").to_string());
-
-    let valid_coin_symbols = create_coin_database(COINLIST_FILE);
-
-    let store = gtk::ListStore::new(&[
-        glib::Type::STRING, // status
-        glib::Type::U32,    // index
-        glib::Type::STRING, // coin_symbol
-        glib::Type::STRING, // coin_name
-        glib::Type::STRING, // key_derivation
-        glib::Type::STRING, // hash
-        glib::Type::STRING, // private_header
-        glib::Type::STRING, // public_header
-        glib::Type::STRING, // public_key_hash
-        glib::Type::STRING, // script_hash
-        glib::Type::STRING, // wallet_import_format
-        glib::Type::STRING, // evm
-        glib::Type::STRING, // UCID
-        glib::Type::STRING, // cmc_top
-    ]);
-
-    for coin_symbol in valid_coin_symbols.iter() {
-        let iter = store.append();
-        store.set(&iter, &[
-            (0, &coin_symbol.status),
-            (1, &coin_symbol.coin_index), 
-            (2, &coin_symbol.coin_symbol), 
-            (3, &coin_symbol.coin_name),
-            (4, &coin_symbol.key_derivation),
-            (5, &coin_symbol.hash),
-            (6, &coin_symbol.private_header),
-            (7, &coin_symbol.public_header),
-            (8, &coin_symbol.public_key_hash),
-            (9, &coin_symbol.script_hash),
-            (10, &coin_symbol.wallet_import_format),
-            (11, &coin_symbol.evm),
-            (12, &coin_symbol.UCID),
-            (13, &coin_symbol.cmc_top),
-        ]);
-    }
-
-    store
-}
-
-// TODO: search by coin name and maybe symbol also
-/// Retrieves coins starting with the specified prefix from the coin store.
-///
-/// # Arguments
-///
-/// * `coin_store` - A reference to a vector of `CoinDatabase`.
-/// * `target_prefix` - The prefix to match with coin name.
-///
-/// # Returns
-///
-/// Returns a vector containing references to `CoinDatabase` entries whose name start with the specified prefix.
-fn fetch_coins_from_database<'a>(
-    part: &'a str,
-    coin_store: &'a Vec<CoinDatabase>, 
-    target_value: &'a str
-) -> Vec<&'a CoinDatabase> {
-
-    let mut result: Vec<&'a CoinDatabase> = match part {
-        "Symbol" => {
-            coin_store
-                .iter()
-                .filter(|&coin_type| coin_type.coin_symbol.to_lowercase().contains(target_value))
-                .collect()
-        },
-        "Cmc_top" => {
-            match target_value {
-                "10" => {
-                    coin_store
-                        .iter()
-                        .filter(|&coin| coin.cmc_top.to_lowercase() == "10")
-                        .collect()
-                },
-                "100" => {
-                    coin_store
-                        .iter()
-                        .filter(|&coin| coin.cmc_top.to_lowercase() == "10" || coin.cmc_top.to_lowercase() == "100")
-                        .collect()
-                },
-                _ => {
-                    coin_store
-                        .iter()
-                        .filter(|&coin| coin.cmc_top.to_lowercase() == target_value.to_lowercase())
-                        .collect()
-                }
-            }
-        },
-        "Status" => {
-            coin_store
-                .iter()
-                .filter(|&coin| coin.status.to_lowercase() == target_value.to_lowercase())
-                .collect()
-        },
-        "Index" => {
-            coin_store
-                .iter()
-                .filter(|&coin_type| coin_type.coin_index == target_value.parse().unwrap_or(0))
-                .collect()
-        },
-        "Name" | _ => {
-            coin_store
-                .iter()
-                .filter(|&coin_type| coin_type.coin_name.to_lowercase().contains(target_value))
-                .collect()
-        },
-    };
-
-    // Sort the result by cmc_top in ascending order
-    result.sort_by_key(|coin| coin.cmc_top.parse::<usize>().unwrap_or(usize::MAX));
-
-    result
-}
-
-/// Creates a vector of `CoinDatabase` from a CSV file.
-///
-/// # Arguments
-///
-/// * `file_path` - The path to the CSV file containing coin information.
-///
-/// # Returns
-///
-/// Returns a vector containing `CoinDatabase` entries read from the CSV file.
-fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
-    println!("{}", &t!("log.create_coin_database").to_string());
-
-    let file = File::open(&file_path)
-        .expect(&t!("error.file.read", value = file_path).to_string());
-
-    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
-
-    let coin_types: Vec<CoinDatabase> = rdr.records()
-        .filter_map(|record| record.ok())
-        .enumerate()
-        .map(|(_index, record)| {
-            let status: String = record.get(0).unwrap_or_default().to_string();
-            let coin_index: u32 = record.get(1).unwrap_or_default().parse().unwrap();
-            let coin_symbol: String = record.get(2).unwrap_or_default().to_string();
-            let coin_name: String = record.get(3).unwrap_or_default().to_string();
-            let key_derivation: String = record.get(4).unwrap_or_default().to_string();
-            let hash: String = record.get(5).unwrap_or_default().to_string();
-            let private_header: String = record.get(6).unwrap_or_default().to_string();
-            let public_header: String = record.get(7).unwrap_or_default().to_string();
-            let public_key_hash: String = record.get(8).unwrap_or_default().to_string();
-            let script_hash: String = record.get(9).unwrap_or_default().to_string();
-            let wallet_import_format: String = record.get(10).unwrap_or_default().to_string();
-            let evm: String = record.get(11).unwrap_or_default().to_string();
-            let UCID: String = record.get(12).unwrap_or_default().to_string();
-            let cmc_top: String = record.get(13).unwrap_or_default().to_string();
-
-            CoinDatabase {
-                status,
-                coin_index,
-                coin_symbol,
-                coin_name,
-                key_derivation,
-                hash,
-                private_header,
-                public_header,
-                public_key_hash,
-                script_hash,
-                wallet_import_format,
-                evm,
-                UCID,
-                cmc_top,
-            }
-        }).collect();
-
-    coin_types
-}
-
-
-
-// GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-/// Struct to hold application settings.
-///
-/// # Fields
-///
-/// * `entropy_source`: The source of entropy used for wallet generation.
-/// * `entropy_length`: The length of entropy used for wallet generation.
-/// * `bip`: The BIP (Bitcoin Improvement Proposal) version.
-/// * `gui_save_window_size`: A flag indicating whether to save window size in GUI.
-/// * `gui_last_width`: The last width of the GUI window.
-/// * `gui_last_height`: The last height of the GUI window.
-/// * `anu_enabled`: A flag indicating whether ANU (Australian National University) data is enabled.
-/// * `anu_data_format`: The format of ANU data.
-/// * `anu_array_length`: The length of the ANU array.
-/// * `anu_hex_block_size`: The size of hex blocks in ANU data.
-/// * `anu_log`: A flag indicating whether to log ANU data.
-///
-/// # Examples
-///
-/// ```
-/// use std::io;
-/// use std::fs;
-/// use std::path::Path;
-/// use toml;
-///
-/// struct AppSettings {
-///     // fields...
-/// }
-///
-/// impl AppSettings {
-///     fn load_settings() -> io::Result<Self> {
-///         // implementation...
-///     }
-///
-///     fn get_value(&self, name: &str) -> Option<String> {
-///         // implementation...
-///     }
-/// }
-/// ```
 struct AppSettings {
     wallet_entropy_source: String,
     wallet_entropy_length: u32,
@@ -1081,29 +140,6 @@ struct AppSettings {
 
 impl AppSettings {
     // FEATURE: create verify_settings function
-
-    /// Loads application settings from a configuration file.
-    ///
-    /// The function reads settings from the specified configuration file. If the file
-    /// doesn't exist, it copies settings from a default configuration file.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if there are any I/O errors or if the configuration file
-    /// cannot be parsed.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::io;
-    /// use my_app::AppSettings;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let settings = AppSettings::load_settings()?;
-    ///     Ok(())
-    /// }
-    /// 
-    /// ```
     fn load_settings() -> io::Result<Self> {
         // BUG: This will panic. Why?
         println!("Loading settings:");
@@ -1346,25 +382,6 @@ impl AppSettings {
         })
     }
 
-    /// Retrieves the value of a specific setting.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The name of the setting to retrieve.
-    ///
-    /// # Returns
-    ///
-    /// Returns the value of the specified setting as a `String`, or `None` if the
-    /// setting does not exist.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use my_app::AppSettings;
-    ///
-    /// let settings = AppSettings::load_settings().unwrap();
-    /// let entropy_source = settings.get_value("entropy_source");
-    /// ```
     fn get_value(&self, name: &str) -> Option<String> {
         match name {
             "wallet_entropy_source" => Some(self.wallet_entropy_source.clone()),
@@ -1464,26 +481,412 @@ impl FieldValue {
     }
 }
 
-/// Loads the contents of a file located at the specified path and returns them as a byte vector.
-///
-/// # Arguments
-///
-/// * `path` - The path to the file to be loaded.
-///
-/// # Returns
-///
-/// A vector containing the bytes of the file's contents.
-///
-/// # Errors
-///
-/// If the file cannot be opened or read, the function will panic with an error message indicating the failure.
-///
-/// # Examples
-///
-/// ```rust
-/// let icon_bytes = load_icon_bytes("/path/to/icon.png");
-/// assert!(!icon_bytes.is_empty());
-/// ```
+#[derive(Debug, Default)]
+struct WalletSettings {
+    entropy_string: Option<String>,
+    entropy_checksum: Option<String>,
+    mnemonic_words: Option<String>,
+    mnemonic_passphrase: Option<String>,
+    seed: Option<String>,
+    master_xprv: Option<String>,
+    master_xpub: Option<String>,
+    master_private_key_bytes: Option<Vec<u8>>,
+    master_chain_code_bytes: Option<Vec<u8>>,
+    master_public_key_bytes: Option<Vec<u8>>,
+    coin_index: Option<u32>,
+    wallet_import_format: Option<String>,
+    public_key_hash: Option<String>,
+    key_derivation: Option<String>,
+    hash: Option<String>,
+
+    // SEND:
+    // ADDRESS_DATA.with(|data| {
+    //     let mut data = data.borrow_mut();
+    //     println!("RNG entropy (string): {}", &rng_entropy_string);
+    //     data.entropy = Some(rng_entropy_string.clone());
+    // });
+    // 
+    // GET:
+    // let master_private_key_bytes = ADDRESS_DATA.with(|data| {
+    //     let data = data.borrow();
+    //     data.master_private_key_bytes.clone().unwrap()
+    // });
+}
+
+struct CryptoAddresses {
+    derivation_path: String,
+    address: String,
+    public_key: String,
+    private_key: String,
+}
+
+type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
+
+
+
+// BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+fn print_program_info() {
+    let current_time = SystemTime::now();
+    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+
+    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
+    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
+    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
+    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
+    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
+    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
+
+    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
+    println!("Start time {}", &timestamp.to_string());
+    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
+
+}
+
+fn get_log_file() -> String {
+    LOG_FILE.lock().unwrap().clone()
+}
+
+fn set_log_file(file: String) {
+    *LOG_FILE.lock().unwrap() = file;
+}
+
+fn generate_entropy(source: &str, entropy_length: u64) -> String {
+    println!("{}", &t!("log.generate_entropy").to_string());
+
+    println!("entropy_source {:?}", source);
+    println!("entropy_length {:?}", entropy_length);
+
+    match source {
+        "RNG" => {
+            let mut rng = rand::thread_rng();
+            let rng_entropy_string: String = (0..entropy_length)
+                .map(|_| rng.gen_range(0..=1))
+                .map(|bit| char::from_digit(bit, 10).unwrap())
+                .collect();
+
+            ADDRESS_DATA.with(|data| {
+                let mut data = data.borrow_mut();
+                println!("entropy_initial {:?}", rng_entropy_string);
+                data.entropy_string = Some(rng_entropy_string.clone());
+            });
+
+            rng_entropy_string
+        },
+        "QRNG" => {
+            let settings = AppSettings::load_settings()
+                .expect(&t!("error.settings.read"));
+
+            let anu_format = match settings.get_value("anu_data_format") {
+                Some(format) => format.parse::<String>().unwrap_or_else(|_| {
+                    println!("{}", &t!("error.settings.wrong", element = "anu_data_format", value = "String"));
+                    String::from("uint8")
+                }),
+                None => {
+                    println!("{}", &t!("error.settings.read", value = "anu_data_format"));
+                    String::from("uint8")
+                }
+            };
+            
+            let array_length = match settings.get_value("anu_array_length") {
+                Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
+                println!("{}", &t!("error.settings.wrong", element = "anu_array_length", value = "String"));
+                    ANU_DEFAULT_ARRAY_LENGTH
+                }),
+                None => {
+                     println!("{}", &t!("error.settings.read", value = "anu_array_length"));
+                    ANU_DEFAULT_ARRAY_LENGTH
+                }
+            };
+            
+            let hex_block_size = match settings.get_value("anu_hex_block_size") {
+                Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
+                    println!("{}", &t!("error.settings.wrong", element = "hex_block_size", value = "u32"));
+                    ANU_DEFAULT_HEX_BLOCK_SIZE
+                }),
+                None => {
+                    println!("{}", &t!("error.settings.read", value = "hex_block_size"));
+                    ANU_DEFAULT_HEX_BLOCK_SIZE
+                }
+            };
+
+            println!("anu_data_format {:?}", anu_format);
+            println!("anu_array_length {:?}", array_length);
+            println!("anu_hex_block_size {:?}", hex_block_size);
+            
+            let qrng_entropy_string = anu::get_entropy_from_anu(
+                entropy_length.try_into().unwrap(),
+                &anu_format, 
+                array_length, 
+                Some(hex_block_size)
+            );
+
+            ADDRESS_DATA.with(|data| {
+                let mut data = data.borrow_mut();
+                println!("entropy_initial {:?}", qrng_entropy_string);
+                data.entropy_string = Some(qrng_entropy_string.clone());
+            });
+
+            qrng_entropy_string
+        },
+        "File" => {
+            let main_context = glib::MainContext::default();
+            let main_loop = glib::MainLoop::new(Some(&main_context), false);
+            let (tx, rx) = std::sync::mpsc::channel();
+            
+            let window = gtk::Window::new();
+
+            let dialog = gtk::FileChooserDialog::new(
+            Some(t!("UI.dialog.select").to_string()),
+            Some(&window),
+            gtk::FileChooserAction::Open,
+            &[(&t!("UI.element.button.open").to_string(), gtk::ResponseType::Accept), (&t!("UI.element.button.cancel").to_string(), gtk::ResponseType::Cancel)],
+            );
+
+            let main_loop_clone = main_loop.clone();
+
+            dialog.connect_response(move |dialog, response| {
+                if response == gtk::ResponseType::Accept {
+                    if let Some(file) = dialog.file() {
+                        if let Some(path) = file.path() {
+                            let file_path = path.to_string_lossy().to_string();
+                            println!("entropy_file_name {:?}", file_path);
+                            
+                            let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
+                            
+                            if let Err(err) = tx.send(file_entropy_string) {
+                                 println!("{}", &t!("error.mpsc.send", value = err));
+
+                            } else {
+                                main_loop.quit();
+                            }
+                        }
+                    }
+                }
+                dialog.close();
+            });
+            
+            dialog.show();
+            main_loop_clone.run();
+            
+            match rx.recv() {
+                Ok(received_file_entropy_string) => {
+                    ADDRESS_DATA.with(|data| {
+                        let mut data = data.borrow_mut();
+                        data.entropy_string = Some(received_file_entropy_string.clone());
+                    });
+
+                    received_file_entropy_string
+                },
+                Err(_) => {
+                     println!("{}", &t!("error.entropy.create.file"));
+                    String::new()
+                }
+            }
+        },
+        _ => {
+             println!("{}", &t!("error.entropy.create.source"));
+            return String::new()
+        }
+    }
+}
+
+fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
+    println!("{}", &t!("log.generate_mnemonic_words").to_string());
+
+    let chunks: Vec<String> = final_entropy_binary.chars()
+        .collect::<Vec<char>>()
+        .chunks(11)
+        .map(|chunk| chunk.iter().collect())
+        .collect();
+    println!("entropy_final_chunks {:?}", chunks);
+
+
+    let mnemonic_decimal: Vec<u32> = chunks.iter()
+        .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
+        .collect();
+    println!("mnemonic_as_decimal {:?}", mnemonic_decimal);
+
+    let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
+        Ok(content) => content,
+        Err(err) => {
+            println!("{}", &t!("error.wordlist.read", value = err));
+            return String::new();
+        }
+    };
+
+    let bad_word = t!("error.wordlist.word").to_string();
+    let mnemonic_words_vector: Vec<&str> = mnemonic_file_content.lines().collect();
+    let mnemonic_words_vector: Vec<&str> = mnemonic_decimal.iter().map(|&decimal| {
+        if (decimal as usize) < mnemonic_words_vector.len() {
+            mnemonic_words_vector[decimal as usize]
+        } else {
+            &bad_word
+        }
+    }).collect();
+
+    let mnemonic_words_as_string = mnemonic_words_vector.join(" ");
+
+    ADDRESS_DATA.with(|data| {
+        let mut data = data.borrow_mut();
+        println!("mnemonic_words {:?}", mnemonic_words_as_string);
+        data.mnemonic_words = Some(mnemonic_words_as_string.clone());
+    });
+
+    mnemonic_words_as_string
+}
+
+fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
+    println!("{}", &t!("log.generate_bip39_seed").to_string());
+
+    let entropy_vector = qr2m_lib::convert_string_to_binary(&entropy);
+    let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
+        Ok(mnemonic) => mnemonic,
+        Err(err) => {
+            println!("{}", &t!("error.bip.mnemonic", error = err));
+            return [0; 64];
+        },
+    };
+    let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
+    
+    seed
+}
+
+fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
+    println!("{}", &t!("log.generate_entropy_from_file").to_string());
+
+    let mut file = match File::open(file_path) {
+        Ok(file) => file,
+        Err(err) => {
+            println!("{}", &t!("error.file.open", value = file_path, error = err));
+            return String::new()
+        },
+    };
+    
+    let mut buffer = Vec::new();
+    
+    match file.read_to_end(&mut buffer) {
+        Ok(_) => {},
+        Err(err) => {
+            println!("{}", &t!("error.file.read", value = file_path, error = err));
+        },
+    };
+
+    let hash = qr2m_lib::calculate_sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
+    println!("entropy_sha256_hash {:?}", hash);
+
+    let mut entropy = String::new();
+    for byte in hash {
+        entropy.push_str(&format!("{:08b}", byte));
+    }
+
+    entropy = entropy.chars().take(entropy_length as usize).collect();
+
+    println!("entropy_initial {:?}", entropy);
+    entropy
+}
+
+fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
+    println!("{}", &t!("log.derive_master_keys").to_string());
+
+    // Reverting to Bitcoin in case that coin is undefined
+    if private_header.is_empty() {
+        private_header = "0x0488ADE4";
+    }
+    if public_header.is_empty() {
+        public_header = "0x0488B21E";
+    }
+
+    // Default message for all blockchains ? Why ?
+    let message = "Bitcoin seed";
+
+    println!("master_key_private_header {:?}", private_header);
+    println!("master_key_public_header {:?}", public_header);
+
+    let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
+        .expect(&t!("error.master.parse.header", value = "private").to_string());
+    let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
+        .expect(&t!("error.master.parse.header", value = "public").to_string());
+
+    println!("master_key_parsed_private_header {:?}", private_header);
+    println!("master_key_parsed_public_header {:?}", public_header);
+
+    let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
+    let hmac_result = qr2m_lib::calculate_hmac_sha512_hash(message.as_bytes(), &seed_bytes);
+    let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
+
+    println!("seed_as_bytes {:?}", seed_bytes);
+    println!("hmac_sha512_hash {:?}", hmac_result);
+    println!("master_key_private_bytes {:?}", master_private_key_bytes);
+    println!("master_key_chain_code {:?}", master_chain_code_bytes);
+
+    // Private construct
+    let mut master_private_key = Vec::new();
+
+    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));                  // Version        4 bytes
+    master_private_key.push(0x00);                                                                 // Depth          1 byte
+    master_private_key.extend([0x00; 4].iter());                                                   // Parent finger  4 bytes
+    master_private_key.extend([0x00; 4].iter());                                                   // Index/child    4 bytes
+    master_private_key.extend_from_slice(master_chain_code_bytes);                                 // Chain code     32 bytes
+    master_private_key.push(0x00);                                                                 // Key prefix     1 byte
+    master_private_key.extend_from_slice(master_private_key_bytes);                                // Key            32 bytes
+
+    let checksum: [u8; 4] = qr2m_lib::calculate_checksum_for_master_keys(&master_private_key);                         // Checksum       4 bytes
+    master_private_key.extend_from_slice(&checksum);
+
+    let master_xprv = bs58::encode(&master_private_key).into_string();              // Total      82 bytes
+
+    println!("master_private_key_xprv {:?}", master_xprv);
+
+
+    // Public construct
+    let secp = secp256k1::Secp256k1::new();
+    let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
+        .expect(&t!("error.master.create").to_string());
+    let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
+
+    println!("master_secret_key {:?}", master_secret_key);
+    println!("master_public_key {:?}", master_public_key_bytes);
+
+    let mut master_public_key = Vec::new();
+
+    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));                    // Version        4 bytes
+    master_public_key.push(0x00);                                                                   // Depth          1 byte
+    master_public_key.extend([0x00; 4].iter());                                                     // Parent finger  4 bytes
+    master_public_key.extend([0x00; 4].iter());                                                     // Index/child    4 bytes
+    master_public_key.extend_from_slice(master_chain_code_bytes);                                   // Chain code     32 bytes
+    master_public_key.extend_from_slice(&master_public_key_bytes);                                  // Key            33 bytes (compressed)
+
+    let checksum: [u8; 4] = qr2m_lib::calculate_checksum_for_master_keys(&master_public_key);                           // Checksum       4 bytes
+    master_public_key.extend_from_slice(&checksum);
+
+    let master_xpub = bs58::encode(&master_public_key).into_string();                // Total      82 bytes
+
+    println!("master_public_key_xpub {:?}", master_xpub);
+
+    ADDRESS_DATA.with(|data| {
+        let mut data = data.borrow_mut();
+        data.master_xprv = Some(master_xprv.clone());
+        data.master_xpub = Some(master_xpub.clone());
+        data.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
+        data.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
+        data.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
+    });
+
+    // Ok((master_xprv, master_xpub))
+    Ok((
+        master_xprv, 
+        master_xpub,
+        master_private_key_bytes.to_vec(), 
+        master_chain_code_bytes.to_vec(), 
+        master_public_key_bytes.to_vec(), 
+    ))
+}
+
+
+
+// GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 fn load_icon_bytes(path: &str) -> Vec<u8> {
     println!("{} = {}", &t!("log.load_icon_bytes").to_string(), path);
 
@@ -1493,21 +896,6 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
     buffer
 }
 
-/// Retrieves window theme icons based on the system theme color.
-///
-/// This function detects the system's current theme color (light or dark) using GTK settings
-/// and retrieves corresponding icons for the application window.
-///
-/// # Returns
-///
-/// An array containing GTK images representing different window theme icons.
-///
-/// # Examples
-///
-/// ```rust
-/// let window_icons = get_window_theme_icons();
-/// // Use the retrieved icons to set up the application window.
-/// ```
 fn get_window_theme_icons() -> [gtk::Image; 5] {
     println!("{}", &t!("log.get_window_theme_icons").to_string());
 
@@ -1563,19 +951,6 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
     
 }
 
-/// Creates the settings window.
-///
-/// This function initializes and displays the settings window with various sections
-/// for different types of settings such as general, wallet, and ANU settings.
-/// Users can modify the settings and save or cancel their changes.
-///
-/// # Examples
-///
-/// ```
-/// use my_app::create_settings_window;
-///
-/// create_settings_window();
-/// ```
 fn create_settings_window() {
     println!("{}", &t!("log.create_settings_window").to_string());
 
@@ -2316,19 +1691,6 @@ fn create_settings_window() {
     settings_window.show();
 }
 
-/// Creates the settings window.
-///
-/// This function initializes and displays the settings window with various sections
-/// for different types of settings such as general, wallet, and ANU settings.
-/// Users can modify the settings and save or cancel their changes.
-///
-/// # Examples
-///
-/// ```
-/// use my_app::create_settings_window;
-///
-/// create_settings_window();
-/// ```
 fn create_about_window() {
     println!("{}", &t!("log.create_about_window").to_string());
 
@@ -2394,23 +1756,6 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     label.set_text(&path);
 }
 
-/// Creates the main application window.
-///
-/// This function initializes and configures the main application window, including its
-/// dimensions, title, header bar, sidebar, and content area.
-///
-/// # Arguments
-///
-/// * `application` - The reference to the application instance.
-///
-/// # Examples
-///
-/// ```
-/// use my_app::create_main_window;
-///
-/// let application = adw::Application::new(None, Default::default()).expect("Initialization failed");
-/// create_main_window(&application);
-/// ```
 fn create_main_window(application: &adw::Application) {
     println!("{}", &t!("log.create_main_window").to_string());
 
@@ -2787,8 +2132,8 @@ fn create_main_window(application: &adw::Application) {
     let scrolled_window = gtk::ScrolledWindow::new();
     let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin").to_string()));
 
-    create_coin_completion_model();
-    let coin_store = create_coin_store();
+    coin_db::create_coin_completion_model();
+    let coin_store = coin_db::create_coin_store();
     let coin_store = std::rc::Rc::new(std::cell::RefCell::new(coin_store));
     let coin_tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 14]);
     let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
@@ -3139,7 +2484,12 @@ fn create_main_window(application: &adw::Application) {
             );
             
             if !pre_entropy.is_empty() {
-                let checksum = generate_entropy_checksum(&pre_entropy, entropy_length.unwrap());
+                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length.unwrap());
+                ADDRESS_DATA.with(|data| {
+                    let mut data = data.borrow_mut();
+                    data.entropy_checksum = Some(checksum.clone());
+                });
+
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
                 println!("entropy_final {:?}", full_entropy);
@@ -3156,6 +2506,12 @@ fn create_main_window(application: &adw::Application) {
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
                 println!("seed_hex {:?}", seed_hex);
+                
+                ADDRESS_DATA.with(|data| {
+                    println!("seed_as_hex {:?}", seed_hex);
+                    let mut data = data.borrow_mut();
+                    data.seed = Some(seed_hex.clone());
+                });
 
                 ADDRESS_DATA.with(|data| {
                     let mut data = data.borrow_mut();
@@ -3251,7 +2607,7 @@ fn create_main_window(application: &adw::Application) {
                     let end_iter = buffer.end_iter();
                     let seed_string = buffer.text(&start_iter, &end_iter, true);
                     
-                    match derive_master_keys(
+                    match generate_master_keys(
                         &seed_string, 
                         &private_header,
                         &public_header,
@@ -3317,7 +2673,7 @@ fn create_main_window(application: &adw::Application) {
 
             if search_text.len() >= min_search_length {
                 let store = coin_store.borrow();
-                let matching_coins = fetch_coins_from_database(selected_search_parameter, &store, &search_text);
+                let matching_coins = coin_db::fetch_coins_from_database(selected_search_parameter, &store, &search_text);
 
                 if !matching_coins.is_empty() {
                     let store = coin_tree_store.borrow_mut();
@@ -3362,7 +2718,7 @@ fn create_main_window(application: &adw::Application) {
             let search_text = "10";
             let search_parameter = "Cmc_top";
             let store = coin_store.borrow();
-            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3404,7 +2760,7 @@ fn create_main_window(application: &adw::Application) {
             let search_text = "100";
             let search_parameter = "Cmc_top";
             let store = coin_store.borrow();
-            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3445,7 +2801,7 @@ fn create_main_window(application: &adw::Application) {
             let search_text = "✅";
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3486,7 +2842,7 @@ fn create_main_window(application: &adw::Application) {
             let search_text = "🟧";
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3527,7 +2883,7 @@ fn create_main_window(application: &adw::Application) {
             let search_text = "🟦";
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3568,7 +2924,7 @@ fn create_main_window(application: &adw::Application) {
             let search_text = "🟥";
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3782,44 +3138,56 @@ fn create_main_window(application: &adw::Application) {
                 format!("{}/{}", path, i)
             };
     
-            let derived = match key_derivation.as_str() {
+            let derived_child_keys = match key_derivation.as_str() {
                 "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                // "ed25519" => ,
+                "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
                 "N/A" | _ => {
                     println!("Unsupported key derivation method: {:?}", key_derivation);
                     return
                 }
             }.expect("Failed to derive key from path");
 
-
-
-            // let public_key = secp256k1::PublicKey::from_secret_key(&secp, &derived.0);
             let public_key = match key_derivation.as_str() {
-                "secp256k1" => secp256k1::PublicKey::from_secret_key(&secp, &derived.0),
-                // "ed25519" => ,
+                "secp256k1" => {
+                    let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+                        &secp,
+                        &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+                    );
+                    CryptoPublicKey::Secp256k1(secp_pub_key)
+                },
+                "ed25519" => {
+                    let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+                    let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+                    CryptoPublicKey::Ed25519(pub_key_bytes)
+                },
                 "N/A" | _ => {
                     println!("Unsupported key derivation method: {:?}", key_derivation);
-                    return
+                    return;
                 }
             };
 
             let public_key_encoded = match hash.as_str() {
-                "sha256" => hex::encode(&public_key.serialize()),
-                "keccak256" => format!("0x{}", hex::encode(&public_key.serialize())),
-                "sha256+ripemd160" => hex::encode(&public_key.serialize()),
-                // "blake2b" => ,
+                "sha256" | "sha256+ripemd160" => match &public_key {
+                    CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+                    CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+                },
+                "keccak256" => match &public_key {
+                    CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+                    CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+                },
                 "N/A" | _ => {
                     println!("Unsupported hash method: {:?}", hash);
-                    return
+                    return;
                 }
             };
-            // let address = generate_address_sha256(&public_key, &public_key_hash_vec);
+
+            
             let address = match hash.as_str() {
                 "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
                 "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
                 "sha256+ripemd160" => match generate_sha256_ripemd160_address(
                     coin_index, 
-                    &public_key.serialize(), 
+                    &public_key, 
                     &public_key_hash_vec
                 ) {
                     Ok(addr) => addr,
@@ -3828,20 +3196,21 @@ fn create_main_window(application: &adw::Application) {
                         return;
                     }
                 },
-                // "blake2b" => ,
+                "ed25519" => dev::generate_ed25519_address(&public_key),
                 "N/A" | _ => {
                     println!("Unsupported hash method: {:?}", hash);
-                    return
-                    // generate_address_sha256(&public_key, &public_key_hash_vec)
+                    return;
                 }
             };
+
+
             println!("Crypto address: {:?}", address);
 
             // IMPLEMENT: remove hard-coding
             let compressed = true;
             
             let priv_key_wif = create_private_key_for_address(
-                Some(&derived.0),
+                Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
                 Some(compressed),
                 Some(&wallet_import_format),
                 &hash,
@@ -3915,7 +3284,10 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
         progress_main_box.append(&level_bar);
         dialog_main_box.append(&progress_main_box);
 
-        let wait_time = wait_time.unwrap_or(10).min(ANU_REQUEST_INTERVAL_SECONDS as u32);
+        // TODO: remove hardcoding
+        let wait_time = wait_time.unwrap_or(120);
+        
+        
         let level_bar_clone = level_bar.clone();
         let message_window_clone = message_window.clone();
 
@@ -4049,453 +3421,14 @@ fn main() {
 
 
 
-// ANU QRNG -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-/// Fetch entropy data from ANU Quantum Random Number Generator (QRNG) API.
-///
-/// This function fetches entropy data from the ANU QRNG API based on the specified parameters.
-///
-/// # Arguments
-///
-/// * `entropy_length` - The length of the entropy string to fetch.
-/// * `data_format` - The format of the data to fetch (e.g., "uint8", "uint16", "hex16").
-/// * `array_length` - The length of the array of random numbers to fetch.
-/// * `hex_block_size` - The block size for hex data format (optional).
-///
-/// # Returns
-///
-/// A string containing the fetched entropy data, or an empty string if the fetch fails.
-fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
-    println!("{}", &t!("log.get_entropy_from_anu").to_string());
-
-    let start_time = SystemTime::now();
-
-    let anu_data = fetch_anu_qrng_data(
-        data_format, 
-        array_length, 
-        hex_block_size.unwrap()
-    );
-
-    if !&anu_data.as_ref().unwrap().is_empty() {
-        create_anu_timestamp(start_time);
-        // TODO: Check if global log is enabled, then save
-        write_api_response_to_log(&anu_data);
-    } else {
-        return String::new()
-    }
-
-    let entropy = match data_format {
-        "uint8" =>  {
-            let uint8 = extract_uint8_data(&anu_data);
-
-            process_uint8_data(&uint8)
-        },
-        "uint16" =>  {
-            todo!() // Create uint16 ANU extraction
-        },
-        "hex16" =>  {
-            todo!() // Create hex16 ANU extraction
-            // let hex_strings = extract_hex_strings(
-            //         &anu_data, 
-            //         hex_block_size.unwrap().try_into().unwrap()
-            //     );
-            //     let mut anu_qrng_binary = String::new();
-            //     for hex_string in hex_strings {
-            //         // println!("Hex string: {}", hex_string);
-            //         let bytes = hex::decode(hex_string).expect("Failed to decode hex string");
-            //         let binary_string: String = bytes.iter()
-            //             .map(|byte| format!("{:08b}", byte))
-            //             .collect();
-            //         // println!("Binary string: {:?}", binary_string);
-            //         anu_qrng_binary.push_str(&binary_string);
-            //     }
-            //     // Write all binary strings to a file
-            //     let qrng_file = format!("{}.binary", ANU_QRNG_FILE);
-            //     let mut file = File::create(&qrng_file).expect("Can not read file");
-            //     file.write_all(anu_qrng_binary.as_bytes()).expect("can not write to file");
-            //     if anu_qrng_binary.len() < entropy_length {
-            //         return Err(format!(
-            //             "Entropy string too short for requested entropy length: {}",
-            //             entropy_length
-            //         ).into());
-            //     }
-            //     let max_start = anu_qrng_binary.len() - entropy_length;
-            //     let start_point = rand::thread_rng().gen_range(0..=max_start);
-            //     entropy_raw_binary = anu_qrng_binary
-            //         .chars()
-            //         .skip(start_point)
-            //         .take(entropy_length)
-            //         .collect();
-            //     println!("Final entropy string: {}", entropy_raw_binary);
-        },
-        _ => {
-            eprintln!("{}", &t!("error.anu.format"));
-            return String::new()
-        }
-    };
-
-    if entropy.len() > entropy_length {
-        let original_len = entropy.len();
-        let mut rng = rand::thread_rng();
-        let start_index = rng.gen_range(0..original_len);
-
-        let trimmed_entropy = if start_index + entropy_length < original_len {
-            entropy[start_index..start_index + entropy_length].to_string()
-        } else {
-            entropy[start_index..].to_string()
-        };
-
-        return trimmed_entropy;
-    } else if entropy.len() == entropy_length {
-        return entropy.to_string();
-    } else {
-        eprintln!("{}", &t!("error.anu.short"));
-        return String::new();
-    }
-}
-
-/// Fetch data from ANU Quantum Random Number Generator (QRNG) API.
-///
-/// This function fetches data from the ANU QRNG API based on the specified parameters.
-///
-/// # Arguments
-///
-/// * `data_format` - The format of the data to fetch (e.g., "uint8", "uint16", "hex16").
-/// * `array_length` - The length of the array of random numbers to fetch.
-/// * `block_size` - The block size for hex data format.
-///
-/// # Returns
-///
-/// An optional string containing the fetched data, or None if the fetch fails.
-fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) -> Option<String> {
-    println!("{}", &t!("log.fetch_anu_qrng_data").to_string());
-
-    let current_time = SystemTime::now();
-    let last_request_time = load_last_anu_request().unwrap();
-
-    let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
-    let wait_duration = Duration::from_secs(ANU_REQUEST_INTERVAL_SECONDS as u64);
-
-    if elapsed < wait_duration {
-        let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-        create_message_window(
-            "ANU API Timeout", 
-            &t!("error.anu.timeout", value = remaining_seconds), 
-            Some(true), 
-            Some(remaining_seconds as u32)
-        );
-        eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
-        return Some(String::new());
-    }
-    
-    create_message_window(
-        "ANU QRNG API", 
-        &t!("UI.main.anu.download"), 
-        Some(true), 
-        Some(5)
-    );
-
-
-    let mut socket_addr = ANU_API_URL
-        .to_socket_addrs()
-        .map_err(|e| format!("Socket address parsing error: {}", e))
-        .unwrap();
-    
-    let socket_addr = socket_addr
-        .next()
-        .ok_or("No socket addresses found for ANU API URL")
-        .unwrap();
-
-    let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
-        .map_err(|e| format!("Connection error: {}", e))
-        .unwrap();
-
-    let anu_request = format!(
-        "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
-        data_format, array_length, block_size
-    )
-    .into_bytes();
-
-    stream.write_all(&anu_request)
-        .map_err(|e| format!("Write error: {}", e))
-        .unwrap();
-
-    stream.flush()
-        .map_err(|e| format!("Flush error: {}", e))
-        .unwrap();
-
-    let mut response = String::new();
-    let mut buffer = [0; 256];
-    let mut chunks = Vec::new();
-
-    loop {
-        // print!(".");
-        match stream.read(&mut buffer) {
-            Ok(bytes_read) if bytes_read > 0 => {
-                let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-                // print!("{}", chunk);
-                response.push_str(&chunk);
-                chunks.push(chunk.to_string());
-
-                if chunk.ends_with("\r\n\r\n") {
-                    break;
-                }
-            }
-            Ok(_) | Err(_) => break,
-        }
-    }
-
-    // print!("done\n");
-
-    let combined_response = chunks.concat();
-
-    Some(combined_response)
-}
-
-/// Load the timestamp of the last ANU QRNG request from a file.
-///
-/// This function loads the timestamp of the last ANU QRNG request from a file.
-///
-/// # Returns
-///
-/// An optional `SystemTime` representing the timestamp of the last request, or None if the file does not exist.
-fn load_last_anu_request() -> Option<SystemTime> {
-    println!("{}", &t!("log.load_last_anu_request").to_string());
-
-    let path = Path::new(ANU_TIMESTAMP_FILE);
-    if path.exists() {
-        if let Ok(file) = File::open(path) {
-            let reader = BufReader::new(file);
-            if let Some(Ok(timestamp_str)) = reader.lines().next() {
-                if let Ok(timestamp) = timestamp_str.trim().parse::<i64>() {
-                    return Some(SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp as u64));
-                }
-            }
-        }
-    }
-    Some(SystemTime::UNIX_EPOCH)
-}
-
-/// Create a timestamp file for the ANU request.
-///
-/// This function creates a timestamp file for the ANU request to track the last request time.
-///
-/// # Arguments
-///
-/// * `time` - The current time for the ANU request.
-fn create_anu_timestamp(time: SystemTime) {
-    println!("{}", &t!("log.create_anu_timestamp").to_string());
-
-    let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
-
-    if let Some(parent) = Path::new(ANU_TIMESTAMP_FILE).parent() {
-        fs::create_dir_all(parent).expect("Can not create log directory");
-    }
-
-    let mut file = File::create(ANU_TIMESTAMP_FILE).expect("Can not create ANU timestamp file");
-
-    file.write_all(timestamp.as_bytes()).expect("Can not write to ANU timestamp file");
-
-    println!("ANU timestamp: {}",timestamp);
-}
-
-/// Write the ANU API response to a log file.
-///
-/// This function writes the ANU API response to a log file.
-///
-/// # Arguments
-///
-/// * `response` - The ANU API response.
-fn write_api_response_to_log(response: &Option<String>) {
-    println!("{}", &t!("log.write_api_response_to_log").to_string());
-
-    if let Some(parent) = Path::new(get_log_file().as_str()).parent() {
-        match fs::create_dir_all(parent) {
-            Ok(_) => {
-                let mut file = match File::create(&get_log_file().as_str()) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        eprintln!("Error creating file: {}", e);
-                        return;
-                    }
-                };
-
-                if let Some(data) = &response {
-                    let bytes = data.as_bytes();
-                    if let Err(e) = file.write_all(bytes) {
-                        eprintln!("Can not write ANU response to log file: {}", e);
-                    }
-                    println!("ANU response written to log");
-                } else {
-                    eprintln!("ANU response is empty");
-                }
-            }
-            Err(err) => {
-                eprintln!("Error creating directory {}: {}", parent.display(), err);
-            }
-        }
-    }
-}
-
-/// Extract uint8 data from the ANU API response.
-///
-/// This function extracts uint8 data from the ANU API response.
-///
-/// # Arguments
-///
-/// * `api_response` - The ANU API response.
-///
-/// # Returns
-///
-/// An optional `Vec<u8>` containing the extracted uint8 data, or None if extraction fails.
-fn extract_uint8_data(api_response: &Option<String>) -> Option<Vec<u8>> {
-    println!("{}", &t!("log.extract_uint8_data").to_string());
-
-    // Check if the API response is present
-    let api_response = match api_response {
-        Some(response) => response,
-        None => {
-            println!("ANU response is None.");
-            return None;
-        }
-    };
-
-    // Find the index where the JSON data starts
-    let json_start_index = match api_response.find('{') {
-        Some(index) => index,
-        None => {
-            println!("JSON data not found in the response.");
-            return None;
-        }
-    };
-
-    // Find the index where the JSON data ends
-    let json_end_index = match api_response.rfind('}') {
-        Some(index) => index,
-        None => {
-            println!("JSON data end not found in the response.");
-            return None;
-        }
-    };
-
-    // Extract the JSON data
-    let json_str = &api_response[json_start_index..=json_end_index];
-
-    // Parse JSON
-    let parsed_json: Result<serde_json::Value, _> = serde_json::from_str(json_str);
-    let parsed_json = match parsed_json {
-        Ok(value) => value,
-        Err(err) => {
-            println!("Failed to parse JSON: {}", err);
-            return None;
-        }
-    };
-
-    // Extract uint8 data
-    let data_array = parsed_json["data"].as_array();
-    let data_array = match data_array {
-        Some(arr) => arr,
-        None => {
-            println!("No data array found.");
-            return None;
-        }
-    };
-
-    let mut uint8_data = Vec::new();
-
-    for data_item in data_array {
-        if let Some(byte_val) = data_item.as_u64() {
-            if byte_val <= u8::MAX as u64 {
-                uint8_data.push(byte_val as u8);
-            } else {
-                eprintln!("Error parsing byte: number too large to fit in target type");
-            }
-        } else {
-            eprintln!("Invalid byte value: {:?}", data_item);
-        }
-    }
-
-    Some(uint8_data)
-}
-
-/// Process uint8 data into a binary string.
-///
-/// This function processes uint8 data into a binary string.
-///
-/// # Arguments
-///
-/// * `data` - The uint8 data to process.
-///
-/// # Returns
-///
-/// A string containing the processed binary data.
-fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
-    println!("{}", &t!("log.process_uint8_data").to_string());
-
-    let data = match data {
-        Some(data) => data,
-        None => {
-            eprintln!("ANU response was empty.");
-            return String::new();
-        }
-    };
-
-    let binary_string = data
-        .iter()
-        .flat_map(|byte| {
-            format!("{:08b}", byte)
-                .chars()
-                .collect::<Vec<_>>()
-        })
-        .collect::<String>();
-
-    // println!("ANU entropy: {}", &binary_string);
-
-    binary_string
-}
-
-
-
 // ADDRESSES -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#[derive(Debug, Default)]
-struct WalletSettings {
-    entropy_string: Option<String>,
-    entropy_checksum: Option<String>,
-    mnemonic_words: Option<String>,
-    mnemonic_passphrase: Option<String>,
-    seed: Option<String>,
-    master_xprv: Option<String>,
-    master_xpub: Option<String>,
-    master_private_key_bytes: Option<Vec<u8>>,
-    master_chain_code_bytes: Option<Vec<u8>>,
-    master_public_key_bytes: Option<Vec<u8>>,
-    coin_index: Option<u32>,
-    wallet_import_format: Option<String>,
-    public_key_hash: Option<String>,
-    key_derivation: Option<String>,
-    hash: Option<String>,
-
-    // SEND:
-    // ADDRESS_DATA.with(|data| {
-    //     let mut data = data.borrow_mut();
-    //     println!("RNG entropy (string): {}", &rng_entropy_string);
-    //     data.entropy = Some(rng_entropy_string.clone());
-    // });
-    // 
-    // GET:
-    // let master_private_key_bytes = ADDRESS_DATA.with(|data| {
-    //     let data = data.borrow();
-    //     data.master_private_key_bytes.clone().unwrap()
-    // });
-}
-
-fn derive_child_key(
-    parent_key: &[u8], 
-    parent_chain_code: &[u8], 
-    index: u32, 
-    hardened: bool
-) -> Option<(Vec<u8>, Vec<u8>, Vec<u8>)> {
+fn derive_child_key_secp256k1(
+    parent_key: &[u8],
+    parent_chain_code: &[u8],
+    index: u32,
+    hardened: bool,
+) -> DerivationResult {
     println!("{}", &t!("log.derive_child_key").to_string());
     println!("parent_key {:?}", parent_key);
     println!("parent_chain_code {:?}", parent_chain_code);
@@ -4530,9 +3463,12 @@ fn derive_child_key(
 
     println!("data_for_hmac_sha512 {:?}", data);
     
-    let result = hmac_sha512(parent_chain_code, &data);
-    let (child_private_key_bytes, child_chain_code_bytes) = result.split_at(32);
-    let child_key_int = BigUint::from_bytes_be(child_private_key_bytes);
+    let result = qr2m_lib::calculate_hmac_sha512_hash(parent_chain_code, &data);
+    
+    let child_private_key_bytes: [u8; 32] = result[..32].try_into().expect("Slice with incorrect length");
+    let child_chain_code_bytes: [u8; 32] = result[32..].try_into().expect("Slice with incorrect length");
+
+    let child_key_int = BigUint::from_bytes_be(&child_private_key_bytes);
     let parent_key_int = BigUint::from_bytes_be(parent_key);
     let curve_order = BigUint::from_bytes_be(&secp256k1::constants::CURVE_ORDER);
     let combined_int = (parent_key_int + child_key_int) % &curve_order;
@@ -4552,7 +3488,7 @@ fn derive_child_key(
     println!("child_chain_code_bytes {:?}", child_chain_code_bytes);
     println!("child_public_key_bytes {:?}", child_public_key_bytes);
 
-    Some((child_secret_key_bytes.to_vec(), child_chain_code_bytes.to_vec(), child_public_key_bytes))
+    Some((child_secret_key_bytes, child_chain_code_bytes, child_public_key_bytes))
 }
 
 fn create_private_key_for_address(
@@ -4600,7 +3536,7 @@ fn create_private_key_for_address(
                 return Err("Private key must be provided".to_string());
             }
 
-            let checksum = double_sha256(&extended_key);
+            let checksum = qr2m_lib::calculate_double_sha256_hash(&extended_key);
             let address_checksum = &checksum[0..4];
             extended_key.extend_from_slice(address_checksum);
 
@@ -4631,10 +3567,10 @@ fn create_private_key_for_address(
 }
 
 fn derive_from_path_secp256k1(
-    master_key: &[u8], 
-    master_chain_code: &[u8], 
-    path: &str
-) -> Option<(secp256k1::SecretKey, [u8; 32], [u8; 33])> {
+    master_key: &[u8],
+    master_chain_code: &[u8],
+    path: &str,
+) -> DerivationResult {
     println!("{}", &t!("log.derive_from_path_secp256k1").to_string());
 
     println!("Derivation path {:?}", path);
@@ -4661,15 +3597,15 @@ fn derive_from_path_secp256k1(
             }
         };
         
-        let derived = derive_child_key(
+        let derived = derive_child_key_secp256k1(
             &private_key, 
             &chain_code, 
             index, 
             hardened
         ).unwrap_or_default();
         
-        private_key = derived.0;
-        chain_code = derived.1;
+        private_key = derived.0.to_vec();
+        chain_code = derived.1.to_vec();
         public_key = derived.2;
     }
     
@@ -4692,87 +3628,58 @@ fn derive_from_path_secp256k1(
     let mut public_key_array = [0u8; 33];
     public_key_array.copy_from_slice(&public_key);
 
-    Some((secret_key, chain_code_array, public_key_array))
+    Some((secret_key.secret_bytes(), chain_code_array, public_key_array.to_vec()))
 }
 
 fn generate_address_sha256(
-    public_key: &secp256k1::PublicKey,
+    public_key: &CryptoPublicKey,
     public_key_hash: &[u8],
 ) -> String {
     println!("{}", &t!("log.generate_address_sha256").to_string());
 
-    let public_key_bytes = public_key.serialize();
+    let public_key_bytes = match public_key {
+        CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
+        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
+    };
+    
     println!("Public key bytes: {:?}", &public_key_bytes);
-    
-    let hash160 = sha256_and_ripemd160(&public_key_bytes);
-    
+
+    let hash160 = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
+
     let mut payload = Vec::with_capacity(public_key_hash.len() + hash160.len());
     payload.extend_from_slice(public_key_hash);
     payload.extend_from_slice(&hash160);
     println!("Extended sha256_and_ripemd160 payload: {:?}", &payload);
-    
-    let checksum = double_sha256(&payload);
-    
+
+    let checksum = qr2m_lib::calculate_double_sha256_hash(&payload);
+
     let address_checksum = &checksum[0..4];
     println!("Address checksum: {:?}", address_checksum);
-    
+
     let mut address_payload = payload;
     address_payload.extend_from_slice(address_checksum);
     println!("Extended Address payload: {:?}", address_payload);
-    
+
     bs58::encode(address_payload).into_string()
 }
 
-fn sha256_and_ripemd160(input: &[u8]) -> Vec<u8> {
-    println!("{}", &t!("log.sha256_and_ripemd160").to_string());
-
-    println!("\n#### sha256_and_ripemd160 ####");
-    println!("Received data: {:?}", input);
-
-    let mut hasher = Sha256::new();
-    hasher.update(input);
-    let hash = hasher.finalize();
-    println!("Sha256 hash: {:?}", hash);
-    
-    let mut ripemd = ripemd::Ripemd160::new();
-    ripemd.update(&hash);
-    let final_hash = ripemd.finalize().to_vec();
-    println!("sha256_and_ripemd160 output: {:?}", final_hash);
-
-    final_hash
-}
-
-fn double_sha256(input: &[u8]) -> Vec<u8> {
-    println!("{}", &t!("log.double_sha256").to_string());
-
-    println!("Received data: {:?}", input);
-
-    let mut hasher = Sha256::new();
-    hasher.update(input);
-    let first_hash = hasher.finalize();
-    println!("First hash: {:?}", first_hash);
-    
-    let mut hasher = Sha256::new();
-    hasher.update(&first_hash);
-    let final_hash = hasher.finalize().to_vec();
-    println!("doubleSha256 output: {:?}", final_hash);
-
-    final_hash
-}
-
-struct CryptoAddresses {
-    derivation_path: String,
-    address: String,
-    public_key: String,
-    private_key: String,
-}
-
-fn generate_address_keccak256(public_key: &secp256k1::PublicKey, _public_key_hash: &[u8]) -> String {
-    let public_key_bytes = public_key.serialize_uncompressed();
+fn generate_address_keccak256(
+    public_key: &CryptoPublicKey,
+    _public_key_hash: &[u8],
+) -> String {
+    let public_key_bytes = match public_key {
+        CryptoPublicKey::Secp256k1(key) => key.serialize_uncompressed().to_vec(),
+        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
+    };
     println!("Public key bytes: {:?}", &public_key_bytes);
 
+    let public_key_slice = match public_key {
+        CryptoPublicKey::Secp256k1(_) => &public_key_bytes[1..],  // Skip the first byte for secp256k1
+        CryptoPublicKey::Ed25519(_) => &public_key_bytes[..],     // Use the entire byte array for ed25519
+    };
+
     let mut keccak = Keccak256::new();
-    keccak.update(&public_key_bytes[1..]);
+    keccak.update(public_key_slice);
     let keccak_result = keccak.finalize();
     println!("Keccak256 hash result: {:?}", &keccak_result);
 
@@ -4785,104 +3692,44 @@ fn generate_address_keccak256(public_key: &secp256k1::PublicKey, _public_key_has
     address
 }
 
-
 fn generate_sha256_ripemd160_address(
-    coin_index: u32, 
-    public_key: &[u8], 
-    public_key_hash: &[u8]
+    coin_index: u32,
+    public_key: &CryptoPublicKey,
+    public_key_hash: &[u8],
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let hash = sha256_and_ripemd160(public_key);
+    let public_key_bytes = match public_key {
+        CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
+        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
+    };
+    println!("Public key bytes: {:?}", &public_key_bytes);
+
+    let hash = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
     let mut address_bytes = Vec::new();
 
-    address_bytes.extend_from_slice(&public_key_hash);
-
+    address_bytes.extend_from_slice(public_key_hash);
     address_bytes.extend(&hash);
-    
+
     let checksum = Sha256::digest(&Sha256::digest(&address_bytes));
     let checksum = &checksum[0..4];
 
     let mut full_address_bytes = address_bytes.clone();
     full_address_bytes.extend(checksum);
-    
 
-    let alphabet; 
-
-    match coin_index {
-        144 => alphabet = bs58::Alphabet::RIPPLE,
-        _ => alphabet = bs58::Alphabet::DEFAULT,
-    }
+    let alphabet = match coin_index {
+        144 => bs58::Alphabet::RIPPLE,
+        _ => bs58::Alphabet::DEFAULT,
+    };
 
     let encoded_address = bs58::encode(full_address_bytes).with_alphabet(alphabet).into_string();
     println!("Base58 encoded address: {}", encoded_address);
-    
+
     Ok(encoded_address)
 }
 
 
 
 
-
-
-
-// PROTOCOLS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// OLD CODE
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-// ANU extract hex16
-// TODO: recheck if hex16 code is still working
-// fn extract_hex_strings(response: &str, hex_block_size: usize) -> Vec<String> {
-//     let hex_block_size = hex_block_size * 2; // Adjust for byte format for ANU
-//     let mut hex_strings = Vec::new();
-//     let mut current_string = String::new();
-//     let mut in_hex_string = false;
-//     for c in response.chars() {
-//         if !in_hex_string {
-//             if c == '"' {
-//                 // Start of a potential hex string
-//                 in_hex_string = true;
-//                 current_string.clear();
-//             }
-//         } else {
-//             if c == '"' {
-//                 // End of hex string found, check if it's of expected length and contains valid hex characters
-//                 if current_string.len() == hex_block_size && current_string.chars().all(|c| c.is_ascii_hexdigit()) {
-//                     hex_strings.push(current_string.clone());
-//                 }
-//                 current_string.clear();
-//                 in_hex_string = false;
-//             } else if c == '\r' || c == '\n' || c == '\t' {
-//                 // Ignore control characters within the hex string
-//                 current_string.clear();
-//                 in_hex_string = false;
-//             } else {
-//                 // Character is part of hex string, add to current string
-//                 current_string.push(c);
-//             }
-//         }
-//     }
-//     hex_strings
-// }
+enum CryptoPublicKey {
+    Secp256k1(secp256k1::PublicKey),
+    Ed25519(ed25519_dalek::VerifyingKey),
+}
