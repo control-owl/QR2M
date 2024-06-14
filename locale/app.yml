@@ -188,9 +188,17 @@ UI:
     coin:
       en: "Coin"
       search:
-        en: "Find a coin by entering its symbol (BTC, LTC, ETH...)"
-        de: "Finden Sie eine Coin durch Eingabe ihres Symbols (BTC, LTC, ETH...)"
-        hr: "Pronađite coin tako da unesete njegov simbol (BTC, LTC, ETH...)"
+        en: "Search"
+        de: "Suchen"
+        hr: "Tražilica"
+        text:
+          en: "Find a coin by entering its %{value}"
+          de: "Finden Sie eine Coin, indem Sie ihren %{value} eingeben"
+          hr: "Pronađite coin tako da unesete njegovo %{value}"
+        advance:
+          en: "Advance"
+          de: "Erweitert"
+          hr: "Napredno"
       generate:
         en: "Generate master keys"
         de: "Masterschlüssel generieren"
@@ -204,6 +212,31 @@ UI:
           en: "Master public key"
           de: "Master Public Schlüssel"
           hr: "Glavni javni ključ"
+      filter:
+        en: "Filter coins"
+        de: "Coins filtern"
+        hr: "Filtriraj coine"
+        status:
+          top:
+            en: "Top %{value}"
+            de: "Top %{value}"
+            hr: "Top %{value}"
+          verified:
+            en: "Verified %{value}"
+            de: "Verifizierte %{value}"
+            hr: "Verificirani %{value}"
+          not-verified:
+            en: "Not verified %{value}"
+            de: "Unverifizierte %{value}"
+            hr: "Ne verificirani %{value}"
+          future:
+            en: "In plan %{value}"
+            de: "Im Plan %{value}"
+            hr: "U planu %{value}"
+          not-supported:
+            en: "Not supported %{value}"
+            de: "Nicht unterstützte %{value}"
+            hr: "Ne podržani %{value}"
     address:
       en: "Address"
       de: "Adresse"
@@ -264,50 +297,54 @@ UI:
           hr: "Obriši adrese"
     database:
       column:
+        status:
+          en: "Supported"
+          de: "Unterstützt"
+          hr: "Podržan"
         index:
           en: "Index"
           de: "Index"
           hr: "Indeks"
-        path:
-          en: "Path"
-          de: "Pfad"
-          hr: "Putanja"
         symbol:
           en: "Symbol"
           de: "Zeichen"
           hr: "Simbol"
-        name:
-          en: "Coin name"
-          de: "Coinname"
-          hr: "Ime coina"
-        deriv:
+        coin:
+          en: "Coin"
+          # de: "Coin"
+          # hr: "Coin"
+        key_derivation:
           en: "Algorithm"
           de: "Algorithmus"
           hr: "Algoritam"
+        hash:
+          en: "Hash"
+          # de: "Hash"
+          # hr: "Hash"
         priv_header:
-          en: "xprv-priv-header"
+          en: "XPRV"
           # de: "Private Header"
           # hr: "Privatno zaglavlje"
         pub_header:
-          en: "xprv-pub-header"
+          en: "XPUB"
           # de: "Öffentliche Header"
           # hr: "Javno zaglavlje"
         pub_hash:
-          en: "pub-key-hash"
+          en: "Pub key hash"
           # de: "Öffentlicher Schlüssel Hash"
           # hr: "Javni hash algoritam"
         script:
-          en: "script-hash"
+          en: "Script hash"
           # de: "Skript-Hash"
           # hr: "Hash skripte"
         wif:
-          en: "wif"
+          en: "Wallet import format"
         evm:
-          en: "EVM"
-        comment:
-          en: "Comment"
-          de: "Kommentar"
-          hr: "Komentar"
+          en: "Ethereum Virtual Machine"
+        UCID:
+          en: "Unified Crypto ID"
+        cmc:
+          en: "CMC top rank"
     anu:
       download:
         en: "Trying to retrieve QRNG from ANU API"

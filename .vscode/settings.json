@@ -83,7 +83,10 @@
         "Addrs",
         "ascii",
         "bips",
+        "blake",
+        "CKDB",
         "coina",
+        "coine",
         "COINLIST",
         "Coinname",
         "cointree",
@@ -106,6 +109,7 @@
         "Masterschlüssels",
         "mpsc",
         "parsen",
+        "pedersen",
         "privkey",
         "PRNG",
         "Proxyservers",
@@ -122,6 +126,7 @@
         "titlebar",
         "tokio",
         "treeview",
+        "UCID",
         "valign",
         "vexpand",
         "wordlist",
@@ -130,5 +135,7 @@
         "xprv",
         "xpub"
     ],
+    "outline-map.region.startRegion": "",
+    "outline-map.region.endRegion": "",
 
 }

@@ -1,3 +1,17 @@
+# version 0.21.0
+- fancy_print removed
+- log output removed (will be recreated later)
+- Ethereum (keccak-256) support
+- filter coins
+- coin search expanded
+- I forgot what else :D
+
+
+# version 0.20.1
+- new coin view
+- preparing for EVM address support
+
+
 # version 0.20.0
 - almost all address output
 - no more panic when nothing is provided
