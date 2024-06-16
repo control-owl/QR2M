@@ -1,10 +1,18 @@
+// authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+// module = "OS specific tasks"
+// copyright = "Copyright © 2023-2024 D3BUG"
+// version = "2024-06-16"
 
 
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 use std::env;
 use std::path::PathBuf;
 use crate::APP_NAME;
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 pub fn detect_os_and_user_dir() -> (String, PathBuf) {
