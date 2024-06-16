@@ -43,11 +43,11 @@
 
 ### Settings window
 
-- [ ] settings and config file
+- [x] settings and config file
     - [x] read settings file
-    - [ ] write settings file
-    - [ ] local settings ($HOME)
-- [ ] set theme color in settings
+    - [x] write settings file
+    - [x] local settings ($HOME)
+- [x] set theme color in settings
 - [ ] proxy support
 - [ ] verify local config before applying it, if missing get from default
 - [ ] log directory (file chooser dialog)
@@ -69,9 +69,9 @@
 - [x] log output
 - [x] translate app to another language
 - [ ] multi-threading
-- [ ] extend bip44-extended-coin-list.csv with:
-    - [ ] status + icon
-    - [ ] top100
+- [x] extend bip44-extended-coin-list.csv with:
+    - [x] status + icon
+    - [x] top100
     - [ ] token support
 - [ ] advance view for main window for all possible values
 - [ ] main window is advance window

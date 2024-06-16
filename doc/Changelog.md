@@ -1,9 +1,16 @@
+# version 0.30.0
+- setting are fully working
+- local config file based on OS
+
+
 # version 0.21.0
 - fancy_print removed
 - log output removed (will be recreated later)
 - Ethereum (keccak-256) support
 - filter coins
 - coin search expanded
+- add some files and move some functions
+- ECDB.csv (Extended Crypto-asset DataBase)
 - I forgot what else :D
 
 

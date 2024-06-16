@@ -24,6 +24,10 @@ UI:
         en: "Save last window size?"
         de: "Fenstergröße speichern?"
         hr: "Zapamti veličinu programa?"
+      search:
+        en: "Search for a coin by"
+        de: "Suche nach einer Coin anhand"
+        hr: "Traži kovanicu po"
     wallet:
       en: "Wallet settings"
       de: "Wallet Einstellungen"
@@ -39,6 +43,14 @@ UI:
           hr: "Dužina entropije"
       bip:
         en: "BIP"
+      address-count:
+        en: "How many addresses to generate"
+        de: "Wie viele Adressen generiert werden sollen"
+        hr: "Koliko puno adresa generirati"
+      hardened:
+        en: "Generate hardened addresses"
+        de: "Gehärtete Adressen generieren"
+        hr: "Generirati tvrde adrese"
     anu:
       en: "ANU settings"
       de: "ANU Einstellungen"

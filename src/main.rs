@@ -11,7 +11,7 @@
 // Crates
 use std::{
     fs::{self, File}, 
-    io::{self, Read}, 
+    io::{self, Read, Write}, 
     path::Path, 
     time::SystemTime,
 };
@@ -32,6 +32,7 @@ use rust_i18n::t;
 mod anu;
 mod coin_db;
 mod dev;
+mod os;
 mod test_vectors;
 
 
@@ -51,11 +52,13 @@ const APP_LANGUAGE: &'static [&'static str] = &[
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
 const APP_LOG_DIRECTORY: &str = "log/";
-const LOG_OUTPUT: &'static [&'static str] = &[
-    "Default", 
-    "File",
-    "None",
-];
+const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
+const APP_LOCAL_CONFIG_FILE: &str = "settings.conf";
+// const LOG_OUTPUT: &'static [&'static str] = &[
+//     "Default", 
+//     "File",
+//     "None",
+// ];
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
@@ -106,16 +109,19 @@ lazy_static! {
     static ref LOG_FILE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 }
 
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize)]
 struct AppSettings {
     wallet_entropy_source: String,
     wallet_entropy_length: u32,
     wallet_bip: u32,
     wallet_address_count: u32,
     wallet_hardened_address: bool,
-    gui_save_window_size: bool,
-    gui_window_width: u32,
-    gui_window_height: u32,
-    gui_window_maximized: bool,
+    gui_save_size: bool,
+    gui_last_width: u32,
+    gui_last_height: u32,
+    gui_maximized: bool,
     gui_theme: String,
     gui_language: String,
     gui_search: String,
@@ -134,7 +140,7 @@ struct AppSettings {
     proxy_login_password: String,
     proxy_use_ssl: bool,
     proxy_ssl_certificate: String,
-    log_output: String,
+    // log_output: String,
     // log_file: String,
 }
 
@@ -144,21 +150,29 @@ impl AppSettings {
         // BUG: This will panic. Why?
         println!("Loading settings:");
 
-        // FEATURE: Create local ($HOME) settings
-        let config_file = "config/custom.conf";
-        let default_config_file = "config/default.conf";
+        let (_os, path) = os::detect_os_and_user_dir();
+        let local_config_file = format!("{}{}", &path.to_str().unwrap_or_default(), APP_LOCAL_CONFIG_FILE);
 
-        if !Path::new(config_file).exists() {
-            fs::copy(default_config_file, config_file)?;
+        println!("detected path : {:?}", path);
+        println!("local_config_file : {:?}", local_config_file);
+
+        if !Path::new(&local_config_file).exists() {
+            fs::create_dir_all(&path).expect("Can not create folder for local config file");
+            match fs::copy(APP_DEFAULT_CONFIG_FILE, &local_config_file) {
+                Ok(_) => println!("Local config file created"),
+                Err(err) => {
+                    eprintln!("Failed to copy default config file: {}", err);
+                    // IMPLEMENT: check if dir is writable, if not check tmp folder
+                    return Err(err.into());
+                }
+            }
         }
         
-        let config_str = match fs::read_to_string(config_file) {
+        let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                // IMPROVEMENT: ask if to load default config file
-                // FEATURE: open dialog window, show visually error parameter
-                eprintln!("{}: {}", &t!("error.file.read", value = config_file), err);
-                String::new()
+                eprintln!("Failed to read local config file {}: {}", APP_LOCAL_CONFIG_FILE, err);
+                String::new() // IMPLEMENT: load default config instead empty one
             }
         };
         
@@ -188,21 +202,21 @@ impl AppSettings {
             None => &empty_value    // IMPROVEMENT: replace empty_value with default 'gui' values
         };
             
-        let gui_save_window_size = gui_section.get("save_window_size")
+        let gui_save_size = gui_section.get("save_size")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
-        let gui_window_width = gui_section.get("window_width")
+        let gui_last_width = gui_section.get("last_width")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(WINDOW_MAIN_DEFAULT_WIDTH);
 
-        let gui_window_height = gui_section.get("window_height")
+        let gui_last_height = gui_section.get("last_height")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(WINDOW_MAIN_DEFAULT_HEIGHT);
     
-        let gui_window_maximized = gui_section.get("window_maximized")
+        let gui_maximized = gui_section.get("maximized")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
@@ -258,7 +272,7 @@ impl AppSettings {
             None => &empty_value
         };
 
-        let anu_enabled = anu_section.get("anu_enabled")
+        let anu_enabled = anu_section.get("enabled")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
@@ -277,10 +291,9 @@ impl AppSettings {
             .map(|v| v as u32)
             .unwrap_or(ANU_DEFAULT_HEX_BLOCK_SIZE);
 
-        let anu_log = anu_section.get("anu_log")
+        let anu_log = anu_section.get("log")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
-
 
         // Proxy settings
         let proxy_section = match config.get("proxy") {
@@ -288,66 +301,52 @@ impl AppSettings {
             None => &empty_value
         };
 
-        let proxy_status = proxy_section.get("proxy_status")
+        let proxy_status = proxy_section.get("status")
             .and_then(|v| v.as_str())
             .unwrap_or(*&VALID_PROXY_STATUS[0])
             .to_string();
 
-        let proxy_server_address = proxy_section.get("proxy_server_address")
+        let proxy_server_address = proxy_section.get("server_address")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
-        let proxy_server_port = proxy_section.get("proxy_server_port")
+        let proxy_server_port = proxy_section.get("server_port")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
-            .unwrap_or(8080);
+            .unwrap_or_default();
 
-        let proxy_use_pac: bool = proxy_section.get("proxy_use_pac")
+        let proxy_use_pac: bool = proxy_section.get("use_pac")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        let proxy_script_address = proxy_section.get("proxy_script_address")
+        let proxy_script_address = proxy_section.get("script_address")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
-        let proxy_login_credentials: bool = proxy_section.get("proxy_login_credentials")
+        let proxy_login_credentials: bool = proxy_section.get("login_credentials")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        let proxy_login_username = proxy_section.get("proxy_login_username")
+        let proxy_login_username = proxy_section.get("login_username")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
-        let proxy_login_password = proxy_section.get("proxy_login_password")
+        let proxy_login_password = proxy_section.get("login_password")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
-        let proxy_use_ssl: bool = proxy_section.get("proxy_use_ssl")
+        let proxy_use_ssl: bool = proxy_section.get("use_ssl")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        let proxy_ssl_certificate = proxy_section.get("proxy_ssl_certificate")
+        let proxy_ssl_certificate = proxy_section.get("ssl_certificate")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-
-
-        // Log settings
-        let log_section = match config.get("log") {
-            Some(section) => section,
-            None => &empty_value
-        };
-
-        let log_output = log_section.get("log_output")
-            .and_then(|v| v.as_str())
-            .unwrap_or(*&LOG_OUTPUT[0])
-            .to_string();
-
-        // let log_file = "".to_string();
 
         Ok(AppSettings {
             wallet_entropy_source,
@@ -355,10 +354,10 @@ impl AppSettings {
             wallet_bip,
             wallet_address_count,
             wallet_hardened_address,
-            gui_save_window_size,
-            gui_window_width,
-            gui_window_height,
-            gui_window_maximized,
+            gui_save_size,
+            gui_last_width,
+            gui_last_height,
+            gui_maximized,
             gui_theme,
             gui_language,
             gui_search,
@@ -377,8 +376,6 @@ impl AppSettings {
             proxy_login_password,
             proxy_use_ssl,
             proxy_ssl_certificate,
-            log_output,
-            // log_file,
         })
     }
 
@@ -390,10 +387,10 @@ impl AppSettings {
             "wallet_address_count" => Some(self.wallet_address_count.to_string()),
             "wallet_hardened_address" => Some(self.wallet_hardened_address.to_string()),
 
-            "gui_save_window_size" => Some(self.gui_save_window_size.to_string()),
-            "gui_last_width" => Some(self.gui_window_width.to_string()),
-            "gui_last_height" => Some(self.gui_window_height.to_string()),
-            "gui_window_maximized" => Some(self.gui_window_maximized.to_string()),
+            "gui_save_size" => Some(self.gui_save_size.to_string()),
+            "gui_last_width" => Some(self.gui_last_width.to_string()),
+            "gui_last_height" => Some(self.gui_last_height.to_string()),
+            "gui_maximized" => Some(self.gui_maximized.to_string()),
             "gui_theme" => Some(self.gui_theme.to_string()),
             "gui_language" => Some(self.gui_language.to_string()),
             "gui_search" => Some(self.gui_search.to_string()),
@@ -407,6 +404,7 @@ impl AppSettings {
             "proxy_status" => Some(self.proxy_status.clone()),
             "proxy_server_address" => Some(self.proxy_server_address.clone()),
             "proxy_server_port" => Some(self.proxy_server_port.to_string()),
+            "proxy_use_pac" => Some(self.proxy_use_pac.to_string()),
             "proxy_script_address" => Some(self.proxy_script_address.clone()),
             "proxy_login_credentials" => Some(self.proxy_login_credentials.to_string()),
             "proxy_login_username" => Some(self.proxy_login_username.clone()),
@@ -414,11 +412,287 @@ impl AppSettings {
             "proxy_use_ssl" => Some(self.proxy_use_ssl.to_string()),
             "proxy_ssl_certificate" => Some(self.proxy_ssl_certificate.clone()),
 
-            "log_output" => Some(self.log_output.clone()),
-            // "log_file" => Some(get_log_file()),
             _ => None,
         }
     }
+
+    fn update_value(&mut self, key: &str, new_value: toml_edit::Item) {
+        match key {
+            "wallet_entropy_source" => {
+                if new_value.as_str().map(|v| v != self.wallet_entropy_source).unwrap_or(false) {
+                    self.wallet_entropy_source = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "wallet_entropy_length" => {
+                if new_value.as_integer().map(|v| v as u32 != self.wallet_entropy_length).unwrap_or(false) {
+                    self.wallet_entropy_length = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "wallet_bip" => {
+                if new_value.as_integer().map(|v| v as u32 != self.wallet_bip).unwrap_or(false) {
+                    self.wallet_bip = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "wallet_address_count" => {
+                if new_value.as_integer().map(|v| v as u32 != self.wallet_address_count).unwrap_or(false) {
+                    self.wallet_address_count = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "wallet_hardened_address" => {
+                if new_value.as_bool().map(|v| v != self.wallet_hardened_address).unwrap_or(false) {
+                    self.wallet_hardened_address = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "gui_save_size" => {
+                if new_value.as_bool().map(|v| v != self.gui_save_size).unwrap_or(false) {
+                    self.gui_save_size = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "gui_last_width" => {
+                if new_value.as_integer().map(|v| v as u32 != self.gui_last_width).unwrap_or(false) {
+                    self.gui_last_width = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "gui_last_height" => {
+                if new_value.as_integer().map(|v| v as u32 != self.gui_last_height).unwrap_or(false) {
+                    self.gui_last_height = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "gui_maximized" => {
+                if new_value.as_bool().map(|v| v != self.gui_maximized).unwrap_or(false) {
+                    self.gui_maximized = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "gui_theme" => {
+                if new_value.as_str().map(|v| v != self.gui_theme).unwrap_or(false) {
+                    self.gui_theme = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "gui_language" => {
+                if new_value.as_str().map(|v| v != self.gui_language).unwrap_or(false) {
+                    self.gui_language = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "gui_search" => {
+                if new_value.as_str().map(|v| v != self.gui_search).unwrap_or(false) {
+                    self.gui_search = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "anu_enabled" => {
+                if new_value.as_bool().map(|v| v != self.anu_enabled).unwrap_or(false) {
+                    self.anu_enabled = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "anu_data_format" => {
+                if new_value.as_str().map(|v| v != self.anu_data_format).unwrap_or(false) {
+                    self.anu_data_format = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "anu_array_length" => {
+                if new_value.as_integer().map(|v| v as u32 != self.anu_array_length).unwrap_or(false) {
+                    self.anu_array_length = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "anu_hex_block_size" => {
+                if new_value.as_integer().map(|v| v as u32 != self.anu_hex_block_size).unwrap_or(false) {
+                    self.anu_hex_block_size = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "anu_log" => {
+                if new_value.as_bool().map(|v| v != self.anu_log).unwrap_or(false) {
+                    self.anu_log = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_status" => {
+                if new_value.as_str().map(|v| v != self.proxy_status).unwrap_or(false) {
+                    self.proxy_status = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_server_address" => {
+                if new_value.as_str().map(|v| v != self.proxy_server_address).unwrap_or(false) {
+                    self.proxy_server_address = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_server_port" => {
+                if new_value.as_integer()
+                .map(|v| (v as u32 != self.proxy_server_port) && (v != 0))
+                .unwrap_or(false) 
+                {
+                    self.proxy_server_port = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_use_pac" => {
+                if new_value.as_bool().map(|v| v != self.proxy_use_pac).unwrap_or(false) {
+                    self.proxy_use_pac = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_script_address" => {
+                if new_value.as_str().map(|v| v != self.proxy_script_address).unwrap_or(false) {
+                    self.proxy_script_address = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_login_credentials" => {
+                if new_value.as_bool().map(|v| v != self.proxy_login_credentials).unwrap_or(false) {
+                    self.proxy_login_credentials = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_login_username" => {
+                if new_value.as_str().map(|v| v != self.proxy_login_username).unwrap_or(false) {
+                    self.proxy_login_username = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_login_password" => {
+                if new_value.as_str().map(|v| v != self.proxy_login_password).unwrap_or(false) {
+                    self.proxy_login_password = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_use_ssl" => {
+                if new_value.as_bool().map(|v| v != self.proxy_use_ssl).unwrap_or(false) {
+                    self.proxy_use_ssl = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            "proxy_ssl_certificate" => {
+                if new_value.as_str().map(|v| v != self.proxy_ssl_certificate).unwrap_or(false) {
+                    self.proxy_ssl_certificate = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            }
+            _ => {}
+        }
+    
+    }
+
+    
+    fn save_settings(&self) {
+        let config_str = fs::read_to_string(APP_LOCAL_CONFIG_FILE)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to read config file: {}", e)))
+            .expect("Problem with local config file");
+        
+        let mut doc = config_str.parse::<toml_edit::DocumentMut>()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to parse config string: {}", e)))
+            .expect("Problem with mut doc");
+    
+        {
+            let wallet_section = doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
+            if let toml_edit::Item::Table(wallet_table) = wallet_section {
+                wallet_table["entropy_source"] = toml_edit::value(self.wallet_entropy_source.clone());
+                wallet_table["entropy_length"] = toml_edit::value(self.wallet_entropy_length as i64);
+                wallet_table["bip"] = toml_edit::value(self.wallet_bip as i64);
+                wallet_table["address_count"] = toml_edit::value(self.wallet_address_count as i64);
+                wallet_table["hardened_address"] = toml_edit::value(self.wallet_hardened_address);
+            }
+        }
+    
+        {
+            let gui_section = doc["gui"].or_insert(toml_edit::Item::Table(Default::default()));
+            if let toml_edit::Item::Table(gui_table) = gui_section {
+                gui_table["save_size"] = toml_edit::value(self.gui_save_size);
+                gui_table["last_width"] = toml_edit::value(self.gui_last_width as i64);
+                gui_table["last_height"] = toml_edit::value(self.gui_last_height as i64);
+                gui_table["maximized"] = toml_edit::value(self.gui_maximized);
+                gui_table["theme"] = toml_edit::value(self.gui_theme.clone());
+                gui_table["language"] = toml_edit::value(self.gui_language.clone());
+                gui_table["search"] = toml_edit::value(self.gui_search.clone());
+            }
+        }
+    
+        {
+            let anu_section = doc["anu"].or_insert(toml_edit::Item::Table(Default::default()));
+            if let toml_edit::Item::Table(anu_table) = anu_section {
+                anu_table["enabled"] = toml_edit::value(self.anu_enabled);
+                anu_table["data_format"] = toml_edit::value(self.anu_data_format.clone());
+                anu_table["array_length"] = toml_edit::value(self.anu_array_length as i64);
+                anu_table["hex_block_size"] = toml_edit::value(self.anu_hex_block_size as i64);
+                anu_table["log"] = toml_edit::value(self.anu_log);
+            }
+        }
+    
+        {
+            let proxy_section = doc["proxy"].or_insert(toml_edit::Item::Table(Default::default()));
+            if let toml_edit::Item::Table(proxy_table) = proxy_section {
+                proxy_table["status"] = toml_edit::value(self.proxy_status.clone());
+                proxy_table["server_address"] = toml_edit::value(self.proxy_server_address.clone());
+                proxy_table["server_port"] = toml_edit::value(self.proxy_server_port as i64);
+                proxy_table["use_pac"] = toml_edit::value(self.proxy_use_pac);
+                proxy_table["script_address"] = toml_edit::value(self.proxy_script_address.clone());
+                proxy_table["login_credentials"] = toml_edit::value(self.proxy_login_credentials);
+                proxy_table["login_username"] = toml_edit::value(self.proxy_login_username.clone());
+                proxy_table["login_password"] = toml_edit::value(self.proxy_login_password.clone());
+                proxy_table["use_ssl"] = toml_edit::value(self.proxy_use_ssl);
+                proxy_table["ssl_certificate"] = toml_edit::value(self.proxy_ssl_certificate.clone());
+            }
+        }
+    
+        // Convert the document back to a string
+        let toml_str = doc.to_string();
+        // println!("toml_str: {:?}", toml_str);
+        println!("Updating value in config");
+    
+        // Write the updated config string to the file
+        let mut file = fs::File::create(APP_LOCAL_CONFIG_FILE)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to create config file: {}", e)))
+            .expect("Problem with local config file");
+        
+        file.write_all(toml_str.as_bytes())
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to write to config file: {}", e)))
+            .expect("can not write to local config file");
+        
+    }
+
+
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -623,7 +897,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 
             ADDRESS_DATA.with(|data| {
                 let mut data = data.borrow_mut();
-                println!("entropy_initial {:?}", qrng_entropy_string);
+                // println!("entropy_initial {:?}", qrng_entropy_string);
                 data.entropy_string = Some(qrng_entropy_string.clone());
             });
 
@@ -969,7 +1243,9 @@ fn create_settings_window() {
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
     
-    // Sidebar 1: General settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Settings: Sidebar 1: General settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let general_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.general").to_string()));
     let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
@@ -1015,23 +1291,23 @@ fn create_settings_window() {
     let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_language_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_language_label = gtk::Label::new(Some(&t!("UI.settings.general.language").to_string()));
-    let valid_gui_themes_as_strings: Vec<String> = APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
-    let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
-    let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
-    let default_gui_theme = valid_gui_themes_as_strings
+    let valid_gui_languages_as_strings: Vec<String> = APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_languages_as_str_refs: Vec<&str> = valid_gui_languages_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_gui_language_dropdown = gtk::DropDown::from_strings(&valid_gui_languages_as_str_refs);
+    let default_gui_language = valid_gui_languages_as_strings
         .iter()
-        .position(|s| *s == settings.gui_theme) 
+        .position(|s| *s == settings.gui_language) 
         .unwrap_or(0);
 
-    gui_theme_dropdown.set_selected(default_gui_theme.try_into().unwrap());
-    gui_theme_dropdown.set_size_request(200, 10);
+    default_gui_language_dropdown.set_selected(default_gui_language.try_into().unwrap());
+    default_gui_language_dropdown.set_size_request(200, 10);
     default_gui_language_box.set_hexpand(true);
     default_gui_language_item_box.set_hexpand(true);
     default_gui_language_item_box.set_margin_end(20);
     default_gui_language_item_box.set_halign(gtk::Align::End);
     
     default_gui_language_label_box.append(&default_gui_language_label);
-    default_gui_language_item_box.append(&gui_theme_dropdown);
+    default_gui_language_item_box.append(&default_gui_language_dropdown);
     default_gui_language_box.append(&default_gui_language_label_box);
     default_gui_language_box.append(&default_gui_language_item_box);
     content_general_box.append(&default_gui_language_box);
@@ -1042,7 +1318,7 @@ fn create_settings_window() {
     let window_save_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let save_window_size_label = gtk::Label::new(Some(&t!("UI.settings.general.save_window").to_string()));
     let save_window_size_checkbox = gtk::CheckButton::new();
-    let is_checked = settings.gui_save_window_size;
+    let is_checked = settings.gui_save_size;
 
     save_window_size_checkbox.set_active(is_checked);
     window_save_label_box.set_hexpand(true);
@@ -1056,6 +1332,32 @@ fn create_settings_window() {
     window_save_box.append(&window_save_item_box);
     content_general_box.append(&window_save_box);
 
+    // Default search parameter
+    let default_search_parameter_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_search_parameter_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_search_parameter_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_search_parameter_label = gtk::Label::new(Some(&t!("UI.settings.general.search").to_string()));
+    let valid_search_parameters_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
+    let valid_search_parameters_as_str_refs: Vec<&str> = valid_search_parameters_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_search_parameter_dropdown = gtk::DropDown::from_strings(&valid_search_parameters_as_str_refs);
+    let default_search_parameter = valid_search_parameters_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_search) 
+        .unwrap_or(0);
+
+    default_search_parameter_dropdown.set_selected(default_search_parameter.try_into().unwrap());
+    default_search_parameter_dropdown.set_size_request(200, 10);
+    default_search_parameter_box.set_hexpand(true);
+    default_search_parameter_item_box.set_hexpand(true);
+    default_search_parameter_item_box.set_margin_end(20);
+    default_search_parameter_item_box.set_halign(gtk::Align::End);
+    
+    default_search_parameter_label_box.append(&default_search_parameter_label);
+    default_search_parameter_item_box.append(&default_search_parameter_dropdown);
+    default_search_parameter_box.append(&default_search_parameter_label_box);
+    default_search_parameter_box.append(&default_search_parameter_item_box);
+    content_general_box.append(&default_search_parameter_box);
+
     stack.add_titled(
         &general_settings_box,
         Some("sidebar-settings-general"),
@@ -1063,7 +1365,9 @@ fn create_settings_window() {
     );
  
  
-    // Sidebar 2: Wallet settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Settings: Sidebar 2: Wallet settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
     let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet").to_string()));
     let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
@@ -1156,6 +1460,56 @@ fn create_settings_window() {
     default_bip_box.append(&default_bip_item_box);
     content_wallet_box.append(&default_bip_box);
 
+    // Default address count
+    let default_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_address_count_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_address_count_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_address_count_label = gtk::Label::new(Some(&t!("UI.settings.wallet.address-count").to_string()));
+    let default_address_count = settings.wallet_address_count as f64;
+    let address_count_adjustment = gtk::Adjustment::new(
+        default_address_count, // initial value
+        1.0, // minimum value
+        2147483647.0, // maximum value
+        1.0, // step increment
+        10.0, // page increment
+        0.0, // page size
+    );
+    let address_count_spinbutton = gtk::SpinButton::new(Some(&address_count_adjustment), 1.0, 0);
+
+    address_count_spinbutton.set_size_request(200, 10);
+    default_address_count_box.set_hexpand(true);
+    default_address_count_item_box.set_hexpand(true);
+    default_address_count_item_box.set_margin_end(20);
+    default_address_count_item_box.set_halign(gtk::Align::End);
+
+    default_address_count_label_box.append(&default_address_count_label);
+    default_address_count_item_box.append(&address_count_spinbutton);
+    default_address_count_box.append(&default_address_count_label_box);
+    default_address_count_box.append(&default_address_count_item_box);
+    content_wallet_box.append(&default_address_count_box);
+
+
+    // Hardened addresses
+    let hardened_addresses_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let hardened_addresses_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let hardened_addresses_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let hardened_addresses_label = gtk::Label::new(Some(&t!("UI.settings.wallet.hardened").to_string()));
+    let hardened_addresses_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.wallet_hardened_address;
+
+    hardened_addresses_checkbox.set_active(is_checked);
+    hardened_addresses_label_box.set_hexpand(true);
+    hardened_addresses_item_box.set_hexpand(true);
+    hardened_addresses_item_box.set_margin_end(20);
+    hardened_addresses_item_box.set_halign(gtk::Align::End);
+
+    hardened_addresses_label_box.append(&hardened_addresses_label);
+    hardened_addresses_item_box.append(&hardened_addresses_checkbox);
+    hardened_addresses_box.append(&hardened_addresses_label_box);
+    hardened_addresses_box.append(&hardened_addresses_item_box);
+    content_wallet_box.append(&hardened_addresses_box);
+
+
     stack.add_titled(
         &wallet_settings_box, 
         Some("sidebar-settings-wallet"), 
@@ -1164,7 +1518,7 @@ fn create_settings_window() {
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
-    // Sidebar 3: ANU settings
+    // JUMP: Settings: Sidebar 3: ANU settings
     // -.-. --- .--. -.-- .-. .. --. .... -
     let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu").to_string()));
@@ -1232,8 +1586,6 @@ fn create_settings_window() {
     let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
-    
-    // Min/Max check
     let mut default_array_length = settings.anu_array_length;
     default_array_length = std::cmp::max(ANU_MINIMUM_ARRAY_LENGTH, default_array_length);
     default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
@@ -1339,7 +1691,7 @@ fn create_settings_window() {
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
-    // Sidebar 4: Proxy settings
+    // JUMP: Settings: Sidebar 4: Proxy settings
     // -.-. --- .--. -.-- .-. .. --. .... -
     let scrolled_window = gtk::ScrolledWindow::new();
     scrolled_window.set_max_content_height(400);
@@ -1618,8 +1970,6 @@ fn create_settings_window() {
 
     content_proxy_box.append(&proxy_manual_settings_box);
 
-
-    
     stack.add_titled(
         &scrolled_window,
         Some("sidebar-settings-proxy"),
@@ -1671,6 +2021,132 @@ fn create_settings_window() {
     let cancel_button = gtk::Button::with_label(&t!("UI.settings.button.cancel").to_string());
     // IMPLEMENT: apply button
 
+
+    // JUMP: Save settings button
+    save_button.connect_clicked(clone!(
+        // @weak anu_data_format_dropdown,
+        @weak settings_window, => move |_| {
+            // let config_path = "config/custom.conf";
+            let mut settings = AppSettings::load_settings().unwrap();
+            
+            // wallet_entropy_source: String,
+            let new_value = toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize]);
+            settings.update_value("wallet_entropy_source", new_value);
+            
+            // wallet_entropy_length: u32,
+            let new_value = toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64);
+            settings.update_value("wallet_entropy_length", new_value);
+            
+            // wallet_bip: u32,
+            let new_value = toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64);
+            settings.update_value("wallet_bip", new_value);
+            
+            // wallet_address_count: u32,
+            let new_value = toml_edit::value(address_count_spinbutton.value_as_int() as i64);
+            settings.update_value("wallet_address_count", new_value);
+            
+            // wallet_hardened_address: bool,
+            let new_value = toml_edit::value(hardened_addresses_checkbox.is_active());
+            settings.update_value("wallet_hardened_address", new_value);
+            
+            // gui_save_size: bool,
+            if save_window_size_checkbox.is_active() {
+                let new_value = toml_edit::value(true);
+                settings.update_value("gui_save_size", new_value);
+                
+                // IMPLEMENT: get values from main window
+                // gui_last_width: u32,
+
+                // gui_last_height: u32,
+
+                // gui_maximized: bool,
+            } else {
+                // gui_save_size: bool,
+                let new_value = toml_edit::value(false);
+                settings.update_value("gui_save_size", new_value);
+
+                // gui_maximized: bool,
+                let new_value = toml_edit::value(false);
+                settings.update_value("gui_maximized", new_value);
+            }
+
+            // gui_theme: String,
+            let new_value = toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize]);
+            settings.update_value("gui_theme", new_value);
+            
+            // gui_language: String,
+            let new_value = toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize]);
+            settings.update_value("gui_language", new_value);
+            
+            // gui_search: String,
+            let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
+            settings.update_value("gui_search", new_value);
+            
+            // anu_enabled: bool,
+            let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
+            settings.update_value("anu_enabled", new_value);
+            
+            // anu_data_format: String,
+            let new_value = toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize]);
+            settings.update_value("anu_data_format", new_value);
+
+            // anu_array_length: u32,
+            let new_value = toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64);
+            settings.update_value("anu_array_length", new_value);
+
+            // anu_hex_block_size: u32,
+            let new_value = toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64);
+            settings.update_value("anu_hex_block_size", new_value);
+
+            // anu_log: bool,
+            let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
+            settings.update_value("anu_enabled", new_value);
+            
+            // proxy_status: String,
+            let new_value = toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize]);
+            settings.update_value("proxy_status", new_value);
+
+            // proxy_server_address: String,
+            let new_value = toml_edit::value(proxy_server_address_entry.text().to_string());
+            settings.update_value("proxy_server_address", new_value);
+
+            // proxy_server_port: u32,
+            let new_value = toml_edit::value((proxy_server_port_entry.text().parse::<u32>().unwrap_or_default()) as i64);
+            settings.update_value("proxy_server_port", new_value);
+
+            // proxy_use_pac: bool,
+            let new_value = toml_edit::value(use_proxy_ssl_checkbox.is_active());
+            settings.update_value("proxy_use_pac", new_value);
+
+            // proxy_script_address: String,
+            let new_value = toml_edit::value(proxy_pac_path_entry.text().to_string());
+            settings.update_value("proxy_script_address", new_value);
+
+            // proxy_login_credentials: bool,
+            let new_value = toml_edit::value(use_proxy_credentials_checkbox.is_active());
+            settings.update_value("proxy_login_credentials", new_value);
+
+            // proxy_login_username: String,
+            let new_value = toml_edit::value(proxy_username_entry.text().to_string());
+            settings.update_value("proxy_login_username", new_value);
+
+            // proxy_login_password: String,
+            let new_value = toml_edit::value(proxy_password_entry.text().to_string());
+            settings.update_value("proxy_login_password", new_value);
+
+            // proxy_use_ssl: bool,
+            let new_value = toml_edit::value(use_proxy_ssl_checkbox.is_active());
+            settings.update_value("proxy_use_ssl", new_value);
+
+            // proxy_ssl_certificate: String,
+            let new_value = toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string());
+            settings.update_value("proxy_ssl_certificate", new_value);
+
+            settings_window.close()
+        }
+    ));
+    
+    
     cancel_button.connect_clicked(clone!(
         @weak settings_window => move |_| {
             settings_window.close()
@@ -1861,6 +2337,9 @@ fn create_main_window(application: &adw::Application) {
 
     // Actions
     settings_button.connect_clicked(move |_| {
+        // AppSettings::load_settings()
+        //     .expect(&t!("error.file.read").to_string());
+
         create_settings_window();
     });
 

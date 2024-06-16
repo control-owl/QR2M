@@ -1,10 +1,11 @@
-// Test vectors -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+// module = "QRNG testing vectors"
+// copyright = "Copyright © 2023-2024 D3BUG"
+// version = "2024-06-16"
 
-// use crate::{
-//     generate_mnemonic_words, 
-//     derive_master_keys, 
-//     derive_child_key
-// };
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 struct _EntropyMnemonicVector {
     entropy: &'static str,

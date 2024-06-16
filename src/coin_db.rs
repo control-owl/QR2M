@@ -1,8 +1,17 @@
+// authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+// module = "Extended Crypto-asset DataBase (ECDB)"
+// copyright = "Copyright © 2023-2024 D3BUG"
+// version = "2024-06-16"
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
 use std::fs::File;
 use csv::ReaderBuilder;
 use gtk4 as gtk;
 
-const COINLIST_FILE: &str = "lib/CKDB.csv";
+const COINLIST_FILE: &str = "lib/ECDB.csv";
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

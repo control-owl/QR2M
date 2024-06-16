@@ -1,8 +1,16 @@
+// authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+// module = "Development playground"
+// copyright = "Copyright © 2023-2024 D3BUG"
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
 use sha2::{Digest, Sha256};
 use ed25519_dalek::{SigningKey, VerifyingKey};
 
 
-// TESTING -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 pub fn derive_from_path_ed25519(
