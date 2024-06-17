@@ -2368,34 +2368,9 @@ fn create_main_window(application: &adw::Application) {
     header_bar.pack_end(&about_button);
 
 
-    let application_clone = application.clone();
-    let settings_clone = settings.clone();      
     // Actions
     settings_button.connect_clicked(move |_| {
         create_settings_window();
-
-        println!("initial theme: {:?}", settings_clone.gui_theme);
-
-        let preferred_theme = match settings.clone().get_value("gui_theme") {
-            Some(value) => {
-                match String::from(&value).as_str() {
-                    "System" => adw::ColorScheme::Default,
-                    "Light" => adw::ColorScheme::ForceLight,
-                    "Dark" => adw::ColorScheme::ForceDark,
-                    _ => {
-                        eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = value));
-                        adw::ColorScheme::Default
-                    },
-                }
-            },
-            None => {
-                eprintln!("{}", &t!("error.settings.not_found", value = "gui_theme"));
-                adw::ColorScheme::PreferLight
-            }
-        };
-
-        println!("Preferred theme: {:?}", preferred_theme);
-        application_clone.style_manager().set_color_scheme(preferred_theme);
     });
     
 
@@ -2950,7 +2925,7 @@ fn create_main_window(application: &adw::Application) {
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
-    address_options_hardened_address_checkbox.set_active(settings.wallet_hardened_address.clone());
+    address_options_hardened_address_checkbox.set_active(settings.wallet_hardened_address);
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
     address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
