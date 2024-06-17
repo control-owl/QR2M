@@ -44,7 +44,7 @@ pub fn detect_os_and_user_dir() -> (String, PathBuf) {
 
     let user_dir = match os.as_str() {
         "windows" => {
-            let mut path = env::var("USERPROFILE").unwrap_or("C:\\Users\\Default".to_string());
+            let mut path = env::var("USERPROFILE").unwrap_or("C:\\".to_string());
             path.push_str(&format!("\\{}\\", APP_NAME.unwrap()));
             PathBuf::from(path)
         },
@@ -62,4 +62,13 @@ pub fn detect_os_and_user_dir() -> (String, PathBuf) {
     };
 
     (os, user_dir)
+}
+
+pub fn switch_locale(lang: &str) {
+    match lang {
+        "English" => rust_i18n::set_locale("en"),
+        "Deutsch" => rust_i18n::set_locale("de"),
+        "Hrvatski" => rust_i18n::set_locale("hr"),
+        _ => rust_i18n::set_locale("en"),
+    }
 }

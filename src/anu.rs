@@ -28,19 +28,33 @@ const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
     let start_time = SystemTime::now();
 
-    let anu_data = fetch_anu_qrng_data(
+    crate::create_message_window(
+        "ANU QRNG API", 
+        &t!("UI.main.anu.download"), 
+        Some(true), 
+        Some(5)
+    );
+    
+    let (sender, receiver) = std::sync::mpsc::channel();
+
+    fetch_anu_qrng_data(
         data_format, 
         array_length, 
-        hex_block_size.unwrap()
+        hex_block_size.unwrap(),
+        sender
     );
 
-    if !&anu_data.as_ref().unwrap().is_empty() {
+    let anu_data = receiver.recv().unwrap(); // Blocking call to wait for the response
+
+    if !anu_data.as_ref().unwrap().is_empty() {
         create_anu_timestamp(start_time);
         // TODO: Check if global log is enabled, then save
         write_api_response_to_log(&anu_data);
     } else {
-        return String::new()
+        return String::new();
     }
+
+    // anu_data.unwrap();
 
     let entropy = match data_format {
         "uint8" =>  {
@@ -112,84 +126,84 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
     }
 }
 
-fn fetch_anu_qrng_data(data_format: &str, array_length: u32, block_size: u32) -> Option<String> {
-    let current_time = SystemTime::now();
-    let last_request_time = load_last_anu_request().unwrap();
+fn fetch_anu_qrng_data(
+    data_format: &str,
+    array_length: u32,
+    block_size: u32,
+    sender: std::sync::mpsc::Sender<Option<String>>
+) {
+    let data_format_owned = data_format.to_string();
 
-    let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
-    let wait_duration = Duration::from_secs(ANU_REQUEST_INTERVAL_SECONDS as u64);
+    std::thread::spawn(move || {
+        let current_time = SystemTime::now();
+        let last_request_time = load_last_anu_request().unwrap();
+        let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
+        let wait_duration = Duration::from_secs(ANU_REQUEST_INTERVAL_SECONDS as u64);
 
-    if elapsed < wait_duration {
-        let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-        crate::create_message_window(
-            "ANU API Timeout", 
-            &t!("error.anu.timeout", value = remaining_seconds), 
-            Some(true), 
-            Some(remaining_seconds as u32)
-        );
-        eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
-        return Some(String::new());
-    }
-    
-    crate::create_message_window(
-        "ANU QRNG API", 
-        &t!("UI.main.anu.download"), 
-        Some(true), 
-        Some(5)
-    );
-
-
-    let mut socket_addr = ANU_API_URL
-        .to_socket_addrs()
-        .map_err(|e| format!("Socket address parsing error: {}", e))
-        .unwrap();
-    
-    let socket_addr = socket_addr
-        .next()
-        .ok_or("No socket addresses found for ANU API URL")
-        .unwrap();
-
-    let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
-        .map_err(|e| format!("Connection error: {}", e))
-        .unwrap();
-
-    let anu_request = format!(
-        "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
-        data_format, array_length, block_size
-    )
-    .into_bytes();
-
-    stream.write_all(&anu_request)
-        .map_err(|e| format!("Write error: {}", e))
-        .unwrap();
-
-    stream.flush()
-        .map_err(|e| format!("Flush error: {}", e))
-        .unwrap();
-
-    let mut response = String::new();
-    let mut buffer = [0; 256];
-    let mut chunks = Vec::new();
-
-    loop {
-        match stream.read(&mut buffer) {
-            Ok(bytes_read) if bytes_read > 0 => {
-                let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-                // print!("{}", chunk);
-                response.push_str(&chunk);
-                chunks.push(chunk.to_string());
-
-                if chunk.ends_with("\r\n\r\n") {
-                    break;
-                }
-            }
-            Ok(_) | Err(_) => break,
+        if elapsed < wait_duration {
+            let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
+            crate::create_message_window(
+                "ANU API Timeout", 
+                &t!("error.anu.timeout", value = remaining_seconds), 
+                Some(true), 
+                Some(remaining_seconds as u32)
+            );
+            eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
+            sender.send(Some(String::new())).unwrap();
+            return;
         }
-    }
 
-    let combined_response = chunks.concat();
+        let mut socket_addr = ANU_API_URL
+            .to_socket_addrs()
+            .map_err(|e| format!("Socket address parsing error: {}", e))
+            .unwrap();
+        
+        let socket_addr = socket_addr
+            .next()
+            .ok_or("No socket addresses found for ANU API URL")
+            .unwrap();
 
-    Some(combined_response)
+        let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
+            .map_err(|e| format!("Connection error: {}", e))
+            .unwrap();
+
+        let anu_request = format!(
+            "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
+            data_format_owned, array_length, block_size
+        )
+        .into_bytes();
+
+        stream.write_all(&anu_request)
+            .map_err(|e| format!("Write error: {}", e))
+            .unwrap();
+
+        stream.flush()
+            .map_err(|e| format!("Flush error: {}", e))
+            .unwrap();
+
+        let mut response = String::new();
+        let mut buffer = [0; 256];
+        let mut chunks = Vec::new();
+
+        loop {
+            match stream.read(&mut buffer) {
+                Ok(bytes_read) if bytes_read > 0 => {
+                    let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+                    // print!("{}", chunk);
+                    response.push_str(&chunk);
+                    chunks.push(chunk.to_string());
+
+                    if chunk.ends_with("\r\n\r\n") {
+                        break;
+                    }
+                }
+                Ok(_) | Err(_) => break,
+            }
+        }
+
+        let combined_response = chunks.concat();
+        sender.send(Some(combined_response)).unwrap();
+    });
 }
 
 fn load_last_anu_request() -> Option<SystemTime> {

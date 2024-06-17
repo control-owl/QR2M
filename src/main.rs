@@ -1,3 +1,10 @@
+// authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+// copyright = "Copyright © 2023-2024 D3BUG"
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
 #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -26,7 +33,6 @@ use gtk::{gio, glib::clone, Stack, StackSidebar};
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use sha3::Keccak256;
-use rust_i18n::t;
 
 // Mods
 mod anu;
@@ -36,7 +42,8 @@ mod os;
 mod test_vectors;
 
 
-#[macro_use] extern crate rust_i18n;
+#[macro_use]
+extern crate rust_i18n;
 i18n!("locale", fallback = "en");
 
 // Default settings
@@ -111,7 +118,7 @@ lazy_static! {
 
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct AppSettings {
     wallet_entropy_source: String,
     wallet_entropy_length: u32,
@@ -147,7 +154,6 @@ struct AppSettings {
 impl AppSettings {
     // FEATURE: create verify_settings function
     fn load_settings() -> io::Result<Self> {
-        // BUG: This will panic. Why?
         println!("Loading settings:");
 
         let (_os, path) = os::detect_os_and_user_dir();
@@ -171,7 +177,7 @@ impl AppSettings {
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                eprintln!("Failed to read local config file {}: {}", APP_LOCAL_CONFIG_FILE, err);
+                eprintln!("Failed to read local config file {}: {}", local_config_file, err);
                 String::new() // IMPLEMENT: load default config instead empty one
             }
         };
@@ -492,6 +498,7 @@ impl AppSettings {
                 if new_value.as_str().map(|v| v != self.gui_language).unwrap_or(false) {
                     self.gui_language = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
+                    os::switch_locale(new_value.as_str().unwrap_or_default());
                     self.save_settings();
                 }
             }
@@ -617,7 +624,11 @@ impl AppSettings {
 
     
     fn save_settings(&self) {
-        let config_str = fs::read_to_string(APP_LOCAL_CONFIG_FILE)
+        let (_os, path) = os::detect_os_and_user_dir();
+        let local_config_file = format!("{}{}", &path.to_str().unwrap_or_default(), APP_LOCAL_CONFIG_FILE);
+
+
+        let config_str = fs::read_to_string(&local_config_file)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to read config file: {}", e)))
             .expect("Problem with local config file");
         
@@ -682,7 +693,7 @@ impl AppSettings {
         println!("Updating value in config");
     
         // Write the updated config string to the file
-        let mut file = fs::File::create(APP_LOCAL_CONFIG_FILE)
+        let mut file = fs::File::create(&local_config_file)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to create config file: {}", e)))
             .expect("Problem with local config file");
         
@@ -1383,11 +1394,18 @@ fn create_settings_window() {
     wallet_settings_frame.set_child(Some(&content_wallet_box));
 
     // Default entropy source
+    let qrng_enabled = settings.anu_enabled;
+    let valid_entropy_sources: Vec<&str> = if qrng_enabled {
+        VALID_ENTROPY_SOURCES.iter().cloned().collect()
+    } else {
+        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
+    };
+    
     let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_source_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source").to_string()));
-    let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
     let default_entropy_source = valid_entropy_source_as_strings
@@ -1650,6 +1668,20 @@ fn create_settings_window() {
         default_anu_hex_length_box.set_visible(false);
     } ;
 
+    if use_anu_api_checkbox.is_active() {
+        default_api_data_format_box.set_visible(true);
+        default_anu_array_length_box.set_visible(true);
+        if anu_data_format_dropdown.selected() as usize == 2 {
+            default_anu_hex_length_box.set_visible(true);
+        } else {
+            default_anu_hex_length_box.set_visible(false);
+        }
+    } else {
+        default_api_data_format_box.set_visible(false);
+        default_anu_array_length_box.set_visible(false);
+        default_anu_hex_length_box.set_visible(false);
+    }
+    
     // Actions
     let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
     let anu_data_format_dropdown_clone = anu_data_format_dropdown.clone();
@@ -2335,13 +2367,37 @@ fn create_main_window(application: &adw::Application) {
     header_bar.pack_end(&settings_button);
     header_bar.pack_end(&about_button);
 
+
+    let application_clone = application.clone();
+    let settings_clone = settings.clone();      
     // Actions
     settings_button.connect_clicked(move |_| {
-        // AppSettings::load_settings()
-        //     .expect(&t!("error.file.read").to_string());
-
         create_settings_window();
+
+        println!("initial theme: {:?}", settings_clone.gui_theme);
+
+        let preferred_theme = match settings.clone().get_value("gui_theme") {
+            Some(value) => {
+                match String::from(&value).as_str() {
+                    "System" => adw::ColorScheme::Default,
+                    "Light" => adw::ColorScheme::ForceLight,
+                    "Dark" => adw::ColorScheme::ForceDark,
+                    _ => {
+                        eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = value));
+                        adw::ColorScheme::Default
+                    },
+                }
+            },
+            None => {
+                eprintln!("{}", &t!("error.settings.not_found", value = "gui_theme"));
+                adw::ColorScheme::PreferLight
+            }
+        };
+
+        println!("Preferred theme: {:?}", preferred_theme);
+        application_clone.style_manager().set_color_scheme(preferred_theme);
     });
+    
 
     // open_wallet_button.connect_clicked(move |_| {
     //     create_message_window("msg", None, None);
@@ -2380,7 +2436,15 @@ fn create_main_window(application: &adw::Application) {
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-    let valid_entropy_source_as_strings: Vec<String> = VALID_ENTROPY_SOURCES.iter().map(|&x| x.to_string()).collect();
+    let qrng_enabled = settings.anu_enabled;
+
+    let valid_entropy_sources: Vec<&str> = if qrng_enabled {
+        VALID_ENTROPY_SOURCES.iter().cloned().collect()
+    } else {
+        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
+    };
+
+    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
     let default_entropy_source = valid_entropy_source_as_strings
@@ -2886,7 +2950,7 @@ fn create_main_window(application: &adw::Application) {
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
-    address_options_hardened_address_checkbox.set_active(settings.wallet_hardened_address);
+    address_options_hardened_address_checkbox.set_active(settings.wallet_hardened_address.clone());
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
     address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
@@ -3818,6 +3882,13 @@ fn main() {
     set_log_file(log_file);
 
     print_program_info();
+
+
+    let settings = AppSettings::load_settings()
+        .expect(&t!("error.file.read").to_string());
+    
+    os::switch_locale(&settings.gui_language);
+
     println!("{}", t!("hello"));
 
     let application = adw::Application::builder()
@@ -4205,10 +4276,34 @@ fn generate_sha256_ripemd160_address(
     Ok(encoded_address)
 }
 
-
-
-
 enum CryptoPublicKey {
     Secp256k1(secp256k1::PublicKey),
     Ed25519(ed25519_dalek::VerifyingKey),
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
