@@ -119,7 +119,7 @@ lazy_static! {
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct AppSettings {
+pub struct AppSettings {
     wallet_entropy_source: String,
     wallet_entropy_length: u32,
     wallet_bip: u32,
@@ -129,8 +129,8 @@ struct AppSettings {
     gui_last_width: u32,
     gui_last_height: u32,
     gui_maximized: bool,
-    gui_theme: String,
-    gui_language: String,
+    pub gui_theme: String,
+    pub gui_language: String,
     gui_search: String,
     anu_enabled: bool,
     anu_data_format: String,
@@ -422,7 +422,7 @@ impl AppSettings {
         }
     }
 
-    fn update_value(&mut self, key: &str, new_value: toml_edit::Item) {
+    fn update_value(&mut self, key: &str, new_value: toml_edit::Item, state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
         match key {
             "wallet_entropy_source" => {
                 if new_value.as_str().map(|v| v != self.wallet_entropy_source).unwrap_or(false) {
@@ -488,17 +488,30 @@ impl AppSettings {
                 }
             }
             "gui_theme" => {
+                let state_clone = state.clone();
                 if new_value.as_str().map(|v| v != self.gui_theme).unwrap_or(false) {
                     self.gui_theme = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
+                    println!("gui_theme {:?}", self.gui_theme);
+                    if let Some(state) = state_clone {
+                        let mut state = state.borrow_mut();
+                        state.theme_preference = self.gui_theme.clone();
+                        state.apply_theme();
+                    }
                     self.save_settings();
                 }
-            }
+            },
             "gui_language" => {
+                let state_clone = state.clone();
                 if new_value.as_str().map(|v| v != self.gui_language).unwrap_or(false) {
                     self.gui_language = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
-                    os::switch_locale(new_value.as_str().unwrap_or_default());
+                    println!("gui_language {:?}", self.gui_language);
+                    if let Some(state) = state_clone {
+                        let mut state = state.borrow_mut();
+                        state.language = self.gui_language.clone();
+                        state.apply_language();
+                    }
                     self.save_settings();
                 }
             }
@@ -622,7 +635,6 @@ impl AppSettings {
     
     }
 
-    
     fn save_settings(&self) {
         let (_os, path) = os::detect_os_and_user_dir();
         let local_config_file = format!("{}{}", &path.to_str().unwrap_or_default(), APP_LOCAL_CONFIG_FILE);
@@ -702,7 +714,6 @@ impl AppSettings {
             .expect("can not write to local config file");
         
     }
-
 
 }
 
@@ -1236,7 +1247,7 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
     
 }
 
-fn create_settings_window() {
+pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
     println!("{}", &t!("log.create_settings_window").to_string());
 
     let settings = AppSettings::load_settings()
@@ -2063,28 +2074,28 @@ fn create_settings_window() {
             
             // wallet_entropy_source: String,
             let new_value = toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize]);
-            settings.update_value("wallet_entropy_source", new_value);
+            settings.update_value("wallet_entropy_source", new_value, None);
             
             // wallet_entropy_length: u32,
             let new_value = toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64);
-            settings.update_value("wallet_entropy_length", new_value);
+            settings.update_value("wallet_entropy_length", new_value, None);
             
             // wallet_bip: u32,
             let new_value = toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64);
-            settings.update_value("wallet_bip", new_value);
+            settings.update_value("wallet_bip", new_value, None);
             
             // wallet_address_count: u32,
             let new_value = toml_edit::value(address_count_spinbutton.value_as_int() as i64);
-            settings.update_value("wallet_address_count", new_value);
+            settings.update_value("wallet_address_count", new_value, None);
             
             // wallet_hardened_address: bool,
             let new_value = toml_edit::value(hardened_addresses_checkbox.is_active());
-            settings.update_value("wallet_hardened_address", new_value);
+            settings.update_value("wallet_hardened_address", new_value, None);
             
             // gui_save_size: bool,
             if save_window_size_checkbox.is_active() {
                 let new_value = toml_edit::value(true);
-                settings.update_value("gui_save_size", new_value);
+                settings.update_value("gui_save_size", new_value, None);
                 
                 // IMPLEMENT: get values from main window
                 // gui_last_width: u32,
@@ -2095,84 +2106,85 @@ fn create_settings_window() {
             } else {
                 // gui_save_size: bool,
                 let new_value = toml_edit::value(false);
-                settings.update_value("gui_save_size", new_value);
+                settings.update_value("gui_save_size", new_value, None);
 
                 // gui_maximized: bool,
                 let new_value = toml_edit::value(false);
-                settings.update_value("gui_maximized", new_value);
+                settings.update_value("gui_maximized", new_value, None);
             }
 
             // gui_theme: String,
             let new_value = toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize]);
-            settings.update_value("gui_theme", new_value);
+            let state_clone = state.clone();
+            settings.update_value("gui_theme", new_value, Some(state_clone.unwrap()));
             
             // gui_language: String,
             let new_value = toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize]);
-            settings.update_value("gui_language", new_value);
+            settings.update_value("gui_language", new_value, None);
             
             // gui_search: String,
             let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
-            settings.update_value("gui_search", new_value);
+            settings.update_value("gui_search", new_value, None);
             
             // anu_enabled: bool,
             let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
-            settings.update_value("anu_enabled", new_value);
+            settings.update_value("anu_enabled", new_value, None);
             
             // anu_data_format: String,
             let new_value = toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize]);
-            settings.update_value("anu_data_format", new_value);
+            settings.update_value("anu_data_format", new_value, None);
 
             // anu_array_length: u32,
             let new_value = toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64);
-            settings.update_value("anu_array_length", new_value);
+            settings.update_value("anu_array_length", new_value, None);
 
             // anu_hex_block_size: u32,
             let new_value = toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64);
-            settings.update_value("anu_hex_block_size", new_value);
+            settings.update_value("anu_hex_block_size", new_value, None);
 
             // anu_log: bool,
             let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
-            settings.update_value("anu_enabled", new_value);
+            settings.update_value("anu_enabled", new_value, None);
             
             // proxy_status: String,
             let new_value = toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize]);
-            settings.update_value("proxy_status", new_value);
+            settings.update_value("proxy_status", new_value, None);
 
             // proxy_server_address: String,
             let new_value = toml_edit::value(proxy_server_address_entry.text().to_string());
-            settings.update_value("proxy_server_address", new_value);
+            settings.update_value("proxy_server_address", new_value, None);
 
             // proxy_server_port: u32,
             let new_value = toml_edit::value((proxy_server_port_entry.text().parse::<u32>().unwrap_or_default()) as i64);
-            settings.update_value("proxy_server_port", new_value);
+            settings.update_value("proxy_server_port", new_value, None);
 
             // proxy_use_pac: bool,
             let new_value = toml_edit::value(use_proxy_ssl_checkbox.is_active());
-            settings.update_value("proxy_use_pac", new_value);
+            settings.update_value("proxy_use_pac", new_value, None);
 
             // proxy_script_address: String,
             let new_value = toml_edit::value(proxy_pac_path_entry.text().to_string());
-            settings.update_value("proxy_script_address", new_value);
+            settings.update_value("proxy_script_address", new_value, None);
 
             // proxy_login_credentials: bool,
             let new_value = toml_edit::value(use_proxy_credentials_checkbox.is_active());
-            settings.update_value("proxy_login_credentials", new_value);
+            settings.update_value("proxy_login_credentials", new_value, None);
 
             // proxy_login_username: String,
             let new_value = toml_edit::value(proxy_username_entry.text().to_string());
-            settings.update_value("proxy_login_username", new_value);
+            settings.update_value("proxy_login_username", new_value, None);
 
             // proxy_login_password: String,
             let new_value = toml_edit::value(proxy_password_entry.text().to_string());
-            settings.update_value("proxy_login_password", new_value);
+            settings.update_value("proxy_login_password", new_value, None);
 
             // proxy_use_ssl: bool,
             let new_value = toml_edit::value(use_proxy_ssl_checkbox.is_active());
-            settings.update_value("proxy_use_ssl", new_value);
+            settings.update_value("proxy_use_ssl", new_value, None);
 
             // proxy_ssl_certificate: String,
             let new_value = toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string());
-            settings.update_value("proxy_ssl_certificate", new_value);
+            settings.update_value("proxy_ssl_certificate", new_value, None);
 
             settings_window.close()
         }
@@ -2264,7 +2276,7 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     label.set_text(&path);
 }
 
-fn create_main_window(application: &adw::Application) {
+pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std::cell::RefCell<AppState>>) {
     println!("{}", &t!("log.create_main_window").to_string());
 
     let settings = AppSettings::load_settings()
@@ -2369,8 +2381,10 @@ fn create_main_window(application: &adw::Application) {
 
 
     // Actions
+    let state_clone = state.clone();
+
     settings_button.connect_clicked(move |_| {
-        create_settings_window();
+        create_settings_window(Some(state_clone.clone()));
     });
     
 
@@ -2383,9 +2397,11 @@ fn create_main_window(application: &adw::Application) {
     });
 
     // New wallet (window) CTRL+N
+    let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
+
     let new_window = application.clone();
     new_wallet_button.connect_clicked(move |_| {
-        create_main_window(&new_window);
+        create_main_window(&new_window, state.clone());
     });
 
     // Main stack
@@ -3870,9 +3886,13 @@ fn main() {
         .application_id("com.github.qr2m")
         .build();
 
-    application.connect_activate(|app| {
-        create_main_window(app);
+    let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
+    let new_state = state.clone();
+
+    application.connect_activate(move |app| {
+        create_main_window(app, new_state.clone());
     });
+
 
     let quit = gio::SimpleAction::new("quit", None);
     let new = gio::SimpleAction::new("new", None);
@@ -3890,8 +3910,9 @@ fn main() {
     
     // Keyboard shortcuts
     let new_window = application.clone();
+    let new_state = state.clone();
     new.connect_activate(move |_action, _parameter| {
-        create_main_window(&new_window);
+        create_main_window(&new_window, new_state.clone());
     });
 
     open.connect_activate(move |_action, _parameter| {
@@ -3902,8 +3923,11 @@ fn main() {
         todo!() // Save wallet action activated
     });
 
+
+    let state_clone = state.clone();
     settings.connect_activate(move |_action, _parameter| {
-        create_settings_window();
+        create_settings_window(Some(state_clone.clone()));
+
     });
 
     about.connect_activate(move |_action, _parameter| {
@@ -4281,4 +4305,45 @@ enum CryptoPublicKey {
 
 
 
+pub struct AppState {
+    pub is_dark_theme: bool,
+    pub language: String,
+    pub theme_preference: String,
+}
 
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            is_dark_theme: false,
+            language: "en".to_string(),
+            theme_preference: "System".to_string(), // Default value
+        }
+    }
+
+    pub fn apply_theme(&self) {
+        let preferred_theme = match self.theme_preference.as_str() {
+            "System" => adw::ColorScheme::PreferLight,
+            "Light" => adw::ColorScheme::ForceLight,
+            "Dark" => adw::ColorScheme::PreferDark,
+            _ => {
+                eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = self.theme_preference));
+                adw::ColorScheme::PreferLight
+            },
+        };
+
+        adw::StyleManager::default().set_color_scheme(preferred_theme);
+    }
+
+    pub fn apply_language(&self) {
+        // Assuming self.language contains the language identifier like "English", "German", etc.
+        let language_code = match self.language.as_str() {
+            "German" => "de",
+            "Croatian" => "hr",
+            "English" | _ => "en",
+        };
+
+        // Apply the language code using the i18n! macro
+        rust_i18n::set_locale(language_code);
+    }
+}
