@@ -362,6 +362,16 @@ UI:
         en: "Trying to retrieve QRNG from ANU API"
         de: "Versuch, QRNG von der ANU-API abzurufen"
         hr: "Pokušavam skinuti QRNG sa ANU API-ja"
+  messages:
+    dialog:
+      do-not-show:
+        en: "Do not show any more"
+        de: "Nicht mehr anzeigen"
+        hr: "Nemoj više pokazati"
+      close:
+        en: "Close message"
+        de: "Schließen"
+        hr: "Zatvori"
 error:
   settings:
     config:

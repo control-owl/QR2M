@@ -1,3 +1,6 @@
+- theme switching in settings
+- language switching - still working on it
+
 # version 0.30.0
 - setting are fully working
 - local config file based on OS

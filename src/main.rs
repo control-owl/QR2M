@@ -2070,7 +2070,8 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
         // @weak anu_data_format_dropdown,
         @weak settings_window, => move |_| {
             // let config_path = "config/custom.conf";
-            let mut settings = AppSettings::load_settings().unwrap();
+            let mut settings = AppSettings::load_settings()
+                .expect(&t!("error.file.read").to_string());
             
             // wallet_entropy_source: String,
             let new_value = toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize]);
@@ -2115,13 +2116,16 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
 
             // gui_theme: String,
             let new_value = toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize]);
-            let state_clone = state.clone();
-            settings.update_value("gui_theme", new_value, Some(state_clone.unwrap()));
+            let state_clone_theme = state.clone();
+            settings.update_value("gui_theme", new_value, Some(state_clone_theme.unwrap()));
             
             // gui_language: String,
             let new_value = toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize]);
-            settings.update_value("gui_language", new_value, None);
+            let state_clone_language = state.clone();
+            settings.update_value("gui_language", new_value, Some(state_clone_language.unwrap()));
             
+
+
             // gui_search: String,
             let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
             settings.update_value("gui_search", new_value, None);
@@ -2382,9 +2386,11 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
     // Actions
     let state_clone = state.clone();
+    let window_clone = window.clone();
 
     settings_button.connect_clicked(move |_| {
         create_settings_window(Some(state_clone.clone()));
+        window_clone.queue_resize();
     });
     
 
@@ -3797,15 +3803,17 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     dialog_main_box.set_margin_start(50);
     dialog_main_box.set_margin_end(50);
     
+
+    // Message label
     let message_label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    message_label_box.set_margin_bottom(10);
-    
     let message_label = gtk::Label::new(Some(&msg));
+    message_label_box.set_margin_bottom(10);
     message_label.set_justify(gtk::Justification::Center);
     
     message_label_box.append(&message_label);
     dialog_main_box.append(&message_label_box);
     
+
     // Progress box
     if progress_active.unwrap_or(false) {
         let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -3841,28 +3849,37 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
         });
     }
 
-    // Message Box
-    let message_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-
     // Do not show
     let do_not_show_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    do_not_show_main_box.set_margin_top(10);
-
     let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let do_not_show_label = gtk::Label::new(Some("Do not show any more"));
+    let do_not_show_label = gtk::Label::new(Some(&t!("UI.messages.dialog.do-not-show").to_string()));
     let do_not_show_checkbox = gtk::CheckButton::new();
+    
+    do_not_show_main_box.set_margin_top(10);
+    do_not_show_content_box.set_halign(gtk::Align::Center);
 
     do_not_show_content_box.append(&do_not_show_label);
     do_not_show_content_box.append(&do_not_show_checkbox);
-    do_not_show_content_box.set_halign(gtk::Align::Center);
-
     do_not_show_main_box.append(&do_not_show_content_box);
 
-    // Connections
-    dialog_main_box.append(&message_main_box);
-    dialog_main_box.append(&do_not_show_main_box);
 
+    // Close button
+    let close_dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let close_dialog_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let close_dialog_button = gtk::Button::with_label(&t!("UI.messages.dialog.close").to_string());
+    
+    
+    close_dialog_main_box.set_margin_top(10);
+    close_dialog_content_box.set_halign(gtk::Align::Center);
+
+    close_dialog_content_box.append(&close_dialog_button);
+    close_dialog_main_box.append(&close_dialog_content_box);
+
+    // Connections
+    dialog_main_box.append(&do_not_show_main_box);
+    dialog_main_box.append(&close_dialog_main_box);
     message_window.set_child(Some(&dialog_main_box));
+
     message_window.show();
 }
 
@@ -4336,14 +4353,19 @@ impl AppState {
     }
 
     pub fn apply_language(&self) {
-        // Assuming self.language contains the language identifier like "English", "German", etc.
         let language_code = match self.language.as_str() {
-            "German" => "de",
-            "Croatian" => "hr",
+            "Deutsch" => "de",
+            "Hrvatski" => "hr",
             "English" | _ => "en",
         };
 
-        // Apply the language code using the i18n! macro
         rust_i18n::set_locale(language_code);
+        
+        create_message_window(
+            "Language changed", 
+            "Please re-open app to apply new language",
+            Some(true), 
+            Some(5)
+        )
     }
 }
