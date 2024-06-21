@@ -278,6 +278,8 @@ UI:
         de: "Adresse generieren"
         hr: "Generirajte adresu"
       table:
+        coin:
+          en: "Coin"
         path:
           en: "Path"
           de: "Pfad"
@@ -372,6 +374,15 @@ UI:
         en: "Close message"
         de: "Schließen"
         hr: "Zatvori"
+    change-language:
+      titel:
+        en: "Language changed"
+        de: "Sprache geändert"
+        hr: "Promjena jezika"
+      msg:
+        en: "Please re-open app to apply new language"
+        de: "Bitte öffnen Sie die App erneut, um die neue Sprache anzuwenden"
+        hr: "Ponovno otvorite aplikaciju da bi primjeni novi jezik"
 error:
   settings:
     config:

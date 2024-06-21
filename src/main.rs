@@ -129,8 +129,8 @@ pub struct AppSettings {
     gui_last_width: u32,
     gui_last_height: u32,
     gui_maximized: bool,
-    pub gui_theme: String,
-    pub gui_language: String,
+    gui_theme: String,
+    gui_language: String,
     gui_search: String,
     anu_enabled: bool,
     anu_data_format: String,
@@ -790,6 +790,7 @@ struct WalletSettings {
     master_chain_code_bytes: Option<Vec<u8>>,
     master_public_key_bytes: Option<Vec<u8>>,
     coin_index: Option<u32>,
+    coin_name: Option<String>,
     wallet_import_format: Option<String>,
     public_key_hash: Option<String>,
     key_derivation: Option<String>,
@@ -810,6 +811,7 @@ struct WalletSettings {
 }
 
 struct CryptoAddresses {
+    coin_name: String,
     derivation_path: String,
     address: String,
     public_key: String,
@@ -2894,6 +2896,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     address_treeview_frame.set_vexpand(true);
 
     let address_store = gtk::ListStore::new(&[
+        gtk4::glib::Type::STRING, // Coin
         gtk4::glib::Type::STRING, // Derivation Path
         gtk4::glib::Type::STRING, // Address
         gtk4::glib::Type::STRING, // Public Key
@@ -2903,6 +2906,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let address_treeview = gtk::TreeView::new();
     address_treeview.set_headers_visible(true);
     let columns = [
+        &t!("UI.main.address.table.coin").to_string(), 
         &t!("UI.main.address.table.path").to_string(), 
         &t!("UI.main.address.table.address").to_string(), 
         &t!("UI.main.address.table.pub").to_string(), 
@@ -3169,6 +3173,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                         data.key_derivation = Some(key_derivation.to_string());
                         data.hash = Some(hash.to_string());
                         data.coin_index = Some(coin_index.parse().unwrap());
+                        data.coin_name = Some(coin_name.parse().unwrap());
 
                     });
                 }  
@@ -3643,6 +3648,10 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             data.coin_index.clone().unwrap_or_default()
         });
 
+        let coin_name = ADDRESS_DATA.with(|data| {
+            let data = data.borrow();
+            data.coin_name.clone().unwrap_or_default()
+        });
 
         let DP = derivation_label_text_clone.text();
         let path = DP.to_string();
@@ -3757,6 +3766,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             ).expect("Failed to convert private key to WIF");
             
             addresses.push(CryptoAddresses {
+                coin_name: coin_name.clone(),
                 derivation_path: full_path,
                 address: address.clone(),
                 public_key: public_key_encoded.clone(),
@@ -3767,10 +3777,11 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         for address in addresses {
             let iter = address_store.append();
             address_store.set(&iter, &[
-                (0, &address.derivation_path),
-                (1, &address.address),
-                (2, &address.public_key),
-                (3, &address.private_key),
+                (0, &address.coin_name),
+                (1, &address.derivation_path),
+                (2, &address.address),
+                (3, &address.public_key),
+                (4, &address.private_key),
             ]);
         }
     });
@@ -3888,15 +3899,13 @@ fn main() {
     let timestamp = start_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
     let log_file = format!("{}{}-{}.log", APP_LOG_DIRECTORY, APP_NAME.unwrap(), timestamp);
     set_log_file(log_file);
-
-    print_program_info();
-
-
-    let settings = AppSettings::load_settings()
-        .expect(&t!("error.file.read").to_string());
     
-    os::switch_locale(&settings.gui_language);
+    print_program_info();
+    
+    let settings = AppSettings::load_settings()
+    .expect(&t!("error.file.read").to_string());
 
+    os::switch_locale(&settings.gui_language);
     println!("{}", t!("hello"));
 
     let application = adw::Application::builder()
@@ -3917,7 +3926,7 @@ fn main() {
     let save = gio::SimpleAction::new("save", None);
     let settings = gio::SimpleAction::new("settings", None);
     let about = gio::SimpleAction::new("about", None);
-    let test = gio::SimpleAction::new("test", None);
+    // let test = gio::SimpleAction::new("test", None);
     
     quit.connect_activate(
         glib::clone!(@weak application => move |_action, _parameter| {
@@ -3927,9 +3936,9 @@ fn main() {
     
     // Keyboard shortcuts
     let new_window = application.clone();
-    let new_state = state.clone();
+    let main_window_state = state.clone();
     new.connect_activate(move |_action, _parameter| {
-        create_main_window(&new_window, new_state.clone());
+        create_main_window(&new_window, main_window_state.clone());
     });
 
     open.connect_activate(move |_action, _parameter| {
@@ -3940,10 +3949,9 @@ fn main() {
         todo!() // Save wallet action activated
     });
 
-
-    let state_clone = state.clone();
+    let settings_window_state = state.clone();
     settings.connect_activate(move |_action, _parameter| {
-        create_settings_window(Some(state_clone.clone()));
+        create_settings_window(Some(settings_window_state.clone()));
 
     });
 
@@ -3951,14 +3959,14 @@ fn main() {
         create_about_window();
     });
 
-    test.connect_activate(move |_action, _parameter| {
-        create_message_window(
-            "Test title dialog", 
-            "One request every 10 seconds.", 
-            Some(true), 
-            Some(10)
-        );
-    });
+    // test.connect_activate(move |_action, _parameter| {
+    //     create_message_window(
+    //         "Test title dialog", 
+    //         "One request every 10 seconds.", 
+    //         Some(true), 
+    //         Some(10)
+    //     );
+    // });
 
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
     application.add_action(&quit);
@@ -3979,8 +3987,8 @@ fn main() {
     application.add_action(&about);
 
     // Only to start testing window
-    application.set_accels_for_action("app.test", &["<Primary>T"]);
-    application.add_action(&test);
+    // application.set_accels_for_action("app.test", &["<Primary>T"]);
+    // application.add_action(&test);
 
     application.run();
 }
@@ -4362,10 +4370,10 @@ impl AppState {
         rust_i18n::set_locale(language_code);
         
         create_message_window(
-            "Language changed", 
-            "Please re-open app to apply new language",
+            &t!("UI.messages.change-language.titel").to_string(), 
+            &t!("UI.messages.change-language.msg").to_string(), 
             Some(true), 
-            Some(5)
+            Some(10)
         )
     }
 }

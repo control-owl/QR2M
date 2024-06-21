@@ -35,7 +35,7 @@
 - [x] theme (auto)
 - [ ] Shortcuts Window
 - [ ] buy me a coffee
-- [ ] create filters for cointree
+- [x] create filters for cointree
 - [ ] copy-button in all major fields
 - [ ] remove unnecessary BIPs unless coin is BTC
 
@@ -73,6 +73,5 @@
     - [x] status + icon
     - [x] top100
     - [ ] token support
-- [ ] advance view for main window for all possible values
-- [ ] main window is advance window
-    - [ ] create basic wallet window
+- [ ] expert view: show all possible values
+- [ ] basic view: show only necessary 
