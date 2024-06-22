@@ -21,7 +21,6 @@ const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
@@ -234,10 +233,15 @@ fn create_anu_timestamp(time: SystemTime) {
 }
 
 fn write_api_response_to_log(response: &Option<String>) {
-    if let Some(parent) = Path::new(crate::get_log_file().as_str()).parent() {
+    let local_temp_file = crate::os::LOCAL_DATA.with(|data| {
+        let data = data.borrow();
+        data.local_temp_file.clone().unwrap() // Assuming local_config_file is an Option<PathBuf>
+    });
+
+    if let Some(parent) = Path::new(&local_temp_file).parent() {
         match fs::create_dir_all(parent) {
             Ok(_) => {
-                let mut file = match File::create(&crate::get_log_file().as_str()) {
+                let mut file = match File::create(&local_temp_file) {
                     Ok(file) => file,
                     Err(e) => {
                         eprintln!("Error creating file: {}", e);

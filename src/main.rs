@@ -19,7 +19,6 @@
 use std::{
     fs::{self, File}, 
     io::{self, Read, Write}, 
-    path::Path, 
     time::SystemTime,
 };
 use hex;
@@ -58,9 +57,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
-const APP_LOG_DIRECTORY: &str = "log/";
-const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
-const APP_LOCAL_CONFIG_FILE: &str = "settings.conf";
+// const APP_LOG_DIRECTORY: &str = "log/";
 // const LOG_OUTPUT: &'static [&'static str] = &[
 //     "Default", 
 //     "File",
@@ -154,26 +151,11 @@ pub struct AppSettings {
 impl AppSettings {
     // FEATURE: create verify_settings function
     fn load_settings() -> io::Result<Self> {
-        println!("Loading settings:");
+        let local_config_file = os::LOCAL_DATA.with(|data| {
+            let data = data.borrow();
+            data.local_config_file.clone().unwrap()
+        });
 
-        let (_os, path) = os::detect_os_and_user_dir();
-        let local_config_file = format!("{}{}", &path.to_str().unwrap_or_default(), APP_LOCAL_CONFIG_FILE);
-
-        println!("detected path : {:?}", path);
-        println!("local_config_file : {:?}", local_config_file);
-
-        if !Path::new(&local_config_file).exists() {
-            fs::create_dir_all(&path).expect("Can not create folder for local config file");
-            match fs::copy(APP_DEFAULT_CONFIG_FILE, &local_config_file) {
-                Ok(_) => println!("Local config file created"),
-                Err(err) => {
-                    eprintln!("Failed to copy default config file: {}", err);
-                    // IMPLEMENT: check if dir is writable, if not check tmp folder
-                    return Err(err.into());
-                }
-            }
-        }
-        
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
@@ -181,7 +163,7 @@ impl AppSettings {
                 String::new() // IMPLEMENT: load default config instead empty one
             }
         };
-        
+
         // BUG: If one parameter has typo, whole AppSetting is empty ???
         let config: toml::Value = match config_str.parse() {
             Ok(value) => {
@@ -636,9 +618,10 @@ impl AppSettings {
     }
 
     fn save_settings(&self) {
-        let (_os, path) = os::detect_os_and_user_dir();
-        let local_config_file = format!("{}{}", &path.to_str().unwrap_or_default(), APP_LOCAL_CONFIG_FILE);
-
+        let local_config_file = os::LOCAL_DATA.with(|data| {
+            let data = data.borrow();
+            data.local_config_file.clone().unwrap()
+        });
 
         let config_str = fs::read_to_string(&local_config_file)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to read config file: {}", e)))
@@ -650,7 +633,7 @@ impl AppSettings {
     
         {
             let wallet_section = doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
-            if let toml_edit::Item::Table(wallet_table) = wallet_section {
+                if let toml_edit::Item::Table(wallet_table) = wallet_section {
                 wallet_table["entropy_source"] = toml_edit::value(self.wallet_entropy_source.clone());
                 wallet_table["entropy_length"] = toml_edit::value(self.wallet_entropy_length as i64);
                 wallet_table["bip"] = toml_edit::value(self.wallet_bip as i64);
@@ -841,13 +824,13 @@ fn print_program_info() {
 
 }
 
-fn get_log_file() -> String {
-    LOG_FILE.lock().unwrap().clone()
-}
+// fn get_log_file() -> String {
+//     LOG_FILE.lock().unwrap().clone()
+// }
 
-fn set_log_file(file: String) {
-    *LOG_FILE.lock().unwrap() = file;
-}
+// fn set_log_file(file: String) {
+//     *LOG_FILE.lock().unwrap() = file;
+// }
 
 fn generate_entropy(source: &str, entropy_length: u64) -> String {
     println!("{}", &t!("log.generate_entropy").to_string());
@@ -2283,10 +2266,14 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
 }
 
 pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std::cell::RefCell<AppState>>) {
-    println!("{}", &t!("log.create_main_window").to_string());
-
     let settings = AppSettings::load_settings()
         .expect(&t!("error.file.read").to_string());
+
+    os::switch_locale(&settings.gui_language);
+    println!("application_language: {:?}", settings.gui_language);
+    println!("{}", t!("hello"));
+
+    println!("{}", &t!("log.create_main_window").to_string());
     
     let window_width = match settings.get_value("gui_last_width") {
         Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
@@ -2310,6 +2297,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         }
     };
 
+    
     let preferred_theme = match settings.get_value("gui_theme") {
         Some(value) => {
             // let theme = String::from(value);
@@ -3895,18 +3883,14 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
 }
 
 fn main() {
-    let start_time = SystemTime::now();
-    let timestamp = start_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-    let log_file = format!("{}{}-{}.log", APP_LOG_DIRECTORY, APP_NAME.unwrap(), timestamp);
-    set_log_file(log_file);
-    
     print_program_info();
-    
-    let settings = AppSettings::load_settings()
-    .expect(&t!("error.file.read").to_string());
 
-    os::switch_locale(&settings.gui_language);
-    println!("{}", t!("hello"));
+    os::detect_os_and_user_dir();
+
+    match os::create_local_files() {
+        Ok(()) => println!("All local files created"),
+        Err(err) => eprintln!("Error creating local file: {}", err),
+    }
 
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")

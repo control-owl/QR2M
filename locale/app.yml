@@ -515,132 +515,68 @@ error:
 log:
   generate_entropy:
     en: "Generating entropy:"
-    de: ""
-    hr: ""
   generate_entropy_checksum:
     en: "Generating entropy checksum:"
-    de: ""
-    hr: ""
   generate_mnemonic_words:
     en: "Generating mnemonic words:"
-    de: ""
-    hr: ""
   generate_bip39_seed:
     en: "Generating seed:"
-    de: ""
-    hr: ""
   generate_entropy_from_file:
     en: "Generating entropy from file"
-    de: ""
-    hr: ""
   derive_master_keys:
     en: "Generating master keys"
-    de: ""
-    hr: ""
   hmac_sha512:
     en: "Generating hmac_sha512 hash"
-    de: ""
-    hr: ""
   sha256_hash:
     en: "Generating sha256 hash"
-    de: ""
-    hr: ""
   calculate_checksum:
     en: "Calculating checksum"
-    de: ""
-    hr: ""
   create_coin_store:
     en: "Creating coin store"
-    de: ""
-    hr: ""
   create_coin_completion_model:
     en: "Creating coin completion model"
-    de: ""
-    hr: ""
   create_coin_database:
     en: "Creating coin database"
-    de: ""
-    hr: ""
   load_icon_bytes:
     en: "Loading icon"
-    de: ""
-    hr: ""
   get_window_theme_icons:
     en: "Loading theme icons:"
-    de: ""
-    hr: ""
   create_settings_window:
     en: "Creating settings window"
-    de: ""
-    hr: ""
   create_about_window:
     en: "Creating about window"
-    de: ""
-    hr: ""
   update_derivation_label:
     en: "Updating derivation label"
-    de: ""
-    hr: ""
   create_main_window:
     en: "Creating main window"
-    de: ""
-    hr: ""
   create_message_window:
     en: "Creating message window"
-    de: ""
-    hr: ""
   get_entropy_from_anu:
     en: "Connecting to ANU API"
-    de: ""
-    hr: ""
   fetch_anu_qrng_data:
     en: "Fetching ANU data"
-    de: ""
-    hr: ""
   load_last_anu_request:
     en: "Loading last ANU request"
-    de: ""
-    hr: ""
   create_anu_timestamp:
     en: "Creating ANU timestamp"
-    de: ""
-    hr: ""
   write_api_response_to_log:
     en: "Writing ANU response to log"
-    de: ""
-    hr: ""
   extract_uint8_data:
     en: "Extracting uint8 data from ANU API"
-    de: ""
-    hr: ""
   process_uint8_data:
     en: "Processing uint8 data"
-    de: ""
-    hr: ""
   derive_child_key:
     en: "Deriving child keys"
-    de: ""
-    hr: ""
   derive_from_path:
     en: "Deriving from HD path"
-    de: ""
-    hr: ""
   generate_address:
     en: "Generating crypto address"
-    de: ""
-    hr: ""
   sha256_and_ripemd160:
     en: "Generating sha256 and ripemd160 hash"
-    de: ""
-    hr: ""
   double_sha256:
     en: "Generating double sha256 hash"
-    de: ""
-    hr: ""
   new_derivation_path:
     en: "New derivation path"
-    de: ""
-    hr: ""
 
 
 # &t!("UI.settings.element.frame.select").to_string()
