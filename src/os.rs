@@ -16,9 +16,8 @@ use std::{
 use crate::APP_NAME;
 
 const APP_LOCAL_CONFIG_FILE: &str = "settings.conf";
-const APP_LOCAL_TEMP_FILE: &str = "output.log";
+const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
 const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
-
 
 thread_local! {
     pub static LOCAL_DATA: std::cell::RefCell<LocalSettings> = std::cell::RefCell::new(LocalSettings::default());
@@ -27,30 +26,18 @@ thread_local! {
 #[derive(Debug, Default)]
 pub struct LocalSettings {
     pub os: Option<String>,
-    pub local_language: Option<String>,
     pub local_config_dir: Option<PathBuf>,
     pub local_temp_dir: Option<PathBuf>,
     pub local_config_file: Option<String>,
     pub local_temp_file: Option<String>,
-
-    // SEND:
-    // LOCAL_DATA.with(|data| {
-    //     let mut data = data.borrow_mut();
-    //     println!("RNG entropy (string): {}", &rng_entropy_string);
-    //     data.entropy = Some(rng_entropy_string.clone());
-    // });
-    // 
-    // GET:
-    // let master_private_key_bytes = LOCAL_DATA.with(|data| {
-    //     let data = data.borrow();
-    //     data.master_private_key_bytes.clone().unwrap()
-    // });
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 pub fn detect_os_and_user_dir() {
+    println!("{}", &t!("log.detecting-local-os").to_string());
+
     let os = if cfg!(target_os = "windows") {
         "windows".to_string()
     } else if cfg!(target_os = "macos") {
@@ -102,45 +89,28 @@ pub fn detect_os_and_user_dir() {
     let local_config_file = format!("{}{}", local_config_dir.to_str().unwrap(), APP_LOCAL_CONFIG_FILE);
 
     let local_temp_dir = match env::temp_dir().to_str() {
-        Some(dir) => PathBuf::from(dir).join(&format!("{}/", APP_NAME.unwrap())),
+        Some(dir) => PathBuf::from(dir),
         None => {
             eprintln!("Error: Failed to determine temporary directory. Using fallback.");
-            PathBuf::from(&local_config_dir).join("tmp/")
+            PathBuf::from(&local_config_dir).join("tmp")
         }
     };
 
     let local_temp_file = format!("{}{}", local_temp_dir.to_str().unwrap(), APP_LOCAL_TEMP_FILE);
 
-    let detected_locale = if let Ok(lang) = env::var("LANG") {
-        let lang_parts: Vec<&str> = lang.split('_').collect();
-        if let Some(language) = lang_parts.get(0) {
-            match *language {
-                "de" => String::from("Deutsch (German)"),
-                "hr" => String::from("Hrvatski (Croatian)"),
-                "en" | _ => String::from("English"),
-            }
-        } else {
-            String::from("English")
-        }
-    } else {
-        String::from("English")
-    };
-
     LOCAL_DATA.with(|data| {
         let mut data = data.borrow_mut();
-        println!("local_operating_system: {:?}", &os);
-        println!("local_config_dir: {:?}", &local_config_dir);
-        println!("local_temp_dir: {:?}", &local_temp_dir);
-        println!("local_config_file: {:?}", &local_config_file);
-        println!("local_temp_file: {:?}", &local_temp_file);
-        println!("local_language: {:?}", &detected_locale);
+        println!("\t OS: {:?}", &os);
+        println!("\t Config directory: {:?}", &local_config_dir);
+        println!("\t Temp directory: {:?}", &local_temp_dir);
+        println!("\t Configuration file: {:?}", &local_config_file);
+        println!("\t Temp file: {:?}", &local_temp_file);
         
         data.os = Some(os.clone());
         data.local_config_dir = Some(local_config_dir.clone());
         data.local_temp_dir = Some(local_temp_dir.clone());
         data.local_config_file = Some(local_config_file.clone());
         data.local_temp_file = Some(local_temp_file.clone());
-        data.local_language = Some(detected_locale.clone());
     });
 
 
@@ -148,10 +118,9 @@ pub fn detect_os_and_user_dir() {
 
 pub fn switch_locale(lang: &str) {
     match lang {
-        "English" => rust_i18n::set_locale("en"),
         "Deutsch" => rust_i18n::set_locale("de"),
         "Hrvatski" => rust_i18n::set_locale("hr"),
-        _ => rust_i18n::set_locale("en"),
+        "English"| _ => rust_i18n::set_locale("en"),
     }
 }
 

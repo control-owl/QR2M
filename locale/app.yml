@@ -577,7 +577,10 @@ log:
     en: "Generating double sha256 hash"
   new_derivation_path:
     en: "New derivation path"
-
+  detecting-local-os:
+    en: "Detecting local Operating System"
+  load-settings:
+    en: "Loading user settings"
 
 # &t!("UI.settings.element.frame.select").to_string()
 # Some(&t!("log.settings").to_string())

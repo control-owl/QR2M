@@ -33,6 +33,7 @@ use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use sha3::Keccak256;
 
+
 // Mods
 mod anu;
 mod coin_db;
@@ -40,10 +41,11 @@ mod dev;
 mod os;
 mod test_vectors;
 
-
+// Multi-language support
 #[macro_use]
 extern crate rust_i18n;
 i18n!("locale", fallback = "en");
+
 
 // Default settings
 // TODO: Translate strings also
@@ -106,17 +108,16 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
 ];
 
 thread_local! {
-    static ADDRESS_DATA: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
+    static APPLICATION_SETTINGS: std::cell::RefCell<AppSettings> = std::cell::RefCell::new(AppSettings::default());
+    static WALLET_SETTINGS: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
 }
 
 lazy_static! {
     static ref LOG_FILE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 }
 
-use serde::{Serialize, Deserialize};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AppSettings {
+#[derive(Debug, Default)]
+struct AppSettings {
     wallet_entropy_source: String,
     wallet_entropy_length: u32,
     wallet_bip: u32,
@@ -144,17 +145,19 @@ pub struct AppSettings {
     proxy_login_password: String,
     proxy_use_ssl: bool,
     proxy_ssl_certificate: String,
-    // log_output: String,
-    // log_file: String,
 }
 
 impl AppSettings {
     // FEATURE: create verify_settings function
     fn load_settings() -> io::Result<Self> {
+        println!("{}", &t!("log.load-settings").to_string());
+        
         let local_config_file = os::LOCAL_DATA.with(|data| {
             let data = data.borrow();
             data.local_config_file.clone().unwrap()
         });
+        
+        println!("\t Settings file: {:?}", local_config_file);
 
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
@@ -194,34 +197,48 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
+        println!("\t Save last window size: {:?}", gui_save_size);
+
         let gui_last_width = gui_section.get("last_width")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(WINDOW_MAIN_DEFAULT_WIDTH);
 
+        println!("\t Last window width: {:?}", gui_last_width);
+
         let gui_last_height = gui_section.get("last_height")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(WINDOW_MAIN_DEFAULT_HEIGHT);
+
+        println!("\t Last window height: {:?}", gui_last_height);
     
         let gui_maximized = gui_section.get("maximized")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
+        
+        println!("\t Window maximized: {:?}", gui_maximized);
 
         let gui_theme = gui_section.get("theme")
             .and_then(|v| v.as_str())
             .unwrap_or(*&VALID_GUI_THEMES[0])
             .to_string();
+        
+        println!("\t Window theme: {:?}", gui_theme);
 
         let gui_language = gui_section.get("language")
             .and_then(|v| v.as_str())
             .unwrap_or(*&APP_LANGUAGE[0])
             .to_string();
+        
+        println!("\t Language: {:?}", gui_language);
 
         let gui_search = gui_section.get("search")
             .and_then(|v| v.as_str())
             .unwrap_or(*&VALID_COIN_SEARCH_PARAMETER[0])
             .to_string();
+
+        println!("\t Coin search: {:?}", gui_search);
 
         // Wallet settings
         let wallet_section = match config.get("wallet") {
@@ -234,25 +251,34 @@ impl AppSettings {
             .unwrap_or(*&VALID_ENTROPY_SOURCES[0])
             .to_string();
 
+        println!("\t Entropy source: {:?}", wallet_entropy_source);
+
         let wallet_entropy_length = wallet_section.get("entropy_length")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(*VALID_ENTROPY_LENGTHS.last().unwrap_or(&0));
+
+        println!("\t Entropy length: {:?}", wallet_entropy_length);
 
         let wallet_bip = wallet_section.get("bip")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(*VALID_BIP_DERIVATIONS.get(1).unwrap_or(&VALID_BIP_DERIVATIONS[0]));
 
+        println!("\t BIP: {:?}", wallet_bip);
+
         let wallet_address_count = wallet_section.get("address_count")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT);
 
+        println!("\t Address count: {:?}", wallet_address_count);
+
         let wallet_hardened_address = wallet_section.get("hardened_address")
             .and_then(|v| v.as_bool())
             .unwrap_or(WALLET_DEFAULT_HARDENED_ADDRESS);
 
+        println!("\t Hardened address: {:?}", wallet_hardened_address);
         
         // ANU settings
         let anu_section = match config.get("anu") {
@@ -264,24 +290,35 @@ impl AppSettings {
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
+        println!("\t Use ANU: {:?}", anu_enabled);
+
         let anu_data_format = anu_section.get("data_format")
             .and_then(|v| v.as_str())
             .unwrap_or(*&VALID_ANU_API_DATA_FORMAT[0])
             .to_string();
+
+        println!("\t ANU data format: {:?}", anu_data_format);
 
         let anu_array_length = anu_section.get("array_length")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(ANU_DEFAULT_ARRAY_LENGTH);
         
+        println!("\t ANU array length: {:?}", anu_array_length);
+
         let anu_hex_block_size = anu_section.get("hex_block_size")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or(ANU_DEFAULT_HEX_BLOCK_SIZE);
 
+        println!("\t ANU hex block size: {:?}", anu_hex_block_size);
+
+
         let anu_log = anu_section.get("log")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
+
+        println!("\t ANU log: {:?}", anu_log);
 
         // Proxy settings
         let proxy_section = match config.get("proxy") {
@@ -294,47 +331,67 @@ impl AppSettings {
             .unwrap_or(*&VALID_PROXY_STATUS[0])
             .to_string();
 
+        println!("\t Use proxy: {:?}", proxy_status);
+
         let proxy_server_address = proxy_section.get("server_address")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+
+        println!("\t Proxy server address: {:?}", proxy_server_address);
 
         let proxy_server_port = proxy_section.get("server_port")
             .and_then(|v| v.as_integer())
             .map(|v| v as u32)
             .unwrap_or_default();
 
+        println!("\t Proxy server port: {:?}", proxy_server_port);
+
         let proxy_use_pac: bool = proxy_section.get("use_pac")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
+
+        println!("\t Use proxy PAC: {:?}", proxy_use_pac);
 
         let proxy_script_address = proxy_section.get("script_address")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
+        println!("\t Proxy script address: {:?}", proxy_script_address);
+
         let proxy_login_credentials: bool = proxy_section.get("login_credentials")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
+
+        println!("\t Use proxy login credentials: {:?}", proxy_login_credentials);
 
         let proxy_login_username = proxy_section.get("login_username")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
+        println!("\t Proxy username: {:?}", proxy_login_username);
+
         let proxy_login_password = proxy_section.get("login_password")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
 
+        println!("\t Proxy password: {:?}", proxy_login_password);
+
         let proxy_use_ssl: bool = proxy_section.get("use_ssl")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
+
+        println!("\t Use proxy SSL: {:?}", proxy_use_ssl);
 
         let proxy_ssl_certificate = proxy_section.get("ssl_certificate")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+
+        println!("\t Proxy SSL certificate: {:?}", proxy_ssl_certificate);
 
         Ok(AppSettings {
             wallet_entropy_source,
@@ -365,43 +422,6 @@ impl AppSettings {
             proxy_use_ssl,
             proxy_ssl_certificate,
         })
-    }
-
-    fn get_value(&self, name: &str) -> Option<String> {
-        match name {
-            "wallet_entropy_source" => Some(self.wallet_entropy_source.clone()),
-            "wallet_entropy_length" => Some(self.wallet_entropy_length.to_string()),
-            "wallet_bip" => Some(self.wallet_bip.to_string()),
-            "wallet_address_count" => Some(self.wallet_address_count.to_string()),
-            "wallet_hardened_address" => Some(self.wallet_hardened_address.to_string()),
-
-            "gui_save_size" => Some(self.gui_save_size.to_string()),
-            "gui_last_width" => Some(self.gui_last_width.to_string()),
-            "gui_last_height" => Some(self.gui_last_height.to_string()),
-            "gui_maximized" => Some(self.gui_maximized.to_string()),
-            "gui_theme" => Some(self.gui_theme.to_string()),
-            "gui_language" => Some(self.gui_language.to_string()),
-            "gui_search" => Some(self.gui_search.to_string()),
-
-            "anu_enabled" => Some(self.anu_enabled.to_string()),
-            "anu_data_format" => Some(self.anu_data_format.clone()),
-            "anu_array_length" => Some(self.anu_array_length.to_string()),
-            "anu_hex_block_size" => Some(self.anu_hex_block_size.to_string()),
-            "anu_log" => Some(self.anu_log.to_string()),
-
-            "proxy_status" => Some(self.proxy_status.clone()),
-            "proxy_server_address" => Some(self.proxy_server_address.clone()),
-            "proxy_server_port" => Some(self.proxy_server_port.to_string()),
-            "proxy_use_pac" => Some(self.proxy_use_pac.to_string()),
-            "proxy_script_address" => Some(self.proxy_script_address.clone()),
-            "proxy_login_credentials" => Some(self.proxy_login_credentials.to_string()),
-            "proxy_login_username" => Some(self.proxy_login_username.clone()),
-            "proxy_login_password" => Some(self.proxy_login_password.clone()),
-            "proxy_use_ssl" => Some(self.proxy_use_ssl.to_string()),
-            "proxy_ssl_certificate" => Some(self.proxy_ssl_certificate.clone()),
-
-            _ => None,
-        }
     }
 
     fn update_value(&mut self, key: &str, new_value: toml_edit::Item, state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
@@ -700,6 +720,39 @@ impl AppSettings {
 
 }
 
+#[derive(Debug, Default)]
+struct WalletSettings {
+    entropy_string: Option<String>,
+    entropy_checksum: Option<String>,
+    mnemonic_words: Option<String>,
+    mnemonic_passphrase: Option<String>,
+    seed: Option<String>,
+    master_xprv: Option<String>,
+    master_xpub: Option<String>,
+    master_private_key_bytes: Option<Vec<u8>>,
+    master_chain_code_bytes: Option<Vec<u8>>,
+    master_public_key_bytes: Option<Vec<u8>>,
+    coin_index: Option<u32>,
+    coin_name: Option<String>,
+    wallet_import_format: Option<String>,
+    public_key_hash: Option<String>,
+    key_derivation: Option<String>,
+    hash: Option<String>,
+
+    // SEND:
+    // WALLET_SETTINGS.with(|data| {
+    //     let mut data = data.borrow_mut();
+    //     println!("RNG entropy (string): {}", &rng_entropy_string);
+    //     data.entropy = Some(rng_entropy_string.clone());
+    // });
+    // 
+    // GET:
+    // let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
+    //     let data = data.borrow();
+    //     data.master_private_key_bytes.clone().unwrap()
+    // });
+}
+
 #[derive(Debug, Clone, Copy)]
 struct DerivationPath {
     bip: Option<u32>,
@@ -760,39 +813,6 @@ impl FieldValue {
     }
 }
 
-#[derive(Debug, Default)]
-struct WalletSettings {
-    entropy_string: Option<String>,
-    entropy_checksum: Option<String>,
-    mnemonic_words: Option<String>,
-    mnemonic_passphrase: Option<String>,
-    seed: Option<String>,
-    master_xprv: Option<String>,
-    master_xpub: Option<String>,
-    master_private_key_bytes: Option<Vec<u8>>,
-    master_chain_code_bytes: Option<Vec<u8>>,
-    master_public_key_bytes: Option<Vec<u8>>,
-    coin_index: Option<u32>,
-    coin_name: Option<String>,
-    wallet_import_format: Option<String>,
-    public_key_hash: Option<String>,
-    key_derivation: Option<String>,
-    hash: Option<String>,
-
-    // SEND:
-    // ADDRESS_DATA.with(|data| {
-    //     let mut data = data.borrow_mut();
-    //     println!("RNG entropy (string): {}", &rng_entropy_string);
-    //     data.entropy = Some(rng_entropy_string.clone());
-    // });
-    // 
-    // GET:
-    // let master_private_key_bytes = ADDRESS_DATA.with(|data| {
-    //     let data = data.borrow();
-    //     data.master_private_key_bytes.clone().unwrap()
-    // });
-}
-
 struct CryptoAddresses {
     coin_name: String,
     derivation_path: String,
@@ -803,7 +823,52 @@ struct CryptoAddresses {
 
 type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 
+pub struct AppState {
+    pub is_dark_theme: bool,
+    pub language: String,
+    pub theme_preference: String,
+}
 
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            is_dark_theme: false,
+            language: "en".to_string(),
+            theme_preference: "System".to_string(), // Default value
+        }
+    }
+
+    pub fn apply_theme(&self) {
+        let preferred_theme = match self.theme_preference.as_str() {
+            "System" => adw::ColorScheme::PreferLight,
+            "Light" => adw::ColorScheme::ForceLight,
+            "Dark" => adw::ColorScheme::PreferDark,
+            _ => {
+                eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = self.theme_preference));
+                adw::ColorScheme::PreferLight
+            },
+        };
+
+        adw::StyleManager::default().set_color_scheme(preferred_theme);
+    }
+
+    pub fn apply_language(&self) {
+        let language_code = match self.language.as_str() {
+            "Deutsch" => "de",
+            "Hrvatski" => "hr",
+            "English" | _ => "en",
+        };
+
+        rust_i18n::set_locale(language_code);
+        
+        create_message_window(
+            &t!("UI.messages.change-language.titel").to_string(), 
+            &t!("UI.messages.change-language.msg").to_string(), 
+            Some(true), 
+            Some(10)
+        )
+    }
+}
 
 // BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -819,7 +884,7 @@ fn print_program_info() {
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
     println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
-    println!("Start time {}", &timestamp.to_string());
+    println!("Start time (UNIX): {:?}", &timestamp.to_string());
     println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
 
 }
@@ -835,8 +900,8 @@ fn print_program_info() {
 fn generate_entropy(source: &str, entropy_length: u64) -> String {
     println!("{}", &t!("log.generate_entropy").to_string());
 
-    println!("entropy_source {:?}", source);
-    println!("entropy_length {:?}", entropy_length);
+    println!("\t Entropy source: {:?}", source);
+    println!("\t Entropy length: {:?}", entropy_length);
 
     match source {
         "RNG" => {
@@ -846,7 +911,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 
-            ADDRESS_DATA.with(|data| {
+            WALLET_SETTINGS.with(|data| {
                 let mut data = data.borrow_mut();
                 println!("entropy_initial {:?}", rng_entropy_string);
                 data.entropy_string = Some(rng_entropy_string.clone());
@@ -855,42 +920,21 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             rng_entropy_string
         },
         "QRNG" => {
-            let settings = AppSettings::load_settings()
-                .expect(&t!("error.settings.read"));
+            let anu_format = APPLICATION_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.anu_data_format.clone()
+            });
 
-            let anu_format = match settings.get_value("anu_data_format") {
-                Some(format) => format.parse::<String>().unwrap_or_else(|_| {
-                    println!("{}", &t!("error.settings.wrong", element = "anu_data_format", value = "String"));
-                    String::from("uint8")
-                }),
-                None => {
-                    println!("{}", &t!("error.settings.read", value = "anu_data_format"));
-                    String::from("uint8")
-                }
-            };
-            
-            let array_length = match settings.get_value("anu_array_length") {
-                Some(array_length) => array_length.parse::<u32>().unwrap_or_else(|_| {
-                println!("{}", &t!("error.settings.wrong", element = "anu_array_length", value = "String"));
-                    ANU_DEFAULT_ARRAY_LENGTH
-                }),
-                None => {
-                     println!("{}", &t!("error.settings.read", value = "anu_array_length"));
-                    ANU_DEFAULT_ARRAY_LENGTH
-                }
-            };
-            
-            let hex_block_size = match settings.get_value("anu_hex_block_size") {
-                Some(hex_block_size) => hex_block_size.parse::<u32>().unwrap_or_else(|_| {
-                    println!("{}", &t!("error.settings.wrong", element = "hex_block_size", value = "u32"));
-                    ANU_DEFAULT_HEX_BLOCK_SIZE
-                }),
-                None => {
-                    println!("{}", &t!("error.settings.read", value = "hex_block_size"));
-                    ANU_DEFAULT_HEX_BLOCK_SIZE
-                }
-            };
+            let array_length = APPLICATION_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.anu_array_length.clone()
+            });
 
+            let hex_block_size = APPLICATION_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.anu_hex_block_size.clone()
+            });
+                       
             println!("anu_data_format {:?}", anu_format);
             println!("anu_array_length {:?}", array_length);
             println!("anu_hex_block_size {:?}", hex_block_size);
@@ -902,7 +946,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 Some(hex_block_size)
             );
 
-            ADDRESS_DATA.with(|data| {
+            WALLET_SETTINGS.with(|data| {
                 let mut data = data.borrow_mut();
                 // println!("entropy_initial {:?}", qrng_entropy_string);
                 data.entropy_string = Some(qrng_entropy_string.clone());
@@ -952,7 +996,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
             
             match rx.recv() {
                 Ok(received_file_entropy_string) => {
-                    ADDRESS_DATA.with(|data| {
+                    WALLET_SETTINGS.with(|data| {
                         let mut data = data.borrow_mut();
                         data.entropy_string = Some(received_file_entropy_string.clone());
                     });
@@ -1008,7 +1052,7 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 
     let mnemonic_words_as_string = mnemonic_words_vector.join(" ");
 
-    ADDRESS_DATA.with(|data| {
+    WALLET_SETTINGS.with(|data| {
         let mut data = data.borrow_mut();
         println!("mnemonic_words {:?}", mnemonic_words_as_string);
         data.mnemonic_words = Some(mnemonic_words_as_string.clone());
@@ -1145,7 +1189,7 @@ fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header:
 
     println!("master_public_key_xpub {:?}", master_xpub);
 
-    ADDRESS_DATA.with(|data| {
+    WALLET_SETTINGS.with(|data| {
         let mut data = data.borrow_mut();
         data.master_xprv = Some(master_xprv.clone());
         data.master_xpub = Some(master_xpub.clone());
@@ -1235,8 +1279,8 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
 pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
     println!("{}", &t!("log.create_settings_window").to_string());
 
-    let settings = AppSettings::load_settings()
-        .expect(&t!("error.settings.read").to_string());
+    // let settings = AppSettings::load_settings()
+    //     .expect(&t!("error.settings.read").to_string());
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.settings").to_string())
@@ -1275,6 +1319,10 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
     let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
     let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
+    let gui_theme = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.master_private_key_bytes.clone().unwrap()
+    });
     let default_gui_theme = valid_gui_themes_as_strings
         .iter()
         .position(|s| *s == settings.gui_theme) 
@@ -2266,85 +2314,60 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
 }
 
 pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std::cell::RefCell<AppState>>) {
-    let settings = AppSettings::load_settings()
-        .expect(&t!("error.file.read").to_string());
-
-    os::switch_locale(&settings.gui_language);
-    println!("application_language: {:?}", settings.gui_language);
-    println!("{}", t!("hello"));
-
     println!("{}", &t!("log.create_main_window").to_string());
     
-    let window_width = match settings.get_value("gui_last_width") {
-        Some(width_str) => width_str.parse::<i32>().unwrap_or_else(|_| {
-            eprintln!("{}", &t!("error.settings.parse", element = "gui_last_width", value = width_str));
-            WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
-        }),
-        None => {
-            eprintln!("{}", &t!("error.settings.not_found", value = "gui_last_width"));
-            WINDOW_MAIN_DEFAULT_WIDTH.try_into().unwrap()
-        }
-    };
-    
-    let window_height = match settings.get_value("gui_last_height") {
-        Some(height_str) => height_str.parse::<i32>().unwrap_or_else(|_| {
-            eprintln!("{}", &t!("error.settings.parse", value = "gui_last_height"));
-            WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
-        }),
-        None => {
-            eprintln!("{}", &t!("error.settings.not_found", value = "gui_last_height"));
-            WINDOW_MAIN_DEFAULT_HEIGHT.try_into().unwrap()
-        }
-    };
-
-    
-    let preferred_theme = match settings.get_value("gui_theme") {
-        Some(value) => {
-            // let theme = String::from(value);
-            // println!("theme {}", theme);
-
-            match String::from(&value).as_str() {
-                "System" => adw::ColorScheme::PreferLight,
-                "Light" => adw::ColorScheme::ForceLight,
-                "Dark" => adw::ColorScheme::PreferDark,
-                _ => {
-                    eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = value));
-                    adw::ColorScheme::PreferLight
-                },
-            }
-        },
-        None => {
-            eprintln!("{}", &t!("error.settings.not_found", value = "gui_theme"));
+    let gui_language = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.gui_language.clone()
+    });
+    println!("application_language: {:?}", gui_language);
+    os::switch_locale(&gui_language);
+    println!("{}", t!("hello"));
+      
+    let gui_theme = APPLICATION_SETTINGS.with(|data| {
+        let data: std::cell::Ref<AppSettings> = data.borrow();
+        data.gui_theme.clone()
+    });
+    let preferred_theme = match String::from(&gui_theme).as_str() {
+        "System" => adw::ColorScheme::PreferLight,
+        "Light" => adw::ColorScheme::ForceLight,
+        "Dark" => adw::ColorScheme::PreferDark,
+        _ => {
+            eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = gui_theme));
             adw::ColorScheme::PreferLight
-        }
-
+        },
     };
 
-    // println!("preferred_theme: {:?}", preferred_theme);
     application.style_manager().set_color_scheme(preferred_theme);
 
-    // MAIN WINDOW
+    let window_width = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.gui_last_width.clone()
+    });
+
+    let window_height = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.gui_last_height.clone()
+    });
+
     let window = gtk::ApplicationWindow::builder()
         .application(application)
         .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
-        .default_width(window_width)
-        .default_height(window_height)
+        .default_width(window_width as i32)
+        .default_height(window_height as i32)
         .show_menubar(true)
         .decorated(true)
         .build();
 
-    // Main menu (HeaderBar)
     let header_bar = gtk::HeaderBar::new();
     window.set_titlebar(Some(&header_bar));
     
-    // HeaderBar buttons
     let new_wallet_button = gtk::Button::new();
     let open_wallet_button = gtk::Button::new();
     let save_wallet_button = gtk::Button::new();
     let about_button = gtk::Button::new();
     let settings_button = gtk::Button::new();
 
-    // HeaderBar Icons
     // FEATURE: make my own menu icons
     let theme_images = get_window_theme_icons();
 
@@ -2359,14 +2382,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     settings_button.set_icon_name("org.gnome.Settings-symbolic");
     settings_button.set_child(Some(&theme_images[4]));
     
-    // HeaderBar Tooltips
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
     save_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.save", value = "Ctrl+S").to_string()));
     about_button.set_tooltip_text(Some(&t!("UI.main.headerbar.about", value = "F1").to_string()));
     settings_button.set_tooltip_text(Some(&t!("UI.main.headerbar.settings", value = "F5").to_string()));
 
-    // Connections
     header_bar.pack_start(&new_wallet_button);
     header_bar.pack_start(&open_wallet_button);
     header_bar.pack_start(&save_wallet_button);
@@ -2374,7 +2395,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     header_bar.pack_end(&about_button);
 
 
-    // Actions
     let state_clone = state.clone();
     let window_clone = window.clone();
 
@@ -2392,15 +2412,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         create_about_window();
     });
 
-    // New wallet (window) CTRL+N
     let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
-
     let new_window = application.clone();
     new_wallet_button.connect_clicked(move |_| {
         create_main_window(&new_window, state.clone());
     });
 
-    // Main stack
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
@@ -2423,9 +2440,11 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-    let qrng_enabled = settings.anu_enabled;
-
-    let valid_entropy_sources: Vec<&str> = if qrng_enabled {
+    let anu_enabled = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.anu_enabled.clone()
+    });
+    let valid_entropy_sources: Vec<&str> = if anu_enabled {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
     } else {
         VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
@@ -2434,9 +2453,13 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+    let wallet_entropy_source = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.wallet_entropy_source.clone()
+    });
     let default_entropy_source = valid_entropy_source_as_strings
         .iter()
-        .position(|s| *s == settings.wallet_entropy_source) 
+        .position(|s| *s == wallet_entropy_source) 
         .unwrap_or(0);
 
     entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
@@ -2449,9 +2472,13 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    let wallet_entropy_length = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.wallet_entropy_length.clone()
+    });
     let default_entropy_length = valid_entropy_lengths_as_strings
         .iter()
-        .position(|x| x.parse::<u32>().unwrap() == settings.wallet_entropy_length)
+        .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length)
         .unwrap_or(0);
 
     entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
@@ -2641,9 +2668,13 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_coin_search_filter_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
     let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings.iter().map(|s| s.as_ref()).collect();
     let coin_search_filter_dropdown = gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
+    let gui_search = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.gui_search.clone()
+    });
     let default_coin_search_filter = valid_coin_search_filter_as_strings
         .iter()
-        .position(|s| *s == settings.gui_search) 
+        .position(|s| *s == gui_search) 
         .unwrap_or(0);
     if let Ok(index) = default_coin_search_filter.try_into() {
         coin_search_filter_dropdown.set_selected(index);
@@ -2775,38 +2806,17 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
-    
-    let bip_number = match settings.get_value("wallet_bip") {
-        Some(bip_number) => {
-            // TODO: parsed_bip_number can not be any u32 number. Make extra check of make new function: verify_settings function
-            let parsed_bip_number = bip_number.parse::<u32>().unwrap_or_else(|_| {
-                eprintln!("{}", &t!("error.settings.parse", element = "default BIP number", value = bip_number));
-                44  // Default BIP44
-            });
-            
-            let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == parsed_bip_number).unwrap_or_else(|| {
-                eprintln!("{}", &t!("error.bip.value", value = parsed_bip_number));
-                1 // BIP44
-            });
+    let wallet_bip = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.wallet_bip.clone()
+    });
+    let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == wallet_bip).unwrap_or_else(|| {
+        eprintln!("{}", &t!("error.bip.value", value = wallet_bip));
+        1 // BIP44
+    });
 
-            bip_dropdown.set_selected(default_index.try_into().unwrap());
-            parsed_bip_number
-        },
-        None => {
-            eprintln!("{}", &t!("error.settings.not_found", value = "bip"));
-            
-            let default_bip_number = 44;
-            let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == default_bip_number).unwrap_or_else(|| {
-                eprintln!("{}", &t!("error.bip.value", value = default_bip_number));
-                1 // BIP44
-            });
-
-            bip_dropdown.set_selected(default_index.try_into().unwrap());
-            default_bip_number
-        }
-    };
-
-    bip_dropdown.set_hexpand(true);
+    bip_dropdown.set_selected(default_index.try_into().unwrap());
+        bip_dropdown.set_hexpand(true);
     
     let bip_hardened_checkbox = gtk::CheckButton::new();
     bip_hardened_checkbox.set_active(true);
@@ -2852,12 +2862,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let derivation_label_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation").to_string()));
     derivation_label_frame.set_hexpand(true);
     
-    let default_bip_label = if bip_number == 32 {
+    let default_bip_label = if wallet_bip == 32 {
         main_purpose_frame.set_visible(false);
-        format!("m/{}'/0'/0'", bip_number)
+        format!("m/{}'/0'/0'", wallet_bip)
     } else {
         main_purpose_frame.set_visible(true);
-        format!("m/{}'/0'/0'/0", bip_number)
+        format!("m/{}'/0'/0'/0", wallet_bip)
     };
     
     let derivation_label_text = gtk4::Label::builder()
@@ -2918,11 +2928,14 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     address_options_box.append(&address_options_content);
     
     // Address count 
-    let default_address_count = settings.wallet_address_count as f64;
+    let wallet_address_count = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.wallet_address_count.clone()
+    });
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_adjustment = gtk::Adjustment::new(
-        default_address_count, // initial value
+        wallet_address_count as f64, // initial value
         1.0, // minimum value
         2147483647.0, // maximum value
         1.0, // step increment
@@ -2939,7 +2952,11 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
-    address_options_hardened_address_checkbox.set_active(settings.wallet_hardened_address);
+    let wallet_hardened_address = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.wallet_hardened_address.clone()
+    });
+    address_options_hardened_address_checkbox.set_active(wallet_hardened_address);
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
     address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
@@ -3017,7 +3034,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             
             if !pre_entropy.is_empty() {
                 let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length.unwrap());
-                ADDRESS_DATA.with(|data| {
+                WALLET_SETTINGS.with(|data| {
                     let mut data = data.borrow_mut();
                     data.entropy_checksum = Some(checksum.clone());
                 });
@@ -3039,13 +3056,13 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                 seed_text.buffer().set_text(&seed_hex.to_string());
                 println!("seed_hex {:?}", seed_hex);
                 
-                ADDRESS_DATA.with(|data| {
+                WALLET_SETTINGS.with(|data| {
                     println!("seed_as_hex {:?}", seed_hex);
                     let mut data = data.borrow_mut();
                     data.seed = Some(seed_hex.clone());
                 });
 
-                ADDRESS_DATA.with(|data| {
+                WALLET_SETTINGS.with(|data| {
                     let mut data = data.borrow_mut();
                     data.entropy_string = Some(full_entropy.clone());
                     data.mnemonic_words = Some(mnemonic_words.clone());
@@ -3153,7 +3170,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
                     coin_entry.set_text(&coin_index);
 
-                    ADDRESS_DATA.with(|data| {
+                    WALLET_SETTINGS.with(|data| {
                         // TODO: Implement all coin parameters in address struct
                         let mut data = data.borrow_mut();
                         data.public_key_hash = Some(public_key_hash.clone());
@@ -3601,42 +3618,42 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     generate_addresses_button.connect_clicked(move |_| {
         println!("\n#### Generating addresses button ####");
     
-        let master_private_key_bytes = ADDRESS_DATA.with(|data| {
+        let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.master_private_key_bytes.clone().unwrap_or_default()
         });
     
-        let master_chain_code_bytes = ADDRESS_DATA.with(|data| {
+        let master_chain_code_bytes = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.master_chain_code_bytes.clone().unwrap_or_default()
         });
         
-        let key_derivation = ADDRESS_DATA.with(|data| {
+        let key_derivation = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.key_derivation.clone().unwrap_or_default()
         });
 
-        let hash = ADDRESS_DATA.with(|data| {
+        let hash = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.hash.clone().unwrap_or_default()
         });
 
-        let wallet_import_format = ADDRESS_DATA.with(|data| {
+        let wallet_import_format = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.wallet_import_format.clone().unwrap_or_default()
         });
 
-        let public_key_hash = ADDRESS_DATA.with(|data| {
+        let public_key_hash = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.public_key_hash.clone().unwrap_or_default()
         });
 
-        let coin_index = ADDRESS_DATA.with(|data| {
+        let coin_index = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.coin_index.clone().unwrap_or_default()
         });
 
-        let coin_name = ADDRESS_DATA.with(|data| {
+        let coin_name = WALLET_SETTINGS.with(|data| {
             let data = data.borrow();
             data.coin_name.clone().unwrap_or_default()
         });
@@ -3888,9 +3905,12 @@ fn main() {
     os::detect_os_and_user_dir();
 
     match os::create_local_files() {
-        Ok(()) => println!("All local files created"),
+        Ok(()) => {},
         Err(err) => eprintln!("Error creating local file: {}", err),
     }
+
+    AppSettings::load_settings()
+        .expect(&t!("error.file.read").to_string());
 
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
@@ -3902,7 +3922,6 @@ fn main() {
     application.connect_activate(move |app| {
         create_main_window(app, new_state.clone());
     });
-
 
     let quit = gio::SimpleAction::new("quit", None);
     let new = gio::SimpleAction::new("new", None);
@@ -4312,52 +4331,3 @@ enum CryptoPublicKey {
 
 
 
-
-
-pub struct AppState {
-    pub is_dark_theme: bool,
-    pub language: String,
-    pub theme_preference: String,
-}
-
-
-impl AppState {
-    pub fn new() -> Self {
-        Self {
-            is_dark_theme: false,
-            language: "en".to_string(),
-            theme_preference: "System".to_string(), // Default value
-        }
-    }
-
-    pub fn apply_theme(&self) {
-        let preferred_theme = match self.theme_preference.as_str() {
-            "System" => adw::ColorScheme::PreferLight,
-            "Light" => adw::ColorScheme::ForceLight,
-            "Dark" => adw::ColorScheme::PreferDark,
-            _ => {
-                eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = self.theme_preference));
-                adw::ColorScheme::PreferLight
-            },
-        };
-
-        adw::StyleManager::default().set_color_scheme(preferred_theme);
-    }
-
-    pub fn apply_language(&self) {
-        let language_code = match self.language.as_str() {
-            "Deutsch" => "de",
-            "Hrvatski" => "hr",
-            "English" | _ => "en",
-        };
-
-        rust_i18n::set_locale(language_code);
-        
-        create_message_window(
-            &t!("UI.messages.change-language.titel").to_string(), 
-            &t!("UI.messages.change-language.msg").to_string(), 
-            Some(true), 
-            Some(10)
-        )
-    }
-}

@@ -22,7 +22,7 @@
     "extensions.autoUpdate": false,
     "workbench.colorCustomizations": {},
     "terminal.integrated.tabs.enabled": false,
-    "workbench.colorTheme": "Default Dark Modern",
+    "workbench.colorTheme": "Default Light Modern",
     "todo-tree.highlights.defaultHighlight": {
         "type": "text",
     },
