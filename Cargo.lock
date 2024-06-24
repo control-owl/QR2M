@@ -21,6 +21,7 @@ dependencies = [
  "ripemd",
  "rust-i18n",
  "secp256k1",
+ "serde",
  "serde_json",
  "sha2",
  "sha3",

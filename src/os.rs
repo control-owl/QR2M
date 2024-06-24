@@ -28,8 +28,8 @@ pub struct LocalSettings {
     pub os: Option<String>,
     pub local_config_dir: Option<PathBuf>,
     pub local_temp_dir: Option<PathBuf>,
-    pub local_config_file: Option<String>,
-    pub local_temp_file: Option<String>,
+    pub local_config_file: Option<PathBuf>,
+    pub local_temp_file: Option<PathBuf>,
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -64,52 +64,54 @@ pub fn detect_os_and_user_dir() {
         "unknown".to_string()
     };
 
+    let app_name = APP_NAME.unwrap();
+
+    let local_temp_dir = env::temp_dir();
+    let local_temp_file = local_temp_dir.join(APP_LOCAL_TEMP_FILE);
+
     let local_config_dir = match os.as_str() {
         "windows" => {
             // C:\Users\<Username>\AppData\Roaming\<AppName>\
-            let mut path = env::var("APPDATA").unwrap_or("C:\\".to_string());
-            path.push_str(&format!("\\{}\\", APP_NAME.unwrap()));
-            PathBuf::from(path)
+            let mut path = PathBuf::from(env::var("APPDATA").unwrap_or_else(|_| "C:\\".to_string()));
+            path.push(app_name);
+            path
         },
         "linux" => {
             // /home/<Username>/.config/<AppName>/
-            let mut path = env::var("HOME").unwrap_or("/".to_string());
-            path.push_str(&format!("/.config/{}/", APP_NAME.unwrap()));
-            PathBuf::from(path)
+            let mut path = PathBuf::from(env::var("HOME").unwrap_or_else(|_| "/".to_string()));
+            path.push(".config");
+            path.push(app_name);
+            path
         },
         "android" | "ios" | "macos" | "freebsd" | "dragonfly" | "openbsd" | "netbsd" | "solaris" | "redox" => {
             // /home/<Username>/<AppName>/
-            let mut path = env::var("HOME").unwrap_or("/".to_string());
-            path.push_str(&format!("/{}/", APP_NAME.unwrap()));
-            PathBuf::from(path)
+            let mut path = PathBuf::from(env::var("HOME").unwrap_or_else(|_| "/".to_string()));
+            path.push(app_name);
+            path
         },
         _ => PathBuf::from("/"),
     };
-    
-    let local_config_file = format!("{}{}", local_config_dir.to_str().unwrap(), APP_LOCAL_CONFIG_FILE);
 
-    let local_temp_dir = match env::temp_dir().to_str() {
-        Some(dir) => PathBuf::from(dir),
-        None => {
-            eprintln!("Error: Failed to determine temporary directory. Using fallback.");
-            PathBuf::from(&local_config_dir).join("tmp")
-        }
+    let local_config_file = local_config_dir.join(APP_LOCAL_CONFIG_FILE);
+
+    let (config_dir, config_file) = if local_config_dir.exists() && local_config_dir.is_dir() {
+        (local_config_dir, local_config_file)
+    } else {
+        (local_temp_dir.clone(), local_temp_file.clone())
     };
-
-    let local_temp_file = format!("{}{}", local_temp_dir.to_str().unwrap(), APP_LOCAL_TEMP_FILE);
 
     LOCAL_DATA.with(|data| {
         let mut data = data.borrow_mut();
         println!("\t OS: {:?}", &os);
-        println!("\t Config directory: {:?}", &local_config_dir);
+        println!("\t Config directory: {:?}", &config_dir);
         println!("\t Temp directory: {:?}", &local_temp_dir);
-        println!("\t Configuration file: {:?}", &local_config_file);
+        println!("\t Configuration file: {:?}", &config_file);
         println!("\t Temp file: {:?}", &local_temp_file);
         
         data.os = Some(os.clone());
-        data.local_config_dir = Some(local_config_dir.clone());
+        data.local_config_dir = Some(config_dir.clone());
         data.local_temp_dir = Some(local_temp_dir.clone());
-        data.local_config_file = Some(local_config_file.clone());
+        data.local_config_file = Some(config_file.clone());
         data.local_temp_file = Some(local_temp_file.clone());
     });
 
@@ -147,7 +149,7 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !Path::new(&local_config_file).exists() {
-        eprintln!("Default config file '{}' does not exist", local_config_file);
+        eprintln!("Default config file '{:?}' does not exist", local_config_file);
         match fs::copy(APP_DEFAULT_CONFIG_FILE, &local_config_file) {
             Ok(_) => {
                 println!("Local config file created");

@@ -27,7 +27,7 @@ UI:
       search:
         en: "Search for a coin by"
         de: "Suche nach einer Coin anhand"
-        hr: "Traži kovanicu po"
+        hr: "Traži coin po"
     wallet:
       en: "Wallet settings"
       de: "Wallet Einstellungen"
@@ -72,6 +72,10 @@ UI:
           en: "Hex block size"
           de: "Hex-Blockgröße"
           hr: "Veličina hex bloka"
+      log:
+        en: "Save API response to log file"
+        de: "API-Antwort in Protokolldatei speichern"
+        hr: "Spremi API odgovor u log datoteku"
     proxy:
       en: "Proxy settings"
       de: "Proxy Einstellungen"
@@ -578,7 +582,7 @@ log:
   new_derivation_path:
     en: "New derivation path"
   detecting-local-os:
-    en: "Detecting local Operating System"
+    en: "Local Operating System"
   load-settings:
     en: "Loading user settings"
 

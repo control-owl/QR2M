@@ -162,7 +162,7 @@ impl AppSettings {
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                eprintln!("Failed to read local config file {}: {}", local_config_file, err);
+                eprintln!("Failed to read local config file {:?}: {}", local_config_file, err);
                 String::new() // IMPLEMENT: load default config instead empty one
             }
         };
@@ -392,6 +392,41 @@ impl AppSettings {
             .to_string();
 
         println!("\t Proxy SSL certificate: {:?}", proxy_ssl_certificate);
+
+        APPLICATION_SETTINGS.with(|data| {
+            let mut data = data.borrow_mut();
+
+            data.wallet_entropy_source = wallet_entropy_source.clone();
+            data.wallet_entropy_length = wallet_entropy_length.clone();
+            data.wallet_bip = wallet_bip.clone();
+            data.wallet_address_count = wallet_address_count.clone();
+            data.wallet_hardened_address = wallet_hardened_address.clone();
+
+            data.gui_save_size = gui_save_size.clone();
+            data.gui_last_width = gui_last_width.clone();
+            data.gui_last_height = gui_last_height.clone();
+            data.gui_maximized = gui_maximized.clone();
+            data.gui_theme = gui_theme.clone();
+            data.gui_language = gui_language.clone();
+            data.gui_search = gui_search.clone();
+
+            data.anu_enabled = anu_enabled.clone();
+            data.anu_data_format = anu_data_format.clone();
+            data.anu_array_length = anu_array_length.clone();
+            data.anu_hex_block_size = anu_hex_block_size.clone();
+            data.anu_log = anu_log.clone();
+
+            data.proxy_status = proxy_status.clone();
+            data.proxy_server_address = proxy_server_address.clone();
+            data.proxy_server_port = proxy_server_port.clone();
+            data.proxy_use_pac = proxy_use_pac.clone();
+            data.proxy_script_address = proxy_script_address.clone();
+            data.proxy_login_credentials = proxy_login_credentials.clone();
+            data.proxy_login_username = proxy_login_username.clone();
+            data.proxy_login_password = proxy_login_password.clone();
+            data.proxy_use_ssl = proxy_use_ssl.clone();
+            data.proxy_ssl_certificate = proxy_ssl_certificate.clone();
+        });
 
         Ok(AppSettings {
             wallet_entropy_source,
@@ -1279,8 +1314,8 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
 pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
     println!("{}", &t!("log.create_settings_window").to_string());
 
-    // let settings = AppSettings::load_settings()
-    //     .expect(&t!("error.settings.read").to_string());
+    let settings = AppSettings::load_settings()
+        .expect(&t!("error.settings.read").to_string());
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.settings").to_string())
@@ -1319,10 +1354,6 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
     let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
     let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
-    let gui_theme = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.master_private_key_bytes.clone().unwrap()
-    });
     let default_gui_theme = valid_gui_themes_as_strings
         .iter()
         .position(|s| *s == settings.gui_theme) 
@@ -1617,6 +1648,25 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     use_anu_api_box.append(&use_anu_api_item_box);
     content_anu_box.append(&use_anu_api_box);
 
+    // Log ANU QRNG API
+    let log_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let log_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let log_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let log_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.log").to_string()));
+    let log_anu_api_checkbox = gtk::CheckButton::new();
+
+    log_anu_api_checkbox.set_active(settings.anu_log);
+    log_anu_api_label_box.set_hexpand(true);
+    log_anu_api_item_box.set_hexpand(true);
+    log_anu_api_item_box.set_margin_end(20);
+    log_anu_api_item_box.set_halign(gtk::Align::End);
+
+    log_anu_api_label_box.append(&log_anu_api_label);
+    log_anu_api_item_box.append(&log_anu_api_checkbox);
+    log_anu_api_box.append(&log_anu_api_label_box);
+    log_anu_api_box.append(&log_anu_api_item_box);
+    content_anu_box.append(&log_anu_api_box);
+
     // ANU API data type
     let default_api_data_format_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -1714,6 +1764,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
 
     if use_anu_api_checkbox.is_active() {
         default_api_data_format_box.set_visible(true);
+        log_anu_api_box.set_visible(true);
         default_anu_array_length_box.set_visible(true);
         if anu_data_format_dropdown.selected() as usize == 2 {
             default_anu_hex_length_box.set_visible(true);
@@ -1721,6 +1772,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
             default_anu_hex_length_box.set_visible(false);
         }
     } else {
+        log_anu_api_box.set_visible(false);
         default_api_data_format_box.set_visible(false);
         default_anu_array_length_box.set_visible(false);
         default_anu_hex_length_box.set_visible(false);
@@ -1733,6 +1785,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     use_anu_api_checkbox.connect_toggled(move |checkbox| {
         if checkbox.is_active() {
             default_api_data_format_box.set_visible(true);
+            log_anu_api_box.set_visible(true);
             default_anu_array_length_box.set_visible(true);
             if anu_data_format_dropdown_clone.selected() as usize == 2 {
                 default_anu_hex_length_box_clone.set_visible(true);
@@ -1741,6 +1794,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
             }
         } else {
             default_api_data_format_box.set_visible(false);
+            log_anu_api_box.set_visible(false);
             default_anu_array_length_box.set_visible(false);
             default_anu_hex_length_box_clone.set_visible(false);
         }
@@ -2157,8 +2211,6 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
             let state_clone_language = state.clone();
             settings.update_value("gui_language", new_value, Some(state_clone_language.unwrap()));
             
-
-
             // gui_search: String,
             let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
             settings.update_value("gui_search", new_value, None);
@@ -2166,6 +2218,10 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
             // anu_enabled: bool,
             let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
             settings.update_value("anu_enabled", new_value, None);
+            
+             // anu_log: bool,
+            let new_value = toml_edit::value(log_anu_api_checkbox.is_active());
+            settings.update_value("anu_log", new_value, None);
             
             // anu_data_format: String,
             let new_value = toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize]);
@@ -3895,6 +3951,12 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     dialog_main_box.append(&do_not_show_main_box);
     dialog_main_box.append(&close_dialog_main_box);
     message_window.set_child(Some(&dialog_main_box));
+
+    close_dialog_button.connect_clicked(clone!(
+        @weak message_window => move |_| {
+            message_window.close()
+        }
+    ));
 
     message_window.show();
 }
