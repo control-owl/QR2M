@@ -1,5 +1,8 @@
+# version 0.31.0
 - theme switching in settings
-- language switching - still working on it
+- language switching
+- new settings struct
+- better log
 
 # version 0.30.0
 - setting are fully working

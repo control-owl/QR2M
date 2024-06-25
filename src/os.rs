@@ -32,11 +32,12 @@ pub struct LocalSettings {
     pub local_temp_file: Option<PathBuf>,
 }
 
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 pub fn detect_os_and_user_dir() {
-    println!("{}", &t!("log.detecting-local-os").to_string());
+    println!("[+] {}", &t!("log.detecting-local-os").to_string());
 
     let os = if cfg!(target_os = "windows") {
         "windows".to_string()
@@ -126,8 +127,6 @@ pub fn switch_locale(lang: &str) {
     }
 }
 
-
-
 pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
     let local_config_dir = LOCAL_DATA.with(|data| {
         let data = data.borrow();
@@ -180,3 +179,6 @@ fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
         Err(_) => Ok(false),
     }
 }
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

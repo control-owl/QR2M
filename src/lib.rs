@@ -9,7 +9,9 @@
 
 use sha2::{Digest, Sha256, Sha512};
 
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 pub fn convert_binary_to_string(input_value: &[u8]) -> String {
     input_value

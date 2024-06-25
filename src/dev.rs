@@ -62,7 +62,6 @@ pub fn derive_from_path_ed25519(
     Some((private_key_array, chain_code_array, public_key))
 }
 
-
 fn derive_child_key_ed25519(
     parent_key: &[u8],
     parent_chain_code: &[u8],
@@ -108,8 +107,6 @@ fn derive_child_key_ed25519(
     ))
 }
 
-
-
 pub fn generate_ed25519_address(public_key: &crate::CryptoPublicKey) -> String {
     let public_key_bytes = match public_key {
         crate::CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
@@ -121,3 +118,4 @@ pub fn generate_ed25519_address(public_key: &crate::CryptoPublicKey) -> String {
 }
 
 
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

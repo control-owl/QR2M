@@ -579,10 +579,8 @@ log:
     en: "Generating sha256 and ripemd160 hash"
   double_sha256:
     en: "Generating double sha256 hash"
-  new_derivation_path:
-    en: "New derivation path"
   detecting-local-os:
-    en: "Local Operating System"
+    en: "Local system"
   load-settings:
     en: "Loading user settings"
 

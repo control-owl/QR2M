@@ -15,6 +15,7 @@
 
 // REQUIREMENTS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+
 // Crates
 use std::{
     fs::{self, File}, 
@@ -69,8 +70,8 @@ const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
     "RNG", 
-    "QRNG",
     "File",
+    "QRNG",
 ];
 const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
     "Internal", 
@@ -150,7 +151,7 @@ struct AppSettings {
 impl AppSettings {
     // FEATURE: create verify_settings function
     fn load_settings() -> io::Result<Self> {
-        println!("{}", &t!("log.load-settings").to_string());
+        println!("[+] {}", &t!("log.load-settings").to_string());
         
         let local_config_file = os::LOCAL_DATA.with(|data| {
             let data = data.borrow();
@@ -162,7 +163,7 @@ impl AppSettings {
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                eprintln!("Failed to read local config file {:?}: {}", local_config_file, err);
+                eprintln!("Failed to read local config file: {:?} \n Error: {:?}", local_config_file, err);
                 String::new() // IMPLEMENT: load default config instead empty one
             }
         };
@@ -905,7 +906,9 @@ impl AppState {
     }
 }
 
+
 // BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 fn print_program_info() {
     let current_time = SystemTime::now();
@@ -933,8 +936,7 @@ fn print_program_info() {
 // }
 
 fn generate_entropy(source: &str, entropy_length: u64) -> String {
-    println!("{}", &t!("log.generate_entropy").to_string());
-
+    println!("[+] {}", &t!("log.generate_entropy").to_string());
     println!("\t Entropy source: {:?}", source);
     println!("\t Entropy length: {:?}", entropy_length);
 
@@ -946,9 +948,10 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 
+            println!("\t RNG Entropy: {:?}", rng_entropy_string);
+
             WALLET_SETTINGS.with(|data| {
                 let mut data = data.borrow_mut();
-                println!("entropy_initial {:?}", rng_entropy_string);
                 data.entropy_string = Some(rng_entropy_string.clone());
             });
 
@@ -969,17 +972,18 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 let data = data.borrow();
                 data.anu_hex_block_size.clone()
             });
-                       
-            println!("anu_data_format {:?}", anu_format);
-            println!("anu_array_length {:?}", array_length);
-            println!("anu_hex_block_size {:?}", hex_block_size);
-            
+
             let qrng_entropy_string = anu::get_entropy_from_anu(
                 entropy_length.try_into().unwrap(),
                 &anu_format, 
                 array_length, 
                 Some(hex_block_size)
             );
+
+            println!("\t ANU data format: {:?}", anu_format);
+            println!("\t ANUarray length: {:?}", array_length);
+            println!("\t ANU hex block size: {:?}", hex_block_size);
+            println!("\t QRNG Entropy: {:?}", qrng_entropy_string);
 
             WALLET_SETTINGS.with(|data| {
                 let mut data = data.borrow_mut();
@@ -1010,7 +1014,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                     if let Some(file) = dialog.file() {
                         if let Some(path) = file.path() {
                             let file_path = path.to_string_lossy().to_string();
-                            println!("entropy_file_name {:?}", file_path);
+                            println!("\t Entropy file name: {:?}", file_path);
                             
                             let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
                             
@@ -1052,21 +1056,19 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 }
 
 fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
-    println!("{}", &t!("log.generate_mnemonic_words").to_string());
-
+    println!("[+] {}", &t!("log.generate_mnemonic_words").to_string());
+    println!("\t Final entropy: {:?}", final_entropy_binary);
+    
     let chunks: Vec<String> = final_entropy_binary.chars()
         .collect::<Vec<char>>()
         .chunks(11)
         .map(|chunk| chunk.iter().collect())
         .collect();
-    println!("entropy_final_chunks {:?}", chunks);
-
 
     let mnemonic_decimal: Vec<u32> = chunks.iter()
         .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
         .collect();
-    println!("mnemonic_as_decimal {:?}", mnemonic_decimal);
-
+   
     let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
         Ok(content) => content,
         Err(err) => {
@@ -1086,10 +1088,13 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     }).collect();
 
     let mnemonic_words_as_string = mnemonic_words_vector.join(" ");
+    
+    println!("\t Entropy chunks: {:?}", chunks);
+    println!("\t Decimal mnemonic: {:?}", mnemonic_decimal);
+    println!("\t Mnemonic words: {:?}", mnemonic_words_vector);
 
     WALLET_SETTINGS.with(|data| {
         let mut data = data.borrow_mut();
-        println!("mnemonic_words {:?}", mnemonic_words_as_string);
         data.mnemonic_words = Some(mnemonic_words_as_string.clone());
     });
 
@@ -1097,7 +1102,9 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 }
 
 fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-    println!("{}", &t!("log.generate_bip39_seed").to_string());
+    println!("[+] {}", &t!("log.generate_bip39_seed").to_string());
+    println!("\t Entropy: {:?}", entropy);
+    println!("\t Passphrase: {:?}", passphrase);
 
     let entropy_vector = qr2m_lib::convert_string_to_binary(&entropy);
     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
@@ -1108,12 +1115,16 @@ fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
         },
     };
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
+
+    println!("\t Seed: {:?}", seed);
     
     seed
 }
 
 fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
-    println!("{}", &t!("log.generate_entropy_from_file").to_string());
+    println!("[+] {}", &t!("log.generate_entropy_from_file").to_string());
+    println!("\t File: {:?}", file_path);
+    println!("\t Entropy length: {:?}", entropy_length);
 
     let mut file = match File::open(file_path) {
         Ok(file) => file,
@@ -1133,96 +1144,85 @@ fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
     };
 
     let hash = qr2m_lib::calculate_sha256_hash(&["qr2m".as_bytes(), &buffer].concat());
-    println!("entropy_sha256_hash {:?}", hash);
-
     let mut entropy = String::new();
-    for byte in hash {
+
+    for byte in &hash {
         entropy.push_str(&format!("{:08b}", byte));
     }
 
     entropy = entropy.chars().take(entropy_length as usize).collect();
+    
+    println!("\t File entropy hash: {:?}", hash);
+    println!("\t File entropy: {:?}", entropy);
 
-    println!("entropy_initial {:?}", entropy);
     entropy
 }
 
 fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
-    println!("{}", &t!("log.derive_master_keys").to_string());
+    println!("[+] {}", &t!("log.derive_master_keys").to_string());
+    println!("\t Private header: {:?}", private_header);
+    println!("\t Public header: {:?}", public_header);
 
-    // Reverting to Bitcoin in case that coin is undefined
     if private_header.is_empty() {
         private_header = "0x0488ADE4";
     }
     if public_header.is_empty() {
         public_header = "0x0488B21E";
     }
-
-    // Default message for all blockchains ? Why ?
-    let message = "Bitcoin seed";
-
-    println!("master_key_private_header {:?}", private_header);
-    println!("master_key_public_header {:?}", public_header);
-
+    
     let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
         .expect(&t!("error.master.parse.header", value = "private").to_string());
     let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
         .expect(&t!("error.master.parse.header", value = "public").to_string());
 
-    println!("master_key_parsed_private_header {:?}", private_header);
-    println!("master_key_parsed_public_header {:?}", public_header);
-
     let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
+    let message = "Bitcoin seed";
     let hmac_result = qr2m_lib::calculate_hmac_sha512_hash(message.as_bytes(), &seed_bytes);
     let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
-
-    println!("seed_as_bytes {:?}", seed_bytes);
-    println!("hmac_sha512_hash {:?}", hmac_result);
-    println!("master_key_private_bytes {:?}", master_private_key_bytes);
-    println!("master_key_chain_code {:?}", master_chain_code_bytes);
-
-    // Private construct
     let mut master_private_key = Vec::new();
 
-    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));                  // Version        4 bytes
-    master_private_key.push(0x00);                                                                 // Depth          1 byte
-    master_private_key.extend([0x00; 4].iter());                                                   // Parent finger  4 bytes
-    master_private_key.extend([0x00; 4].iter());                                                   // Index/child    4 bytes
-    master_private_key.extend_from_slice(master_chain_code_bytes);                                 // Chain code     32 bytes
-    master_private_key.push(0x00);                                                                 // Key prefix     1 byte
-    master_private_key.extend_from_slice(master_private_key_bytes);                                // Key            32 bytes
-
-    let checksum: [u8; 4] = qr2m_lib::calculate_checksum_for_master_keys(&master_private_key);                         // Checksum       4 bytes
+    master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));
+    master_private_key.push(0x00);
+    master_private_key.extend([0x00; 4].iter());
+    master_private_key.extend([0x00; 4].iter());
+    master_private_key.extend_from_slice(master_chain_code_bytes);
+    master_private_key.push(0x00);
+    master_private_key.extend_from_slice(master_private_key_bytes);
+    
+    let checksum: [u8; 4] = qr2m_lib::calculate_checksum_for_master_keys(&master_private_key);
+    
     master_private_key.extend_from_slice(&checksum);
-
-    let master_xprv = bs58::encode(&master_private_key).into_string();              // Total      82 bytes
-
-    println!("master_private_key_xprv {:?}", master_xprv);
-
-
-    // Public construct
+    
+    let master_xprv = bs58::encode(&master_private_key).into_string();
     let secp = secp256k1::Secp256k1::new();
     let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
         .expect(&t!("error.master.create").to_string());
     let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
-
-    println!("master_secret_key {:?}", master_secret_key);
-    println!("master_public_key {:?}", master_public_key_bytes);
-
     let mut master_public_key = Vec::new();
 
-    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));                    // Version        4 bytes
-    master_public_key.push(0x00);                                                                   // Depth          1 byte
-    master_public_key.extend([0x00; 4].iter());                                                     // Parent finger  4 bytes
-    master_public_key.extend([0x00; 4].iter());                                                     // Index/child    4 bytes
-    master_public_key.extend_from_slice(master_chain_code_bytes);                                   // Chain code     32 bytes
-    master_public_key.extend_from_slice(&master_public_key_bytes);                                  // Key            33 bytes (compressed)
-
-    let checksum: [u8; 4] = qr2m_lib::calculate_checksum_for_master_keys(&master_public_key);                           // Checksum       4 bytes
+    master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));
+    master_public_key.push(0x00);
+    master_public_key.extend([0x00; 4].iter());
+    master_public_key.extend([0x00; 4].iter());
+    master_public_key.extend_from_slice(master_chain_code_bytes);
+    master_public_key.extend_from_slice(&master_public_key_bytes);
+    
+    let checksum: [u8; 4] = qr2m_lib::calculate_checksum_for_master_keys(&master_public_key);
+    
     master_public_key.extend_from_slice(&checksum);
-
-    let master_xpub = bs58::encode(&master_public_key).into_string();                // Total      82 bytes
-
-    println!("master_public_key_xpub {:?}", master_xpub);
+    
+    let master_xpub = bs58::encode(&master_public_key).into_string();
+    
+    println!("\t Parsed private header {:?}", private_header);
+    println!("\t Parsed public header {:?}", public_header);
+    println!("\t Seed: {:?}", seed_bytes);
+    println!("\t Hmac sha512 hash: {:?}", hmac_result);
+    println!("\t Master key private bytes: {:?}", master_private_key_bytes);
+    println!("\t Master key chain code: {:?}", master_chain_code_bytes);
+    println!("\t Master private key (xprv): {:?}", master_xprv);
+    println!("\t Master secret key {:?}", master_secret_key);
+    println!("\t Master public key {:?}", master_public_key_bytes);
+    println!("\t Master public key (xpub): {:?}", master_xpub);
 
     WALLET_SETTINGS.with(|data| {
         let mut data = data.borrow_mut();
@@ -1233,7 +1233,6 @@ fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header:
         data.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
     });
 
-    // Ok((master_xprv, master_xpub))
     Ok((
         master_xprv, 
         master_xpub,
@@ -1244,40 +1243,32 @@ fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header:
 }
 
 
-
 // GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-fn load_icon_bytes(path: &str) -> Vec<u8> {
-    println!("{} = {}", &t!("log.load_icon_bytes").to_string(), path);
-
-    let mut file = std::fs::File::open(path).expect(&t!("error.file.open", value = path).to_string());
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).expect(&t!("error.file.read", value = path).to_string());
-    buffer
-}
 
 fn get_window_theme_icons() -> [gtk::Image; 5] {
-    println!("{}", &t!("log.get_window_theme_icons").to_string());
+    println!("[+] {}", &t!("log.get_window_theme_icons").to_string());
 
-    // IMPLEMENT: auto detect system theme color switch, change my icons also
     let settings = gtk::Settings::default().unwrap();
-    let mut _theme_path: String = String::new();
+    let theme_path;
 
     if settings.is_gtk_application_prefer_dark_theme() {
-        _theme_path = "res/theme/basic/dark".to_string();
+        theme_path = "res/theme/basic/dark".to_string();
     } else {
-        _theme_path = "res/theme/basic/light".to_string();
+        theme_path = "res/theme/basic/light".to_string();
     }
+
+    println!("\t Theme: {:?}", theme_path);
 
     // BUG: SVG is not working on Windows, revert to PNG icons
     // IMPLEMENT: Check if svg can be loaded, if not, revert to png
     let default_image_extension = "png";
-    
-    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", _theme_path, default_image_extension));
-    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", _theme_path, default_image_extension));
-    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.{}", _theme_path, default_image_extension));
-    let icon_about_bytes = load_icon_bytes(&format!("{}/about.{}", _theme_path, default_image_extension));
-    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.{}", _theme_path, default_image_extension));
+
+    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", theme_path, default_image_extension));
+    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", theme_path, default_image_extension));
+    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.{}", theme_path, default_image_extension));
+    let icon_about_bytes = load_icon_bytes(&format!("{}/about.{}", theme_path, default_image_extension));
+    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.{}", theme_path, default_image_extension));
     
     let icon_new_wallet = gtk::Image::builder()
         .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_new_wallet_bytes)))
@@ -1311,8 +1302,20 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
     
 }
 
+fn load_icon_bytes(path: &str) -> Vec<u8> {
+    // println!("[+] {}", &t!("log.load_icon_bytes"));
+    println!("\t Icon: {:?}", path);
+
+    let mut file = std::fs::File::open(path)
+        .expect(&t!("error.file.open", value = path).to_string());
+    let mut buffer = Vec::new();
+    
+    file.read_to_end(&mut buffer).expect(&t!("error.file.read", value = path).to_string());
+    buffer
+}
+
 pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
-    println!("{}", &t!("log.create_settings_window").to_string());
+    println!("[+] {}", &t!("log.create_settings_window").to_string());
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
@@ -2279,7 +2282,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
             let new_value = toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string());
             settings.update_value("proxy_ssl_certificate", new_value, None);
 
-            settings_window.close()
+            settings_window.close();
         }
     ));
     
@@ -2305,9 +2308,10 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
 }
 
 fn create_about_window() {
-    println!("{}", &t!("log.create_about_window").to_string());
+    println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.png")).expect("msg");
+    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.png"))
+        .expect("Can not load logo image");
     let license = fs::read_to_string("LICENSE.txt").unwrap();
 
     let help_window = gtk::AboutDialog::builder()
@@ -2331,7 +2335,8 @@ fn create_about_window() {
 }
 
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
-    println!("{}", &t!("log.update_derivation_label").to_string());
+    println!("[+] {}", &t!("log.update_derivation_label").to_string());
+    println!("\t Derivation Path: {:?}", DP);
 
     let mut path = String::new();
     path.push_str("m");
@@ -2365,18 +2370,19 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
         path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
     }
     
-    println!("{} = {}", &t!("log.new_derivation_path").to_string(), &path);
+    println!("\t Derivation path: {:?}", &path);
+
     label.set_text(&path);
 }
 
 pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std::cell::RefCell<AppState>>) {
-    println!("{}", &t!("log.create_main_window").to_string());
+    println!("[+] {}", &t!("log.create_main_window").to_string());
     
     let gui_language = APPLICATION_SETTINGS.with(|data| {
         let data = data.borrow();
         data.gui_language.clone()
     });
-    println!("application_language: {:?}", gui_language);
+
     os::switch_locale(&gui_language);
     println!("{}", t!("hello"));
       
@@ -2384,6 +2390,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         let data: std::cell::Ref<AppSettings> = data.borrow();
         data.gui_theme.clone()
     });
+
     let preferred_theme = match String::from(&gui_theme).as_str() {
         "System" => adw::ColorScheme::PreferLight,
         "Light" => adw::ColorScheme::ForceLight,
@@ -3090,6 +3097,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             
             if !pre_entropy.is_empty() {
                 let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length.unwrap());
+                println!("\t Entropy checksum: {:?}", checksum);
+
                 WALLET_SETTINGS.with(|data| {
                     let mut data = data.borrow_mut();
                     data.entropy_checksum = Some(checksum.clone());
@@ -3097,23 +3106,21 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
-                println!("entropy_final {:?}", full_entropy);
+                println!("\t Final entropy: {:?}", full_entropy);
                 entropy_text.buffer().set_text(&full_entropy);
                 
                 let mnemonic_words = generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                println!("mnemonic_words {:?}", mnemonic_words);
                 
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                println!("mnemonic_passphrase {:?}", passphrase_text);
                 
                 let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
-                println!("seed_hex {:?}", seed_hex);
                 
+                println!("\t Seed (hex): {:?}", seed_hex);
+
                 WALLET_SETTINGS.with(|data| {
-                    println!("seed_as_hex {:?}", seed_hex);
                     let mut data = data.borrow_mut();
                     data.seed = Some(seed_hex.clone());
                 });
@@ -3861,7 +3868,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 }
 
 fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
-    println!("{}", &t!("log.create_message_window").to_string());
+    println!("[+] {}", &t!("log.create_message_window").to_string());
         
     let message_window = gtk::MessageDialog::builder()
         .title(title)
@@ -3969,7 +3976,7 @@ fn main() {
     match os::create_local_files() {
         Ok(()) => {},
         Err(err) => eprintln!("Error creating local file: {}", err),
-    }
+    };
 
     AppSettings::load_settings()
         .expect(&t!("error.file.read").to_string());
@@ -3991,7 +3998,6 @@ fn main() {
     let save = gio::SimpleAction::new("save", None);
     let settings = gio::SimpleAction::new("settings", None);
     let about = gio::SimpleAction::new("about", None);
-    // let test = gio::SimpleAction::new("test", None);
     
     quit.connect_activate(
         glib::clone!(@weak application => move |_action, _parameter| {
@@ -3999,7 +4005,6 @@ fn main() {
         }),
     );
     
-    // Keyboard shortcuts
     let new_window = application.clone();
     let main_window_state = state.clone();
     new.connect_activate(move |_action, _parameter| {
@@ -4059,8 +4064,8 @@ fn main() {
 }
 
 
-
 // ADDRESSES -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 fn derive_child_key_secp256k1(
     parent_key: &[u8],
@@ -4068,7 +4073,7 @@ fn derive_child_key_secp256k1(
     index: u32,
     hardened: bool,
 ) -> DerivationResult {
-    println!("{}", &t!("log.derive_child_key").to_string());
+    println!("[+] {}", &t!("log.derive_child_key").to_string());
     println!("parent_key {:?}", parent_key);
     println!("parent_chain_code {:?}", parent_chain_code);
     println!("index {:?}", index);
@@ -4210,7 +4215,7 @@ fn derive_from_path_secp256k1(
     master_chain_code: &[u8],
     path: &str,
 ) -> DerivationResult {
-    println!("{}", &t!("log.derive_from_path_secp256k1").to_string());
+    println!("[+] {}", &t!("log.derive_from_path_secp256k1").to_string());
 
     println!("Derivation path {:?}", path);
 
@@ -4274,7 +4279,7 @@ fn generate_address_sha256(
     public_key: &CryptoPublicKey,
     public_key_hash: &[u8],
 ) -> String {
-    println!("{}", &t!("log.generate_address_sha256").to_string());
+    println!("[+] {}", &t!("log.generate_address_sha256").to_string());
 
     let public_key_bytes = match public_key {
         CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
