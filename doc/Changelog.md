@@ -1,3 +1,8 @@
+# version 0.31.1
+- including obligatory GTK4 LGPL license
+- preparing for a release 
+
+
 # version 0.31.0
 - theme switching in settings
 - language switching

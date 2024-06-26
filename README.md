@@ -7,7 +7,7 @@
 ██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║
 ╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
  ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
-Quantum Random Rust Mnemonic (0.31.0)
+Quantum Random Rust Mnemonic (0.31.1)
 Copyright  [2023-2024]  Control Owl
 ```
 
@@ -28,3 +28,12 @@ This departure from traditional pseudorandom number generators (PRNG) addresses 
 ## Documentation
 
 [Project documentation](doc/)
+
+
+## Third-Party Libraries
+
+### GTK4
+
+The source code for GTK4 can be obtained from the [GTK project website](https://www.gtk.org/).
+
+GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later, read more [here](/LICENSE-LGPL-2.1.txt).

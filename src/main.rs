@@ -2367,7 +2367,17 @@ fn create_about_window() {
 
     let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.png"))
         .expect("Can not load logo image");
-    let license = fs::read_to_string("LICENSE.txt").unwrap();
+
+    let app_license = fs::read_to_string("LICENSE.txt").unwrap();
+    let lgpl_license = fs::read_to_string("LICENSE-LGPL-2.1.txt").unwrap();
+    let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
+
+    let they_forced_me = [
+        "This application uses GTK4 for its GUI.",
+        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
+        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
+    ];
+    let comments = they_forced_me.join(" ");
 
     let help_window = gtk::AboutDialog::builder()
         .modal(true)
@@ -2379,11 +2389,21 @@ fn create_about_window() {
         .website_label("GitHub project")
         .authors([APP_AUTHOR.unwrap()])
         .copyright("Copyright [2023-2024] Control Owl")
-        .license(license)
+        .license(licenses)
         .wrap_license(true)
         .comments(&t!("UI.about.description").to_string())
         .logo(&logo)
+        .comments(comments)
         .build();
+
+    // Create a CSS provider
+    let provider = gtk::CssProvider::new();
+    provider.load_from_data(
+        ".about-dialog-comments {
+            font-size: 4px;
+        }"
+    );
+    help_window.style_context().add_provider(&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     help_window.show();
 
