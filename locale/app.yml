@@ -51,6 +51,10 @@ UI:
         en: "Generate hardened addresses"
         de: "Gehärtete Adressen generieren"
         hr: "Generirati tvrde adrese"
+      notification-timeout:
+        en: "Timeout for all notifications (in seconds)"
+        de: "Timeout für alle Benachrichtigungen (in Sekunden)"
+        hr: "Istek vremena za sve obavijesti (u sekundama)"
     anu:
       en: "ANU settings"
       de: "ANU Einstellungen"

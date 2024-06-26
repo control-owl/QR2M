@@ -59,6 +59,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Deutsch",
     "Hrvatski",
 ];
+const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 10;
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
 // const APP_LOG_DIRECTORY: &str = "log/";
 // const LOG_OUTPUT: &'static [&'static str] = &[
@@ -111,6 +112,19 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
 thread_local! {
     static APPLICATION_SETTINGS: std::cell::RefCell<AppSettings> = std::cell::RefCell::new(AppSettings::default());
     static WALLET_SETTINGS: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
+
+    // SEND:
+    // WALLET_SETTINGS.with(|data| {
+    //     let mut data = data.borrow_mut();
+    //     println!("RNG entropy (string): {}", &rng_entropy_string);
+    //     data.entropy = Some(rng_entropy_string.clone());
+    // });
+    // 
+    // GET:
+    // let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
+    //     let data = data.borrow();
+    //     data.master_private_key_bytes.clone().unwrap()
+    // });
 }
 
 lazy_static! {
@@ -131,6 +145,7 @@ struct AppSettings {
     gui_theme: String,
     gui_language: String,
     gui_search: String,
+    gui_notification_timeout: u32,
     anu_enabled: bool,
     anu_data_format: String,
     anu_array_length: u32,
@@ -164,7 +179,14 @@ impl AppSettings {
             Ok(contents) => contents,
             Err(err) => {
                 eprintln!("Failed to read local config file: {:?} \n Error: {:?}", local_config_file, err);
-                String::new() // IMPLEMENT: load default config instead empty one
+                
+                match fs::read_to_string(&os::APP_DEFAULT_CONFIG_FILE) {
+                    Ok(contents) => contents,
+                    Err(err) => {
+                        eprintln!("Failed to read default and local config file.\n Error: {:?}", err);
+                        String::new()
+                    }
+                }
             }
         };
 
@@ -240,6 +262,13 @@ impl AppSettings {
             .to_string();
 
         println!("\t Coin search: {:?}", gui_search);
+
+        let gui_notification_timeout = gui_section.get("notification_timeout")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as u32)
+            .unwrap_or(DEFAULT_NOTIFICATION_TIMEOUT);
+
+        println!("\t Notification timeout: {:?}", gui_notification_timeout);
 
         // Wallet settings
         let wallet_section = match config.get("wallet") {
@@ -410,6 +439,7 @@ impl AppSettings {
             data.gui_theme = gui_theme.clone();
             data.gui_language = gui_language.clone();
             data.gui_search = gui_search.clone();
+            data.gui_notification_timeout = gui_notification_timeout.clone();
 
             data.anu_enabled = anu_enabled.clone();
             data.anu_data_format = anu_data_format.clone();
@@ -442,6 +472,7 @@ impl AppSettings {
             gui_theme,
             gui_language,
             gui_search,
+            gui_notification_timeout,
             anu_enabled,
             anu_data_format,
             anu_array_length,
@@ -468,63 +499,63 @@ impl AppSettings {
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "wallet_entropy_length" => {
                 if new_value.as_integer().map(|v| v as u32 != self.wallet_entropy_length).unwrap_or(false) {
                     self.wallet_entropy_length = new_value.as_integer().unwrap() as u32;
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "wallet_bip" => {
                 if new_value.as_integer().map(|v| v as u32 != self.wallet_bip).unwrap_or(false) {
                     self.wallet_bip = new_value.as_integer().unwrap() as u32;
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "wallet_address_count" => {
                 if new_value.as_integer().map(|v| v as u32 != self.wallet_address_count).unwrap_or(false) {
                     self.wallet_address_count = new_value.as_integer().unwrap() as u32;
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "wallet_hardened_address" => {
                 if new_value.as_bool().map(|v| v != self.wallet_hardened_address).unwrap_or(false) {
                     self.wallet_hardened_address = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "gui_save_size" => {
                 if new_value.as_bool().map(|v| v != self.gui_save_size).unwrap_or(false) {
                     self.gui_save_size = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "gui_last_width" => {
                 if new_value.as_integer().map(|v| v as u32 != self.gui_last_width).unwrap_or(false) {
                     self.gui_last_width = new_value.as_integer().unwrap() as u32;
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "gui_last_height" => {
                 if new_value.as_integer().map(|v| v as u32 != self.gui_last_height).unwrap_or(false) {
                     self.gui_last_height = new_value.as_integer().unwrap() as u32;
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "gui_maximized" => {
                 if new_value.as_bool().map(|v| v != self.gui_maximized).unwrap_or(false) {
                     self.gui_maximized = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "gui_theme" => {
                 let state_clone = state.clone();
                 if new_value.as_str().map(|v| v != self.gui_theme).unwrap_or(false) {
@@ -552,63 +583,70 @@ impl AppSettings {
                     }
                     self.save_settings();
                 }
-            }
+            },
             "gui_search" => {
                 if new_value.as_str().map(|v| v != self.gui_search).unwrap_or(false) {
                     self.gui_search = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
+            "gui_notification_timeout" => {
+                if new_value.as_integer().map(|v| v as u32 != self.gui_notification_timeout).unwrap_or(false) {
+                    self.gui_notification_timeout = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            },
             "anu_enabled" => {
                 if new_value.as_bool().map(|v| v != self.anu_enabled).unwrap_or(false) {
                     self.anu_enabled = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "anu_data_format" => {
                 if new_value.as_str().map(|v| v != self.anu_data_format).unwrap_or(false) {
                     self.anu_data_format = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "anu_array_length" => {
                 if new_value.as_integer().map(|v| v as u32 != self.anu_array_length).unwrap_or(false) {
                     self.anu_array_length = new_value.as_integer().unwrap() as u32;
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "anu_hex_block_size" => {
                 if new_value.as_integer().map(|v| v as u32 != self.anu_hex_block_size).unwrap_or(false) {
                     self.anu_hex_block_size = new_value.as_integer().unwrap() as u32;
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "anu_log" => {
                 if new_value.as_bool().map(|v| v != self.anu_log).unwrap_or(false) {
                     self.anu_log = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_status" => {
                 if new_value.as_str().map(|v| v != self.proxy_status).unwrap_or(false) {
                     self.proxy_status = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_server_address" => {
                 if new_value.as_str().map(|v| v != self.proxy_server_address).unwrap_or(false) {
                     self.proxy_server_address = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_server_port" => {
                 if new_value.as_integer()
                 .map(|v| (v as u32 != self.proxy_server_port) && (v != 0))
@@ -618,56 +656,56 @@ impl AppSettings {
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_use_pac" => {
                 if new_value.as_bool().map(|v| v != self.proxy_use_pac).unwrap_or(false) {
                     self.proxy_use_pac = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_script_address" => {
                 if new_value.as_str().map(|v| v != self.proxy_script_address).unwrap_or(false) {
                     self.proxy_script_address = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_login_credentials" => {
                 if new_value.as_bool().map(|v| v != self.proxy_login_credentials).unwrap_or(false) {
                     self.proxy_login_credentials = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_login_username" => {
                 if new_value.as_str().map(|v| v != self.proxy_login_username).unwrap_or(false) {
                     self.proxy_login_username = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_login_password" => {
                 if new_value.as_str().map(|v| v != self.proxy_login_password).unwrap_or(false) {
                     self.proxy_login_password = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_use_ssl" => {
                 if new_value.as_bool().map(|v| v != self.proxy_use_ssl).unwrap_or(false) {
                     self.proxy_use_ssl = new_value.as_bool().unwrap();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             "proxy_ssl_certificate" => {
                 if new_value.as_str().map(|v| v != self.proxy_ssl_certificate).unwrap_or(false) {
                     self.proxy_ssl_certificate = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
-            }
+            },
             _ => {}
         }
     
@@ -708,6 +746,7 @@ impl AppSettings {
                 gui_table["theme"] = toml_edit::value(self.gui_theme.clone());
                 gui_table["language"] = toml_edit::value(self.gui_language.clone());
                 gui_table["search"] = toml_edit::value(self.gui_search.clone());
+                gui_table["notification_timeout"] = toml_edit::value(self.gui_notification_timeout as i64);
             }
         }
     
@@ -738,12 +777,8 @@ impl AppSettings {
             }
         }
     
-        // Convert the document back to a string
         let toml_str = doc.to_string();
-        // println!("toml_str: {:?}", toml_str);
-        println!("Updating value in config");
     
-        // Write the updated config string to the file
         let mut file = fs::File::create(&local_config_file)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to create config file: {}", e)))
             .expect("Problem with local config file");
@@ -774,19 +809,6 @@ struct WalletSettings {
     public_key_hash: Option<String>,
     key_derivation: Option<String>,
     hash: Option<String>,
-
-    // SEND:
-    // WALLET_SETTINGS.with(|data| {
-    //     let mut data = data.borrow_mut();
-    //     println!("RNG entropy (string): {}", &rng_entropy_string);
-    //     data.entropy = Some(rng_entropy_string.clone());
-    // });
-    // 
-    // GET:
-    // let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
-    //     let data = data.borrow();
-    //     data.master_private_key_bytes.clone().unwrap()
-    // });
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1447,6 +1469,35 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     default_search_parameter_box.append(&default_search_parameter_item_box);
     content_general_box.append(&default_search_parameter_box);
 
+    // Notification timeout
+    let notification_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let notification_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let notification_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let notification_timeout_label = gtk::Label::new(Some(&t!("UI.settings.wallet.notification-timeout").to_string()));
+    let notification_timeout = settings.gui_notification_timeout as f64;
+    let notification_timeout_adjustment = gtk::Adjustment::new(
+        notification_timeout,
+        1.0,
+        120.0,
+        1.0,
+        10.0,
+        0.0,
+    );
+    let notification_timeout_spinbutton = gtk::SpinButton::new(Some(&notification_timeout_adjustment), 1.0, 0);
+
+    notification_timeout_spinbutton.set_size_request(200, 10);
+    notification_timeout_box.set_hexpand(true);
+    notification_timeout_item_box.set_hexpand(true);
+    notification_timeout_item_box.set_margin_end(20);
+    notification_timeout_item_box.set_halign(gtk::Align::End);
+
+    notification_timeout_label_box.append(&notification_timeout_label);
+    notification_timeout_item_box.append(&notification_timeout_spinbutton);
+    notification_timeout_box.append(&notification_timeout_label_box);
+    notification_timeout_box.append(&notification_timeout_item_box);
+    content_general_box.append(&notification_timeout_box);
+
+
     stack.add_titled(
         &general_settings_box,
         Some("sidebar-settings-general"),
@@ -1563,12 +1614,12 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     let default_address_count_label = gtk::Label::new(Some(&t!("UI.settings.wallet.address-count").to_string()));
     let default_address_count = settings.wallet_address_count as f64;
     let address_count_adjustment = gtk::Adjustment::new(
-        default_address_count, // initial value
-        1.0, // minimum value
-        2147483647.0, // maximum value
-        1.0, // step increment
-        10.0, // page increment
-        0.0, // page size
+        default_address_count,
+        1.0,
+        2147483647.0,
+        1.0,
+        10.0,
+        0.0,
     );
     let address_count_spinbutton = gtk::SpinButton::new(Some(&address_count_adjustment), 1.0, 0);
 
@@ -1706,12 +1757,12 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
 
     let array_length_adjustment = gtk::Adjustment::new(
-        default_array_length as f64,        // initial value
-        ANU_MINIMUM_ARRAY_LENGTH as f64,    // minimum value
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,    // maximum value
-        1.0, // step increment
-        10.0, // page increment
-        0.0, // page size
+        default_array_length as f64,       
+        ANU_MINIMUM_ARRAY_LENGTH as f64,   
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        1.0,
+        10.0,
+        0.0,
     );
     let default_anu_array_length_spinbutton = gtk::SpinButton::new(Some(&array_length_adjustment), 1.0, 0);
 
@@ -1738,12 +1789,12 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     default_hex_size = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_hex_size);
 
     let hex_block_size_adjustment = gtk::Adjustment::new(
-        default_hex_size as f64,            // initial value
-        1.0,                                // minimum value
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,    // maximum value
-        1.0, // step increment
-        10.0, // page increment
-        0.0, // page size
+        default_hex_size as f64,           
+        1.0,                               
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        1.0,
+        10.0,
+        0.0,
     );
     let default_anu_hex_length_spinbutton = gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
 
@@ -2217,6 +2268,10 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
             // gui_search: String,
             let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
             settings.update_value("gui_search", new_value, None);
+
+            // gui_notification_timeout: String,
+            let new_value = toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64);
+            settings.update_value("gui_notification_timeout", new_value, None);
             
             // anu_enabled: bool,
             let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
@@ -2846,7 +2901,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     main_address_box.set_margin_bottom(10);
 
     // Derivation options
-    // TODO: Show derivation boxes according to BIP number
     let derivation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -2894,12 +2948,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     coin_hardened_checkbox.set_halign(gtk::Align::Center);
     
     let adjustment = gtk::Adjustment::new(
-        0.0, // initial value
-        0.0, // minimum value
-        2147483647.0, // maximum value
-        1.0, // step increment
-        100.0, // page increment
-        0.0, // page size
+        0.0,
+        0.0,
+        2147483647.0,
+        1.0,
+        100.0,
+        0.0,
     );
     
     let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
@@ -2998,12 +3052,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_adjustment = gtk::Adjustment::new(
-        wallet_address_count as f64, // initial value
-        1.0, // minimum value
-        2147483647.0, // maximum value
-        1.0, // step increment
-        10.0, // page increment
-        0.0, // page size
+        wallet_address_count as f64,
+        1.0,
+        2147483647.0,
+        1.0,
+        10.0,
+        0.0,
     );
     let address_options_spinbutton = gtk::SpinButton::new(Some(&address_options_adjustment), 1.0, 0);
     
@@ -3234,7 +3288,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                     coin_entry.set_text(&coin_index);
 
                     WALLET_SETTINGS.with(|data| {
-                        // TODO: Implement all coin parameters in address struct
                         let mut data = data.borrow_mut();
                         data.public_key_hash = Some(public_key_hash.clone());
                         data.wallet_import_format = Some(wallet_import_format.to_string());
@@ -3278,10 +3331,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             let search_text = coin_search.text().to_lowercase();
             coin_tree_store.borrow_mut().clear();
 
-            // TODO: Remove hardcoding
             let selected = coin_search_filter_dropdown.selected() as usize;
             let selected_search_parameter = VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
-
             let min_search_length = if selected_search_parameter == &"Index" { 1 } else { 2 };
 
             if search_text.len() >= min_search_length {
@@ -3905,9 +3956,11 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
         progress_main_box.append(&level_bar);
         dialog_main_box.append(&progress_main_box);
 
-        // TODO: remove hardcoding
-        let wait_time = wait_time.unwrap_or(120);
-        
+        let notification_timeout = APPLICATION_SETTINGS.with(|data| {
+            let data = data.borrow();
+            data.gui_notification_timeout.clone()
+        });
+        let wait_time = wait_time.unwrap_or(notification_timeout);
         
         let level_bar_clone = level_bar.clone();
         let message_window_clone = message_window.clone();

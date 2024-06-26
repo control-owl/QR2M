@@ -16,6 +16,8 @@ use std::{
 };
 use rand::Rng;
 
+use crate::APPLICATION_SETTINGS;
+
 const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
 const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
@@ -47,14 +49,18 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
     let anu_data = receiver.recv().unwrap(); // Blocking call to wait for the response
 
     if !anu_data.as_ref().unwrap().is_empty() {
-        create_anu_timestamp(start_time);
-        // TODO: Check if global log is enabled, then save
-        write_api_response_to_log(&anu_data);
+        let anu_enabled = APPLICATION_SETTINGS.with(|data| {
+            let data = data.borrow();
+            data.anu_enabled.clone()
+        });
+
+        if anu_enabled {
+            create_anu_timestamp(start_time);
+            write_api_response_to_log(&anu_data);
+        }
     } else {
         return String::new();
     }
-
-    // anu_data.unwrap();
 
     let entropy = match data_format {
         "uint8" =>  {

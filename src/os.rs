@@ -17,7 +17,7 @@ use crate::APP_NAME;
 
 const APP_LOCAL_CONFIG_FILE: &str = "settings.conf";
 const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
-const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
+pub const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
 
 thread_local! {
     pub static LOCAL_DATA: std::cell::RefCell<LocalSettings> = std::cell::RefCell::new(LocalSettings::default());
