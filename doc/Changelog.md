@@ -1,7 +1,11 @@
+# version 0.32.0
+- do-not-show file created and option to not show messages
+- removed bugs with theme switching and new window
+- remove unnecessary code
+
 # version 0.31.1
 - including obligatory GTK4 LGPL license
 - preparing for a release 
-
 
 # version 0.31.0
 - theme switching in settings
@@ -13,7 +17,6 @@
 - setting are fully working
 - local config file based on OS
 
-
 # version 0.21.0
 - fancy_print removed
 - log output removed (will be recreated later)
@@ -24,11 +27,9 @@
 - ECDB.csv (Extended Crypto-asset DataBase)
 - I forgot what else :D
 
-
 # version 0.20.1
 - new coin view
 - preparing for EVM address support
-
 
 # version 0.20.0
 - almost all address output
@@ -37,7 +38,6 @@
 # version 0.12.0 - Codename: Fucking yeah !!!!
 - finally, child keys are done
 - proper address output
-
 
 # version 0.11.3
 - nothing :(

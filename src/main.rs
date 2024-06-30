@@ -3212,8 +3212,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                 });
 
             } else {
-                // TODO: If entropy is empty show error dialog
-                eprintln!("{}", &t!("error.entropy.empty"))
+                eprintln!("{}", &t!("error.entropy.empty"));
+                create_message_window("Empty entropy", "Please generate new entropy", None, None);
             }
         }
     ));
@@ -3956,11 +3956,10 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     println!("[+] {}", &t!("log.create_message_window").to_string());
     
     if let Ok(settings) = os::load_do_not_show_settings() {
-        if let Some(&show) = settings.get(title) {
-            if !show {
-                println!("[+] Skipping message window for title: {}", title);
-                return;
-            }
+        // Check if the title exists in the set of do-not-show titles
+        if settings.contains(title) {
+            println!("Skipping message window for title: {}", title);
+            return;
         }
     }
         
@@ -4056,11 +4055,11 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     message_window.set_child(Some(&dialog_main_box));
 
     let title_owned = title.to_string();
+    println!("title_owned: {:?}", title_owned);
     close_dialog_button.connect_clicked(clone!(
         @weak message_window => move |_| {
             if do_not_show_checkbox.is_active() {
-                // Save setting to a file
-                if let Err(err) = os::save_do_not_show_setting(&title_owned, false) {
+                if let Err(err) = os::save_do_not_show_setting(&title_owned) {
                     eprintln!("Failed to save do not show setting: {:?}", err);
                 }
             }

@@ -11,7 +11,7 @@ use std::{
     env,
     path::{Path, PathBuf},
     fs,
-    io,
+    io::{self, Write, BufRead},
 };
 use crate::APP_NAME;
 
@@ -143,6 +143,11 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
         data.local_config_file.clone().unwrap()
     });
 
+    let local_do_not_show_file = LOCAL_DATA.with(|data| {
+        let data = data.borrow();
+        data.local_do_not_show_file.clone().unwrap()
+    });
+
     if !local_config_dir.exists() {
         eprintln!("Local config directory not found!");
         fs::create_dir_all(&local_config_dir)?;
@@ -163,7 +168,21 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!("Failed to copy default config file: {}", err);
                 return Err(err.into())
             }
-        }
+        };
+    }
+
+    if !Path::new(&local_do_not_show_file).exists() {
+        eprintln!("Default config file '{:?}' does not exist", local_config_file);
+        match fs::File::create(local_do_not_show_file) {
+            Ok(_) => {
+                println!("Local do-not-show file created");
+                return Ok(())
+            }
+            Err(err) => {
+                eprintln!("Failed to create do-not-show file: {}", err);
+                return Err(err.into())
+            }
+        };
     }
 
     Ok(())
@@ -189,44 +208,56 @@ fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-pub fn save_do_not_show_setting(title: &str, show: bool) -> Result<(), std::io::Error> {
-    let mut settings = load_do_not_show_settings()?;
-    settings.insert(title.to_string(), show);
-    write_to_do_not_show_file(&settings)
-}
-
-pub fn load_do_not_show_settings() -> Result<std::collections::HashMap<String, bool>, std::io::Error> {
-    use std::fs::File;
-    use std::io::BufReader;
-    use std::path::Path;
-    
+pub fn save_do_not_show_setting(title: &str) -> Result<(), io::Error> {
     let local_do_not_show_file = LOCAL_DATA.with(|data| {
         let data = data.borrow();
-        data.local_do_not_show_file.clone().unwrap()
+        data.local_do_not_show_file.clone().unwrap_or_default()
     });
 
     let path = Path::new(&local_do_not_show_file);
-    if path.exists() {
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-        let settings = serde_json::from_reader(reader)?;
-        Ok(settings)
-    } else {
-        Ok(std::collections::HashMap::new())
-    }
-}
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
 
-fn write_to_do_not_show_file(settings: &std::collections::HashMap<String, bool>) -> Result<(), std::io::Error> {
-    use std::fs::File;
-    use std::io::BufWriter;
-    
-    let local_do_not_show_file = LOCAL_DATA.with(|data| {
-        let data = data.borrow();
-        data.local_do_not_show_file.clone().unwrap()
-    });
+    writeln!(file, "{}", title)?;
 
-    let file = File::create(&local_do_not_show_file)?;
-    let writer = BufWriter::new(file);
-    serde_json::to_writer(writer, &settings)?;
     Ok(())
 }
+
+pub fn load_do_not_show_settings() -> Result<std::collections::HashSet<String>, io::Error> {
+    let local_do_not_show_file = LOCAL_DATA.with(|data| {
+        let data = data.borrow();
+        data.local_do_not_show_file.clone().unwrap_or_default()
+    });
+
+    let path = Path::new(&local_do_not_show_file);
+    let mut titles = std::collections::HashSet::new();
+
+    if path.exists() {
+        let file = std::fs::File::open(path)?;
+        let reader = std::io::BufReader::new(file);
+
+        for line in reader.lines() {
+            let title = line?;
+            titles.insert(title);
+        }
+    }
+
+    Ok(titles)
+}
+
+// fn write_to_do_not_show_file(settings: &std::collections::HashMap<String, bool>) -> Result<(), std::io::Error> {
+//     use std::fs::File;
+//     use std::io::BufWriter;
+    
+//     let local_do_not_show_file = LOCAL_DATA.with(|data| {
+//         let data = data.borrow();
+//         data.local_do_not_show_file.clone().unwrap()
+//     });
+
+//     let file = File::create(&local_do_not_show_file)?;
+//     let writer = BufWriter::new(file);
+//     serde_json::to_writer(writer, &settings)?;
+//     Ok(())
+// }

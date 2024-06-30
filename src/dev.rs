@@ -110,7 +110,10 @@ fn derive_child_key_ed25519(
 pub fn generate_ed25519_address(public_key: &crate::CryptoPublicKey) -> String {
     let public_key_bytes = match public_key {
         crate::CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
-        _ => panic!("generate_ed25519_address called with non-ed25519 key"),
+        _ => {
+            eprintln!("generate_ed25519_address called with non-ed25519 key");
+            Vec::new()
+        }
     };
     
     let hash = Sha256::digest(&public_key_bytes);

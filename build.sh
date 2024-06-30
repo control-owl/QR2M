@@ -12,7 +12,6 @@ build_windows() {
     
     export PKG_CONFIG_ALLOW_CROSS=1
     export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
-    # Point to the GTK4 installation for cross-compilation
     export PKG_CONFIG_SYSROOT_DIR="/opt/gtk/builddir"
     
     # MinGW paths

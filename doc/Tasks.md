@@ -38,6 +38,7 @@
 - [x] create filters for cointree
 - [ ] copy-button in all major fields
 - [ ] remove unnecessary BIPs unless coin is BTC
+- [ ] create logging
 
 ---
 
@@ -51,11 +52,12 @@
 - [ ] proxy support
 - [ ] verify local config before applying it, if missing get from default
 - [ ] log directory (file chooser dialog)
-- [ ] notification timeout
+- [x] notification timeout
 
 ---
 
 ### ANU
+
 - [x] add get_entropy_from_anu (API)
     - [ ] find alternative (they are migrating to AWS, and then it's pay per request)
 - [x] uint8 parsing
@@ -65,6 +67,7 @@
 ---
 
 ### Advance
+
 - [ ] buy USB QRNG and make support for it
 - [x] log output
 - [x] translate app to another language
@@ -74,4 +77,4 @@
     - [x] top100
     - [ ] token support
 - [ ] expert view: show all possible values
-- [ ] basic view: show only necessary 
+- [ ] basic view: show only minimum 

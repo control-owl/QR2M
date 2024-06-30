@@ -30,12 +30,12 @@ const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
     let start_time = SystemTime::now();
 
-    crate::create_message_window(
-        "ANU QRNG API", 
-        &t!("UI.main.anu.download"), 
-        Some(true), 
-        Some(5)
-    );
+    // crate::create_message_window(
+    //     "ANU QRNG API", 
+    //     &t!("UI.main.anu.download"), 
+    //     Some(true), 
+    //     Some(5)
+    // );
     
     let (sender, receiver) = std::sync::mpsc::channel();
 
@@ -140,7 +140,7 @@ fn fetch_anu_qrng_data(
 ) {
     let data_format_owned = data_format.to_string();
 
-    std::thread::spawn(move || {
+    // std::thread::spawn(move || {
         let current_time = SystemTime::now();
         let last_request_time = load_last_anu_request().unwrap();
         let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
@@ -148,14 +148,15 @@ fn fetch_anu_qrng_data(
 
         if elapsed < wait_duration {
             let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
+            
+            eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
+            sender.send(Some(String::new())).unwrap();
             crate::create_message_window(
                 "ANU API Timeout", 
                 &t!("error.anu.timeout", value = remaining_seconds), 
                 Some(true), 
                 Some(remaining_seconds as u32)
             );
-            eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
-            sender.send(Some(String::new())).unwrap();
             return;
         }
 
@@ -209,7 +210,7 @@ fn fetch_anu_qrng_data(
 
         let combined_response = chunks.concat();
         sender.send(Some(combined_response)).unwrap();
-    });
+    // });
 }
 
 fn load_last_anu_request() -> Option<SystemTime> {
