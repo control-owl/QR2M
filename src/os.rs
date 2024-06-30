@@ -16,6 +16,7 @@ use std::{
 use crate::APP_NAME;
 
 const APP_LOCAL_CONFIG_FILE: &str = "settings.conf";
+pub const APP_LOCAL_DO_NOT_SHOW_FILE: &str = "do-not-show.conf";
 const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
 pub const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
 
@@ -30,6 +31,7 @@ pub struct LocalSettings {
     pub local_temp_dir: Option<PathBuf>,
     pub local_config_file: Option<PathBuf>,
     pub local_temp_file: Option<PathBuf>,
+    pub local_do_not_show_file: Option<PathBuf>,
 }
 
 
@@ -94,6 +96,7 @@ pub fn detect_os_and_user_dir() {
     };
 
     let local_config_file = local_config_dir.join(APP_LOCAL_CONFIG_FILE);
+    let local_do_not_show_file = local_config_dir.join(APP_LOCAL_DO_NOT_SHOW_FILE);
 
     let (config_dir, config_file) = if local_config_dir.exists() && local_config_dir.is_dir() {
         (local_config_dir, local_config_file)
@@ -108,12 +111,14 @@ pub fn detect_os_and_user_dir() {
         println!("\t Temp directory: {:?}", &local_temp_dir);
         println!("\t Configuration file: {:?}", &config_file);
         println!("\t Temp file: {:?}", &local_temp_file);
+        println!("\t Do not show file: {:?}", &local_do_not_show_file);
         
         data.os = Some(os.clone());
         data.local_config_dir = Some(config_dir.clone());
         data.local_temp_dir = Some(local_temp_dir.clone());
         data.local_config_file = Some(config_file.clone());
         data.local_temp_file = Some(local_temp_file.clone());
+        data.local_do_not_show_file = Some(local_do_not_show_file.clone());
     });
 
 
@@ -182,3 +187,46 @@ fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+pub fn save_do_not_show_setting(title: &str, show: bool) -> Result<(), std::io::Error> {
+    let mut settings = load_do_not_show_settings()?;
+    settings.insert(title.to_string(), show);
+    write_to_do_not_show_file(&settings)
+}
+
+pub fn load_do_not_show_settings() -> Result<std::collections::HashMap<String, bool>, std::io::Error> {
+    use std::fs::File;
+    use std::io::BufReader;
+    use std::path::Path;
+    
+    let local_do_not_show_file = LOCAL_DATA.with(|data| {
+        let data = data.borrow();
+        data.local_do_not_show_file.clone().unwrap()
+    });
+
+    let path = Path::new(&local_do_not_show_file);
+    if path.exists() {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let settings = serde_json::from_reader(reader)?;
+        Ok(settings)
+    } else {
+        Ok(std::collections::HashMap::new())
+    }
+}
+
+fn write_to_do_not_show_file(settings: &std::collections::HashMap<String, bool>) -> Result<(), std::io::Error> {
+    use std::fs::File;
+    use std::io::BufWriter;
+    
+    let local_do_not_show_file = LOCAL_DATA.with(|data| {
+        let data = data.borrow();
+        data.local_do_not_show_file.clone().unwrap()
+    });
+
+    let file = File::create(&local_do_not_show_file)?;
+    let writer = BufWriter::new(file);
+    serde_json::to_writer(writer, &settings)?;
+    Ok(())
+}

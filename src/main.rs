@@ -1284,7 +1284,7 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
 
     // BUG: SVG is not working on Windows, revert to PNG icons
     // IMPLEMENT: Check if svg can be loaded, if not, revert to png
-    let default_image_extension = "png";
+    let default_image_extension = "svg";
 
     let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", theme_path, default_image_extension));
     let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", theme_path, default_image_extension));
@@ -2534,25 +2534,19 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
 
     let state_clone = state.clone();
-    let window_clone = window.clone();
 
     settings_button.connect_clicked(move |_| {
         create_settings_window(Some(state_clone.clone()));
-        window_clone.queue_resize();
     });
     
-
-    // open_wallet_button.connect_clicked(move |_| {
-    //     create_message_window("msg", None, None);
-    // });
 
     about_button.connect_clicked(move |_| {
         create_about_window();
     });
 
-    let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
     let new_window = application.clone();
     new_wallet_button.connect_clicked(move |_| {
+        let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
         create_main_window(&new_window, state.clone());
     });
 
@@ -3221,103 +3215,113 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     generate_master_keys_button.connect_clicked(clone!(
         @strong coin_entry,
         @weak stack   => move |_| {
-            // TODO: Check if seed is empty, show error dialog
-            if let Some((model, iter)) = coin_treeview_clone.borrow().selection().selected() {
-                let status = model.get_value(&iter, 0);
-                let coin_index = model.get_value(&iter, 1);
-                let coin_symbol = model.get_value(&iter, 2);
-                let coin_name = model.get_value(&iter, 3);
-                let key_derivation = model.get_value(&iter, 4);
-                let hash = model.get_value(&iter, 5);
-                let private_header = model.get_value(&iter, 6);
-                let public_header = model.get_value(&iter, 7);
-                let public_key_hash = model.get_value(&iter, 8);
-                let script_hash = model.get_value(&iter, 9);
-                let wallet_import_format = model.get_value(&iter, 10);
-                let evm = model.get_value(&iter, 11);
-                let UCID = model.get_value(&iter, 12);
-                let cmc_top = model.get_value(&iter, 13);
 
-                if let (
-                    Ok(status),
-                    Ok(coin_index),
-                    Ok(coin_symbol),
-                    Ok(coin_name),
-                    Ok(key_derivation),
-                    Ok(hash),
-                    Ok(private_header),
-                    Ok(public_header),
-                    Ok(public_key_hash),
-                    Ok(script_hash),
-                    Ok(wallet_import_format),
-                    Ok(evm),
-                    Ok(UCID),
-                    Ok(cmc_top),
-                ) = (
-                    status.get::<String>(),
-                    coin_index.get::<String>(), 
-                    coin_symbol.get::<String>(), 
-                    coin_name.get::<String>(),
-                    key_derivation.get::<String>(),
-                    hash.get::<String>(),
-                    private_header.get::<String>(),
-                    public_header.get::<String>(),
-                    public_key_hash.get::<String>(),
-                    script_hash.get::<String>(),
-                    wallet_import_format.get::<String>(),
-                    evm.get::<String>(),
-                    UCID.get::<String>(),
-                    cmc_top.get::<String>(),
-                ) {
-                    master_private_key_text.buffer().set_text("");
-                    master_public_key_text.buffer().set_text("");
 
-                    println!("\n#### Coin info ####");
+            let buffer = seed_text.buffer();
+            let start_iter = buffer.start_iter();
+            let end_iter = buffer.end_iter();
+            let text = buffer.text(&start_iter, &end_iter, false);
 
-                    println!("status: {}", status);
-                    println!("index: {}", coin_index);
-                    println!("coin_symbol: {}", coin_symbol);
-                    println!("coin_name: {}", coin_name);
-                    println!("key_derivation: {}", key_derivation);
-                    println!("hash: {}", hash);
-                    println!("private_header: {}", private_header);
-                    println!("public_header: {}", public_header);
-                    println!("public_key_hash: {}", public_key_hash);
-                    println!("script_hash: {}", script_hash);
-                    println!("wallet_import_format: {}", wallet_import_format);
-                    println!("EVM: {}", evm);
-                    println!("UCID: {}", UCID);
-                    println!("cmc_top: {}", cmc_top);
-                    let buffer = master_seed_text_clone.buffer();
-                    let start_iter = buffer.start_iter();
-                    let end_iter = buffer.end_iter();
-                    let seed_string = buffer.text(&start_iter, &end_iter, true);
-                    
-                    match generate_master_keys(
-                        &seed_string, 
-                        &private_header,
-                        &public_header,
+            if !text.is_empty() {
+                if let Some((model, iter)) = coin_treeview_clone.borrow().selection().selected() {
+                    let status = model.get_value(&iter, 0);
+                    let coin_index = model.get_value(&iter, 1);
+                    let coin_symbol = model.get_value(&iter, 2);
+                    let coin_name = model.get_value(&iter, 3);
+                    let key_derivation = model.get_value(&iter, 4);
+                    let hash = model.get_value(&iter, 5);
+                    let private_header = model.get_value(&iter, 6);
+                    let public_header = model.get_value(&iter, 7);
+                    let public_key_hash = model.get_value(&iter, 8);
+                    let script_hash = model.get_value(&iter, 9);
+                    let wallet_import_format = model.get_value(&iter, 10);
+                    let evm = model.get_value(&iter, 11);
+                    let UCID = model.get_value(&iter, 12);
+                    let cmc_top = model.get_value(&iter, 13);
+    
+                    if let (
+                        Ok(status),
+                        Ok(coin_index),
+                        Ok(coin_symbol),
+                        Ok(coin_name),
+                        Ok(key_derivation),
+                        Ok(hash),
+                        Ok(private_header),
+                        Ok(public_header),
+                        Ok(public_key_hash),
+                        Ok(script_hash),
+                        Ok(wallet_import_format),
+                        Ok(evm),
+                        Ok(UCID),
+                        Ok(cmc_top),
+                    ) = (
+                        status.get::<String>(),
+                        coin_index.get::<String>(), 
+                        coin_symbol.get::<String>(), 
+                        coin_name.get::<String>(),
+                        key_derivation.get::<String>(),
+                        hash.get::<String>(),
+                        private_header.get::<String>(),
+                        public_header.get::<String>(),
+                        public_key_hash.get::<String>(),
+                        script_hash.get::<String>(),
+                        wallet_import_format.get::<String>(),
+                        evm.get::<String>(),
+                        UCID.get::<String>(),
+                        cmc_top.get::<String>(),
                     ) {
-                        Ok(xprv) => {
-                            master_private_key_text.buffer().set_text(&xprv.0);
-                            master_public_key_text.buffer().set_text(&xprv.1);
-                        },
-                        Err(err) => eprintln!("{}: {}", &t!("error.master.create"), err),
-                    }
-
-                    coin_entry.set_text(&coin_index);
-
-                    WALLET_SETTINGS.with(|data| {
-                        let mut data = data.borrow_mut();
-                        data.public_key_hash = Some(public_key_hash.clone());
-                        data.wallet_import_format = Some(wallet_import_format.to_string());
-                        data.key_derivation = Some(key_derivation.to_string());
-                        data.hash = Some(hash.to_string());
-                        data.coin_index = Some(coin_index.parse().unwrap());
-                        data.coin_name = Some(coin_name.parse().unwrap());
-
-                    });
-                }  
+                        master_private_key_text.buffer().set_text("");
+                        master_public_key_text.buffer().set_text("");
+    
+                        println!("\n#### Coin info ####");
+    
+                        println!("status: {}", status);
+                        println!("index: {}", coin_index);
+                        println!("coin_symbol: {}", coin_symbol);
+                        println!("coin_name: {}", coin_name);
+                        println!("key_derivation: {}", key_derivation);
+                        println!("hash: {}", hash);
+                        println!("private_header: {}", private_header);
+                        println!("public_header: {}", public_header);
+                        println!("public_key_hash: {}", public_key_hash);
+                        println!("script_hash: {}", script_hash);
+                        println!("wallet_import_format: {}", wallet_import_format);
+                        println!("EVM: {}", evm);
+                        println!("UCID: {}", UCID);
+                        println!("cmc_top: {}", cmc_top);
+                        let buffer = master_seed_text_clone.buffer();
+                        let start_iter = buffer.start_iter();
+                        let end_iter = buffer.end_iter();
+                        let seed_string = buffer.text(&start_iter, &end_iter, true);
+                        
+                        match generate_master_keys(
+                            &seed_string, 
+                            &private_header,
+                            &public_header,
+                        ) {
+                            Ok(xprv) => {
+                                master_private_key_text.buffer().set_text(&xprv.0);
+                                master_public_key_text.buffer().set_text(&xprv.1);
+                            },
+                            Err(err) => eprintln!("{}: {}", &t!("error.master.create"), err),
+                        }
+    
+                        coin_entry.set_text(&coin_index);
+    
+                        WALLET_SETTINGS.with(|data| {
+                            let mut data = data.borrow_mut();
+                            data.public_key_hash = Some(public_key_hash.clone());
+                            data.wallet_import_format = Some(wallet_import_format.to_string());
+                            data.key_derivation = Some(key_derivation.to_string());
+                            data.hash = Some(hash.to_string());
+                            data.coin_index = Some(coin_index.parse().unwrap());
+                            data.coin_name = Some(coin_name.parse().unwrap());
+    
+                        });
+                    }  
+                }
+            } else {
+                create_message_window("Empty seed", "Please generate seed first, then master keys", None, None);
             }
         }
     ));
@@ -3940,6 +3944,15 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
 fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
     println!("[+] {}", &t!("log.create_message_window").to_string());
+    
+    if let Ok(settings) = os::load_do_not_show_settings() {
+        if let Some(&show) = settings.get(title) {
+            if !show {
+                println!("[+] Skipping message window for title: {}", title);
+                return;
+            }
+        }
+    }
         
     let message_window = gtk::MessageDialog::builder()
         .title(title)
@@ -4032,11 +4045,20 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     dialog_main_box.append(&close_dialog_main_box);
     message_window.set_child(Some(&dialog_main_box));
 
+    let title_owned = title.to_string();
     close_dialog_button.connect_clicked(clone!(
         @weak message_window => move |_| {
-            message_window.close()
+            if do_not_show_checkbox.is_active() {
+                // Save setting to a file
+                if let Err(err) = os::save_do_not_show_setting(&title_owned, false) {
+                    eprintln!("Failed to save do not show setting: {:?}", err);
+                }
+            }
+            message_window.close();
         }
     ));
+
+    message_window.show();
 
     message_window.show();
 }
@@ -4102,15 +4124,6 @@ fn main() {
         create_about_window();
     });
 
-    // test.connect_activate(move |_action, _parameter| {
-    //     create_message_window(
-    //         "Test title dialog", 
-    //         "One request every 10 seconds.", 
-    //         Some(true), 
-    //         Some(10)
-    //     );
-    // });
-
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
     application.add_action(&quit);
 
@@ -4128,10 +4141,6 @@ fn main() {
 
     application.set_accels_for_action("app.about", &["F1"]);
     application.add_action(&about);
-
-    // Only to start testing window
-    // application.set_accels_for_action("app.test", &["<Primary>T"]);
-    // application.add_action(&test);
 
     application.run();
 }

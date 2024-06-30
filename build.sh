@@ -10,15 +10,22 @@ build_windows() {
     
     rustup target add x86_64-pc-windows-gnu
     
+    export PKG_CONFIG_ALLOW_CROSS=1
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
+    # Point to the GTK4 installation for cross-compilation
+    export PKG_CONFIG_SYSROOT_DIR="/opt/gtk/builddir"
+    
+    # MinGW paths
     export PATH="/usr/x86_64-w64-mingw32/bin:$PATH"
-    export PKG_CONFIG_PATH="/opt/gtk4-win64/lib/pkgconfig"  # Adjust this path to where GTK4 .pc files are located
-    export PKG_CONFIG_SYSROOT_DIR="/usr/x86_64-w64-mingw32/sys-root/mingw"
+    export LIBRARY_PATH="/usr/x86_64-w64-mingw32/lib"
     export C_INCLUDE_PATH="/usr/x86_64-w64-mingw32/include"
     export CPLUS_INCLUDE_PATH="/usr/x86_64-w64-mingw32/include"
-    export LIBRARY_PATH="/opt/gtk4-win64/lib"  # Adjust this path to where GTK4 libraries (.a files) are located
-    export LD_LIBRARY_PATH="/opt/gtk4-win64/lib"  # Adjust this path to where GTK4 libraries (.so files) are located
     
-    # export RUSTFLAGS="-L /opt/gtk4-win64/lib"
+    # Set cross-compilation tools
+    export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
+    export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
+    export AR_x86_64_pc_windows_gnu=x86_64-w64-mingw32-ar
+    export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
     
     cargo build --release --target x86_64-pc-windows-gnu
     
