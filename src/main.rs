@@ -2258,12 +2258,22 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
             // gui_theme: String,
             let new_value = toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize]);
             let state_clone_theme = state.clone();
-            settings.update_value("gui_theme", new_value, Some(state_clone_theme.unwrap()));
+            settings.update_value("gui_theme", new_value.clone(), Some(state_clone_theme.unwrap()));
+            
+            APPLICATION_SETTINGS.with(|data| {
+                let mut data = data.borrow_mut();
+                data.gui_theme = new_value.clone().as_str().unwrap().to_string();
+            });
             
             // gui_language: String,
             let new_value = toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize]);
             let state_clone_language = state.clone();
-            settings.update_value("gui_language", new_value, Some(state_clone_language.unwrap()));
+            settings.update_value("gui_language", new_value.clone(), Some(state_clone_language.unwrap()));
+
+            APPLICATION_SETTINGS.with(|data| {
+                let mut data = data.borrow_mut();
+                data.gui_language = new_value.clone().as_str().unwrap().to_string();
+            });
             
             // gui_search: String,
             let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
@@ -2545,8 +2555,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     });
 
     let new_window = application.clone();
+    // let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
     new_wallet_button.connect_clicked(move |_| {
-        let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
         create_main_window(&new_window, state.clone());
     });
 
