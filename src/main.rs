@@ -1282,9 +1282,9 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
 
     println!("\t Theme: {:?}", theme_path);
 
-    // BUG: SVG is not working on Windows, revert to PNG icons
-    // IMPLEMENT: Check if svg can be loaded, if not, revert to png
-    let default_image_extension = "svg";
+    // BUG: SVG is not working on my Windows, revert to PNG icons
+    // FEATURE: Check if svg can be loaded, if not, revert to png
+    let default_image_extension = "png";
 
     let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", theme_path, default_image_extension));
     let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", theme_path, default_image_extension));
@@ -2518,16 +2518,10 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
     // FEATURE: make my own menu icons
     let theme_images = get_window_theme_icons();
-
-    new_wallet_button.set_icon_name("tab-new-symbolic");
     new_wallet_button.set_child(Some(&theme_images[0]));
-    open_wallet_button.set_icon_name("document-open-symbolic");
     open_wallet_button.set_child(Some(&theme_images[1]));
-    save_wallet_button.set_icon_name("document-save-symbolic");
     save_wallet_button.set_child(Some(&theme_images[2]));
-    about_button.set_icon_name("help-about-symbolic");
     about_button.set_child(Some(&theme_images[3]));
-    settings_button.set_icon_name("org.gnome.Settings-symbolic");
     settings_button.set_child(Some(&theme_images[4]));
     
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
@@ -3908,7 +3902,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
             println!("Crypto address: {:?}", address);
 
-            // IMPLEMENT: remove hard-coding
+            // IMPROVEMENT: remove hard-coding
             let compressed = true;
             
             let priv_key_wif = create_private_key_for_address(
@@ -4116,11 +4110,11 @@ fn main() {
     });
 
     open.connect_activate(move |_action, _parameter| {
-        todo!() // Open wallet action activated
+        // IMPLEMENT Open wallet action activated
     });
     
     save.connect_activate(|_action, _parameter| {
-        todo!() // Save wallet action activated
+        // IMPLEMENT Save wallet action activated
     });
 
     let settings_window_state = state.clone();

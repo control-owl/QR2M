@@ -78,3 +78,4 @@
     - [ ] token support
 - [ ] expert view: show all possible values
 - [ ] basic view: show only minimum 
+- [ ] learn WebAssembly and create web app version

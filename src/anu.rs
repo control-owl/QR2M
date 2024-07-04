@@ -69,10 +69,10 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
             process_uint8_data(&uint8)
         },
         "uint16" =>  {
-            todo!() // Create uint16 ANU extraction
+            // IMPLEMENT Create uint16 ANU extraction
         },
         "hex16" =>  {
-            todo!() // Create hex16 ANU extraction
+            // TODO Re-check if hex16 ANU extraction is working
             // let hex_strings = extract_hex_strings(
             //         &anu_data, 
             //         hex_block_size.unwrap().try_into().unwrap()

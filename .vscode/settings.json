@@ -73,7 +73,8 @@
     ],
     "todo-tree.general.tagGroups": {
         "BUG": ["PANIC", ],
-        "TODO": ["todo!()", "IMPLEMENT", "IMPROVEMENT", "FEATURE"],
+        "TODO": ["todo!()", "IMPLEMENT", "IMPROVEMENT"],
+        "FEATURE": ["FEATURE"],
         "VERIFY": ["CHECK"],
     },
     "cSpell.language": "en,hr,de",
