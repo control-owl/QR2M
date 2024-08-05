@@ -7,25 +7,27 @@ build_linux() {
 
 build_windows() {
     echo "Building for Windows..."
+    # Why this has to be so hard?
+    # I bricked my gnome, trying to compile this shit, still nothing
+    # TODO: Create VM for compiling Windows application
     
+    # export PKG_CONFIG_ALLOW_CROSS=1
+    # export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
+    # export PKG_CONFIG_SYSROOT_DIR="/opt/gtk/builddir"
+    
+    # # MinGW paths
+    # export PATH="/usr/x86_64-w64-mingw32/bin:$PATH"
+    # export LIBRARY_PATH="/usr/x86_64-w64-mingw32/lib"
+    # export C_INCLUDE_PATH="/usr/x86_64-w64-mingw32/include"
+    # export CPLUS_INCLUDE_PATH="/usr/x86_64-w64-mingw32/include"
+    
+    # # Set cross-compilation tools
+    # export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
+    # export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
+    # export AR_x86_64_pc_windows_gnu=x86_64-w64-mingw32-ar
+    # export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
+
     rustup target add x86_64-pc-windows-gnu
-    
-    export PKG_CONFIG_ALLOW_CROSS=1
-    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
-    export PKG_CONFIG_SYSROOT_DIR="/opt/gtk/builddir"
-    
-    # MinGW paths
-    export PATH="/usr/x86_64-w64-mingw32/bin:$PATH"
-    export LIBRARY_PATH="/usr/x86_64-w64-mingw32/lib"
-    export C_INCLUDE_PATH="/usr/x86_64-w64-mingw32/include"
-    export CPLUS_INCLUDE_PATH="/usr/x86_64-w64-mingw32/include"
-    
-    # Set cross-compilation tools
-    export CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc
-    export CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++
-    export AR_x86_64_pc_windows_gnu=x86_64-w64-mingw32-ar
-    export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc
-    
     cargo build --release --target x86_64-pc-windows-gnu
     
     # Optionally, strip the resulting executable
@@ -59,6 +61,6 @@ if [ "$1" == "--os" ]; then
             echo "Invalid OS specified. Use 'linux', 'win', or 'mac'."
             ;;
     esac
-else
-    build_all
+# else
+#     build_all
 fi

@@ -49,7 +49,8 @@ i18n!("locale", fallback = "en");
 
 
 // Default settings
-// TODO: Translate strings also
+// TODO: Translate const strings
+// FEATURE: Create tooltip for every gtk4 object
 const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
@@ -127,9 +128,9 @@ thread_local! {
     // });
 }
 
-lazy_static! {
-    static ref LOG_FILE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
-}
+// lazy_static! {
+//     static ref LOG_FILE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+// }
 
 #[derive(Debug, Default)]
 struct AppSettings {
@@ -2036,8 +2037,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     proxy_password_item_box.set_hexpand(true);
     proxy_password_item_box.set_margin_end(20);
     proxy_password_item_box.set_halign(gtk::Align::End);
-    // IMPLEMENT: Translate tooltip to another languages
-    // FEATURE: Make tooltip for every object
+
     proxy_password_entry.set_show_peek_icon(true);
     proxy_password_entry.set_text(&settings.proxy_login_password);
 

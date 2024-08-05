@@ -120,8 +120,6 @@ pub fn detect_os_and_user_dir() {
         data.local_temp_file = Some(local_temp_file.clone());
         data.local_do_not_show_file = Some(local_do_not_show_file.clone());
     });
-
-
 }
 
 pub fn switch_locale(lang: &str) {
