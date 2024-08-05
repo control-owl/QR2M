@@ -30,7 +30,7 @@ use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
-use lazy_static::lazy_static;
+// use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use sha3::Keccak256;
 

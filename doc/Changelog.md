@@ -1,3 +1,6 @@
+# version 0.32.1
+- cleaning code
+
 # version 0.32.0
 - do-not-show file created and option to not show messages
 - removed bugs with theme switching and new window

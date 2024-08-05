@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "QR2M"
-version = "0.32.0"
+version = "0.32.1"
 dependencies = [
  "bip39",
  "bs58",
@@ -13,7 +13,6 @@ dependencies = [
  "glib",
  "gtk4",
  "hex",
- "lazy_static",
  "libadwaita",
  "num-bigint",
  "rand",
