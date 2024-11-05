@@ -72,6 +72,7 @@ const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
     "RNG", 
+    "RNG2", 
     "File",
     "QRNG",
 ];
@@ -980,6 +981,22 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
 
             rng_entropy_string
         },
+        "RNG2" => {
+            let mut rng = rand::thread_rng();
+            let rng_entropy_string: String = (0..entropy_length)
+                .map(|_| rng.gen_range(0..=1))
+                .map(|bit| char::from_digit(bit, 10).unwrap())
+                .collect();
+
+            println!("\t RNG Entropy: {:?}", rng_entropy_string);
+
+            WALLET_SETTINGS.with(|data| {
+                let mut data = data.borrow_mut();
+                data.entropy_string = Some(rng_entropy_string.clone());
+            });
+
+            rng_entropy_string
+        },
         "QRNG" => {
             let anu_format = APPLICATION_SETTINGS.with(|data| {
                 let data = data.borrow();
@@ -1857,8 +1874,9 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     
 
     anu_data_format_dropdown.connect_selected_notify(clone!(
-        @weak default_anu_hex_length_box,
-        @weak anu_data_format_dropdown => move |dd| {
+        #[weak] default_anu_hex_length_box,
+        // #[weak] anu_data_format_dropdown,
+        move |dd| {
             if dd.selected() as usize == 2 {
                 default_anu_hex_length_box.set_visible(true);
             } else {
@@ -2162,7 +2180,8 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
 
     // Actions
     use_proxy_settings_dropdown.connect_selected_notify(clone!(
-        @weak proxy_manual_settings_box => move |dd| {
+        #[weak] proxy_manual_settings_box,
+        move |dd| {
             let value = dd.selected() as usize;
             let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
             let settings = selected_proxy_settings_value.unwrap();
@@ -2176,19 +2195,22 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     ));
 
     use_proxy_credentials_checkbox.connect_active_notify(clone!(
-        @weak use_proxy_credentials_content_box => move |cb| {
+        #[weak] use_proxy_credentials_content_box,
+        move |cb| {
             use_proxy_credentials_content_box.set_visible(cb.is_active());
         }
     ));
 
     use_proxy_pac_checkbox.connect_active_notify(clone!(
-        @weak use_proxy_pac_content_box => move |cb| {
+        #[weak] use_proxy_pac_content_box,
+        move |cb| {
             use_proxy_pac_content_box.set_visible(cb.is_active());
         }
     ));
 
     use_proxy_ssl_checkbox.connect_active_notify(clone!(
-        @weak use_proxy_ssl_checkbox => move |cb| {
+        // #[weak] use_proxy_ssl_checkbox,
+        move |cb| {
             use_proxy_ssl_certificate_content_box.set_visible(cb.is_active());
         }
     ));
@@ -2208,8 +2230,9 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
 
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
-        // @weak anu_data_format_dropdown,
-        @weak settings_window, => move |_| {
+        // #[weak] anu_data_format_dropdown,
+        #[weak] settings_window,
+        move |_| {
             // let config_path = "config/custom.conf";
             let mut settings = AppSettings::load_settings()
                 .expect(&t!("error.file.read").to_string());
@@ -2264,7 +2287,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
                 let mut data = data.borrow_mut();
                 data.gui_theme = new_value.clone().as_str().unwrap().to_string();
             });
-            
+
             // gui_language: String,
             let new_value = toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize]);
             let state_clone_language = state.clone();
@@ -2353,7 +2376,8 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     
     
     cancel_button.connect_clicked(clone!(
-        @weak settings_window => move |_| {
+        #[weak] settings_window,
+        move |_| {
             settings_window.close()
         }
     ));
@@ -2536,20 +2560,30 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     header_bar.pack_end(&settings_button);
     header_bar.pack_end(&about_button);
 
-
     let state_clone = state.clone();
+    let new_wallet_button_clone = new_wallet_button.clone();
+    let about_button_clone = about_button.clone();
+    let settings_button_clone = settings_button.clone();
 
     settings_button.connect_clicked(move |_| {
+
         create_settings_window(Some(state_clone.clone()));
+
+        // TODO: Apply new icons according to theme change
+        // This block will only change icons after I open settings again
+        let theme_images = get_window_theme_icons();
+        new_wallet_button_clone.set_child(Some(&theme_images[0]));
+        open_wallet_button.set_child(Some(&theme_images[1]));
+        save_wallet_button.set_child(Some(&theme_images[2]));
+        about_button_clone.set_child(Some(&theme_images[3]));
+        settings_button_clone.set_child(Some(&theme_images[4]));
     });
     
-
     about_button.connect_clicked(move |_| {
         create_about_window();
     });
 
     let new_window = application.clone();
-    // let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
     new_wallet_button.connect_clicked(move |_| {
         create_main_window(&new_window, state.clone());
     });
@@ -3144,11 +3178,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     // ACTIONS
     // JUMP: Generate Seed button
     generate_seed_button.connect_clicked(clone!(
-        @weak entropy_source_dropdown,
-        @weak entropy_length_dropdown,
-        @weak mnemonic_words_text,
-        @weak seed_text,
-        @weak stack  => move |_| {
+        #[weak] entropy_source_dropdown,
+        #[weak] entropy_length_dropdown,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
+        // #[weak] stack,
+        move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
@@ -3217,8 +3252,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
     // JUMP: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
-        @strong coin_entry,
-        @weak stack   => move |_| {
+        #[strong] coin_entry,
+        // #[weak] stack,
+        move |_| {
 
 
             let buffer = seed_text.buffer();
@@ -3325,6 +3361,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                     }  
                 }
             } else {
+                master_private_key_text.buffer().set_text("Please generate seed");
+                // master_public_key_text.buffer().set_text("");
                 create_message_window("Empty seed", "Please generate seed first, then master keys", None, None);
             }
         }
@@ -3332,7 +3370,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
 
     advance_search_checkbox.connect_active_notify(clone!(
-        @weak advance_search_checkbox => move |checkbox| {
+        // #[weak] advance_search_checkbox,
+        move |checkbox| {
         if checkbox.is_active() {
             advance_search_filter_box.set_visible(true);
         } else {
@@ -3342,8 +3381,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     }));
 
     coin_search_filter_dropdown.connect_selected_notify(clone!(
-        @weak coin_search,
-        @weak bip_dropdown => move |dropdown| {
+        #[weak] coin_search,
+        // #[weak] bip_dropdown,
+        move |dropdown| {
             let selected: usize = dropdown.selected().try_into().unwrap_or(0);
             coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = VALID_COIN_SEARCH_PARAMETER[selected])));
             coin_search.set_text("");
@@ -3652,8 +3692,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let dp_clone = std::rc::Rc::clone(&derivation_path);
 
     bip_dropdown.connect_selected_notify(clone!(
-        @weak derivation_label_text,
-        @weak bip_dropdown => move |_| {
+        #[weak] derivation_label_text,
+        #[weak] bip_dropdown,
+        move |_| {
             let value = bip_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(value);
             let bip = selected_entropy_source_value.unwrap();
@@ -3675,8 +3716,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let dp_clone = std::rc::Rc::clone(&derivation_path);
     
     bip_hardened_checkbox.connect_active_notify(clone!(
-        @weak derivation_label_text,
-        @weak bip_hardened_checkbox => move |_| {
+        #[weak] derivation_label_text,
+        #[weak] bip_hardened_checkbox,
+        move |_| {
             dp_clone.borrow_mut().update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
             // println!("new DP: {:?}", dp_clone.borrow());
             update_derivation_label(*dp_clone.borrow(), derivation_label_text)
@@ -3686,8 +3728,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let dp_clone2 = std::rc::Rc::clone(&derivation_path);
     
     coin_hardened_checkbox.connect_active_notify(clone!(
-        @weak derivation_label_text,
-        @weak coin_hardened_checkbox => move |_| {
+        #[weak] derivation_label_text,
+        #[weak] coin_hardened_checkbox,
+        move |_| {
             dp_clone2.borrow_mut().update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
             // println!("new DP: {:?}", dp_clone2.borrow());
             update_derivation_label(*dp_clone2.borrow(), derivation_label_text)
@@ -3697,8 +3740,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let dp_clone3 = std::rc::Rc::clone(&derivation_path);
     
     address_hardened_checkbox.connect_active_notify(clone!(
-        @weak derivation_label_text,
-        @weak address_hardened_checkbox => move |_| {
+        #[weak] derivation_label_text,
+        #[weak] address_hardened_checkbox,
+        move |_| {
             dp_clone3.borrow_mut().update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
             // println!("new DP: {:?}", dp_clone3.borrow());
             update_derivation_label(*dp_clone3.borrow(), derivation_label_text)
@@ -3708,8 +3752,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let dp_clone4 = std::rc::Rc::clone(&derivation_path);
     
     purpose_dropdown.connect_selected_notify(clone!(
-        @weak derivation_label_text,
-        @weak purpose_dropdown => move |_| {
+        #[weak] derivation_label_text,
+        #[weak] purpose_dropdown,
+        move |_| {
             let purpose = purpose_dropdown.selected();
 
             dp_clone4.borrow_mut().update_field("purpose", Some(FieldValue::U32(purpose)));
@@ -3721,8 +3766,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let dp_clone5 = std::rc::Rc::clone(&derivation_path);
 
     coin_entry.connect_changed(clone!(
-        @weak derivation_label_text,
-        @strong coin_entry => move |_| {
+        #[weak] derivation_label_text,
+        #[strong] coin_entry,
+        move |_| {
             let coin_number = coin_entry.buffer().text();
             let ff = coin_number.as_str();
             let my_int = ff.parse::<u32>();
@@ -3738,8 +3784,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let dp_clone6 = std::rc::Rc::clone(&derivation_path);
 
     address_spinbutton.connect_changed(clone!(
-        @weak derivation_label_text,
-        @weak address_spinbutton => move |_| {
+        #[weak] derivation_label_text,
+        #[weak] address_spinbutton,
+        move |_| {
             let address_number = address_spinbutton.text();
             let ff = address_number.as_str();
             let my_int = ff.parse::<u32>();
@@ -4051,7 +4098,8 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     let title_owned = title.to_string();
     println!("title_owned: {:?}", title_owned);
     close_dialog_button.connect_clicked(clone!(
-        @weak message_window => move |_| {
+        #[weak] message_window,
+        move |_| {
             if do_not_show_checkbox.is_active() {
                 if let Err(err) = os::save_do_not_show_setting(&title_owned) {
                     eprintln!("Failed to save do not show setting: {:?}", err);
@@ -4098,7 +4146,9 @@ fn main() {
     let about = gio::SimpleAction::new("about", None);
     
     quit.connect_activate(
-        glib::clone!(@weak application => move |_action, _parameter| {
+        glib::clone!(
+            #[weak] application,
+            move |_action, _parameter| {
             application.quit();
         }),
     );

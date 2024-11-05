@@ -1,3 +1,6 @@
+# version 0.33.0
+- updated libraries
+
 # version 0.32.1
 - cleaning code
 
