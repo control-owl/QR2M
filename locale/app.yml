@@ -201,10 +201,22 @@ UI:
           en: "Mnemonic words"
           de: "Mnemonische Wörter"
           hr: "Mnemoničke riječi"
+        length:
+          en: "Mnemonic passphrase length"
+          de: "Länge der mnemonischen Passwortphrase"
+          hr: "Dužina mnemoničke šifre"
       generate:
-        en: "Generate seed"
-        de: "Seed generieren"
-        hr: "Generiraj seed"
+        en: "New entropy"
+        de: "Neue Entropie"
+        hr: "Nova entropija"
+        file:
+          en: "Select new file"
+          de: "Neue Datei auswählen"
+          hr: "Odaberi drugu datoteku"
+      delete:
+        en: "Delete entropy"
+        de: "Entropie löschen"
+        hr: "Obriši entropiju"
     coin:
       en: "Coin"
       search:

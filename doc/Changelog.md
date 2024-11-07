@@ -1,3 +1,11 @@
+# version 0.40.0
+- new option to generate entropy: RNG2
+    - RNG2: generate random entropy and random mnemonic passphrase
+- improved logic with mnemonic passphrase
+- repaired logic with file entropy and mnemonic passphrase
+- added new button: delete entropy
+- some stuff was renamed
+
 # version 0.33.0
 - updated libraries
 

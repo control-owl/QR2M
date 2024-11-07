@@ -22,6 +22,7 @@ use std::{
     io::{self, Read, Write}, 
     time::SystemTime,
 };
+// use glib::property::PropertyGet;
 use hex;
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -959,7 +960,8 @@ fn print_program_info() {
 //     *LOG_FILE.lock().unwrap() = file;
 // }
 
-fn generate_entropy(source: &str, entropy_length: u64) -> String {
+// ADD NEW INPUT PARAMETER: Mnemonic passphrase length
+fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option<u32>) -> (String, Option<String>) {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
     println!("\t Entropy source: {:?}", source);
     println!("\t Entropy length: {:?}", entropy_length);
@@ -979,7 +981,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 data.entropy_string = Some(rng_entropy_string.clone());
             });
 
-            rng_entropy_string
+            (rng_entropy_string, None)
         },
         "RNG2" => {
             let mut rng = rand::thread_rng();
@@ -988,14 +990,30 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 
-            println!("\t RNG Entropy: {:?}", rng_entropy_string);
+            let length = match passphrase_length {
+                Some(value) => {value},
+                None => {0},
+            };
+
+            // let mut mnemonic_rng = rand::thread_rng();
+            // let value: String = (0..100).map(|_| char::from(rand::thread_rng().gen_range(32..127))).collect();
+
+            let mnemonic_rng_string: String = (0..length)
+                .map(|_| char::from(rand::thread_rng().gen_range(32..127)))
+                .collect();
+            println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
 
             WALLET_SETTINGS.with(|data| {
                 let mut data = data.borrow_mut();
                 data.entropy_string = Some(rng_entropy_string.clone());
             });
 
-            rng_entropy_string
+            WALLET_SETTINGS.with(|data| {
+                let mut data = data.borrow_mut();
+                data.mnemonic_passphrase = Some(mnemonic_rng_string.clone());
+            });
+
+            (rng_entropy_string, Some(mnemonic_rng_string))
         },
         "QRNG" => {
             let anu_format = APPLICATION_SETTINGS.with(|data| {
@@ -1031,7 +1049,7 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 data.entropy_string = Some(qrng_entropy_string.clone());
             });
 
-            qrng_entropy_string
+            (qrng_entropy_string, None)
         },
         "File" => {
             let main_context = glib::MainContext::default();
@@ -1080,17 +1098,17 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                         data.entropy_string = Some(received_file_entropy_string.clone());
                     });
 
-                    received_file_entropy_string
+                    (received_file_entropy_string, None)
                 },
                 Err(_) => {
                      println!("{}", &t!("error.entropy.create.file"));
-                    String::new()
+                    (String::new(), None)
                 }
             }
         },
         _ => {
              println!("{}", &t!("error.entropy.create.source"));
-            return String::new()
+            return (String::new(), None)
         }
     }
 }
@@ -2566,11 +2584,10 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let settings_button_clone = settings_button.clone();
 
     settings_button.connect_clicked(move |_| {
-
         create_settings_window(Some(state_clone.clone()));
 
         // TODO: Apply new icons according to theme change
-        // This block will only change icons after I open settings again
+        // This block will only change icons after I re-open settings again
         let theme_images = get_window_theme_icons();
         new_wallet_button_clone.set_child(Some(&theme_images[0]));
         open_wallet_button.set_child(Some(&theme_images[1]));
@@ -2596,6 +2613,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 1: Seed
     // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Main: Sidebar 1: Seed
     let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     entropy_main_box.set_margin_top(10);
     entropy_main_box.set_margin_start(10);
@@ -2605,7 +2623,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     // Header
     let entropy_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_header_first_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
 
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -2655,6 +2673,37 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     entropy_length_box.set_hexpand(true);
     entropy_length_frame.set_hexpand(true);
 
+    // RNG mnemonic passphrase length
+    let mnemonic_passphrase_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let mnemonic_passphrase_items_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
+    let adjustment = gtk::Adjustment::new(
+        256.0,
+        1.0,
+        10240.0,
+        1.0,
+        100.0,
+        0.0,
+    );
+    let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&adjustment));
+    let mnemonic_passphrase_length_info = gtk::Entry::new();
+     
+    mnemonic_passphrase_items_box.set_hexpand(true);
+    mnemonic_passphrase_scale_box.set_hexpand(true);
+    mnemonic_passphrase_length_box.set_hexpand(true);
+    mnemonic_passphrase_length_frame.set_hexpand(true);
+    mnemonic_passphrase_length_box.set_visible(false);
+    mnemonic_passphrase_length_info.set_editable(false);
+    mnemonic_passphrase_length_info.set_width_request(50);
+    mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
+
+    // TODO: Get this value from settings
+    mnemonic_passphrase_length_info.set_text("256");
+    
+    
+    
     // Mnemonic passphrase
     let mnemonic_passphrase_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
@@ -2662,12 +2711,23 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     mnemonic_passphrase_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
     
-    // Generate seed button
-    let generate_seed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let generate_seed_button = gtk::Button::new();
-    generate_seed_button.set_label(&t!("UI.main.seed.generate").to_string());
-    generate_seed_box.set_halign(gtk::Align::Center);
-    generate_seed_box.set_margin_top(10);
+    let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    seed_buttons_box.set_halign(gtk::Align::Center);
+
+    // Generate entropy button
+    let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let generate_entropy_button = gtk::Button::new();
+    generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+    generate_entropy_box.set_halign(gtk::Align::Center);
+    generate_entropy_box.set_margin_top(10);
+
+    // Delete entropy button
+    let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let delete_entropy_button = gtk::Button::new();
+    delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
+    delete_entropy_box.set_halign(gtk::Align::Center);
+    delete_entropy_box.set_margin_top(10);
+
 
     // Body
     let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -2712,15 +2772,33 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     // Connections
     entropy_source_frame.set_child(Some(&entropy_source_dropdown));
     entropy_length_frame.set_child(Some(&entropy_length_dropdown));
-    generate_seed_box.append(&generate_seed_button);
+    mnemonic_passphrase_length_frame.set_child(Some(&mnemonic_passphrase_items_box));
+    mnemonic_passphrase_length_box.append(&mnemonic_passphrase_length_frame);
+    mnemonic_passphrase_items_box.append(&mnemonic_passphrase_scale_box);
+    mnemonic_passphrase_items_box.append(&mnemonic_passphrase_info_box);
+
+
+    mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
+    mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
+
+    generate_entropy_box.append(&generate_entropy_button);
+    delete_entropy_box.append(&delete_entropy_button);
     entropy_source_box.append(&entropy_source_frame);
     entropy_length_box.append(&entropy_length_frame);
     entropy_header_first_box.append(&entropy_source_box);
     entropy_header_first_box.append(&entropy_length_box);
     entropy_header_second_box.append(&mnemonic_passphrase_box);
+    entropy_header_second_box.append(&mnemonic_passphrase_length_box);
     entropy_header_box.append(&entropy_header_first_box);
     entropy_header_box.append(&entropy_header_second_box);
-    entropy_header_box.append(&generate_seed_box);
+
+    
+    seed_buttons_box.append(&generate_entropy_box);
+    seed_buttons_box.append(&delete_entropy_box);
+    
+    
+    
+    entropy_header_box.append(&seed_buttons_box);
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_text));
     seed_frame.set_child(Some(&seed_text));
@@ -2738,13 +2816,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         &entropy_main_box,
         Some("sidebar-seed"), 
         &t!("UI.main.seed").to_string());
-
-
-
-
-
-
-
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -3130,7 +3201,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
     address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
     
-    
     // Clear address
     // let address_options_clear_addresses_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_clear_addresses_button = gtk::Button::with_label(&t!("UI.main.address.options.clean").to_string());
@@ -3173,37 +3243,41 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         Some("sidebar-address"), 
         &t!("UI.main.address").to_string()
     );
+    
+    
 
-
-    // ACTIONS
+    // JUMP: Main: ACTIONS
     // JUMP: Generate Seed button
-    generate_seed_button.connect_clicked(clone!(
+    generate_entropy_button.connect_clicked(clone!(
         #[weak] entropy_source_dropdown,
+        #[weak] entropy_text,
         #[weak] entropy_length_dropdown,
         #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_passphrase_scale,
         #[weak] seed_text,
-        // #[weak] stack,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
             let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
             let source = selected_entropy_source_value.unwrap().to_string();
-            let length = selected_entropy_length_value.unwrap();
-            
-            entropy_text.buffer().set_text("");
+            let entropy_length = selected_entropy_length_value.unwrap(); 
+
             mnemonic_words_text.buffer().set_text("");
+            entropy_text.buffer().set_text("");
             seed_text.buffer().set_text("");
 
-            let entropy_length = selected_entropy_length_value;
-            
-            let pre_entropy = generate_entropy(
+            let passphrase_length = mnemonic_passphrase_scale.value() as u32;
+
+            let (pre_entropy, rng_mnemonic) = generate_entropy(
                 &source,
-                *length as u64,
+                *entropy_length as u64,
+                Some(passphrase_length)
             );
-            
+                
             if !pre_entropy.is_empty() {
-                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length.unwrap());
+                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
                 println!("\t Entropy checksum: {:?}", checksum);
 
                 WALLET_SETTINGS.with(|data| {
@@ -3219,8 +3293,24 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                 let mnemonic_words = generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
                 
-                let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                
+                let passphrase_text:String;
+
+                match rng_mnemonic {
+                    Some(ref s) if !s.is_empty() => {
+                        println!("not empty {}", s);
+                        passphrase_text = rng_mnemonic.unwrap();
+                        mnemonic_passphrase_text.set_text(&passphrase_text)
+                    },
+                    Some(_) => {
+                        println!("empty");
+                        passphrase_text = mnemonic_passphrase_text.text().to_string();
+                    },
+                    None => {
+                        println!("empty");
+                        passphrase_text = mnemonic_passphrase_text.text().to_string();
+                    },
+                }
+
                 let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
@@ -3247,23 +3337,36 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         }
     ));
 
-    let coin_treeview_clone = coin_treeview.clone();
-    let master_seed_text_clone = seed_text.clone();
+    delete_entropy_button.connect_clicked(clone!(
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] seed_text,
+        // #[weak] stack,
+        move |_| {
+            mnemonic_passphrase_text.buffer().set_text("");
+            entropy_text.buffer().set_text("");
+            mnemonic_words_text.buffer().set_text("");
+            seed_text.buffer().set_text("");
+    
+    }));
+
+    // let coin_treeview_clone = coin_treeview.clone();
+    // let master_seed_text_clone = seed_text.clone();
 
     // JUMP: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
         #[strong] coin_entry,
-        // #[weak] stack,
+        #[weak] seed_text,
+        #[weak] coin_treeview,
         move |_| {
-
-
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
             let end_iter = buffer.end_iter();
             let text = buffer.text(&start_iter, &end_iter, false);
 
             if !text.is_empty() {
-                if let Some((model, iter)) = coin_treeview_clone.borrow().selection().selected() {
+                if let Some((model, iter)) = coin_treeview.borrow().selection().selected() {
                     let status = model.get_value(&iter, 0);
                     let coin_index = model.get_value(&iter, 1);
                     let coin_symbol = model.get_value(&iter, 2);
@@ -3329,7 +3432,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                         println!("EVM: {}", evm);
                         println!("UCID: {}", UCID);
                         println!("cmc_top: {}", cmc_top);
-                        let buffer = master_seed_text_clone.buffer();
+                        let buffer = seed_text.buffer();
                         let start_iter = buffer.start_iter();
                         let end_iter = buffer.end_iter();
                         let seed_string = buffer.text(&start_iter, &end_iter, true);
@@ -3368,7 +3471,27 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         }
     ));
 
+    entropy_source_dropdown.connect_selected_notify(clone!(
+        #[weak] generate_entropy_button,
+        move |entropy_source_dropdown| {
+            let value = entropy_source_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+            let source = selected_entropy_source_value.unwrap();
+    
+            if *source == "RNG2" {
+                mnemonic_passphrase_length_box.set_visible(true);
+            } else {
+                mnemonic_passphrase_length_box.set_visible(false);
+            }
 
+            if *source == "File" {
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
+            } else {
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+            }
+        }
+    ));
+    
     advance_search_checkbox.connect_active_notify(clone!(
         // #[weak] advance_search_checkbox,
         move |checkbox| {
@@ -3382,13 +3505,89 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
     coin_search_filter_dropdown.connect_selected_notify(clone!(
         #[weak] coin_search,
-        // #[weak] bip_dropdown,
         move |dropdown| {
             let selected: usize = dropdown.selected().try_into().unwrap_or(0);
             coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = VALID_COIN_SEARCH_PARAMETER[selected])));
             coin_search.set_text("");
     }));
+    
+    mnemonic_passphrase_text.connect_changed(clone!(
+        #[weak] generate_entropy_button,
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
+        // #[weak] mnemonic_passphrase_length_info,
+        move |mnemonic_passphrase_text| {
+            let entropy_buffer = entropy_text.buffer();
+            let start_iter = entropy_buffer.start_iter();
+            let end_iter = entropy_buffer.end_iter();
+            let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
 
+            if entropy_text == "" {
+                generate_entropy_button.emit_by_name::<()>("clicked", &[]);
+            } else {
+                let entropy_length = entropy_text.len();
+                let cut_entropy = entropy_length / 32;
+                let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
+
+                let seed = generate_bip39_seed(&new_pre_entropy, &mnemonic_passphrase_text.buffer().text());
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+
+                let final_entropy = entropy_text.clone().to_string();
+                let mnemonic_words_buffer = mnemonic_words_text.buffer();
+                let start_iter = mnemonic_words_buffer.start_iter();
+                let end_iter = mnemonic_words_buffer.end_iter();
+                let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
+                let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
+
+                WALLET_SETTINGS.with(|data| {
+                    let mut data = data.borrow_mut();
+                    data.entropy_string = Some(final_entropy);
+                    data.mnemonic_words = Some(final_mnemonic_words);
+                    data.mnemonic_passphrase = Some(final_mnemonic_passphrase);
+                    data.seed = Some(seed_hex.clone());
+                });
+            }
+        }
+    ));
+    
+    mnemonic_passphrase_scale.connect_value_changed(clone!(
+        #[weak] mnemonic_passphrase_length_info,
+        move |mnemonic_passphrase_scale| {
+            let scale_value = mnemonic_passphrase_scale.value() as u32;
+            // mnemonic_passphrase_scale.set_value(value as f64);
+            // mnemonic_passphrase_scale.set_tooltip_text(Some(&value.to_string()));
+            // mnemonic_passphrase_scale.trigger_tooltip_query();
+            
+            // if scale_value != mnemonic_passphrase_length_info.text().parse::<u32>().unwrap() {
+                mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
+            // }
+        }
+    ));
+
+    // BUG: Working but there are some errors in terminal, not sure if it can be ignored
+    // mnemonic_passphrase_length_info.connect_changed(clone!(
+    //     #[weak] mnemonic_passphrase_scale,
+    //     move |mnemonic_passphrase_length_info| {
+    //         let text_value = mnemonic_passphrase_length_info.text(); 
+    //         match text_value.parse::<u32>() {
+    //             Ok(value) => {
+    //                 if value != mnemonic_passphrase_scale.value() as u32 {
+    //                     println!("old value: {}", mnemonic_passphrase_scale.value());
+    //                     println!("new value: {}", value);
+    //                     mnemonic_passphrase_scale.set_value(value as f64)
+    //                 }
+    //             },
+    //             Err(_) => {
+    //                 // let current_value = mnemonic_passphrase_scale.value() as u32;
+    //                 // mnemonic_passphrase_length_info.set_text(&current_value.to_string())
+    //                 // println!("error")
+    //             },
+    //         }
+    //     }
+    // ));
+    
     coin_search.connect_search_changed({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
         let coin_store = std::rc::Rc::clone(&coin_store);
@@ -3440,7 +3639,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         }
     });
     
-    
     filter_top10_coins_button.connect_clicked({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
         let coin_store = std::rc::Rc::clone(&coin_store);
@@ -3481,7 +3679,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             }
         }
     });
-    
     
     filter_top100_coins_button.connect_clicked({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
@@ -3693,8 +3890,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
     bip_dropdown.connect_selected_notify(clone!(
         #[weak] derivation_label_text,
-        #[weak] bip_dropdown,
-        move |_| {
+        move |bip_dropdown| {
             let value = bip_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(value);
             let bip = selected_entropy_source_value.unwrap();
@@ -3708,7 +3904,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             }
     
             dp_clone.borrow_mut().update_field("bip", Some(FieldValue::U32(*bip)));
-            // println!("new DP: {:?}", dp_clone.borrow());
             update_derivation_label(*dp_clone.borrow(), derivation_label_text)
         }
     ));
@@ -3799,189 +3994,189 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         }
     ));
 
-    let derivation_label_text_clone = derivation_label_text.clone();
-
     // JUMP: Generate Addresses button
-    let address_store_clone = address_store.clone();
-
-    generate_addresses_button.connect_clicked(move |_| {
-        println!("\n#### Generating addresses button ####");
-    
-        let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.master_private_key_bytes.clone().unwrap_or_default()
-        });
-    
-        let master_chain_code_bytes = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.master_chain_code_bytes.clone().unwrap_or_default()
-        });
+    generate_addresses_button.connect_clicked(clone!(
+        #[weak] address_store,
+        #[weak] derivation_label_text,
+        move |_| {
+            println!("\n#### Generating addresses button ####");
         
-        let key_derivation = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.key_derivation.clone().unwrap_or_default()
-        });
-
-        let hash = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.hash.clone().unwrap_or_default()
-        });
-
-        let wallet_import_format = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.wallet_import_format.clone().unwrap_or_default()
-        });
-
-        let public_key_hash = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.public_key_hash.clone().unwrap_or_default()
-        });
-
-        let coin_index = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.coin_index.clone().unwrap_or_default()
-        });
-
-        let coin_name = WALLET_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.coin_name.clone().unwrap_or_default()
-        });
-
-        let DP = derivation_label_text_clone.text();
-        let path = DP.to_string();
-    
-        let address_count = address_options_spinbutton.text();
-        let address_count_str = address_count.as_str();
-        let address_count_int = address_count_str.parse::<u32>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT);
+            let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.master_private_key_bytes.clone().unwrap_or_default()
+            });
         
-        let hardened = address_options_hardened_address_checkbox.is_active();
-    
-        let secp = secp256k1::Secp256k1::new();
-    
-        let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
-            &public_key_hash[2..]
-        } else {
-            &public_key_hash
-        };
-    
-        let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
-            Ok(vec) => vec,
-            Err(e) => {
-                println!("Failed to convert: {}", e);
-                return;
-            },
-        };
-
-        let mut addresses = Vec::new();
-    
-        for i in 0..address_count_int {
-            let full_path = if hardened {
-                format!("{}/{}'", path, i)
-            } else {
-                format!("{}/{}", path, i)
-            };
-    
-            let derived_child_keys = match key_derivation.as_str() {
-                "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                "N/A" | _ => {
-                    println!("Unsupported key derivation method: {:?}", key_derivation);
-                    return
-                }
-            }.expect("Failed to derive key from path");
-
-            let public_key = match key_derivation.as_str() {
-                "secp256k1" => {
-                    let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-                        &secp,
-                        &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-                    );
-                    CryptoPublicKey::Secp256k1(secp_pub_key)
-                },
-                "ed25519" => {
-                    let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-                    let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-                    CryptoPublicKey::Ed25519(pub_key_bytes)
-                },
-                "N/A" | _ => {
-                    println!("Unsupported key derivation method: {:?}", key_derivation);
-                    return;
-                }
-            };
-
-            let public_key_encoded = match hash.as_str() {
-                "sha256" | "sha256+ripemd160" => match &public_key {
-                    CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-                    CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-                },
-                "keccak256" => match &public_key {
-                    CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-                    CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-                },
-                "N/A" | _ => {
-                    println!("Unsupported hash method: {:?}", hash);
-                    return;
-                }
-            };
-
+            let master_chain_code_bytes = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.master_chain_code_bytes.clone().unwrap_or_default()
+            });
             
-            let address = match hash.as_str() {
-                "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
-                "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
-                "sha256+ripemd160" => match generate_sha256_ripemd160_address(
-                    coin_index, 
-                    &public_key, 
-                    &public_key_hash_vec
-                ) {
-                    Ok(addr) => addr,
-                    Err(e) => {
-                        println!("Error generating address: {}", e);
+            let key_derivation = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.key_derivation.clone().unwrap_or_default()
+            });
+
+            let hash = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.hash.clone().unwrap_or_default()
+            });
+
+            let wallet_import_format = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.wallet_import_format.clone().unwrap_or_default()
+            });
+
+            let public_key_hash = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.public_key_hash.clone().unwrap_or_default()
+            });
+
+            let coin_index = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.coin_index.clone().unwrap_or_default()
+            });
+
+            let coin_name = WALLET_SETTINGS.with(|data| {
+                let data = data.borrow();
+                data.coin_name.clone().unwrap_or_default()
+            });
+
+            let DP = derivation_label_text.text();
+            let path = DP.to_string();
+        
+            let address_count = address_options_spinbutton.text();
+            let address_count_str = address_count.as_str();
+            let address_count_int = address_count_str.parse::<u32>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT);
+            
+            let hardened = address_options_hardened_address_checkbox.is_active();
+        
+            let secp = secp256k1::Secp256k1::new();
+        
+            let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
+                &public_key_hash[2..]
+            } else {
+                &public_key_hash
+            };
+        
+            let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
+                Ok(vec) => vec,
+                Err(e) => {
+                    println!("Failed to convert: {}", e);
+                    return;
+                },
+            };
+
+            let mut addresses = Vec::new();
+        
+            for i in 0..address_count_int {
+                let full_path = if hardened {
+                    format!("{}/{}'", path, i)
+                } else {
+                    format!("{}/{}", path, i)
+                };
+        
+                let derived_child_keys = match key_derivation.as_str() {
+                    "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
+                    "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
+                    "N/A" | _ => {
+                        println!("Unsupported key derivation method: {:?}", key_derivation);
+                        return
+                    }
+                }.expect("Failed to derive key from path");
+
+                let public_key = match key_derivation.as_str() {
+                    "secp256k1" => {
+                        let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+                            &secp,
+                            &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+                        );
+                        CryptoPublicKey::Secp256k1(secp_pub_key)
+                    },
+                    "ed25519" => {
+                        let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+                        let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+                        CryptoPublicKey::Ed25519(pub_key_bytes)
+                    },
+                    "N/A" | _ => {
+                        println!("Unsupported key derivation method: {:?}", key_derivation);
                         return;
                     }
-                },
-                "ed25519" => dev::generate_ed25519_address(&public_key),
-                "N/A" | _ => {
-                    println!("Unsupported hash method: {:?}", hash);
-                    return;
-                }
-            };
+                };
+
+                let public_key_encoded = match hash.as_str() {
+                    "sha256" | "sha256+ripemd160" => match &public_key {
+                        CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+                        CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+                    },
+                    "keccak256" => match &public_key {
+                        CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+                        CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+                    },
+                    "N/A" | _ => {
+                        println!("Unsupported hash method: {:?}", hash);
+                        return;
+                    }
+                };
+
+                
+                let address = match hash.as_str() {
+                    "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
+                    "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
+                    "sha256+ripemd160" => match generate_sha256_ripemd160_address(
+                        coin_index, 
+                        &public_key, 
+                        &public_key_hash_vec
+                    ) {
+                        Ok(addr) => addr,
+                        Err(e) => {
+                            println!("Error generating address: {}", e);
+                            return;
+                        }
+                    },
+                    "ed25519" => dev::generate_ed25519_address(&public_key),
+                    "N/A" | _ => {
+                        println!("Unsupported hash method: {:?}", hash);
+                        return;
+                    }
+                };
 
 
-            println!("Crypto address: {:?}", address);
+                println!("Crypto address: {:?}", address);
 
-            // IMPROVEMENT: remove hard-coding
-            let compressed = true;
-            
-            let priv_key_wif = create_private_key_for_address(
-                Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
-                Some(compressed),
-                Some(&wallet_import_format),
-                &hash,
-            ).expect("Failed to convert private key to WIF");
-            
-            addresses.push(CryptoAddresses {
-                coin_name: coin_name.clone(),
-                derivation_path: full_path,
-                address: address.clone(),
-                public_key: public_key_encoded.clone(),
-                private_key: priv_key_wif.clone(),
-            });
+                // IMPROVEMENT: remove hard-coding
+                let compressed = true;
+                
+                let priv_key_wif = create_private_key_for_address(
+                    Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
+                    Some(compressed),
+                    Some(&wallet_import_format),
+                    &hash,
+                ).expect("Failed to convert private key to WIF");
+                
+                addresses.push(CryptoAddresses {
+                    coin_name: coin_name.clone(),
+                    derivation_path: full_path,
+                    address: address.clone(),
+                    public_key: public_key_encoded.clone(),
+                    private_key: priv_key_wif.clone(),
+                });
+            }
+        
+            for address in addresses {
+                let iter = address_store.append();
+                address_store.set(&iter, &[
+                    (0, &address.coin_name),
+                    (1, &address.derivation_path),
+                    (2, &address.address),
+                    (3, &address.public_key),
+                    (4, &address.private_key),
+                ]);
+            }
         }
-    
-        for address in addresses {
-            let iter = address_store.append();
-            address_store.set(&iter, &[
-                (0, &address.coin_name),
-                (1, &address.derivation_path),
-                (2, &address.address),
-                (3, &address.public_key),
-                (4, &address.private_key),
-            ]);
-        }
-    });
+    ));
     
     address_options_clear_addresses_button.connect_clicked(move |_| {
-        address_store_clone.clear();
+        address_store.clear();
     });
 
     // Main sidebar
@@ -4077,12 +4272,10 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     do_not_show_content_box.append(&do_not_show_checkbox);
     do_not_show_main_box.append(&do_not_show_content_box);
 
-
     // Close button
     let close_dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let close_dialog_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let close_dialog_button = gtk::Button::with_label(&t!("UI.messages.dialog.close").to_string());
-    
     
     close_dialog_main_box.set_margin_top(10);
     close_dialog_content_box.set_halign(gtk::Align::Center);
@@ -4108,8 +4301,6 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
             message_window.close();
         }
     ));
-
-    message_window.show();
 
     message_window.show();
 }
