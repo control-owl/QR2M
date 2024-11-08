@@ -1,10 +1,18 @@
+# version 0.40.1
+- fixed problem with dialogs and loops
+- save wallet
+
+
+
 # version 0.40.0
-- new option to generate entropy: RNG2
-    - RNG2: generate random entropy and random mnemonic passphrase
+- new option to generate entropy: RNG+
+- RNG+: generate random entropy and random mnemonic passphrase
+- RNG+: added new option for selecting mnemonic passphrase length for RNG+
 - improved logic with mnemonic passphrase
 - repaired logic with file entropy and mnemonic passphrase
 - added new button: delete entropy
-- some stuff was renamed
+- some stuff was renamed and repaired
+- I almost forgot Rust after 4 months playing The Elder Scrolls Online, so let's continue
 
 # version 0.33.0
 - updated libraries

@@ -1,5 +1,13 @@
 ### Main window
 
+#### New priorities
+
+1. Save wallet
+2. Open wallet
+3. Proxy
+
+
+#### Old tasks
 - [x] master private key (xprv)
 - [x] master public key (xpub)
 - [x] child keys

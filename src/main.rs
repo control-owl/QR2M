@@ -19,10 +19,9 @@
 // Crates
 use std::{
     fs::{self, File}, 
-    io::{self, Read, Write}, 
-    time::SystemTime,
+    io::{self, BufRead, Read, Write}, 
+    time::SystemTime
 };
-// use glib::property::PropertyGet;
 use hex;
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -31,7 +30,6 @@ use gtk4 as gtk;
 use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
-// use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use sha3::Keccak256;
 
@@ -73,7 +71,7 @@ const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
     "RNG", 
-    "RNG2", 
+    "RNG+", 
     "File",
     "QRNG",
 ];
@@ -88,6 +86,8 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
 ];
 const WALLET_DEFAULT_ADDRESS_COUNT: u32 = 10;
 const WALLET_DEFAULT_HARDENED_ADDRESS: bool = false;
+const WALLET_DEFAULT_FILE_NAME: &str = "qr2m.wallet";
+const WALLET_CURRENT_VERSION: u32 = 1;
 const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
 const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
@@ -983,7 +983,7 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
 
             (rng_entropy_string, None)
         },
-        "RNG2" => {
+        "RNG+" => {
             let mut rng = rand::thread_rng();
             let rng_entropy_string: String = (0..entropy_length)
                 .map(|_| rng.gen_range(0..=1))
@@ -1052,44 +1052,45 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
             (qrng_entropy_string, None)
         },
         "File" => {
-            let main_context = glib::MainContext::default();
-            let main_loop = glib::MainLoop::new(Some(&main_context), false);
+            let open_context = glib::MainContext::default();
+            let open_loop = glib::MainLoop::new(Some(&open_context), false);
             let (tx, rx) = std::sync::mpsc::channel();
             
-            let window = gtk::Window::new();
-
-            let dialog = gtk::FileChooserDialog::new(
-            Some(t!("UI.dialog.select").to_string()),
-            Some(&window),
-            gtk::FileChooserAction::Open,
-            &[(&t!("UI.element.button.open").to_string(), gtk::ResponseType::Accept), (&t!("UI.element.button.cancel").to_string(), gtk::ResponseType::Cancel)],
+            let open_window = gtk::Window::new();          
+            let open_dialog = gtk::FileChooserNative::new(
+                Some(t!("UI.dialog.open").to_string().as_str()),
+                Some(&open_window),
+                gtk::FileChooserAction::Open,
+                Some(&t!("UI.element.button.open")),
+                Some(&t!("UI.element.button.cancel"))
             );
-
-            let main_loop_clone = main_loop.clone();
-
-            dialog.connect_response(move |dialog, response| {
-                if response == gtk::ResponseType::Accept {
-                    if let Some(file) = dialog.file() {
-                        if let Some(path) = file.path() {
-                            let file_path = path.to_string_lossy().to_string();
-                            println!("\t Entropy file name: {:?}", file_path);
-                            
-                            let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
-                            
-                            if let Err(err) = tx.send(file_entropy_string) {
-                                 println!("{}", &t!("error.mpsc.send", value = err));
-
-                            } else {
-                                main_loop.quit();
+    
+            open_dialog.connect_response(clone!(
+                #[strong] open_loop,
+                move |open_dialog, response| {
+                    if response == gtk::ResponseType::Accept {
+                        if let Some(file) = open_dialog.file() {
+                            if let Some(path) = file.path() {
+                                let file_path = path.to_string_lossy().to_string();
+                                println!("\t Entropy file name: {:?}", file_path);
+                                
+                                let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
+                                
+                                if let Err(err) = tx.send(file_entropy_string) {
+                                    println!("{}", &t!("error.mpsc.send", value = err));
+                                } else {
+                                    open_loop.quit();
+                                }
                             }
                         }
                     }
+                    open_dialog.destroy();
+                    open_loop.quit();
                 }
-                dialog.close();
-            });
+            ));
             
-            dialog.show();
-            main_loop_clone.run();
+            open_dialog.show();
+            open_loop.run();
             
             match rx.recv() {
                 Ok(received_file_entropy_string) => {
@@ -1101,13 +1102,17 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
                     (received_file_entropy_string, None)
                 },
                 Err(_) => {
-                     println!("{}", &t!("error.entropy.create.file"));
+                    println!("{}", &t!("error.entropy.create.file"));
                     (String::new(), None)
                 }
             }
         },
+        "Wallet" => {
+
+            return (String::new(), None)
+        },
         _ => {
-             println!("{}", &t!("error.entropy.create.source"));
+            println!("{}", &t!("error.entropy.create.source"));
             return (String::new(), None)
         }
     }
@@ -1533,14 +1538,12 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     notification_timeout_box.append(&notification_timeout_item_box);
     content_general_box.append(&notification_timeout_box);
 
-
     stack.add_titled(
         &general_settings_box,
         Some("sidebar-settings-general"),
         &t!("UI.settings.sidebar.general").to_string()
     );
- 
- 
+
     // -.-. --- .--. -.-- .-. .. --. .... -
     // JUMP: Settings: Sidebar 2: Wallet settings
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -1565,7 +1568,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     } else {
         VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
     };
-    
+
     let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -1584,13 +1587,13 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     default_entropy_source_item_box.set_hexpand(true);
     default_entropy_source_item_box.set_margin_end(20);
     default_entropy_source_item_box.set_halign(gtk::Align::End);
-    
+
     default_entropy_source_label_box.append(&default_entropy_source_label);
     default_entropy_source_item_box.append(&entropy_source_dropdown);
     default_entropy_source_box.append(&default_entropy_source_label_box);
     default_entropy_source_box.append(&default_entropy_source_item_box);
     content_wallet_box.append(&default_entropy_source_box);
-    
+
     // Default entropy length
     let default_entropy_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -1610,13 +1613,13 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     default_entropy_length_item_box.set_hexpand(true);
     default_entropy_length_item_box.set_margin_end(20);
     default_entropy_length_item_box.set_halign(gtk::Align::End);
-    
+
     default_entropy_length_label_box.append(&default_entropy_length_label);
     default_entropy_length_item_box.append(&entropy_length_dropdown);
     default_entropy_length_box.append(&default_entropy_length_label_box);
     default_entropy_length_box.append(&default_entropy_length_item_box);
     content_wallet_box.append(&default_entropy_length_box);
-    
+
     // Default BIP
     let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -2241,8 +2244,8 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     
     // Buttons
     let buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let save_button = gtk::Button::with_label(&t!("UI.settings.button.save").to_string());
-    let cancel_button = gtk::Button::with_label(&t!("UI.settings.button.cancel").to_string());
+    let save_button = gtk::Button::with_label(&t!("UI.element.button.save").to_string());
+    let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel").to_string());
     // IMPLEMENT: apply button
 
 
@@ -2557,6 +2560,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let save_wallet_button = gtk::Button::new();
     let about_button = gtk::Button::new();
     let settings_button = gtk::Button::new();
+    save_wallet_button.set_sensitive(false);
 
     // FEATURE: make my own menu icons
     let theme_images = get_window_theme_icons();
@@ -2579,31 +2583,44 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     header_bar.pack_end(&about_button);
 
     let state_clone = state.clone();
-    let new_wallet_button_clone = new_wallet_button.clone();
-    let about_button_clone = about_button.clone();
-    let settings_button_clone = settings_button.clone();
 
-    settings_button.connect_clicked(move |_| {
-        create_settings_window(Some(state_clone.clone()));
+    settings_button.connect_clicked(clone!(
+        #[weak] new_wallet_button,
+        #[weak] settings_button,
+        #[weak] about_button,
+        #[weak] open_wallet_button,
+        #[weak] save_wallet_button,
+        move |_| {
+            create_settings_window(Some(state_clone.clone()));
 
-        // TODO: Apply new icons according to theme change
-        // This block will only change icons after I re-open settings again
-        let theme_images = get_window_theme_icons();
-        new_wallet_button_clone.set_child(Some(&theme_images[0]));
-        open_wallet_button.set_child(Some(&theme_images[1]));
-        save_wallet_button.set_child(Some(&theme_images[2]));
-        about_button_clone.set_child(Some(&theme_images[3]));
-        settings_button_clone.set_child(Some(&theme_images[4]));
-    });
+            // TODO: Apply new icons according to theme change
+            // This block will only change icons after I re-open settings again
+            let theme_images = get_window_theme_icons();
+            new_wallet_button.set_child(Some(&theme_images[0]));
+            open_wallet_button.set_child(Some(&theme_images[1]));
+            save_wallet_button.set_child(Some(&theme_images[2]));
+            about_button.set_child(Some(&theme_images[3]));
+            settings_button.set_child(Some(&theme_images[4]));
+        }
+    ));
     
     about_button.connect_clicked(move |_| {
         create_about_window();
     });
 
-    let new_window = application.clone();
-    new_wallet_button.connect_clicked(move |_| {
-        create_main_window(&new_window, state.clone());
+    new_wallet_button.connect_clicked(clone!(
+        #[weak] application,
+        move |_| {
+            create_main_window(&application, state.clone());
+        }
+    ));
+
+    save_wallet_button.connect_clicked(move |_| {
+        save_wallet_to_file();
     });
+    
+    
+
 
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
@@ -3247,6 +3264,35 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     
 
     // JUMP: Main: ACTIONS
+    open_wallet_button.connect_clicked(clone!(
+        #[weak] entropy_source_dropdown,
+        #[weak] entropy_text,
+        #[weak] entropy_length_dropdown,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_passphrase_scale,
+        #[weak] seed_text,
+        #[weak] save_wallet_button,
+        move |_| {
+            match (full_entropy, mnemonic_passphrase) = open_wallet_from_file() {
+                Ok(_) => {},
+                Err(_) => {},
+            };
+            println!("\t Final entropy: {:?}", full_entropy);
+            entropy_text.buffer().set_text(&full_entropy);
+            
+            let mnemonic_words = generate_mnemonic_words(&full_entropy);
+            mnemonic_words_text.buffer().set_text(&mnemonic_words);
+            
+            let seed = generate_bip39_seed(&full_entropy, &mnemonic_passphrase);
+            let seed_hex = hex::encode(&seed[..]);
+            seed_text.buffer().set_text(&seed_hex.to_string());
+            
+            println!("\t Seed (hex): {:?}", seed_hex);
+        }
+));
+
+
     // JUMP: Generate Seed button
     generate_entropy_button.connect_clicked(clone!(
         #[weak] entropy_source_dropdown,
@@ -3256,6 +3302,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         #[weak] mnemonic_passphrase_text,
         #[weak] mnemonic_passphrase_scale,
         #[weak] seed_text,
+        #[weak] save_wallet_button,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -3330,9 +3377,11 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                     data.seed = Some(seed_hex.clone());
                 });
 
+                save_wallet_button.set_sensitive(true);
+
             } else {
                 eprintln!("{}", &t!("error.entropy.empty"));
-                create_message_window("Empty entropy", "Please generate new entropy", None, None);
+                // create_message_window("Empty entropy", "Please generate new entropy", None, None);
             }
         }
     ));
@@ -3342,17 +3391,15 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
-        // #[weak] stack,
+        #[weak] save_wallet_button,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
             mnemonic_words_text.buffer().set_text("");
             seed_text.buffer().set_text("");
     
+            save_wallet_button.set_sensitive(false);
     }));
-
-    // let coin_treeview_clone = coin_treeview.clone();
-    // let master_seed_text_clone = seed_text.clone();
 
     // JUMP: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
@@ -3478,7 +3525,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
             let source = selected_entropy_source_value.unwrap();
     
-            if *source == "RNG2" {
+            if *source == "RNG+" {
                 mnemonic_passphrase_length_box.set_visible(true);
             } else {
                 mnemonic_passphrase_length_box.set_visible(false);
@@ -4305,6 +4352,198 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
     message_window.show();
 }
 
+fn save_wallet_to_file() {
+    // struct WalletSettings {
+    //     entropy_string: Option<String>,
+    //     entropy_checksum: Option<String>,
+    //     mnemonic_words: Option<String>,
+    //     mnemonic_passphrase: Option<String>,
+    //     seed: Option<String>,
+    //     master_xprv: Option<String>,
+    //     master_xpub: Option<String>,
+    //     master_private_key_bytes: Option<Vec<u8>>,
+    //     master_chain_code_bytes: Option<Vec<u8>>,
+    //     master_public_key_bytes: Option<Vec<u8>>,
+    //     coin_index: Option<u32>,
+    //     coin_name: Option<String>,
+    //     wallet_import_format: Option<String>,
+    //     public_key_hash: Option<String>,
+    //     key_derivation: Option<String>,
+    //     hash: Option<String>,
+    // }
+
+    // TODO: Check if wallet is created before proceeding
+    let save_context = glib::MainContext::default();
+    let save_loop = glib::MainLoop::new(Some(&save_context), false);
+    
+    let entropy_string = WALLET_SETTINGS.with(|data| {
+        let data = data.borrow();
+        match data.entropy_string.clone() {
+            Some(value) => value, 
+            _ => String::new(),
+        }
+    });
+
+    let mnemonic_passphrase = WALLET_SETTINGS.with(|data| {
+        let data = data.borrow();
+        match data.mnemonic_passphrase.clone() {
+            Some(value) => value, 
+            _ => String::new(),
+        }
+    });
+
+    let save_window = gtk::Window::new();
+    let save_dialog = gtk::FileChooserNative::new(
+        Some(t!("UI.dialog.save").to_string().as_str()),
+        Some(&save_window),
+        gtk::FileChooserAction::SelectFolder,
+        Some(&t!("UI.element.button.save")),
+        Some(&t!("UI.element.button.cancel"))
+    );
+
+    save_dialog.connect_response(clone!(
+        #[strong] save_loop,
+        move |save_dialog, response| {
+            if response == gtk::ResponseType::Accept {
+                if let Some(file) = save_dialog.file() {
+                    if let Some(path) = file.path() {
+                        let wallet_data = format!("version = {}\n{}\n{}", WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase);
+                        let wallet_file = format!{"{}/{}", path.display(), WALLET_DEFAULT_FILE_NAME};
+
+                        std::fs::write(wallet_file, wallet_data).expect("Unable to write file");
+                        save_loop.quit();
+                    }
+                }
+            }
+            save_dialog.destroy();
+            save_loop.quit();
+        }
+    ));
+    save_dialog.show();
+    save_loop.run();
+}
+
+fn open_wallet_from_file() -> Result<String, Option<String>> {
+    let open_context = glib::MainContext::default();
+    let open_loop = glib::MainLoop::new(Some(&open_context), false);
+
+    let open_window = gtk::Window::new();
+    let open_dialog = gtk::FileChooserNative::new(
+        Some("Open Wallet"),
+        Some(&open_window),
+        gtk::FileChooserAction::Open,
+        Some("Open"),
+        Some("Cancel"),
+    );
+
+    open_dialog.connect_response(clone!(
+        #[strong] open_loop,
+        move |open_dialog, response| {
+            if response == gtk::ResponseType::Accept {
+                if let Some(file) = open_dialog.file() {
+                    if let Some(path) = file.path() {
+                        match File::open(&path) {
+                            Ok(file) => {
+                                let result = process_wallet_file(file);
+                                match result {
+                                    Ok((wallet_version, full_entropy, passphrase)) => {
+                                        println!("Wallet version: {:?}", wallet_version);
+
+                                        WALLET_SETTINGS.with(|data| {
+                                            let mut data = data.borrow_mut();
+                                            println!("Wallet entropy: {:?}", &full_entropy);
+                                            data.entropy_string = Some(full_entropy.clone());
+                                        });
+
+                                        if let Some(pass) = passphrase {
+                                            WALLET_SETTINGS.with(|data| {
+                                                let mut data = data.borrow_mut();
+                                                println!("Mnemonic passphrase: {:?}", pass);
+                                                data.mnemonic_passphrase = Some(pass.clone());
+                                            });
+                                            Ok(full_entropy, Some(pass))
+                                        } else {
+                                            println!("No mnemonic passphrase");
+                                            Ok(full_entropy, None)
+                                        }
+                                    }
+                                    Err(err) => {
+                                        println!("Failed to process wallet file: {}", err);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                println!("Error: Could not open wallet '{:?}'. Reason: {}", path, e);
+                            }
+                        }
+                        open_loop.quit();
+                    }
+                }
+            }
+            open_dialog.destroy();
+            open_loop.quit();
+        }
+    ));
+
+    open_dialog.show();
+    open_loop.run();
+    return ("ok", None)
+}
+
+fn process_wallet_file(file: File) -> Result<(u8, String, Option<String>), String> {
+    let mut lines = std::io::BufReader::new(file).lines();
+
+    let version_line = lines.next()
+        .ok_or_else(|| "Error: File is empty, missing version line".to_string())?
+        .map_err(|_| "Error: Failed to read the version line".to_string())?;
+
+    let version = parse_wallet_version(&version_line)?;
+
+    match version {
+        1 => {
+            let entropy = lines.next()
+                .ok_or_else(|| "Error: Missing entropy line for version 1 wallet".to_string())?
+                .map_err(|_| "Error: Failed to read entropy line".to_string())?;
+
+            if !is_valid_entropy(&entropy) {
+                return Err("Error: Invalid entropy size.".to_string());
+            }
+
+            let password = lines.next().transpose().map_err(|_| "Error: Failed to read password line".to_string())?;
+
+            Ok((version, entropy, password))
+        }
+        _ => Err(format!("Error: Unsupported wallet version '{}'", version)),
+    }
+}
+
+fn parse_wallet_version(line: &str) -> Result<u8, String> {
+    if line.starts_with("version = ") {
+        line["version = ".len()..].parse::<u8>()
+            .map_err(|_| "Error: Invalid version format, expected an integer".to_string())
+    } else {
+        Err("Error: Version line is malformed, expected 'version = X' format".to_string())
+    }
+}
+
+fn is_valid_entropy(full_entropy: &str) -> bool {
+    let (entropy_len, checksum_len) = match full_entropy.len() {
+        132 => (128, 4),
+        165 => (160, 5),
+        198 => (192, 6),
+        231 => (224, 7),
+        264 => (256, 8),
+        _ => return false,
+    };
+
+    let (entropy, checksum) = full_entropy.split_at(entropy_len);
+
+    entropy.len() == entropy_len
+        && checksum.len() == checksum_len
+        && entropy.chars().all(|c| c == '0' || c == '1')
+}
+
+
 fn main() {
     print_program_info();
 
@@ -4351,17 +4590,16 @@ fn main() {
     });
 
     open.connect_activate(move |_action, _parameter| {
-        // IMPLEMENT Open wallet action activated
+        open_wallet_from_file();
     });
     
     save.connect_activate(|_action, _parameter| {
-        // IMPLEMENT Save wallet action activated
+        save_wallet_to_file();
     });
 
     let settings_window_state = state.clone();
     settings.connect_activate(move |_action, _parameter| {
         create_settings_window(Some(settings_window_state.clone()));
-
     });
 
     about.connect_activate(move |_action, _parameter| {

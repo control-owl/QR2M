@@ -124,19 +124,6 @@ UI:
           en: "SSL path"
           de: "SSL-Pfad"
           hr: "SSL lokacija"
-    button:
-      open:
-        en: "Open"
-        de: "Öffnen"
-        hr: "Otvoriti"
-      save:
-        en: "Save"
-        de: "Speichern"
-        hr: "Spremiti"
-      cancel:
-        en: "Cancel"
-        de: "Abbrechen"
-        hr: "Otkazati"
     sidebar:
       general:
         en: "App"
@@ -150,6 +137,20 @@ UI:
         en: "ANU"
       proxy:
         en: "Proxy"
+  element:
+    button:
+      open:
+        en: "Open"
+        de: "Öffnen"
+        hr: "Otvoriti"
+      save:
+        en: "Save"
+        de: "Speichern"
+        hr: "Spremiti"
+      cancel:
+        en: "Cancel"
+        de: "Abbrechen"
+        hr: "Otkazati"
   about:
     description:
       en: "(Q)RNG crypto key generator"
@@ -403,6 +404,15 @@ UI:
         en: "Please re-open app to apply new language"
         de: "Bitte öffnen Sie die App erneut, um die neue Sprache anzuwenden"
         hr: "Ponovno otvorite aplikaciju da bi primjeni novi jezik"
+  dialog:
+    open:
+      en: "Please select a file"
+      de: "Bitte wählen Sie eine Datei"
+      hr: "Odaberite datoteku"
+    save:
+      en: "Save wallet in directory"
+      de: "Wallet im Verzeichnis speichern"
+      hr: "Spremiti novčanik u direktorij"
 error:
   settings:
     config:
