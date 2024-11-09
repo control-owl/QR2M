@@ -2,9 +2,9 @@
 
 #### New priorities
 
-1. Save wallet
-2. Open wallet
-3. Proxy
+1. Save wallet - done
+2. Open wallet - done
+3. Proxy - next
 
 
 #### Old tasks
@@ -34,10 +34,10 @@
     - [ ] time-lock
     - [ ] multi-sig
 - [ ] new tab: active coins
-- [ ] menubar buttons
+- [x] menubar buttons
     - [x] new
-    - [ ] open
-    - [ ] save
+    - [x] open
+    - [x] save
     - [x] settings
     - [x] about
 - [x] theme (auto)

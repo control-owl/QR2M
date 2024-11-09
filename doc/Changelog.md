@@ -1,8 +1,10 @@
+# version 0.41.0
+- open wallet
+- repair OS detection and local config file
+
 # version 0.40.1
 - fixed problem with dialogs and loops
 - save wallet
-
-
 
 # version 0.40.0
 - new option to generate entropy: RNG+

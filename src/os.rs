@@ -15,8 +15,8 @@ use std::{
 };
 use crate::APP_NAME;
 
-const APP_LOCAL_CONFIG_FILE: &str = "settings.conf";
-pub const APP_LOCAL_DO_NOT_SHOW_FILE: &str = "do-not-show.conf";
+const APP_LOCAL_CONFIG_FILE: &str = "qr2m.conf";
+pub const APP_LOCAL_DO_NOT_SHOW_FILE: &str = "qr2m.show";
 const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
 pub const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
 
@@ -69,7 +69,8 @@ pub fn detect_os_and_user_dir() {
 
     let app_name = APP_NAME.unwrap();
 
-    let local_temp_dir = env::temp_dir();
+    let local_temp = env::temp_dir();
+    let local_temp_dir = local_temp.join(app_name);
     let local_temp_file = local_temp_dir.join(APP_LOCAL_TEMP_FILE);
 
     let local_config_dir = match os.as_str() {
@@ -98,18 +99,29 @@ pub fn detect_os_and_user_dir() {
     let local_config_file = local_config_dir.join(APP_LOCAL_CONFIG_FILE);
     let local_do_not_show_file = local_config_dir.join(APP_LOCAL_DO_NOT_SHOW_FILE);
 
-    let (config_dir, config_file) = if local_config_dir.exists() && local_config_dir.is_dir() {
-        (local_config_dir, local_config_file)
+    let (config_dir, config_file) = if local_config_dir.is_symlink() {
+        match fs::read_link(&local_config_dir) {
+            Ok(target) => {
+                if target.is_dir() || target.is_relative()  {
+                    (target, local_config_file)
+                } else {
+                    (local_temp_dir.clone(), PathBuf::from(local_temp_dir.join(APP_LOCAL_CONFIG_FILE)))
+                }
+            },
+            Err(_) => {
+                (local_temp_dir.clone(), PathBuf::from(local_temp_dir.join(APP_LOCAL_CONFIG_FILE)))
+            }
+        }
     } else {
-        (local_temp_dir.clone(), local_temp_file.clone())
+        (local_config_dir, local_config_file)
     };
 
     LOCAL_DATA.with(|data| {
         let mut data = data.borrow_mut();
         println!("\t OS: {:?}", &os);
         println!("\t Config directory: {:?}", &config_dir);
-        println!("\t Temp directory: {:?}", &local_temp_dir);
         println!("\t Configuration file: {:?}", &config_file);
+        println!("\t Temp directory: {:?}", &local_temp_dir);
         println!("\t Temp file: {:?}", &local_temp_file);
         println!("\t Do not show file: {:?}", &local_do_not_show_file);
         

@@ -1107,10 +1107,10 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
                 }
             }
         },
-        "Wallet" => {
+        // "Wallet" => {
 
-            return (String::new(), None)
-        },
+        //     // return (String::new(), None)
+        // },
         _ => {
             println!("{}", &t!("error.entropy.create.source"));
             return (String::new(), None)
@@ -3264,33 +3264,30 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     
 
     // JUMP: Main: ACTIONS
+
+    // JUMP: Main: Open Wallet
     open_wallet_button.connect_clicked(clone!(
-        #[weak] entropy_source_dropdown,
         #[weak] entropy_text,
-        #[weak] entropy_length_dropdown,
-        #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
-        #[weak] mnemonic_passphrase_scale,
-        #[weak] seed_text,
-        #[weak] save_wallet_button,
         move |_| {
-            match (full_entropy, mnemonic_passphrase) = open_wallet_from_file() {
-                Ok(_) => {},
-                Err(_) => {},
-            };
-            println!("\t Final entropy: {:?}", full_entropy);
-            entropy_text.buffer().set_text(&full_entropy);
-            
-            let mnemonic_words = generate_mnemonic_words(&full_entropy);
-            mnemonic_words_text.buffer().set_text(&mnemonic_words);
-            
-            let seed = generate_bip39_seed(&full_entropy, &mnemonic_passphrase);
-            let seed_hex = hex::encode(&seed[..]);
-            seed_text.buffer().set_text(&seed_hex.to_string());
-            
-            println!("\t Seed (hex): {:?}", seed_hex);
+            let (entropy, passphrase) = open_wallet_from_file();
+
+            if !entropy.is_empty() {
+                println!("\t Wallet entropy: {:?}", entropy);
+                entropy_text.buffer().set_text(&entropy);
+            }
+
+            match passphrase {
+                Some(pass) => {
+                    println!("\t Mnemonic passphrase: {:?}", pass);
+                    mnemonic_passphrase_text.buffer().set_text(&pass);
+                },
+                None => {
+                    println!("\t No Mnemonic passphrase available");
+                },
+            }
         }
-));
+    ));
 
 
     // JUMP: Generate Seed button
@@ -3635,6 +3632,60 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     //     }
     // ));
     
+
+
+
+
+    // JUMP: Main: Entropy change by import
+    let buffer = entropy_text.buffer();
+    buffer.connect_changed(clone!(
+        #[weak] entropy_text,
+        #[weak] mnemonic_passphrase_text,
+        move |_| {
+
+            let buffer = entropy_text.buffer();
+            let start_iter = buffer.start_iter();
+            let end_iter = buffer.end_iter();
+            let full_entropy = buffer.text(&start_iter, &end_iter, false);
+
+            if full_entropy != "" {
+                let mnemonic_words = generate_mnemonic_words(&full_entropy);
+                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                
+
+                let (entropy_len, checksum_len) = match full_entropy.len() {
+                    132 => (128, 4),
+                    165 => (160, 5),
+                    198 => (192, 6),
+                    231 => (224, 7),
+                    264 => (256, 8),
+                    _ => (0, 0),
+                };
+            
+                let (pre_entropy, checksum) = full_entropy.split_at(entropy_len);
+
+
+                let seed = generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+                
+                println!("\t Seed (hex): {:?}", seed_hex);
+
+            }
+        }
+    ));
+
+
+
+
+
+
+
+
+
+
+
+
     coin_search.connect_search_changed({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
         let coin_store = std::rc::Rc::clone(&coin_store);
@@ -4423,125 +4474,8 @@ fn save_wallet_to_file() {
     save_loop.run();
 }
 
-fn open_wallet_from_file() -> Result<String, Option<String>> {
-    let open_context = glib::MainContext::default();
-    let open_loop = glib::MainLoop::new(Some(&open_context), false);
 
-    let open_window = gtk::Window::new();
-    let open_dialog = gtk::FileChooserNative::new(
-        Some("Open Wallet"),
-        Some(&open_window),
-        gtk::FileChooserAction::Open,
-        Some("Open"),
-        Some("Cancel"),
-    );
 
-    open_dialog.connect_response(clone!(
-        #[strong] open_loop,
-        move |open_dialog, response| {
-            if response == gtk::ResponseType::Accept {
-                if let Some(file) = open_dialog.file() {
-                    if let Some(path) = file.path() {
-                        match File::open(&path) {
-                            Ok(file) => {
-                                let result = process_wallet_file(file);
-                                match result {
-                                    Ok((wallet_version, full_entropy, passphrase)) => {
-                                        println!("Wallet version: {:?}", wallet_version);
-
-                                        WALLET_SETTINGS.with(|data| {
-                                            let mut data = data.borrow_mut();
-                                            println!("Wallet entropy: {:?}", &full_entropy);
-                                            data.entropy_string = Some(full_entropy.clone());
-                                        });
-
-                                        if let Some(pass) = passphrase {
-                                            WALLET_SETTINGS.with(|data| {
-                                                let mut data = data.borrow_mut();
-                                                println!("Mnemonic passphrase: {:?}", pass);
-                                                data.mnemonic_passphrase = Some(pass.clone());
-                                            });
-                                            Ok(full_entropy, Some(pass))
-                                        } else {
-                                            println!("No mnemonic passphrase");
-                                            Ok(full_entropy, None)
-                                        }
-                                    }
-                                    Err(err) => {
-                                        println!("Failed to process wallet file: {}", err);
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                println!("Error: Could not open wallet '{:?}'. Reason: {}", path, e);
-                            }
-                        }
-                        open_loop.quit();
-                    }
-                }
-            }
-            open_dialog.destroy();
-            open_loop.quit();
-        }
-    ));
-
-    open_dialog.show();
-    open_loop.run();
-    return ("ok", None)
-}
-
-fn process_wallet_file(file: File) -> Result<(u8, String, Option<String>), String> {
-    let mut lines = std::io::BufReader::new(file).lines();
-
-    let version_line = lines.next()
-        .ok_or_else(|| "Error: File is empty, missing version line".to_string())?
-        .map_err(|_| "Error: Failed to read the version line".to_string())?;
-
-    let version = parse_wallet_version(&version_line)?;
-
-    match version {
-        1 => {
-            let entropy = lines.next()
-                .ok_or_else(|| "Error: Missing entropy line for version 1 wallet".to_string())?
-                .map_err(|_| "Error: Failed to read entropy line".to_string())?;
-
-            if !is_valid_entropy(&entropy) {
-                return Err("Error: Invalid entropy size.".to_string());
-            }
-
-            let password = lines.next().transpose().map_err(|_| "Error: Failed to read password line".to_string())?;
-
-            Ok((version, entropy, password))
-        }
-        _ => Err(format!("Error: Unsupported wallet version '{}'", version)),
-    }
-}
-
-fn parse_wallet_version(line: &str) -> Result<u8, String> {
-    if line.starts_with("version = ") {
-        line["version = ".len()..].parse::<u8>()
-            .map_err(|_| "Error: Invalid version format, expected an integer".to_string())
-    } else {
-        Err("Error: Version line is malformed, expected 'version = X' format".to_string())
-    }
-}
-
-fn is_valid_entropy(full_entropy: &str) -> bool {
-    let (entropy_len, checksum_len) = match full_entropy.len() {
-        132 => (128, 4),
-        165 => (160, 5),
-        198 => (192, 6),
-        231 => (224, 7),
-        264 => (256, 8),
-        _ => return false,
-    };
-
-    let (entropy, checksum) = full_entropy.split_at(entropy_len);
-
-    entropy.len() == entropy_len
-        && checksum.len() == checksum_len
-        && entropy.chars().all(|c| c == '0' || c == '1')
-}
 
 
 fn main() {
@@ -4589,9 +4523,9 @@ fn main() {
         create_main_window(&new_window, main_window_state.clone());
     });
 
-    open.connect_activate(move |_action, _parameter| {
-        open_wallet_from_file();
-    });
+    // open.connect_activate(move |_action, _parameter| {
+    //     open_wallet_from_file();
+    // });
     
     save.connect_activate(|_action, _parameter| {
         save_wallet_to_file();
@@ -4960,5 +4894,142 @@ enum CryptoPublicKey {
 
 
 
+fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<String>), String> {
+    let file = File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
+    let mut lines = std::io::BufReader::new(file).lines();
+
+    let version_line = match lines.next() {
+        Some(Ok(line)) => line,
+        Some(Err(_)) => return Err("Error: Failed to read the version line".to_string()),
+        None => return Err("Error: File is empty, missing version line".to_string()),
+    };
+
+    let version = parse_wallet_version(&version_line)?;
+
+    match version {
+        1 => {
+            let entropy = match lines.next() {
+                Some(Ok(line)) => line,
+                Some(Err(_)) => return Err("Error: Failed to read entropy line".to_string()),
+                None => return Err("Error: Missing entropy line for version 1 wallet".to_string()),
+            };
+
+            if !is_valid_entropy(&entropy) {
+                return Err("Error: Invalid entropy size.".to_string());
+            }
+
+            let passphrase = match lines.next() {
+                Some(Ok(line)) => Some(line),
+                Some(Err(_)) => return Err("Error: Failed to read passphrase line".to_string()),
+                None => None,
+            };
+
+            Ok((version, entropy, passphrase))
+        },
+        _ => Err(format!("Error: Unsupported wallet version '{}'", version)),
+    }
+}
+
+fn parse_wallet_version(line: &str) -> Result<u8, String> {
+    if line.starts_with("version = ") {
+        match line["version = ".len()..].parse::<u8>() {
+            Ok(version) => Ok(version),
+            Err(_) => Err("Error: Invalid version format, expected an integer".to_string()),
+        }
+    } else {
+        Err("Error: Version line is malformed, expected 'version = X' format".to_string())
+    }
+}
+
+fn is_valid_entropy(full_entropy: &str) -> bool {
+    let (entropy_len, checksum_len) = match full_entropy.len() {
+        132 => (128, 4),
+        165 => (160, 5),
+        198 => (192, 6),
+        231 => (224, 7),
+        264 => (256, 8),
+        _ => return false,
+    };
+
+    let (entropy, checksum) = full_entropy.split_at(entropy_len);
+
+    entropy.len() == entropy_len
+        && checksum.len() == checksum_len
+        && entropy.chars().all(|c| c == '0' || c == '1')
+}
 
 
+
+fn open_wallet_from_file() -> (String, Option<String>) {
+    let open_context = glib::MainContext::default();
+    let open_loop = glib::MainLoop::new(Some(&open_context), false);
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    let open_window = gtk::Window::new();
+    let open_dialog = gtk::FileChooserNative::new(
+        Some("Open Wallet File"),
+        Some(&open_window),
+        gtk::FileChooserAction::Open,
+        Some("Open"),
+        Some("Cancel"),
+    );
+
+    open_dialog.connect_response(clone!(
+        #[strong] open_loop,
+        move |open_dialog, response| {
+            if response == gtk::ResponseType::Accept {
+                if let Some(file) = open_dialog.file() {
+                    if let Some(path) = file.path() {
+                        let file_path = path.to_string_lossy().to_string();
+                        println!("\t Wallet file chosen: {:?}", file_path);
+
+                        let result = process_wallet_file_from_path(&file_path);
+
+                        match result {
+                            Ok((version, entropy, password)) => {
+                                let passphrase = match password {
+                                    Some(pass) => pass,
+                                    None => String::new(),
+                                };
+
+                                let file_entropy_string = format!("{}\n{}\n{}", version, entropy, passphrase);
+                                if let Err(err) = tx.send(file_entropy_string) {
+                                    println!("Error sending data: {}", err);
+                                } else {
+                                    open_loop.quit();
+                                }
+                            },
+                            Err(err) => {
+                                println!("Error processing wallet file: {}", err);
+                                let error_message = format!("Error: {}", err);
+                                if let Err(err) = tx.send(error_message) {
+                                    println!("Error sending data: {}", err);
+                                }
+                                open_loop.quit();
+                            }
+                        }
+                    }
+                }
+            }
+            open_dialog.destroy();
+            open_loop.quit();
+        }
+    ));
+
+    open_dialog.show();
+    open_loop.run();
+
+    match rx.recv() {
+        Ok(file_entropy_string) => {
+            let parts: Vec<&str> = file_entropy_string.split("\n").collect();
+            let entropy = parts.get(1).map(|s| s.to_string());
+            let passphrase = parts.get(2).map(|s| s.to_string());
+
+            (entropy.unwrap_or_else(|| String::new()), passphrase)
+        },
+        Err(_) => {
+            println!("Error: Failed to read wallet file.");
+            (String::new(), None)
+        }
+    }
+}
