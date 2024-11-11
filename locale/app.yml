@@ -1,8 +1,8 @@
 "_version": 2
 hello:
-  en: "Hello world!"
-  de: "Hallo Welt!"
-  hr: "Pozdrav svijete!"
+  en: "Hello! Ready to create something amazing?"
+  de: "Hallo! Bereit, etwas Großartiges zu schaffen?"
+  hr: "Zdravo! Jeste li spremni stvoriti nešto nevjerojatno?"
 UI:
   settings:
     en: "Settings"
@@ -151,6 +151,10 @@ UI:
         en: "Cancel"
         de: "Abbrechen"
         hr: "Otkazati"
+      close:
+        en: "Close"
+        de: "Schließen"
+        hr: "Zatvori"
   about:
     description:
       en: "(Q)RNG crypto key generator"
@@ -392,7 +396,7 @@ UI:
         de: "Nicht mehr anzeigen"
         hr: "Nemoj više pokazati"
       close:
-        en: "Close message"
+        en: "Close"
         de: "Schließen"
         hr: "Zatvori"
     change-language:

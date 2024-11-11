@@ -2553,6 +2553,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         .build();
 
     let header_bar = gtk::HeaderBar::new();
+    let info_bar = gtk::InfoBar::new();
+    info_bar.set_hexpand(true);
     window.set_titlebar(Some(&header_bar));
     
     let new_wallet_button = gtk::Button::new();
@@ -4278,13 +4280,44 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     });
 
     // Main sidebar
-    let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    main_content_box.append(&stack_sidebar);
-    main_content_box.append(&stack);
-    window.set_child(Some(&main_content_box));
+    let main_window_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let main_sidebar_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let main_infobar_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
+
+    main_sidebar_box.append(&stack_sidebar);
+    main_sidebar_box.append(&stack);
+    main_infobar_box.append(&info_bar);
+    main_window_box.set_hexpand(true);
+    main_infobar_box.set_hexpand(true);
+    main_window_box.append(&main_sidebar_box);
+    main_window_box.append(&main_infobar_box);
+
+    // Infobar
+    create_info_bar(&info_bar, &t!("hello"), gtk::MessageType::Info);
+    info_bar.add_button(&t!("UI.element.button.close").to_string(), gtk::ResponseType::Close);
+    info_bar.connect_response(|info_bar, response| {
+        if response == gtk::ResponseType::Close {
+            info_bar.hide();
+        }
+    });
+    
+    let notification_timeout = APPLICATION_SETTINGS.with(|data| {
+        let data = data.borrow();
+        data.gui_notification_timeout.clone()
+    });
+    
+    let info_bar_clone = info_bar.clone();
+    glib::MainContext::default().spawn_local(async move {
+        glib::timeout_future(std::time::Duration::from_secs(notification_timeout as u64)).await;
+        info_bar_clone.hide();
+    });
+
+    window.set_child(Some(&main_window_box));
     window.present();
 }
+
+
 
 fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
     println!("[+] {}", &t!("log.create_message_window").to_string());
@@ -4453,8 +4486,8 @@ fn save_wallet_to_file() {
     );
 
     let filter = gtk::FileFilter::new();
-    filter.add_pattern("*.qr2m");
-    filter.set_name(Some("Wallet file (*.qr2m)"));
+    filter.add_pattern(&format!("*.{}",WALLET_DEFAULT_EXTENSION));
+    filter.set_name(Some(&format!("Wallet file (*.{})",WALLET_DEFAULT_EXTENSION)));
     save_dialog.add_filter(&filter);
     
     let all_files_filter = gtk::FileFilter::new();
@@ -4479,6 +4512,13 @@ fn save_wallet_to_file() {
             }
             save_dialog.destroy();
             save_loop.quit();
+
+            create_message_window(
+                &t!("UI.messages.change-language.titel").to_string(), 
+                &t!("UI.messages.change-language.msg").to_string(), 
+                None, 
+                None
+            )
         }
     ));
     save_dialog.show();
@@ -5052,4 +5092,20 @@ fn open_wallet_from_file() -> (String, Option<String>) {
             (String::new(), None)
         }
     }
+}
+
+
+fn create_info_bar(info_bar: &gtk::InfoBar, message: &str, message_type: gtk::MessageType) {
+    // Set the message type (Info, Warning, Error, etc.)
+    info_bar.set_message_type(message_type);
+
+    // Create a new label with the message
+    let message_label = gtk::Label::new(Some(message));
+
+    // Add the label directly to the InfoBar
+    info_bar.add_child(&message_label);
+
+    // Show the InfoBar and its label
+    info_bar.show();
+    message_label.show();
 }
