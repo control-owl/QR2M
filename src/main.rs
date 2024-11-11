@@ -86,7 +86,7 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
 ];
 const WALLET_DEFAULT_ADDRESS_COUNT: u32 = 10;
 const WALLET_DEFAULT_HARDENED_ADDRESS: bool = false;
-const WALLET_DEFAULT_FILE_NAME: &str = "qr2m.wallet";
+const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
 const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
 const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
@@ -4447,10 +4447,20 @@ fn save_wallet_to_file() {
     let save_dialog = gtk::FileChooserNative::new(
         Some(t!("UI.dialog.save").to_string().as_str()),
         Some(&save_window),
-        gtk::FileChooserAction::SelectFolder,
+        gtk::FileChooserAction::Save,
         Some(&t!("UI.element.button.save")),
         Some(&t!("UI.element.button.cancel"))
     );
+
+    let filter = gtk::FileFilter::new();
+    filter.add_pattern("*.qr2m");
+    filter.set_name(Some("Wallet file (*.qr2m)"));
+    save_dialog.add_filter(&filter);
+    
+    let all_files_filter = gtk::FileFilter::new();
+    all_files_filter.add_pattern("*");
+    all_files_filter.set_name(Some("All files"));
+    save_dialog.add_filter(&all_files_filter);
 
     save_dialog.connect_response(clone!(
         #[strong] save_loop,
@@ -4458,8 +4468,9 @@ fn save_wallet_to_file() {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = save_dialog.file() {
                     if let Some(path) = file.path() {
+                        println!("path: {:?}", path);
                         let wallet_data = format!("version = {}\n{}\n{}", WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase);
-                        let wallet_file = format!{"{}/{}", path.display(), WALLET_DEFAULT_FILE_NAME};
+                        let wallet_file = format!{"{}.{}", path.display(), WALLET_DEFAULT_EXTENSION};
 
                         std::fs::write(wallet_file, wallet_data).expect("Unable to write file");
                         save_loop.quit();
@@ -4958,8 +4969,6 @@ fn is_valid_entropy(full_entropy: &str) -> bool {
         && entropy.chars().all(|c| c == '0' || c == '1')
 }
 
-
-
 fn open_wallet_from_file() -> (String, Option<String>) {
     let open_context = glib::MainContext::default();
     let open_loop = glib::MainLoop::new(Some(&open_context), false);
@@ -4973,6 +4982,17 @@ fn open_wallet_from_file() -> (String, Option<String>) {
         Some("Open"),
         Some("Cancel"),
     );
+
+    let filter = gtk::FileFilter::new();
+    filter.add_pattern("*.qr2m");
+    filter.set_name(Some("Wallet file (*.qr2m)"));
+    open_dialog.add_filter(&filter);
+    
+    let all_files_filter = gtk::FileFilter::new();
+    all_files_filter.add_pattern("*");
+    all_files_filter.set_name(Some("All files"));
+    open_dialog.add_filter(&all_files_filter);
+    
 
     open_dialog.connect_response(clone!(
         #[strong] open_loop,
