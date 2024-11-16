@@ -134,10 +134,6 @@ thread_local! {
     // });
 }
 
-// lazy_static! {
-//     static ref LOG_FILE: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
-// }
-
 #[derive(Debug, Default)]
 struct AppSettings {
     wallet_entropy_source: String,
@@ -2454,9 +2450,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let save_wallet_button = gtk::Button::new();
     let about_button = gtk::Button::new();
     let settings_button = gtk::Button::new();
-    save_wallet_button.set_sensitive(false);
+    // save_wallet_button.set_sensitive(false);
 
-    // FEATURE: make my own menu icons
     let theme_images = get_window_theme_icons();
     new_wallet_button.set_child(Some(&theme_images[0]));
     open_wallet_button.set_child(Some(&theme_images[1]));
@@ -2489,22 +2484,17 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             let main_loop = glib::MainLoop::new(Some(&main_context), false);
             let settings_window = create_settings_window(Some(state_clone.clone()));
 
-            // Handle close_request to quit the main loop
             settings_window.connect_close_request(clone!(
                 #[strong] main_loop,
                 move |_| {
-                    main_loop.quit(); // Quit the loop when the window is requested to close
-                    glib::Propagation::Proceed // Allow the window to close
+                    main_loop.quit();
+                    glib::Propagation::Proceed
                 }
             ));
 
             settings_window.show();
-
-            // Run the loop and wait until the settings window is closed
             main_loop.run();
 
-            // After the settings window is closed, update the theme icons
-            println!("Settings window closed. Updating icons...");
             let theme_images = get_window_theme_icons();
             new_wallet_button.set_child(Some(&theme_images[0]));
             open_wallet_button.set_child(Some(&theme_images[1]));
@@ -3217,7 +3207,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         #[weak] mnemonic_passphrase_text,
         #[weak] mnemonic_passphrase_scale,
         #[weak] seed_text,
-        #[weak] save_wallet_button,
+        // #[weak] save_wallet_button,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -3292,7 +3282,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                     data.seed = Some(seed_hex.clone());
                 });
 
-                save_wallet_button.set_sensitive(true);
+                // save_wallet_button.set_sensitive(true);
 
             } else {
                 eprintln!("{}", &t!("error.entropy.empty"));
@@ -3306,14 +3296,14 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
-        #[weak] save_wallet_button,
+        // #[weak] save_wallet_button,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
             mnemonic_words_text.buffer().set_text("");
             seed_text.buffer().set_text("");
     
-            save_wallet_button.set_sensitive(false);
+            // save_wallet_button.set_sensitive(false);
     }));
 
     // JUMP: Generate Master Keys button
@@ -3518,41 +3508,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         #[weak] mnemonic_passphrase_length_info,
         move |mnemonic_passphrase_scale| {
             let scale_value = mnemonic_passphrase_scale.value() as u32;
-            // mnemonic_passphrase_scale.set_value(value as f64);
-            // mnemonic_passphrase_scale.set_tooltip_text(Some(&value.to_string()));
-            // mnemonic_passphrase_scale.trigger_tooltip_query();
-            
-            // if scale_value != mnemonic_passphrase_length_info.text().parse::<u32>().unwrap() {
-                mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
-            // }
+            mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
         }
     ));
-
-    // BUG: Working but there are some errors in terminal, not sure if it can be ignored
-    // mnemonic_passphrase_length_info.connect_changed(clone!(
-    //     #[weak] mnemonic_passphrase_scale,
-    //     move |mnemonic_passphrase_length_info| {
-    //         let text_value = mnemonic_passphrase_length_info.text(); 
-    //         match text_value.parse::<u32>() {
-    //             Ok(value) => {
-    //                 if value != mnemonic_passphrase_scale.value() as u32 {
-    //                     println!("old value: {}", mnemonic_passphrase_scale.value());
-    //                     println!("new value: {}", value);
-    //                     mnemonic_passphrase_scale.set_value(value as f64)
-    //                 }
-    //             },
-    //             Err(_) => {
-    //                 // let current_value = mnemonic_passphrase_scale.value() as u32;
-    //                 // mnemonic_passphrase_length_info.set_text(&current_value.to_string())
-    //                 // println!("error")
-    //             },
-    //         }
-    //     }
-    // ));
-    
-
-
-
 
     // JUMP: Main: Entropy change by import
     let buffer = entropy_text.buffer();
@@ -4351,25 +4309,6 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
 }
 
 fn save_wallet_to_file() {
-    // struct WalletSettings {
-    //     entropy_string: Option<String>,
-    //     entropy_checksum: Option<String>,
-    //     mnemonic_words: Option<String>,
-    //     mnemonic_passphrase: Option<String>,
-    //     seed: Option<String>,
-    //     master_xprv: Option<String>,
-    //     master_xpub: Option<String>,
-    //     master_private_key_bytes: Option<Vec<u8>>,
-    //     master_chain_code_bytes: Option<Vec<u8>>,
-    //     master_public_key_bytes: Option<Vec<u8>>,
-    //     coin_index: Option<u32>,
-    //     coin_name: Option<String>,
-    //     wallet_import_format: Option<String>,
-    //     public_key_hash: Option<String>,
-    //     key_derivation: Option<String>,
-    //     hash: Option<String>,
-    // }
-
     // TODO: Check if wallet is created before proceeding
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
@@ -4461,11 +4400,14 @@ fn main() {
         .build();
 
     let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
-    let new_state = state.clone();
 
-    application.connect_activate(move |app| {
-        create_main_window(app, new_state.clone());
-    });
+    application.connect_activate(clone!(
+        #[weak] state,
+        #[weak] application,
+        move |_action| {
+            create_main_window(&application, state.clone());
+        }
+    ));
 
     let quit = gio::SimpleAction::new("quit", None);
     let new = gio::SimpleAction::new("new", None);
@@ -4482,24 +4424,43 @@ fn main() {
         }),
     );
     
-    let new_window = application.clone();
-    let main_window_state = state.clone();
-    new.connect_activate(move |_action, _parameter| {
-        create_main_window(&new_window, main_window_state.clone());
-    });
+    new.connect_activate(clone!(
+        #[weak] application,
+        #[weak] state,
+        move |_action, _parameter| {
+            create_main_window(&application, state.clone());
+        }
+    ));
 
-    // open.connect_activate(move |_action, _parameter| {
-    //     open_wallet_from_file();
-    // });
+    open.connect_activate(move |_action, _parameter| {
+        open_wallet_from_file();
+    });
     
     save.connect_activate(|_action, _parameter| {
         save_wallet_to_file();
     });
 
-    let settings_window_state = state.clone();
-    settings.connect_activate(move |_action, _parameter| {
-        create_settings_window(Some(settings_window_state.clone()));
-    });
+    // Fucking arc mutex rust and mutability. i am fucking angry. whole day and I still do not understand.
+    settings.connect_activate(clone!(
+        #[weak] state,
+        move |_action, _parameter| {
+            let main_context = glib::MainContext::default();
+            let main_loop = glib::MainLoop::new(Some(&main_context), false);
+            let settings_window = create_settings_window(Some(state.clone()));
+            
+            settings_window.connect_close_request(clone!(
+                #[strong] main_loop,
+                move |_| {
+                    state.borrow().apply_theme();
+                    main_loop.quit();
+                    glib::Propagation::Proceed
+                }
+            ));
+            
+            settings_window.show();
+            main_loop.run();
+        }
+    ));
 
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
