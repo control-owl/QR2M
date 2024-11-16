@@ -28,8 +28,8 @@ thread_local! {
 pub struct LocalSettings {
     pub os: Option<String>,
     pub local_config_dir: Option<PathBuf>,
-    pub local_temp_dir: Option<PathBuf>,
     pub local_config_file: Option<PathBuf>,
+    pub local_temp_dir: Option<PathBuf>,
     pub local_temp_file: Option<PathBuf>,
     pub local_do_not_show_file: Option<PathBuf>,
 }

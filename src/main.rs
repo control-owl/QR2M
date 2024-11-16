@@ -92,6 +92,9 @@ const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
 const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_DEFAULT_HEX_BLOCK_SIZE: u32 = 16;
+const DEFAULT_PROXY_PORT: u32 = 8080;
+const PROXY_DEFAULT_RETRY_ATTEMPTS: u32 = 3;
+const PROXY_DEFAULT_TIMEOUT: u32 = 5000;
 const WINDOW_MAIN_DEFAULT_WIDTH: u32 = 1000;
 const WINDOW_MAIN_DEFAULT_HEIGHT: u32 = 800;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
@@ -165,10 +168,11 @@ struct AppSettings {
     proxy_login_password: String,
     proxy_use_ssl: bool,
     proxy_ssl_certificate: String,
+    proxy_retry_attempts: u32,
+    proxy_timeout: u32,
 }
 
 impl AppSettings {
-    // FEATURE: create verify_settings function
     fn load_settings() -> io::Result<Self> {
         println!("[+] {}", &t!("log.load-settings").to_string());
         
@@ -194,238 +198,116 @@ impl AppSettings {
             }
         };
 
-        // BUG: If one parameter has typo, whole AppSetting is empty ???
-        let config: toml::Value = match config_str.parse() {
-            Ok(value) => {
-                value
-            },
+        let config: toml::Value = config_str.parse().unwrap_or_else(|err| {
+            println!("{}", &t!("error.settings.config", error = err));
+            toml::Value::Table(toml::value::Table::new())
+        });
+
+        fn get_str<'a>(section: &'a toml::Value, key: &str, default: &str) -> String {
+            section.get(key).and_then(|v| v.as_str()).unwrap_or(default).to_string()
+        }
+
+        fn get_u32<'a>(section: &'a toml::Value, key: &str, default: u32) -> u32 {
+            section.get(key).and_then(|v| v.as_integer()).map(|v| v as u32).unwrap_or(default)
+        }
+
+        fn get_bool<'a>(section: &'a toml::Value, key: &str, default: bool) -> bool {
+            section.get(key).and_then(|v| v.as_bool()).unwrap_or(default)
+        }
+
+        fn load_section(config: &toml::Value, section_name: &str, default_config: &toml::Value) -> toml::Value {
+            config.get(section_name)
+                .cloned()
+                .unwrap_or_else(|| default_config.get(section_name).cloned().unwrap_or(toml::Value::Table(toml::value::Table::new())))
+        }
+        
+        let default_config_str = match fs::read_to_string(os::APP_DEFAULT_CONFIG_FILE) {
+            Ok(contents) => contents,
             Err(err) => {
-                println!("{}", &t!("error.settings.config", error = err));
-                toml::Value::Table(toml::value::Table::new())
+                eprintln!("Failed to read default config file: {:?}\nError: {:?}", os::APP_DEFAULT_CONFIG_FILE, err);
+                String::new()
             }
         };
-
-        // FEATURE: make a config's version compatibility check
-        // let config_version = match config.get("version").and_then(|v| v.as_integer()) {
-        //     Some(v) => v as u32,
-        //     None => 0
-        // };
-        // println!("config_version: {}", config_version);
-
-        let empty_value = toml::Value::String("".to_string());
-
-        // GUI setting
-        let gui_section = match config.get("gui") {
-            Some(section) => section,
-            None => &empty_value    // IMPROVEMENT: replace empty_value with default 'gui' values
-        };
-            
-        let gui_save_size = gui_section.get("save_size")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
+        let default_config: toml::Value = default_config_str.parse().unwrap_or_else(|_| toml::Value::Table(toml::value::Table::new()));
+        
+        // Sections
+        let gui_section = load_section(&config, "gui", &default_config);
+        let wallet_section = load_section(&config, "wallet", &default_config);
+        let anu_section = load_section(&config, "anu", &default_config);
+        let proxy_section = load_section(&config, "proxy", &default_config);
+        
+        // GUI settings
+        let gui_save_size = get_bool(&gui_section, "save_size", true);
+        let gui_last_width = get_u32(&gui_section, "last_width", WINDOW_MAIN_DEFAULT_WIDTH);
+        let gui_last_height = get_u32(&gui_section, "last_height", WINDOW_MAIN_DEFAULT_HEIGHT);
+        let gui_maximized = get_bool(&gui_section, "maximized", true);
+        let gui_theme = get_str(&gui_section, "theme", &VALID_GUI_THEMES[0]);
+        let gui_language = get_str(&gui_section, "language", &APP_LANGUAGE[0]);
+        let gui_search = get_str(&gui_section, "search", &VALID_COIN_SEARCH_PARAMETER[0]);
+        let gui_notification_timeout = get_u32(&gui_section, "notification_timeout", DEFAULT_NOTIFICATION_TIMEOUT);
 
         println!("\t Save last window size: {:?}", gui_save_size);
-
-        let gui_last_width = gui_section.get("last_width")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(WINDOW_MAIN_DEFAULT_WIDTH);
-
-        println!("\t Last window width: {:?}", gui_last_width);
-
-        let gui_last_height = gui_section.get("last_height")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(WINDOW_MAIN_DEFAULT_HEIGHT);
-
-        println!("\t Last window height: {:?}", gui_last_height);
-    
-        let gui_maximized = gui_section.get("maximized")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
-        
-        println!("\t Window maximized: {:?}", gui_maximized);
-
-        let gui_theme = gui_section.get("theme")
-            .and_then(|v| v.as_str())
-            .unwrap_or(*&VALID_GUI_THEMES[0])
-            .to_string();
-        
-        println!("\t Window theme: {:?}", gui_theme);
-
-        let gui_language = gui_section.get("language")
-            .and_then(|v| v.as_str())
-            .unwrap_or(*&APP_LANGUAGE[0])
-            .to_string();
-        
+        println!("\t GUI width: {:?}", gui_last_width);
+        println!("\t GUI height: {:?}", gui_last_height);
+        println!("\t Maximized: {:?}", gui_maximized);
+        println!("\t Theme: {:?}", gui_theme);
         println!("\t Language: {:?}", gui_language);
-
-        let gui_search = gui_section.get("search")
-            .and_then(|v| v.as_str())
-            .unwrap_or(*&VALID_COIN_SEARCH_PARAMETER[0])
-            .to_string();
-
-        println!("\t Coin search: {:?}", gui_search);
-
-        let gui_notification_timeout = gui_section.get("notification_timeout")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(DEFAULT_NOTIFICATION_TIMEOUT);
-
+        println!("\t Search: {:?}", gui_search);
         println!("\t Notification timeout: {:?}", gui_notification_timeout);
 
         // Wallet settings
-        let wallet_section = match config.get("wallet") {
-            Some(section) => section,
-            None => &empty_value
-        };
-
-        let wallet_entropy_source = wallet_section.get("entropy_source")
-            .and_then(|v| v.as_str())
-            .unwrap_or(*&VALID_ENTROPY_SOURCES[0])
-            .to_string();
+        let wallet_entropy_source = get_str(&wallet_section, "entropy_source", &VALID_ENTROPY_SOURCES[0]);
+        let wallet_entropy_length = get_u32(&wallet_section, "entropy_length", *VALID_ENTROPY_LENGTHS.last().unwrap_or(&0));
+        let wallet_bip = get_u32(&wallet_section, "bip", *VALID_BIP_DERIVATIONS.get(1).unwrap_or(&VALID_BIP_DERIVATIONS[0]));
+        let wallet_address_count = get_u32(&wallet_section, "address_count", WALLET_DEFAULT_ADDRESS_COUNT);
+        let wallet_hardened_address = get_bool(&wallet_section, "hardened_address", WALLET_DEFAULT_HARDENED_ADDRESS);
 
         println!("\t Entropy source: {:?}", wallet_entropy_source);
-
-        let wallet_entropy_length = wallet_section.get("entropy_length")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(*VALID_ENTROPY_LENGTHS.last().unwrap_or(&0));
-
         println!("\t Entropy length: {:?}", wallet_entropy_length);
-
-        let wallet_bip = wallet_section.get("bip")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(*VALID_BIP_DERIVATIONS.get(1).unwrap_or(&VALID_BIP_DERIVATIONS[0]));
-
         println!("\t BIP: {:?}", wallet_bip);
-
-        let wallet_address_count = wallet_section.get("address_count")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT);
-
         println!("\t Address count: {:?}", wallet_address_count);
+        println!("\t Hard address: {:?}", wallet_hardened_address);
 
-        let wallet_hardened_address = wallet_section.get("hardened_address")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(WALLET_DEFAULT_HARDENED_ADDRESS);
 
-        println!("\t Hardened address: {:?}", wallet_hardened_address);
-        
         // ANU settings
-        let anu_section = match config.get("anu") {
-            Some(section) => section,
-            None => &empty_value
-        };
-
-        let anu_enabled = anu_section.get("enabled")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
+        let anu_enabled = get_bool(&anu_section, "enabled", true);
+        let anu_data_format = get_str(&anu_section, "data_format", &VALID_ANU_API_DATA_FORMAT[0]);
+        let anu_array_length = get_u32(&anu_section, "array_length", ANU_DEFAULT_ARRAY_LENGTH);
+        let anu_hex_block_size = get_u32(&anu_section, "hex_block_size", ANU_DEFAULT_HEX_BLOCK_SIZE);
+        let anu_log = get_bool(&anu_section, "log", true);
 
         println!("\t Use ANU: {:?}", anu_enabled);
-
-        let anu_data_format = anu_section.get("data_format")
-            .and_then(|v| v.as_str())
-            .unwrap_or(*&VALID_ANU_API_DATA_FORMAT[0])
-            .to_string();
-
         println!("\t ANU data format: {:?}", anu_data_format);
-
-        let anu_array_length = anu_section.get("array_length")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(ANU_DEFAULT_ARRAY_LENGTH);
-        
         println!("\t ANU array length: {:?}", anu_array_length);
-
-        let anu_hex_block_size = anu_section.get("hex_block_size")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(ANU_DEFAULT_HEX_BLOCK_SIZE);
-
         println!("\t ANU hex block size: {:?}", anu_hex_block_size);
-
-
-        let anu_log = anu_section.get("log")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
-
         println!("\t ANU log: {:?}", anu_log);
 
         // Proxy settings
-        let proxy_section = match config.get("proxy") {
-            Some(section) => section,
-            None => &empty_value
-        };
-
-        let proxy_status = proxy_section.get("status")
-            .and_then(|v| v.as_str())
-            .unwrap_or(*&VALID_PROXY_STATUS[0])
-            .to_string();
-
+        let proxy_status = get_str(&proxy_section, "status", &VALID_PROXY_STATUS[0]);
+        let proxy_server_address = get_str(&proxy_section, "server_address", "");
+        let proxy_server_port = get_u32(&proxy_section, "server_port", DEFAULT_PROXY_PORT);
+        let proxy_use_pac = get_bool(&proxy_section, "use_pac", false);
+        let proxy_script_address = get_str(&proxy_section, "script_address", "");
+        let proxy_login_credentials = get_bool(&proxy_section, "login_credentials", false);
+        let proxy_login_username = get_str(&proxy_section, "login_username", "");
+        let proxy_login_password = get_str(&proxy_section, "login_password", "");
+        let proxy_use_ssl = get_bool(&proxy_section, "use_ssl", false);
+        let proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", "");
+        let proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", PROXY_DEFAULT_RETRY_ATTEMPTS);
+        let proxy_timeout = get_u32(&proxy_section, "timeout", PROXY_DEFAULT_TIMEOUT);
+        
         println!("\t Use proxy: {:?}", proxy_status);
-
-        let proxy_server_address = proxy_section.get("server_address")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
         println!("\t Proxy server address: {:?}", proxy_server_address);
-
-        let proxy_server_port = proxy_section.get("server_port")
-            .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or_default();
-
         println!("\t Proxy server port: {:?}", proxy_server_port);
-
-        let proxy_use_pac: bool = proxy_section.get("use_pac")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
         println!("\t Use proxy PAC: {:?}", proxy_use_pac);
-
-        let proxy_script_address = proxy_section.get("script_address")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
         println!("\t Proxy script address: {:?}", proxy_script_address);
-
-        let proxy_login_credentials: bool = proxy_section.get("login_credentials")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
         println!("\t Use proxy login credentials: {:?}", proxy_login_credentials);
-
-        let proxy_login_username = proxy_section.get("login_username")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
         println!("\t Proxy username: {:?}", proxy_login_username);
-
-        let proxy_login_password = proxy_section.get("login_password")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
         println!("\t Proxy password: {:?}", proxy_login_password);
-
-        let proxy_use_ssl: bool = proxy_section.get("use_ssl")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
         println!("\t Use proxy SSL: {:?}", proxy_use_ssl);
-
-        let proxy_ssl_certificate = proxy_section.get("ssl_certificate")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
         println!("\t Proxy SSL certificate: {:?}", proxy_ssl_certificate);
+        println!("\t Proxy retry attempts: {:?}", proxy_retry_attempts);
+        println!("\t Proxy timeout: {:?}", proxy_timeout);
 
         APPLICATION_SETTINGS.with(|data| {
             let mut data = data.borrow_mut();
@@ -461,6 +343,8 @@ impl AppSettings {
             data.proxy_login_password = proxy_login_password.clone();
             data.proxy_use_ssl = proxy_use_ssl.clone();
             data.proxy_ssl_certificate = proxy_ssl_certificate.clone();
+            data.proxy_retry_attempts = proxy_retry_attempts.clone();
+            data.proxy_timeout = proxy_timeout.clone();
         });
 
         Ok(AppSettings {
@@ -492,6 +376,8 @@ impl AppSettings {
             proxy_login_password,
             proxy_use_ssl,
             proxy_ssl_certificate,
+            proxy_retry_attempts,
+            proxy_timeout,
         })
     }
 
@@ -2008,7 +1894,12 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     proxy_server_port_item_box.set_hexpand(true);
     proxy_server_port_item_box.set_margin_end(20);
     proxy_server_port_item_box.set_halign(gtk::Align::End);
-    proxy_server_port_entry.set_text(&settings.proxy_server_port.to_string());
+
+    if settings.proxy_server_port == 0 {
+        proxy_server_port_entry.set_text(&DEFAULT_PROXY_PORT.to_string());
+    } else {
+        proxy_server_port_entry.set_text(&settings.proxy_server_port.to_string());
+    }
 
     proxy_server_port_label_box.append(&proxy_server_port_label);
     proxy_server_port_item_box.append(&proxy_server_port_entry);
@@ -3664,7 +3555,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
                 
 
-                let (entropy_len, checksum_len) = match full_entropy.len() {
+                let (entropy_len, _checksum_len) = match full_entropy.len() {
                     132 => (128, 4),
                     165 => (160, 5),
                     198 => (192, 6),
@@ -3673,15 +3564,13 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                     _ => (0, 0),
                 };
             
-                let (pre_entropy, checksum) = full_entropy.split_at(entropy_len);
-
+                let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
 
                 let seed = generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
                 
                 println!("\t Seed (hex): {:?}", seed_hex);
-
             }
         }
     ));
