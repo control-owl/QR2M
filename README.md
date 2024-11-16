@@ -7,7 +7,6 @@
 ██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║
 ╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
  ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
-Quantum Random Rust Mnemonic
 Copyright  [2023-2024]  Control Owl
 ```
 
@@ -22,7 +21,6 @@ Copyright  [2023-2024]  Control Owl
 - [Documentation](#documentation)
 - [Third-Party Libraries](#third-party-libraries)
 
----
 
 ## Features
 
@@ -34,7 +32,6 @@ Copyright  [2023-2024]  Control Owl
 - **Cross-platform GUI** built with **GTK4**.
 - **Secure and lightweight**: Written in Rust, ensuring robust performance and security.
 
----
 
 ## Installation
 
@@ -81,6 +78,7 @@ cargo build --release
 cargo run --release
 ```
 
+
 ## Usage
 
 1. **Launch the Application**:
@@ -118,7 +116,6 @@ cargo run --release
 9. **Generate Address**:
    - After selecting the desired format, generate the address for your chosen cryptocurrency by pressing the "Generate address" button.
 
----
 
 ## Screenshots
 
@@ -134,13 +131,20 @@ cargo run --release
 ### Settings
 ![Screenshot](./doc/preview/0.41.1-4.png "Preview")
 
----
 
 ## Documentation
 
 [Project documentation](doc/)
 
----
+
+# Support Me
+
+If you like my work, you can buy me a coffee! ☕  
+
+<a href="https://buymeacoffee.com/qr2m">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" width="200" height="60">
+</a>
+
 
 ## Third-Party Libraries
 
