@@ -1,3 +1,6 @@
+# version 0.50.2
+- improved theme switching
+
 # version 0.50.1
 - improved settings loading
 

@@ -1264,7 +1264,7 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
     buffer
 }
 
-pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
+pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) -> gtk::ApplicationWindow {
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
     let settings = AppSettings::load_settings()
@@ -2306,7 +2306,7 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
     main_settings_box.append(&buttons_box);
     settings_window.set_child(Some(&main_settings_box));
 
-    settings_window.show();
+    settings_window
 }
 
 fn create_about_window() {
@@ -2485,10 +2485,26 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         #[weak] open_wallet_button,
         #[weak] save_wallet_button,
         move |_| {
-            create_settings_window(Some(state_clone.clone()));
+            let main_context = glib::MainContext::default();
+            let main_loop = glib::MainLoop::new(Some(&main_context), false);
+            let settings_window = create_settings_window(Some(state_clone.clone()));
 
-            // TODO: Apply new icons according to theme change
-            // This block will only change icons after I re-open settings again
+            // Handle close_request to quit the main loop
+            settings_window.connect_close_request(clone!(
+                #[strong] main_loop,
+                move |_| {
+                    main_loop.quit(); // Quit the loop when the window is requested to close
+                    glib::Propagation::Proceed // Allow the window to close
+                }
+            ));
+
+            settings_window.show();
+
+            // Run the loop and wait until the settings window is closed
+            main_loop.run();
+
+            // After the settings window is closed, update the theme icons
+            println!("Settings window closed. Updating icons...");
             let theme_images = get_window_theme_icons();
             new_wallet_button.set_child(Some(&theme_images[0]));
             open_wallet_button.set_child(Some(&theme_images[1]));
