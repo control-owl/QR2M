@@ -1,3 +1,7 @@
+# version 0.50.1
+- improved settings loading
+
+
 # version 0.50.0 - Codename: Half way Frodo
 - ECDB improved
 - RNG+ improved
