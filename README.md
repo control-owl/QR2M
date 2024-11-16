@@ -123,16 +123,16 @@ cargo run --release
 ## Screenshots
 
 ### Generate seed
-![Screenshot](./doc/preview/preview-0.41.1-1.png "Preview")
+![Screenshot](./doc/preview/0.41.1-1.png "Preview")
 
 ### Generate master keys
-![Screenshot](./doc/preview/preview-0.41.1-2.png "Preview")
+![Screenshot](./doc/preview/0.41.1-2.png "Preview")
 
 ### Generate addresses
-![Screenshot](./doc/preview/preview-0.41.1-3.png "Preview")
+![Screenshot](./doc/preview/0.41.1-3.png "Preview")
 
 ### Settings
-![Screenshot](./doc/preview/preview-0.41.1-4.png "Preview")
+![Screenshot](./doc/preview/0.41.1-4.png "Preview")
 
 ---
 
