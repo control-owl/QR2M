@@ -1,3 +1,9 @@
+# version 0.50.0 - Codename: Half way Frodo
+- ECDB improved
+- RNG+ improved
+- README.md extended
+
+
 # version 0.41.0
 - open wallet
 - repair OS detection and local config file

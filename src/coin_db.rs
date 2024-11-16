@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "Extended Crypto-asset DataBase (ECDB)"
 // copyright = "Copyright © 2023-2024 D3BUG"
-// version = "2024-06-16"
+// version = "2024-11-16"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -12,6 +12,18 @@ use csv::ReaderBuilder;
 use gtk4 as gtk;
 
 const COINLIST_FILE: &str = "lib/ECDB.csv";
+
+// Coin status 2024-11-16
+pub const VALID_COIN_STATUS_NAME: &'static [&'static str] = &[
+    "Not supported", 
+    "Verified", 
+    "Not verified",
+    "Not yet",
+];
+pub const COIN_STATUS_NOT_SUPPORTED: u32 = 899;     // ECDB Status: 0
+pub const COIN_STATUS_VERIFIED: u32 = 254;          // ECDB Status: 1
+pub const COIN_STATUS_NOT_VERIFIED: u32 = 10;       // ECDB Status: 2
+pub const COIN_STATUS_IN_PLAN: u32 = 12;            // ECDB Status: 3
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -36,14 +48,23 @@ pub struct CoinDatabase {
 }
 
 pub fn create_coin_store() -> Vec<CoinDatabase> {
-    let file = File::open(&COINLIST_FILE).expect("can not open bip44 coin file");
+    let file = File::open(&COINLIST_FILE).expect("can not open ECDB file");
     let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
     let mut coin_store = Vec::new();
 
     for result in rdr.records() {
         let record = result.expect(&t!("error.csv.read").to_string());
         
-        let status = record[0].to_string();
+        let number_status = record[0].to_string();
+        let status = match number_status.as_str() {
+            "0" => VALID_COIN_STATUS_NAME[0],
+            "1" => VALID_COIN_STATUS_NAME[1],
+            "2" => VALID_COIN_STATUS_NAME[2],
+            "3" => VALID_COIN_STATUS_NAME[3],
+            _ => "Unknown status",
+        }.to_string();
+
+
         let coin_index: u32 = record[1].parse().expect(&t!("error.csv.parse", value = "coin_index").to_string());
         let coin_symbol = record[2].to_string();
         let coin_name = record[3].to_string();

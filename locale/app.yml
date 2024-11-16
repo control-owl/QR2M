@@ -259,21 +259,21 @@ UI:
             de: "Top %{value}"
             hr: "Top %{value}"
           verified:
-            en: "Verified %{value}"
-            de: "Verifizierte %{value}"
-            hr: "Verificirani %{value}"
+            en: "Verified (%{value})"
+            de: "Verifizierte (%{value})"
+            hr: "Verificirani (%{value})"
           not-verified:
-            en: "Not verified %{value}"
-            de: "Unverifizierte %{value}"
-            hr: "Ne verificirani %{value}"
+            en: "Not verified (%{value})"
+            de: "Unverifizierte (%{value})"
+            hr: "Ne verificirani (%{value})"
           future:
-            en: "In plan %{value}"
-            de: "Im Plan %{value}"
-            hr: "U planu %{value}"
+            en: "In plan (%{value})"
+            de: "Im Plan (%{value})"
+            hr: "U planu (%{value})"
           not-supported:
-            en: "Not supported %{value}"
-            de: "Nicht unterstützte %{value}"
-            hr: "Ne podržani %{value}"
+            en: "Not supported (%{value})"
+            de: "Nicht unterstützte (%{value})"
+            hr: "Ne podržani (%{value})"
     address:
       en: "Address"
       de: "Adresse"

@@ -112,6 +112,7 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
     "Index",
 ];
 
+
 thread_local! {
     static APPLICATION_SETTINGS: std::cell::RefCell<AppSettings> = std::cell::RefCell::new(AppSettings::default());
     static WALLET_SETTINGS: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
@@ -2713,15 +2714,23 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     mnemonic_passphrase_scale_box.set_hexpand(true);
     mnemonic_passphrase_length_box.set_hexpand(true);
     mnemonic_passphrase_length_frame.set_hexpand(true);
-    mnemonic_passphrase_length_box.set_visible(false);
+
+    let value = entropy_source_dropdown.selected() as usize;
+    let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+    let source = selected_entropy_source_value.unwrap();
+
+    if *source == "RNG+" {
+        mnemonic_passphrase_length_box.set_visible(true);
+    } else {
+        mnemonic_passphrase_length_box.set_visible(false);
+    }
+
     mnemonic_passphrase_length_info.set_editable(false);
     mnemonic_passphrase_length_info.set_width_request(50);
     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
 
-    // TODO: Get this value from settings
+    // FEATURE: create settings, Get this value from settings
     mnemonic_passphrase_length_info.set_text("256");
-    
-    
     
     // Mnemonic passphrase
     let mnemonic_passphrase_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -2851,10 +2860,10 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
 
     
     // JUMP: Filter coins
-    // ✅      verified
-    // 🟧      not verified
-    // 🟦      in plan
-    // 🟥      not supported
+    // 0      not supported
+    // 1      verified
+    // 2      not verified
+    // 3      in plan
     // Coin filter
     let coin_filter_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.filter").to_string()));
@@ -2878,25 +2887,25 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     filter_top100_coins_button_box.set_hexpand(true);
     
     let filter_verified_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.verified", value = "✅").to_string());
+    let filter_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.verified", value = coin_db::COIN_STATUS_VERIFIED).to_string());
     filter_verified_coins_button_box.append(&filter_verified_coins_button);
     coin_filter_content_box.append(&filter_verified_coins_button_box);
     filter_verified_coins_button_box.set_hexpand(true);
     
     let filter_not_verified_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_not_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-verified", value = "🟧").to_string());
+    let filter_not_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-verified", value = coin_db::COIN_STATUS_NOT_VERIFIED).to_string());
     filter_not_verified_coins_button_box.append(&filter_not_verified_coins_button);
     coin_filter_content_box.append(&filter_not_verified_coins_button_box);
     filter_not_verified_coins_button_box.set_hexpand(true);
     
     let filter_in_plan_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_in_plan_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.future", value = "🟦").to_string());
+    let filter_in_plan_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.future", value = coin_db::COIN_STATUS_IN_PLAN).to_string());
     filter_in_plan_coins_button_box.append(&filter_in_plan_coins_button);
     coin_filter_content_box.append(&filter_in_plan_coins_button_box);
     filter_in_plan_coins_button_box.set_hexpand(true);
     
     let filter_not_supported_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_not_supported_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-supported", value = "🟥").to_string());
+    let filter_not_supported_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-supported", value = coin_db::COIN_STATUS_NOT_SUPPORTED).to_string());
     filter_not_supported_coins_button_box.append(&filter_not_supported_coins_button);
     coin_filter_content_box.append(&filter_not_supported_coins_button_box);
     filter_not_supported_coins_button_box.set_hexpand(true);
@@ -3827,7 +3836,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         let coin_treeview = std::rc::Rc::clone(&coin_treeview);
 
         move |_| {
-            let search_text = "✅";
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[1];
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
@@ -3868,7 +3877,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         let coin_treeview = std::rc::Rc::clone(&coin_treeview);
 
         move |_| {
-            let search_text = "🟧";
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[2];
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
@@ -3909,7 +3918,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         let coin_treeview = std::rc::Rc::clone(&coin_treeview);
 
         move |_| {
-            let search_text = "🟦";
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[3];
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
@@ -3950,7 +3959,7 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         let coin_treeview = std::rc::Rc::clone(&coin_treeview);
 
         move |_| {
-            let search_text = "🟥";
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[0];
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
