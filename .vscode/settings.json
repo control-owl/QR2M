@@ -44,7 +44,7 @@
       "background": "#000000"
     },
     "VERIFY": {
-      "icon": "alert-fill",
+      "icon": "alert",
       "type": "line",
       "gutterIcon": true,
       "foreground": "#ff9100",
