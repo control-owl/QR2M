@@ -13,6 +13,7 @@ dependencies = [
  "glib",
  "gtk4",
  "hex",
+ "lazy_static",
  "libadwaita",
  "num-bigint",
  "rand",

@@ -49,10 +49,8 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
     let anu_data = receiver.recv().unwrap(); // Blocking call to wait for the response
 
     if !anu_data.as_ref().unwrap().is_empty() {
-        let anu_enabled = APPLICATION_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.anu_enabled.clone()
-        });
+        let app_settings = APPLICATION_SETTINGS.lock().unwrap(); // lock the Mutex for reading
+        let anu_enabled = app_settings.anu_enabled;
 
         if anu_enabled {
             create_anu_timestamp(start_time);

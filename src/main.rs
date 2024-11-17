@@ -116,22 +116,22 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
 ];
 
 
-thread_local! {
-    static APPLICATION_SETTINGS: std::cell::RefCell<AppSettings> = std::cell::RefCell::new(AppSettings::default());
-    static WALLET_SETTINGS: std::cell::RefCell<WalletSettings> = std::cell::RefCell::new(WalletSettings::default());
+// SEND:
+// WALLET_SETTINGS.with(|data| {
+//     let mut data = data.borrow_mut();
+//     println!("RNG entropy (string): {}", &rng_entropy_string);
+//     data.entropy = Some(rng_entropy_string.clone());
+// });
+// 
+// GET:
+// let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
+//     let data = data.borrow();
+//     data.master_private_key_bytes.clone().unwrap()
+// });
 
-    // SEND:
-    // WALLET_SETTINGS.with(|data| {
-    //     let mut data = data.borrow_mut();
-    //     println!("RNG entropy (string): {}", &rng_entropy_string);
-    //     data.entropy = Some(rng_entropy_string.clone());
-    // });
-    // 
-    // GET:
-    // let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
-    //     let data = data.borrow();
-    //     data.master_private_key_bytes.clone().unwrap()
-    // });
+lazy_static::lazy_static! {
+    static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::default()));
+    static ref APPLICATION_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
 }
 
 #[derive(Debug, Default)]
@@ -305,43 +305,40 @@ impl AppSettings {
         println!("\t Proxy retry attempts: {:?}", proxy_retry_attempts);
         println!("\t Proxy timeout: {:?}", proxy_timeout);
 
-        APPLICATION_SETTINGS.with(|data| {
-            let mut data = data.borrow_mut();
+        let mut application_settings = APPLICATION_SETTINGS.lock().unwrap();
+        application_settings.wallet_entropy_source = wallet_entropy_source.clone();
+        application_settings.wallet_entropy_length = wallet_entropy_length.clone();
+        application_settings.wallet_bip = wallet_bip.clone();
+        application_settings.wallet_address_count = wallet_address_count.clone();
+        application_settings.wallet_hardened_address = wallet_hardened_address.clone();
 
-            data.wallet_entropy_source = wallet_entropy_source.clone();
-            data.wallet_entropy_length = wallet_entropy_length.clone();
-            data.wallet_bip = wallet_bip.clone();
-            data.wallet_address_count = wallet_address_count.clone();
-            data.wallet_hardened_address = wallet_hardened_address.clone();
+        application_settings.gui_save_size = gui_save_size.clone();
+        application_settings.gui_last_width = gui_last_width.clone();
+        application_settings.gui_last_height = gui_last_height.clone();
+        application_settings.gui_maximized = gui_maximized.clone();
+        application_settings.gui_theme = gui_theme.clone();
+        application_settings.gui_language = gui_language.clone();
+        application_settings.gui_search = gui_search.clone();
+        application_settings.gui_notification_timeout = gui_notification_timeout.clone();
 
-            data.gui_save_size = gui_save_size.clone();
-            data.gui_last_width = gui_last_width.clone();
-            data.gui_last_height = gui_last_height.clone();
-            data.gui_maximized = gui_maximized.clone();
-            data.gui_theme = gui_theme.clone();
-            data.gui_language = gui_language.clone();
-            data.gui_search = gui_search.clone();
-            data.gui_notification_timeout = gui_notification_timeout.clone();
+        application_settings.anu_enabled = anu_enabled.clone();
+        application_settings.anu_data_format = anu_data_format.clone();
+        application_settings.anu_array_length = anu_array_length.clone();
+        application_settings.anu_hex_block_size = anu_hex_block_size.clone();
+        application_settings.anu_log = anu_log.clone();
 
-            data.anu_enabled = anu_enabled.clone();
-            data.anu_data_format = anu_data_format.clone();
-            data.anu_array_length = anu_array_length.clone();
-            data.anu_hex_block_size = anu_hex_block_size.clone();
-            data.anu_log = anu_log.clone();
-
-            data.proxy_status = proxy_status.clone();
-            data.proxy_server_address = proxy_server_address.clone();
-            data.proxy_server_port = proxy_server_port.clone();
-            data.proxy_use_pac = proxy_use_pac.clone();
-            data.proxy_script_address = proxy_script_address.clone();
-            data.proxy_login_credentials = proxy_login_credentials.clone();
-            data.proxy_login_username = proxy_login_username.clone();
-            data.proxy_login_password = proxy_login_password.clone();
-            data.proxy_use_ssl = proxy_use_ssl.clone();
-            data.proxy_ssl_certificate = proxy_ssl_certificate.clone();
-            data.proxy_retry_attempts = proxy_retry_attempts.clone();
-            data.proxy_timeout = proxy_timeout.clone();
-        });
+        application_settings.proxy_status = proxy_status.clone();
+        application_settings.proxy_server_address = proxy_server_address.clone();
+        application_settings.proxy_server_port = proxy_server_port.clone();
+        application_settings.proxy_use_pac = proxy_use_pac.clone();
+        application_settings.proxy_script_address = proxy_script_address.clone();
+        application_settings.proxy_login_credentials = proxy_login_credentials.clone();
+        application_settings.proxy_login_username = proxy_login_username.clone();
+        application_settings.proxy_login_password = proxy_login_password.clone();
+        application_settings.proxy_use_ssl = proxy_use_ssl.clone();
+        application_settings.proxy_ssl_certificate = proxy_ssl_certificate.clone();
+        application_settings.proxy_retry_attempts = proxy_retry_attempts.clone();
+        application_settings.proxy_timeout = proxy_timeout.clone();
 
         Ok(AppSettings {
             wallet_entropy_source,
@@ -835,15 +832,6 @@ fn print_program_info() {
 
 }
 
-// fn get_log_file() -> String {
-//     LOG_FILE.lock().unwrap().clone()
-// }
-
-// fn set_log_file(file: String) {
-//     *LOG_FILE.lock().unwrap() = file;
-// }
-
-// ADD NEW INPUT PARAMETER: Mnemonic passphrase length
 fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option<u32>) -> (String, Option<String>) {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
     println!("\t Entropy source: {:?}", source);
@@ -859,10 +847,8 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
 
             println!("\t RNG Entropy: {:?}", rng_entropy_string);
 
-            WALLET_SETTINGS.with(|data| {
-                let mut data = data.borrow_mut();
-                data.entropy_string = Some(rng_entropy_string.clone());
-            });
+            let mut wallet_settings = WALLET_SETTINGS.lock().unwrap(); // This locks the Mutex
+            wallet_settings.entropy_string = Some(rng_entropy_string.clone());
 
             (rng_entropy_string, None)
         },
@@ -886,33 +872,17 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
                 .collect();
             println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
 
-            WALLET_SETTINGS.with(|data| {
-                let mut data = data.borrow_mut();
-                data.entropy_string = Some(rng_entropy_string.clone());
-            });
-
-            WALLET_SETTINGS.with(|data| {
-                let mut data = data.borrow_mut();
-                data.mnemonic_passphrase = Some(mnemonic_rng_string.clone());
-            });
+            let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+            wallet_settings.entropy_string = Some(rng_entropy_string.clone());
+            wallet_settings.mnemonic_passphrase = Some(mnemonic_rng_string.clone());
 
             (rng_entropy_string, Some(mnemonic_rng_string))
         },
         "QRNG" => {
-            let anu_format = APPLICATION_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.anu_data_format.clone()
-            });
-
-            let array_length = APPLICATION_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.anu_array_length.clone()
-            });
-
-            let hex_block_size = APPLICATION_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.anu_hex_block_size.clone()
-            });
+            let app_settings = APPLICATION_SETTINGS.lock().unwrap();
+            let anu_format = app_settings.anu_data_format.clone();
+            let array_length = app_settings.anu_array_length;
+            let hex_block_size = app_settings.anu_hex_block_size;
 
             let qrng_entropy_string = anu::get_entropy_from_anu(
                 entropy_length.try_into().unwrap(),
@@ -926,12 +896,9 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
             println!("\t ANU hex block size: {:?}", hex_block_size);
             println!("\t QRNG Entropy: {:?}", qrng_entropy_string);
 
-            WALLET_SETTINGS.with(|data| {
-                let mut data = data.borrow_mut();
-                // println!("entropy_initial {:?}", qrng_entropy_string);
-                data.entropy_string = Some(qrng_entropy_string.clone());
-            });
-
+            let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+            wallet_settings.entropy_string = Some(qrng_entropy_string.clone());
+            
             (qrng_entropy_string, None)
         },
         "File" => {
@@ -977,10 +944,8 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
             
             match rx.recv() {
                 Ok(received_file_entropy_string) => {
-                    WALLET_SETTINGS.with(|data| {
-                        let mut data = data.borrow_mut();
-                        data.entropy_string = Some(received_file_entropy_string.clone());
-                    });
+                    let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                    wallet_settings.entropy_string = Some(received_file_entropy_string.clone());
 
                     (received_file_entropy_string, None)
                 },
@@ -1039,11 +1004,9 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     println!("\t Decimal mnemonic: {:?}", mnemonic_decimal);
     println!("\t Mnemonic words: {:?}", mnemonic_words_vector);
 
-    WALLET_SETTINGS.with(|data| {
-        let mut data = data.borrow_mut();
-        data.mnemonic_words = Some(mnemonic_words_as_string.clone());
-    });
-
+    let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+    wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
+    
     mnemonic_words_as_string
 }
 
@@ -1170,14 +1133,12 @@ fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header:
     println!("\t Master public key {:?}", master_public_key_bytes);
     println!("\t Master public key (xpub): {:?}", master_xpub);
 
-    WALLET_SETTINGS.with(|data| {
-        let mut data = data.borrow_mut();
-        data.master_xprv = Some(master_xprv.clone());
-        data.master_xpub = Some(master_xpub.clone());
-        data.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
-        data.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
-        data.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
-    });
+    let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+    wallet_settings.master_xprv = Some(master_xprv.clone());
+    wallet_settings.master_xpub = Some(master_xpub.clone());
+    wallet_settings.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
+    wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
+    wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
 
     Ok((
         master_xprv, 
@@ -1260,8 +1221,7 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
     buffer
 }
 
-pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) -> gtk::ApplicationWindow {
-    println!("[+] {}", &t!("log.create_settings_window").to_string());
+pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow {    println!("[+] {}", &t!("log.create_settings_window").to_string());
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
@@ -2189,24 +2149,19 @@ pub fn create_settings_window(state: Option<std::rc::Rc<std::cell::RefCell<AppSt
 
             // gui_theme: String,
             let new_value = toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize]);
-            let state_clone_theme = state.clone();
-            settings.update_value("gui_theme", new_value.clone(), Some(state_clone_theme.unwrap()));
+            // let state_clone_theme = state.clone();
+            // settings.update_value("gui_theme", new_value.clone(), Some(state_clone_theme.unwrap()));
             
-            APPLICATION_SETTINGS.with(|data| {
-                let mut data = data.borrow_mut();
-                data.gui_theme = new_value.clone().as_str().unwrap().to_string();
-            });
+            let mut application_settings = APPLICATION_SETTINGS.lock().unwrap();
+            application_settings.gui_theme = new_value.clone().as_str().unwrap().to_string();
 
             // gui_language: String,
             let new_value = toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize]);
-            let state_clone_language = state.clone();
-            settings.update_value("gui_language", new_value.clone(), Some(state_clone_language.unwrap()));
+            // let state_clone_language = state.clone();
+            // settings.update_value("gui_language", new_value.clone(), Some(state_clone_language.unwrap()));
 
-            APPLICATION_SETTINGS.with(|data| {
-                let mut data = data.borrow_mut();
-                data.gui_language = new_value.clone().as_str().unwrap().to_string();
-            });
-            
+            application_settings.gui_language = new_value.clone().as_str().unwrap().to_string();
+
             // gui_search: String,
             let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
             settings.update_value("gui_search", new_value, None);
@@ -2393,22 +2348,19 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     label.set_text(&path);
 }
 
-pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std::cell::RefCell<AppState>>) {
+pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<std::sync::Mutex<AppState>>) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
-    
-    let gui_language = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.gui_language.clone()
-    });
+
+    let app_settings = APPLICATION_SETTINGS.lock().unwrap();
+    let gui_language = app_settings.gui_language.clone();
+    let gui_theme = app_settings.gui_theme.clone();
+    let window_width = app_settings.gui_last_width;
+    let window_height = app_settings.gui_last_height;
 
     os::switch_locale(&gui_language);
     println!("{}", t!("hello"));
       
-    let gui_theme = APPLICATION_SETTINGS.with(|data| {
-        let data: std::cell::Ref<AppSettings> = data.borrow();
-        data.gui_theme.clone()
-    });
-
+    
     let preferred_theme = match String::from(&gui_theme).as_str() {
         "System" => adw::ColorScheme::PreferLight,
         "Light" => adw::ColorScheme::ForceLight,
@@ -2418,18 +2370,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
             adw::ColorScheme::PreferLight
         },
     };
-
+    
+    println!("{}", t!("hello"));
     application.style_manager().set_color_scheme(preferred_theme);
-
-    let window_width = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.gui_last_width.clone()
-    });
-
-    let window_height = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.gui_last_height.clone()
-    });
 
     let window = gtk::ApplicationWindow::builder()
         .application(application)
@@ -2545,10 +2488,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-    let anu_enabled = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.anu_enabled.clone()
-    });
+    
+    let anu_enabled = app_settings.anu_enabled;
+
     let valid_entropy_sources: Vec<&str> = if anu_enabled {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
     } else {
@@ -2558,10 +2500,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
-    let wallet_entropy_source = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.wallet_entropy_source.clone()
-    });
+    
+    let wallet_entropy_source = app_settings.wallet_entropy_source.clone();
+    
     let default_entropy_source = valid_entropy_source_as_strings
         .iter()
         .position(|s| *s == wallet_entropy_source) 
@@ -2577,10 +2518,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
-    let wallet_entropy_length = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.wallet_entropy_length.clone()
-    });
+    
+    let wallet_entropy_length = app_settings.wallet_entropy_length;
+    
     let default_entropy_length = valid_entropy_lengths_as_strings
         .iter()
         .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length)
@@ -2834,10 +2774,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_coin_search_filter_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
     let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings.iter().map(|s| s.as_ref()).collect();
     let coin_search_filter_dropdown = gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
-    let gui_search = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.gui_search.clone()
-    });
+    
+    let gui_search = app_settings.gui_search.clone();
+
     let default_coin_search_filter = valid_coin_search_filter_as_strings
         .iter()
         .position(|s| *s == gui_search) 
@@ -2971,10 +2910,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
-    let wallet_bip = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.wallet_bip.clone()
-    });
+    
+    let wallet_bip = app_settings.wallet_bip;
+
     let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == wallet_bip).unwrap_or_else(|| {
         eprintln!("{}", &t!("error.bip.value", value = wallet_bip));
         1 // BIP44
@@ -3092,11 +3030,9 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let address_options_content = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     address_options_box.append(&address_options_content);
     
-    // Address count 
-    let wallet_address_count = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.wallet_address_count.clone()
-    });
+    // Address count
+    let wallet_address_count = app_settings.wallet_address_count;
+
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_adjustment = gtk::Adjustment::new(
@@ -3117,10 +3053,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
-    let wallet_hardened_address = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.wallet_hardened_address.clone()
-    });
+    let wallet_hardened_address = app_settings.wallet_hardened_address;
+
     address_options_hardened_address_checkbox.set_active(wallet_hardened_address);
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
@@ -3232,11 +3166,6 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                 let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
                 println!("\t Entropy checksum: {:?}", checksum);
 
-                WALLET_SETTINGS.with(|data| {
-                    let mut data = data.borrow_mut();
-                    data.entropy_checksum = Some(checksum.clone());
-                });
-
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
                 println!("\t Final entropy: {:?}", full_entropy);
@@ -3269,20 +3198,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                 
                 println!("\t Seed (hex): {:?}", seed_hex);
 
-                WALLET_SETTINGS.with(|data| {
-                    let mut data = data.borrow_mut();
-                    data.seed = Some(seed_hex.clone());
-                });
-
-                WALLET_SETTINGS.with(|data| {
-                    let mut data = data.borrow_mut();
-                    data.entropy_string = Some(full_entropy.clone());
-                    data.mnemonic_words = Some(mnemonic_words.clone());
-                    data.mnemonic_passphrase = Some(passphrase_text.clone());
-                    data.seed = Some(seed_hex.clone());
-                });
-
-                // save_wallet_button.set_sensitive(true);
+                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                wallet_settings.entropy_checksum = Some(checksum.clone());
+                wallet_settings.entropy_string = Some(full_entropy.clone());
+                wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
+                wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
+                wallet_settings.seed = Some(seed_hex.clone());
 
             } else {
                 eprintln!("{}", &t!("error.entropy.empty"));
@@ -3403,16 +3324,14 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
     
                         coin_entry.set_text(&coin_index);
     
-                        WALLET_SETTINGS.with(|data| {
-                            let mut data = data.borrow_mut();
-                            data.public_key_hash = Some(public_key_hash.clone());
-                            data.wallet_import_format = Some(wallet_import_format.to_string());
-                            data.key_derivation = Some(key_derivation.to_string());
-                            data.hash = Some(hash.to_string());
-                            data.coin_index = Some(coin_index.parse().unwrap());
-                            data.coin_name = Some(coin_name.parse().unwrap());
-    
-                        });
+
+                        let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                        wallet_settings.public_key_hash = Some(public_key_hash.clone());
+                        wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
+                        wallet_settings.key_derivation = Some(key_derivation.to_string());
+                        wallet_settings.hash = Some(hash.to_string());
+                        wallet_settings.coin_index = Some(coin_index.parse().unwrap());
+                        wallet_settings.coin_name = Some(coin_name.parse().unwrap());
                     }  
                 }
             } else {
@@ -3493,13 +3412,12 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
                 let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
                 let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
 
-                WALLET_SETTINGS.with(|data| {
-                    let mut data = data.borrow_mut();
-                    data.entropy_string = Some(final_entropy);
-                    data.mnemonic_words = Some(final_mnemonic_words);
-                    data.mnemonic_passphrase = Some(final_mnemonic_passphrase);
-                    data.seed = Some(seed_hex.clone());
-                });
+
+                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                wallet_settings.entropy_string = Some(final_entropy);
+                wallet_settings.mnemonic_words = Some(final_mnemonic_words);
+                wallet_settings.mnemonic_passphrase = Some(final_mnemonic_passphrase);
+                wallet_settings.seed = Some(seed_hex.clone());
             }
         }
     ));
@@ -3973,45 +3891,23 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         move |_| {
             println!("\n#### Generating addresses button ####");
         
-            let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.master_private_key_bytes.clone().unwrap_or_default()
-            });
-        
-            let master_chain_code_bytes = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.master_chain_code_bytes.clone().unwrap_or_default()
-            });
-            
-            let key_derivation = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.key_derivation.clone().unwrap_or_default()
-            });
+            let wallet_settings = WALLET_SETTINGS.lock().unwrap();
+            let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+            let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+            let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+            let hash = wallet_settings.hash.clone().unwrap_or_default();
+            let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+            let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+            let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+            let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
 
-            let hash = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.hash.clone().unwrap_or_default()
-            });
 
-            let wallet_import_format = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.wallet_import_format.clone().unwrap_or_default()
-            });
-
-            let public_key_hash = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.public_key_hash.clone().unwrap_or_default()
-            });
-
-            let coin_index = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.coin_index.clone().unwrap_or_default()
-            });
-
-            let coin_name = WALLET_SETTINGS.with(|data| {
-                let data = data.borrow();
-                data.coin_name.clone().unwrap_or_default()
-            });
+            // TODO: Check if master is empty, then show error msg
+            // if master_private_key_bytes. == "" {
+            //     master_private_key_text.buffer().set_text("Please generate seed");
+            //     // master_public_key_text.buffer().set_text("");
+            //     create_message_window("Empty seed", "Please generate seed first, then master keys", None, None);
+            // }
 
             let DP = derivation_label_text.text();
             let path = DP.to_string();
@@ -4174,11 +4070,8 @@ pub fn create_main_window(application: &adw::Application, state: std::rc::Rc<std
         }
     });
     
-    let notification_timeout = APPLICATION_SETTINGS.with(|data| {
-        let data = data.borrow();
-        data.gui_notification_timeout.clone()
-    });
-    
+    let notification_timeout = app_settings.gui_notification_timeout;
+
     let info_bar_clone = info_bar.clone();
     glib::MainContext::default().spawn_local(async move {
         glib::timeout_future(std::time::Duration::from_secs(notification_timeout as u64)).await;
@@ -4237,12 +4130,9 @@ fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, 
         progress_main_box.append(&level_bar);
         dialog_main_box.append(&progress_main_box);
 
-        let notification_timeout = APPLICATION_SETTINGS.with(|data| {
-            let data = data.borrow();
-            data.gui_notification_timeout.clone()
-        });
+        let app_settings = APPLICATION_SETTINGS.lock().unwrap();
+        let notification_timeout = app_settings.gui_notification_timeout;
         let wait_time = wait_time.unwrap_or(notification_timeout);
-        
         let level_bar_clone = level_bar.clone();
         let message_window_clone = message_window.clone();
 
@@ -4313,21 +4203,9 @@ fn save_wallet_to_file() {
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
     
-    let entropy_string = WALLET_SETTINGS.with(|data| {
-        let data = data.borrow();
-        match data.entropy_string.clone() {
-            Some(value) => value, 
-            _ => String::new(),
-        }
-    });
-
-    let mnemonic_passphrase = WALLET_SETTINGS.with(|data| {
-        let data = data.borrow();
-        match data.mnemonic_passphrase.clone() {
-            Some(value) => value, 
-            _ => String::new(),
-        }
-    });
+    let wallet_settings = WALLET_SETTINGS.lock().unwrap();
+    let entropy_string = wallet_settings.entropy_string.clone().unwrap();
+    let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap();
 
     let save_window = gtk::Window::new();
     let save_dialog = gtk::FileChooserNative::new(
@@ -4365,13 +4243,6 @@ fn save_wallet_to_file() {
             }
             save_dialog.destroy();
             save_loop.quit();
-
-            create_message_window(
-                &t!("UI.messages.change-language.titel").to_string(), 
-                &t!("UI.messages.change-language.msg").to_string(), 
-                None, 
-                None
-            )
         }
     ));
     save_dialog.show();
@@ -4387,10 +4258,9 @@ fn main() {
 
     os::detect_os_and_user_dir();
 
-    match os::create_local_files() {
-        Ok(()) => {},
-        Err(err) => eprintln!("Error creating local file: {}", err),
-    };
+    if let Err(err) = os::create_local_files() {
+        eprintln!("Error creating local config files: {}", err);
+    }
 
     AppSettings::load_settings()
         .expect(&t!("error.file.read").to_string());
@@ -4399,7 +4269,7 @@ fn main() {
         .application_id("com.github.qr2m")
         .build();
 
-    let state = std::rc::Rc::new(std::cell::RefCell::new(AppState::new()));
+    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
 
     application.connect_activate(clone!(
         #[weak] state,
@@ -4440,18 +4310,17 @@ fn main() {
         save_wallet_to_file();
     });
 
-    // Fucking arc mutex rust and mutability. i am fucking angry. whole day and I still do not understand.
     settings.connect_activate(clone!(
         #[weak] state,
         move |_action, _parameter| {
             let main_context = glib::MainContext::default();
             let main_loop = glib::MainLoop::new(Some(&main_context), false);
+
             let settings_window = create_settings_window(Some(state.clone()));
-            
             settings_window.connect_close_request(clone!(
                 #[strong] main_loop,
                 move |_| {
-                    state.borrow().apply_theme();
+                    state.lock().unwrap().apply_theme();
                     main_loop.quit();
                     glib::Propagation::Proceed
                 }

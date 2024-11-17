@@ -31,9 +31,10 @@ gtk4 = "0.9.3"          # GUI GTK4
 glib = "0.20.5"         # GUI                       
 libadwaita = "0.7.1"    # GUI Theme                 
 
-# Testing
-ed25519-dalek = "2.1.1" # Solana
 
+# Testing
+ed25519-dalek = "2.1.1" # Solana                    
+lazy_static = "1.5.0"
 
 [package.metadata.included]
 include = ["config/**", "doc/**", "lib/**", "locale/**", "res/**"]
