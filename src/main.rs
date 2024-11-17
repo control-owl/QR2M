@@ -33,7 +33,6 @@ use gtk::{gio, glib::clone, Stack, StackSidebar};
 use num_bigint::BigUint;
 use sha3::Keccak256;
 
-
 // Mods
 mod anu;
 mod coin_db;
@@ -46,9 +45,8 @@ mod test_vectors;
 extern crate rust_i18n;
 i18n!("locale", fallback = "en");
 
-
 // Default settings
-// TODO: Translate const strings
+// RESEARCH: How to translate const strings
 // FEATURE: Create tooltip for every gtk4 object
 const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
@@ -61,12 +59,6 @@ const APP_LANGUAGE: &'static [&'static str] = &[
 ];
 const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 10;
 const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
-// const APP_LOG_DIRECTORY: &str = "log/";
-// const LOG_OUTPUT: &'static [&'static str] = &[
-//     "Default", 
-//     "File",
-//     "None",
-// ];
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
@@ -114,20 +106,6 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
     "Symbol", 
     "Index",
 ];
-
-
-// SEND:
-// WALLET_SETTINGS.with(|data| {
-//     let mut data = data.borrow_mut();
-//     println!("RNG entropy (string): {}", &rng_entropy_string);
-//     data.entropy = Some(rng_entropy_string.clone());
-// });
-// 
-// GET:
-// let master_private_key_bytes = WALLET_SETTINGS.with(|data| {
-//     let data = data.borrow();
-//     data.master_private_key_bytes.clone().unwrap()
-// });
 
 lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::default()));
@@ -264,7 +242,6 @@ impl AppSettings {
         println!("\t Address count: {:?}", wallet_address_count);
         println!("\t Hard address: {:?}", wallet_hardened_address);
 
-
         // ANU settings
         let anu_enabled = get_bool(&anu_section, "enabled", true);
         let anu_data_format = get_str(&anu_section, "data_format", &VALID_ANU_API_DATA_FORMAT[0]);
@@ -374,7 +351,12 @@ impl AppSettings {
         })
     }
 
-    fn update_value(&mut self, key: &str, new_value: toml_edit::Item, state: Option<std::rc::Rc<std::cell::RefCell<AppState>>>) {
+    fn update_value(
+        &mut self,
+        key: &str,
+        new_value: toml_edit::Item,
+        state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
+    ) {
         match key {
             "wallet_entropy_source" => {
                 if new_value.as_str().map(|v| v != self.wallet_entropy_source).unwrap_or(false) {
@@ -440,27 +422,25 @@ impl AppSettings {
                 }
             },
             "gui_theme" => {
-                let state_clone = state.clone();
                 if new_value.as_str().map(|v| v != self.gui_theme).unwrap_or(false) {
                     self.gui_theme = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
-                    println!("gui_theme {:?}", self.gui_theme);
-                    if let Some(state) = state_clone {
-                        let mut state = state.borrow_mut();
-                        state.theme_preference = self.gui_theme.clone();
+                    if let Some(state) = state {
+                        let mut state = state.lock().unwrap();
+                        state.theme = self.gui_theme.clone();
                         state.apply_theme();
                     }
+
                     self.save_settings();
                 }
             },
             "gui_language" => {
-                let state_clone = state.clone();
                 if new_value.as_str().map(|v| v != self.gui_language).unwrap_or(false) {
                     self.gui_language = new_value.as_str().unwrap().to_string();
                     println!("Updating key {:?} = {:?}", key, new_value);
                     println!("gui_language {:?}", self.gui_language);
-                    if let Some(state) = state_clone {
-                        let mut state = state.borrow_mut();
+                    if let Some(state) = state {
+                        let mut state = state.lock().unwrap();
                         state.language = self.gui_language.clone();
                         state.apply_language();
                     }
@@ -765,35 +745,39 @@ struct CryptoAddresses {
 type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 
 pub struct AppState {
-    pub is_dark_theme: bool,
     pub language: String,
-    pub theme_preference: String,
+    pub theme: String,
+    pub active_message: String,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
-            is_dark_theme: false,
             language: "en".to_string(),
-            theme_preference: "System".to_string(), // Default value
+            theme: "System".to_string(),
+            // active_message: t!("hello").to_string(),
+            active_message: "".to_string(),
         }
     }
 
     pub fn apply_theme(&self) {
-        let preferred_theme = match self.theme_preference.as_str() {
+        let preferred_theme = match self.theme.as_str() {
             "System" => adw::ColorScheme::PreferLight,
             "Light" => adw::ColorScheme::ForceLight,
             "Dark" => adw::ColorScheme::PreferDark,
             _ => {
-                eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = self.theme_preference));
+                eprintln!(
+                    "{}",
+                    &t!("error.settings.parse", element = "gui_theme", value = self.theme)
+                );
                 adw::ColorScheme::PreferLight
-            },
+            }
         };
 
         adw::StyleManager::default().set_color_scheme(preferred_theme);
     }
 
-    pub fn apply_language(&self) {
+    pub fn apply_language(&mut self) {
         let language_code = match self.language.as_str() {
             "Deutsch" => "de",
             "Hrvatski" => "hr",
@@ -802,12 +786,17 @@ impl AppState {
 
         rust_i18n::set_locale(language_code);
         
-        create_message_window(
-            &t!("UI.messages.change-language.titel").to_string(), 
-            &t!("UI.messages.change-language.msg").to_string(), 
-            Some(true), 
-            Some(10)
-        )
+        self.active_message = t!("UI.messages.change-language.msg").to_string();
+    }
+
+    pub fn update_infobar_message(
+        &mut self, 
+        message: String, 
+        infobar: gtk::Revealer, 
+        message_type: gtk::MessageType 
+    ) {
+        self.active_message = message.clone();
+        create_info_message(&infobar, &message, message_type);
     }
 }
 
@@ -1225,8 +1214,16 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
     buffer
 }
 
-pub fn create_settings_window(_state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow { 
+pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
+
+    if let Some(state) = &state {
+        let state = state.lock().unwrap();
+        state.theme.clone()
+    } else {
+        let settings = AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
+        settings.gui_theme
+    };
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
@@ -2104,140 +2101,53 @@ pub fn create_settings_window(_state: Option<std::sync::Arc<std::sync::Mutex<App
 
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
-        // #[weak] anu_data_format_dropdown,
         #[weak] settings_window,
+        #[strong] state,
         move |_| {
-            // let config_path = "config/custom.conf";
-            let mut settings = AppSettings::load_settings()
-                .expect(&t!("error.file.read").to_string());
-            
-            // wallet_entropy_source: String,
-            let new_value = toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize]);
-            settings.update_value("wallet_entropy_source", new_value, None);
-            
-            // wallet_entropy_length: u32,
-            let new_value = toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64);
-            settings.update_value("wallet_entropy_length", new_value, None);
-            
-            // wallet_bip: u32,
-            let new_value = toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64);
-            settings.update_value("wallet_bip", new_value, None);
-            
-            // wallet_address_count: u32,
-            let new_value = toml_edit::value(address_count_spinbutton.value_as_int() as i64);
-            settings.update_value("wallet_address_count", new_value, None);
-            
-            // wallet_hardened_address: bool,
-            let new_value = toml_edit::value(hardened_addresses_checkbox.is_active());
-            settings.update_value("wallet_hardened_address", new_value, None);
-            
-            // gui_save_size: bool,
-            if save_window_size_checkbox.is_active() {
-                let new_value = toml_edit::value(true);
-                settings.update_value("gui_save_size", new_value, None);
-                
-                // IMPLEMENT: get values from main window
-                // gui_last_width: u32,
-
-                // gui_last_height: u32,
-
-                // gui_maximized: bool,
-            } else {
-                // gui_save_size: bool,
-                let new_value = toml_edit::value(false);
-                settings.update_value("gui_save_size", new_value, None);
-
-                // gui_maximized: bool,
-                let new_value = toml_edit::value(false);
-                settings.update_value("gui_maximized", new_value, None);
+            let mut settings = APPLICATION_SETTINGS.lock().unwrap();
+    
+            let updates = vec![
+                ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),
+                ("wallet_entropy_length", toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64)),
+                ("wallet_bip", toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64)),
+                ("wallet_address_count", toml_edit::value(address_count_spinbutton.value_as_int() as i64)),
+                ("wallet_hardened_address", toml_edit::value(hardened_addresses_checkbox.is_active())),
+                ("gui_save_size", toml_edit::value(save_window_size_checkbox.is_active())),
+                ("gui_theme", toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize])),
+                ("gui_language", toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize])),
+                ("gui_search", toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize])),
+                ("gui_notification_timeout", toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64)),
+                ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
+                ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
+                ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
+                ("anu_array_length", toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64)),
+                ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
+                ("proxy_status", toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize])),
+                ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
+                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or_default() as i64)),
+                ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
+                ("proxy_script_address", toml_edit::value(proxy_pac_path_entry.text().to_string())),
+                ("proxy_login_credentials", toml_edit::value(use_proxy_credentials_checkbox.is_active())),
+                ("proxy_login_username", toml_edit::value(proxy_username_entry.text().to_string())),
+                ("proxy_login_password", toml_edit::value(proxy_password_entry.text().to_string())),
+                ("proxy_use_ssl", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
+                ("proxy_ssl_certificate", toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string())),
+            ];
+    
+            for (key, value) in updates {
+                settings.update_value(key, value, None);
             }
-
-            // gui_theme: String,
-            let new_value = toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize]);
-            // let state_clone_theme = state.clone();
-            // settings.update_value("gui_theme", new_value.clone(), Some(state_clone_theme.unwrap()));
+    
+            AppSettings::save_settings(&*settings);
             
-            let mut application_settings = APPLICATION_SETTINGS.lock().unwrap();
-            application_settings.gui_theme = new_value.clone().as_str().unwrap().to_string();
+            if let Some(state) = &state {
+                let mut state = state.lock().unwrap();
 
-            // gui_language: String,
-            let new_value = toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize]);
-            // let state_clone_language = state.clone();
-            // settings.update_value("gui_language", new_value.clone(), Some(state_clone_language.unwrap()));
+                let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
+                state.theme = selected_theme;
 
-            application_settings.gui_language = new_value.clone().as_str().unwrap().to_string();
-
-            // gui_search: String,
-            let new_value = toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize]);
-            settings.update_value("gui_search", new_value, None);
-
-            // gui_notification_timeout: String,
-            let new_value = toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64);
-            settings.update_value("gui_notification_timeout", new_value, None);
-            
-            // anu_enabled: bool,
-            let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
-            settings.update_value("anu_enabled", new_value, None);
-            
-             // anu_log: bool,
-            let new_value = toml_edit::value(log_anu_api_checkbox.is_active());
-            settings.update_value("anu_log", new_value, None);
-            
-            // anu_data_format: String,
-            let new_value = toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize]);
-            settings.update_value("anu_data_format", new_value, None);
-
-            // anu_array_length: u32,
-            let new_value = toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64);
-            settings.update_value("anu_array_length", new_value, None);
-
-            // anu_hex_block_size: u32,
-            let new_value = toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64);
-            settings.update_value("anu_hex_block_size", new_value, None);
-
-            // anu_log: bool,
-            let new_value = toml_edit::value(use_anu_api_checkbox.is_active());
-            settings.update_value("anu_enabled", new_value, None);
-            
-            // proxy_status: String,
-            let new_value = toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize]);
-            settings.update_value("proxy_status", new_value, None);
-
-            // proxy_server_address: String,
-            let new_value = toml_edit::value(proxy_server_address_entry.text().to_string());
-            settings.update_value("proxy_server_address", new_value, None);
-
-            // proxy_server_port: u32,
-            let new_value = toml_edit::value((proxy_server_port_entry.text().parse::<u32>().unwrap_or_default()) as i64);
-            settings.update_value("proxy_server_port", new_value, None);
-
-            // proxy_use_pac: bool,
-            let new_value = toml_edit::value(use_proxy_ssl_checkbox.is_active());
-            settings.update_value("proxy_use_pac", new_value, None);
-
-            // proxy_script_address: String,
-            let new_value = toml_edit::value(proxy_pac_path_entry.text().to_string());
-            settings.update_value("proxy_script_address", new_value, None);
-
-            // proxy_login_credentials: bool,
-            let new_value = toml_edit::value(use_proxy_credentials_checkbox.is_active());
-            settings.update_value("proxy_login_credentials", new_value, None);
-
-            // proxy_login_username: String,
-            let new_value = toml_edit::value(proxy_username_entry.text().to_string());
-            settings.update_value("proxy_login_username", new_value, None);
-
-            // proxy_login_password: String,
-            let new_value = toml_edit::value(proxy_password_entry.text().to_string());
-            settings.update_value("proxy_login_password", new_value, None);
-
-            // proxy_use_ssl: bool,
-            let new_value = toml_edit::value(use_proxy_ssl_checkbox.is_active());
-            settings.update_value("proxy_use_ssl", new_value, None);
-
-            // proxy_ssl_certificate: String,
-            let new_value = toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string());
-            settings.update_value("proxy_ssl_certificate", new_value, None);
+                state.apply_theme();
+            }
 
             settings_window.close();
         }
@@ -2363,7 +2273,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     let window_height = app_settings.gui_last_height;
 
     os::switch_locale(&gui_language);
-    println!("{}", t!("hello"));
       
     
     let preferred_theme = match String::from(&gui_theme).as_str() {
@@ -2376,7 +2285,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
         },
     };
     
-    println!("{}", t!("hello"));
     application.style_manager().set_color_scheme(preferred_theme);
 
     let window = gtk::ApplicationWindow::builder()
@@ -2389,7 +2297,8 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
         .build();
 
     let header_bar = gtk::HeaderBar::new();
-    let info_bar = gtk::InfoBar::new();
+    let info_bar = gtk::Revealer::new();
+    info_bar.set_transition_type(gtk::RevealerTransitionType::SlideDown);
     info_bar.set_hexpand(true);
     window.set_titlebar(Some(&header_bar));
     
@@ -2398,7 +2307,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     let save_wallet_button = gtk::Button::new();
     let about_button = gtk::Button::new();
     let settings_button = gtk::Button::new();
-    // save_wallet_button.set_sensitive(false);
 
     let theme_images = get_window_theme_icons();
     new_wallet_button.set_child(Some(&theme_images[0]));
@@ -2419,22 +2327,39 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     header_bar.pack_end(&settings_button);
     header_bar.pack_end(&about_button);
 
-    let state_clone = state.clone();
+    
+    
+    // Button to open the settings window
+    let state_clone = std::sync::Arc::clone(&state);
 
+
+    // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
-        #[weak] new_wallet_button,
-        #[weak] settings_button,
-        #[weak] about_button,
-        #[weak] open_wallet_button,
-        #[weak] save_wallet_button,
+        #[weak] info_bar,
+        // #[weak] settings_button,
+        // #[weak] about_button,
+        // #[weak] open_wallet_button,
+        // #[weak] save_wallet_button,
         move |_| {
             let main_context = glib::MainContext::default();
             let main_loop = glib::MainLoop::new(Some(&main_context), false);
-            let settings_window = create_settings_window(Some(state_clone.clone()));
+            let settings_window = create_settings_window(Some(std::sync::Arc::clone(&state_clone)));
 
             settings_window.connect_close_request(clone!(
                 #[strong] main_loop,
+                #[strong] state_clone,
+                #[strong] info_bar,
                 move |_| {
+                    if let Ok(mut state) = state_clone.lock() {
+                        state.apply_theme();
+                        state.update_infobar_message(
+                            "new theme applied".to_string(),
+                            info_bar.clone(),
+                            gtk::MessageType::Info,
+                        );
+                    } else {
+                        eprintln!("Failed to lock AppState for applying theme.");
+                    }
                     main_loop.quit();
                     glib::Propagation::Proceed
                 }
@@ -2443,12 +2368,12 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
             settings_window.show();
             main_loop.run();
 
-            let theme_images = get_window_theme_icons();
-            new_wallet_button.set_child(Some(&theme_images[0]));
-            open_wallet_button.set_child(Some(&theme_images[1]));
-            save_wallet_button.set_child(Some(&theme_images[2]));
-            about_button.set_child(Some(&theme_images[3]));
-            settings_button.set_child(Some(&theme_images[4]));
+            // let theme_images = get_window_theme_icons();
+            // new_wallet_button.set_child(Some(&theme_images[0]));
+            // open_wallet_button.set_child(Some(&theme_images[1]));
+            // save_wallet_button.set_child(Some(&theme_images[2]));
+            // about_button.set_child(Some(&theme_images[3]));
+            // settings_button.set_child(Some(&theme_images[4]));
         }
     ));
     
@@ -3472,17 +3397,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
         }
     ));
 
-
-
-
-
-
-
-
-
-
-
-
     coin_search.connect_search_changed({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
         let coin_store = std::rc::Rc::clone(&coin_store);
@@ -4067,27 +3981,14 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     main_window_box.append(&main_infobar_box);
 
     // Infobar
-    create_info_bar(&info_bar, &t!("hello"), gtk::MessageType::Info);
-    info_bar.add_button(&t!("UI.element.button.close").to_string(), gtk::ResponseType::Close);
-    info_bar.connect_response(|info_bar, response| {
-        if response == gtk::ResponseType::Close {
-            info_bar.hide();
-        }
-    });
-    
-    let notification_timeout = app_settings.gui_notification_timeout;
+    create_info_message(&info_bar, "This is an info message.", gtk::MessageType::Info);
 
-    let info_bar_clone = info_bar.clone();
-    glib::MainContext::default().spawn_local(async move {
-        glib::timeout_future(std::time::Duration::from_secs(notification_timeout as u64)).await;
-        info_bar_clone.hide();
-    });
+    
+    
 
     window.set_child(Some(&main_window_box));
     window.present();
 }
-
-
 
 fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
     println!("[+] {}", &t!("log.create_message_window").to_string());
@@ -4209,8 +4110,8 @@ fn save_wallet_to_file() {
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
     
     let wallet_settings = WALLET_SETTINGS.lock().unwrap();
-    let entropy_string = wallet_settings.entropy_string.clone().unwrap();
-    let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap();
+    let entropy_string = wallet_settings.entropy_string.clone().unwrap_or_default();
+    let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap_or_default();
 
     let save_window = gtk::Window::new();
     let save_dialog = gtk::FileChooserNative::new(
@@ -4253,446 +4154,6 @@ fn save_wallet_to_file() {
     save_dialog.show();
     save_loop.run();
 }
-
-
-
-
-
-fn main() {
-    print_program_info();
-
-    os::detect_os_and_user_dir();
-
-    if let Err(err) = os::create_local_files() {
-        eprintln!("Error creating local config files: {}", err);
-    }
-
-    AppSettings::load_settings()
-        .expect(&t!("error.file.read").to_string());
-
-    let application = adw::Application::builder()
-        .application_id("com.github.qr2m")
-        .build();
-
-    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
-
-    application.connect_activate(clone!(
-        #[weak] state,
-        #[weak] application,
-        move |_action| {
-            create_main_window(&application, state.clone());
-        }
-    ));
-
-    let quit = gio::SimpleAction::new("quit", None);
-    let new = gio::SimpleAction::new("new", None);
-    let open = gio::SimpleAction::new("open", None);
-    let save = gio::SimpleAction::new("save", None);
-    let settings = gio::SimpleAction::new("settings", None);
-    let about = gio::SimpleAction::new("about", None);
-    
-    quit.connect_activate(
-        glib::clone!(
-            #[weak] application,
-            move |_action, _parameter| {
-            application.quit();
-        }),
-    );
-    
-    new.connect_activate(clone!(
-        #[weak] application,
-        #[weak] state,
-        move |_action, _parameter| {
-            create_main_window(&application, state.clone());
-        }
-    ));
-
-    open.connect_activate(move |_action, _parameter| {
-        open_wallet_from_file();
-    });
-    
-    save.connect_activate(|_action, _parameter| {
-        save_wallet_to_file();
-    });
-
-    settings.connect_activate(clone!(
-        #[weak] state,
-        move |_action, _parameter| {
-            let main_context = glib::MainContext::default();
-            let main_loop = glib::MainLoop::new(Some(&main_context), false);
-
-            let settings_window = create_settings_window(Some(state.clone()));
-            settings_window.connect_close_request(clone!(
-                #[strong] main_loop,
-                move |_| {
-                    state.lock().unwrap().apply_theme();
-                    main_loop.quit();
-                    glib::Propagation::Proceed
-                }
-            ));
-            
-            settings_window.show();
-            main_loop.run();
-        }
-    ));
-
-    about.connect_activate(move |_action, _parameter| {
-        create_about_window();
-    });
-
-    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
-    application.add_action(&quit);
-
-    application.set_accels_for_action("app.new", &["<Primary>N"]);
-    application.add_action(&new);
-
-    application.set_accels_for_action("app.open", &["<Primary>O"]);
-    application.add_action(&open);
-
-    application.set_accels_for_action("app.save", &["<Primary>S"]);
-    application.add_action(&save);
-
-    application.set_accels_for_action("app.settings", &["F5"]);
-    application.add_action(&settings);
-
-    application.set_accels_for_action("app.about", &["F1"]);
-    application.add_action(&about);
-
-    application.run();
-}
-
-
-// ADDRESSES -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
-fn derive_child_key_secp256k1(
-    parent_key: &[u8],
-    parent_chain_code: &[u8],
-    index: u32,
-    hardened: bool,
-) -> DerivationResult {
-    println!("[+] {}", &t!("log.derive_child_key").to_string());
-    println!("parent_key {:?}", parent_key);
-    println!("parent_chain_code {:?}", parent_chain_code);
-    println!("index {:?}", index);
-    println!("hardened {:?}", hardened);
-    
-    // Check if index is hardened and validate accordingly
-    if index & 0x80000000 != 0 && !hardened {
-        return None; // Index is hardened when it shouldn't be
-    }
-
-    let secp = secp256k1::Secp256k1::new();
-    let mut data = Vec::with_capacity(37);
-
-    if hardened {
-        data.push(0x00);
-        data.extend_from_slice(parent_key);
-    } else {
-        let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).ok()?;
-        let parent_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &parent_secret_key);
-        data.extend_from_slice(&parent_pubkey.serialize()[..]);
-    }
-
-    let index_bytes = if hardened {
-        let index = index + 2147483648;
-        index.to_be_bytes()
-    } else {
-        index.to_be_bytes()
-    };
-
-    data.extend_from_slice(&index_bytes);
-
-    println!("data_for_hmac_sha512 {:?}", data);
-    
-    let result = qr2m_lib::calculate_hmac_sha512_hash(parent_chain_code, &data);
-    
-    let child_private_key_bytes: [u8; 32] = result[..32].try_into().expect("Slice with incorrect length");
-    let child_chain_code_bytes: [u8; 32] = result[32..].try_into().expect("Slice with incorrect length");
-
-    let child_key_int = BigUint::from_bytes_be(&child_private_key_bytes);
-    let parent_key_int = BigUint::from_bytes_be(parent_key);
-    let curve_order = BigUint::from_bytes_be(&secp256k1::constants::CURVE_ORDER);
-    let combined_int = (parent_key_int + child_key_int) % &curve_order;
-    let combined_bytes = combined_int.to_bytes_be();
-    let combined_bytes_padded = {
-        let mut padded = [0u8; 32];
-        let offset = 32 - combined_bytes.len();
-        padded[offset..].copy_from_slice(&combined_bytes);
-        padded
-    };
-    let child_secret_key = secp256k1::SecretKey::from_slice(&combined_bytes_padded).ok()?;
-    let child_secret_key_bytes = child_secret_key.secret_bytes();
-    let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
-    let child_public_key_bytes = child_pubkey.serialize().to_vec();
-
-    println!("child_private_key_bytes {:?}", child_secret_key_bytes);
-    println!("child_chain_code_bytes {:?}", child_chain_code_bytes);
-    println!("child_public_key_bytes {:?}", child_public_key_bytes);
-
-    Some((child_secret_key_bytes, child_chain_code_bytes, child_public_key_bytes))
-}
-
-fn create_private_key_for_address(
-    private_key: Option<&secp256k1::SecretKey>, 
-    compressed: Option<bool>,
-    wif: Option<&str>,
-    hash: &str,
-) -> Result<String, String> {
-    println!("Private key to WIF");
-
-    let wallet_import_format = match wif {
-        Some(w) => {
-            if w.is_empty() {
-                "80" // Default to Bitcoin mainnet version byte
-            } else {
-                w.trim_start_matches("0x")
-            }
-        },
-        None => "80", // Default to Bitcoin mainnet version byte if no WIF is provided
-    };
-
-    let compressed = compressed.unwrap_or(true);
-    
-    let wallet_import_format_bytes = match hex::decode(wallet_import_format) {
-        Ok(bytes) => bytes,
-        Err(_) => return Err("Invalid WIF format".to_string()),
-    };
-
-    // if wallet_import_format_bytes.len() != 1 {
-    //     return Err("Invalid length for WIF version byte".to_string());
-    // }
-
-    match hash {
-        "sha256" => {
-            let mut extended_key = Vec::with_capacity(34);
-            extended_key.extend_from_slice(&wallet_import_format_bytes);
-
-            if let Some(private_key) = private_key {
-                extended_key.extend_from_slice(&private_key.secret_bytes());
-
-                if compressed {
-                    extended_key.push(0x01); // Add compression flag
-                }
-            } else {
-                return Err("Private key must be provided".to_string());
-            }
-
-            let checksum = qr2m_lib::calculate_double_sha256_hash(&extended_key);
-            let address_checksum = &checksum[0..4];
-            extended_key.extend_from_slice(address_checksum);
-
-            Ok(bs58::encode(extended_key).into_string())
-        },
-        "keccak256" => {
-            if let Some(private_key) = private_key {
-                Ok(format!("0x{}", hex::encode(private_key.secret_bytes())))
-            } else {
-                Err("Private key must be provided".to_string())
-            }
-        },
-        "sha256+ripemd160" => {
-            match private_key {
-                Some(key) => {
-                    let private_key_hex = hex::encode(key.secret_bytes());
-                    println!("Private key hex: {}", private_key_hex);
-                    Ok(private_key_hex)
-                },
-                None => {
-                    println!("Private key must be provided");
-                    Err("Private key must be provided".to_string())
-                },
-            }
-        },
-        _ => Err(format!("Unsupported hash method: {}", hash)),
-    }
-}
-
-fn derive_from_path_secp256k1(
-    master_key: &[u8],
-    master_chain_code: &[u8],
-    path: &str,
-) -> DerivationResult {
-    println!("[+] {}", &t!("log.derive_from_path_secp256k1").to_string());
-
-    println!("Derivation path {:?}", path);
-
-    let mut private_key = master_key.to_vec();
-    let mut chain_code = master_chain_code.to_vec();
-    let mut public_key = Vec::new();
-
-
-    for part in path.split('/') {
-        if part == "m" {
-            continue;
-        }
-
-        let hardened = part.ends_with("'");
-        let index: u32 = match part.trim_end_matches("'").parse() {
-            Ok(index) => {
-                println!("Index: {:?}", &index);
-                index
-            },
-            Err(_) => {
-                eprintln!("Error: Unable to parse index from path part: {}", part);
-                return None;
-            }
-        };
-        
-        let derived = derive_child_key_secp256k1(
-            &private_key, 
-            &chain_code, 
-            index, 
-            hardened
-        ).unwrap_or_default();
-        
-        private_key = derived.0.to_vec();
-        chain_code = derived.1.to_vec();
-        public_key = derived.2;
-    }
-    
-    let secret_key = match secp256k1::SecretKey::from_slice(&private_key) {
-        Ok(sk) => sk,
-        Err(e) => {
-            eprintln!("Error: Unable to create SecretKey from key slice: {}", e);
-            return None;
-        }
-    };
-
-    if chain_code.len() != 32 {
-        eprintln!("Error: Invalid chain code length");
-        return None;
-    }
-
-    let mut chain_code_array = [0u8; 32];
-    chain_code_array.copy_from_slice(&chain_code);
-
-    let mut public_key_array = [0u8; 33];
-    public_key_array.copy_from_slice(&public_key);
-
-    Some((secret_key.secret_bytes(), chain_code_array, public_key_array.to_vec()))
-}
-
-fn generate_address_sha256(
-    public_key: &CryptoPublicKey,
-    public_key_hash: &[u8],
-) -> String {
-    println!("[+] {}", &t!("log.generate_address_sha256").to_string());
-
-    let public_key_bytes = match public_key {
-        CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
-        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
-    };
-    
-    println!("Public key bytes: {:?}", &public_key_bytes);
-
-    let hash160 = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
-
-    let mut payload = Vec::with_capacity(public_key_hash.len() + hash160.len());
-    payload.extend_from_slice(public_key_hash);
-    payload.extend_from_slice(&hash160);
-    println!("Extended sha256_and_ripemd160 payload: {:?}", &payload);
-
-    let checksum = qr2m_lib::calculate_double_sha256_hash(&payload);
-
-    let address_checksum = &checksum[0..4];
-    println!("Address checksum: {:?}", address_checksum);
-
-    let mut address_payload = payload;
-    address_payload.extend_from_slice(address_checksum);
-    println!("Extended Address payload: {:?}", address_payload);
-
-    bs58::encode(address_payload).into_string()
-}
-
-fn generate_address_keccak256(
-    public_key: &CryptoPublicKey,
-    _public_key_hash: &[u8],
-) -> String {
-    let public_key_bytes = match public_key {
-        CryptoPublicKey::Secp256k1(key) => key.serialize_uncompressed().to_vec(),
-        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
-    };
-    println!("Public key bytes: {:?}", &public_key_bytes);
-
-    let public_key_slice = match public_key {
-        CryptoPublicKey::Secp256k1(_) => &public_key_bytes[1..],  // Skip the first byte for secp256k1
-        CryptoPublicKey::Ed25519(_) => &public_key_bytes[..],     // Use the entire byte array for ed25519
-    };
-
-    let mut keccak = Keccak256::new();
-    keccak.update(public_key_slice);
-    let keccak_result = keccak.finalize();
-    println!("Keccak256 hash result: {:?}", &keccak_result);
-
-    let address_bytes = &keccak_result[12..];
-    println!("Address bytes: {:?}", address_bytes);
-
-    let address = format!("0x{}", hex::encode(address_bytes));
-    println!("Generated Ethereum address: {:?}", address);
-
-    address
-}
-
-fn generate_sha256_ripemd160_address(
-    coin_index: u32,
-    public_key: &CryptoPublicKey,
-    public_key_hash: &[u8],
-) -> Result<String, Box<dyn std::error::Error>> {
-    let public_key_bytes = match public_key {
-        CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
-        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
-    };
-    println!("Public key bytes: {:?}", &public_key_bytes);
-
-    let hash = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
-    let mut address_bytes = Vec::new();
-
-    address_bytes.extend_from_slice(public_key_hash);
-    address_bytes.extend(&hash);
-
-    let checksum = Sha256::digest(&Sha256::digest(&address_bytes));
-    let checksum = &checksum[0..4];
-
-    let mut full_address_bytes = address_bytes.clone();
-    full_address_bytes.extend(checksum);
-
-    let alphabet = match coin_index {
-        144 => bs58::Alphabet::RIPPLE,
-        _ => bs58::Alphabet::DEFAULT,
-    };
-
-    let encoded_address = bs58::encode(full_address_bytes).with_alphabet(alphabet).into_string();
-    println!("Base58 encoded address: {}", encoded_address);
-
-    Ok(encoded_address)
-}
-
-enum CryptoPublicKey {
-    Secp256k1(secp256k1::PublicKey),
-    Ed25519(ed25519_dalek::VerifyingKey),
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<String>), String> {
     let file = File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
@@ -4843,18 +4304,460 @@ fn open_wallet_from_file() -> (String, Option<String>) {
     }
 }
 
+fn main() {
+    print_program_info();
 
-fn create_info_bar(info_bar: &gtk::InfoBar, message: &str, message_type: gtk::MessageType) {
-    // Set the message type (Info, Warning, Error, etc.)
-    info_bar.set_message_type(message_type);
+    os::detect_os_and_user_dir();
 
-    // Create a new label with the message
+    if let Err(err) = os::create_local_files() {
+        eprintln!("Error creating local config files: {}", err);
+    }
+
+    let application = adw::Application::builder()
+        .application_id("com.github.qr2m")
+        .build();
+
+    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+
+    application.connect_activate(|app| {
+        let settings = AppSettings::load_settings()
+            .expect(&t!("error.file.read").to_string());
+
+        let state = std::sync::Arc::new(std::sync::Mutex::new(AppState {
+            active_message: "Welcome!".to_string(),
+            language: settings.gui_language,
+            theme: settings.gui_theme,
+        }));
+
+        create_main_window(&app, state);
+    });
+
+    let quit = gio::SimpleAction::new("quit", None);
+    let new = gio::SimpleAction::new("new", None);
+    let open = gio::SimpleAction::new("open", None);
+    let save = gio::SimpleAction::new("save", None);
+    let settings = gio::SimpleAction::new("settings", None);
+    let about = gio::SimpleAction::new("about", None);
+    
+    quit.connect_activate(
+        glib::clone!(
+            #[weak] application,
+            move |_action, _parameter| {
+            application.quit();
+        }),
+    );
+    
+    new.connect_activate(clone!(
+        #[weak] application,
+        #[weak] state,
+        move |_action, _parameter| {
+            let new_state = state.clone();
+            create_main_window(&application, new_state);
+        }
+    ));
+
+    open.connect_activate(move |_action, _parameter| {
+        open_wallet_from_file();
+    });
+    
+    save.connect_activate(|_action, _parameter| {
+        save_wallet_to_file();
+    });
+
+    settings.connect_activate(clone!(
+        #[weak] state,
+        move |_action, _parameter| {
+            let main_context = glib::MainContext::default();
+            let main_loop = glib::MainLoop::new(Some(&main_context), false);
+
+            let settings_window = create_settings_window(Some(state.clone()));
+            settings_window.connect_close_request(clone!(
+                #[strong] main_loop,
+                move |_| {
+                    state.lock().unwrap().apply_theme();
+                    main_loop.quit();
+                    glib::Propagation::Proceed
+                }
+            ));
+            
+            settings_window.show();
+            main_loop.run();
+        }
+    ));
+
+    about.connect_activate(move |_action, _parameter| {
+        create_about_window();
+    });
+
+    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    application.add_action(&quit);
+
+    application.set_accels_for_action("app.new", &["<Primary>N"]);
+    application.add_action(&new);
+
+    application.set_accels_for_action("app.open", &["<Primary>O"]);
+    application.add_action(&open);
+
+    application.set_accels_for_action("app.save", &["<Primary>S"]);
+    application.add_action(&save);
+
+    application.set_accels_for_action("app.settings", &["F5"]);
+    application.add_action(&settings);
+
+    application.set_accels_for_action("app.about", &["F1"]);
+    application.add_action(&about);
+
+    application.run();
+}
+
+
+// ADDRESSES -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+fn derive_child_key_secp256k1(
+    parent_key: &[u8],
+    parent_chain_code: &[u8],
+    index: u32,
+    hardened: bool,
+) -> DerivationResult {
+    println!("[+] {}", &t!("log.derive_child_key").to_string());
+    println!("parent_key {:?}", parent_key);
+    println!("parent_chain_code {:?}", parent_chain_code);
+    println!("index {:?}", index);
+    println!("hardened {:?}", hardened);
+    
+    // Check if index is hardened and validate accordingly
+    if index & 0x80000000 != 0 && !hardened {
+        return None;
+    }
+
+    let secp = secp256k1::Secp256k1::new();
+    let mut data = Vec::with_capacity(37);
+
+    if hardened {
+        data.push(0x00);
+        data.extend_from_slice(parent_key);
+    } else {
+        let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).ok()?;
+        let parent_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &parent_secret_key);
+        data.extend_from_slice(&parent_pubkey.serialize()[..]);
+    }
+
+    let index_bytes = if hardened {
+        let index = index + 2147483648;
+        index.to_be_bytes()
+    } else {
+        index.to_be_bytes()
+    };
+
+    data.extend_from_slice(&index_bytes);
+
+    println!("data_for_hmac_sha512 {:?}", data);
+    
+    let result = qr2m_lib::calculate_hmac_sha512_hash(parent_chain_code, &data);
+    
+    let child_private_key_bytes: [u8; 32] = result[..32].try_into().expect("Slice with incorrect length");
+    let child_chain_code_bytes: [u8; 32] = result[32..].try_into().expect("Slice with incorrect length");
+
+    let child_key_int = BigUint::from_bytes_be(&child_private_key_bytes);
+    let parent_key_int = BigUint::from_bytes_be(parent_key);
+    let curve_order = BigUint::from_bytes_be(&secp256k1::constants::CURVE_ORDER);
+    let combined_int = (parent_key_int + child_key_int) % &curve_order;
+    let combined_bytes = combined_int.to_bytes_be();
+    let combined_bytes_padded = {
+        let mut padded = [0u8; 32];
+        let offset = 32 - combined_bytes.len();
+        padded[offset..].copy_from_slice(&combined_bytes);
+        padded
+    };
+    let child_secret_key = secp256k1::SecretKey::from_slice(&combined_bytes_padded).ok()?;
+    let child_secret_key_bytes = child_secret_key.secret_bytes();
+    let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
+    let child_public_key_bytes = child_pubkey.serialize().to_vec();
+
+    println!("child_private_key_bytes {:?}", child_secret_key_bytes);
+    println!("child_chain_code_bytes {:?}", child_chain_code_bytes);
+    println!("child_public_key_bytes {:?}", child_public_key_bytes);
+
+    Some((child_secret_key_bytes, child_chain_code_bytes, child_public_key_bytes))
+}
+
+fn create_private_key_for_address(
+    private_key: Option<&secp256k1::SecretKey>, 
+    compressed: Option<bool>,
+    wif: Option<&str>,
+    hash: &str,
+) -> Result<String, String> {
+    println!("Private key to WIF");
+
+    let wallet_import_format = match wif {
+        Some(w) => {
+            if w.is_empty() {
+                "80"
+            } else {
+                w.trim_start_matches("0x")
+            }
+        },
+        None => "80",
+    };
+
+    let compressed = compressed.unwrap_or(true);
+    
+    let wallet_import_format_bytes = match hex::decode(wallet_import_format) {
+        Ok(bytes) => bytes,
+        Err(_) => return Err("Invalid WIF format".to_string()),
+    };
+
+    match hash {
+        "sha256" => {
+            let mut extended_key = Vec::with_capacity(34);
+            extended_key.extend_from_slice(&wallet_import_format_bytes);
+
+            if let Some(private_key) = private_key {
+                extended_key.extend_from_slice(&private_key.secret_bytes());
+
+                if compressed {
+                    extended_key.push(0x01);
+                }
+            } else {
+                return Err("Private key must be provided".to_string());
+            }
+
+            let checksum = qr2m_lib::calculate_double_sha256_hash(&extended_key);
+            let address_checksum = &checksum[0..4];
+            extended_key.extend_from_slice(address_checksum);
+
+            Ok(bs58::encode(extended_key).into_string())
+        },
+        "keccak256" => {
+            if let Some(private_key) = private_key {
+                Ok(format!("0x{}", hex::encode(private_key.secret_bytes())))
+            } else {
+                Err("Private key must be provided".to_string())
+            }
+        },
+        "sha256+ripemd160" => {
+            match private_key {
+                Some(key) => {
+                    let private_key_hex = hex::encode(key.secret_bytes());
+                    println!("Private key hex: {}", private_key_hex);
+                    Ok(private_key_hex)
+                },
+                None => {
+                    println!("Private key must be provided");
+                    Err("Private key must be provided".to_string())
+                },
+            }
+        },
+        _ => Err(format!("Unsupported hash method: {}", hash)),
+    }
+}
+
+fn derive_from_path_secp256k1(
+    master_key: &[u8],
+    master_chain_code: &[u8],
+    path: &str,
+) -> DerivationResult {
+    println!("[+] {}", &t!("log.derive_from_path_secp256k1").to_string());
+
+    println!("Derivation path {:?}", path);
+
+    let mut private_key = master_key.to_vec();
+    let mut chain_code = master_chain_code.to_vec();
+    let mut public_key = Vec::new();
+
+
+    for part in path.split('/') {
+        if part == "m" {
+            continue;
+        }
+
+        let hardened = part.ends_with("'");
+        let index: u32 = match part.trim_end_matches("'").parse() {
+            Ok(index) => {
+                println!("Index: {:?}", &index);
+                index
+            },
+            Err(_) => {
+                eprintln!("Error: Unable to parse index from path part: {}", part);
+                return None;
+            }
+        };
+        
+        let derived = derive_child_key_secp256k1(
+            &private_key, 
+            &chain_code, 
+            index, 
+            hardened
+        ).unwrap_or_default();
+        
+        private_key = derived.0.to_vec();
+        chain_code = derived.1.to_vec();
+        public_key = derived.2;
+    }
+    
+    let secret_key = match secp256k1::SecretKey::from_slice(&private_key) {
+        Ok(sk) => sk,
+        Err(e) => {
+            eprintln!("Error: Unable to create SecretKey from key slice: {}", e);
+            return None;
+        }
+    };
+
+    if chain_code.len() != 32 {
+        eprintln!("Error: Invalid chain code length");
+        return None;
+    }
+
+    let mut chain_code_array = [0u8; 32];
+    chain_code_array.copy_from_slice(&chain_code);
+
+    let mut public_key_array = [0u8; 33];
+    public_key_array.copy_from_slice(&public_key);
+
+    Some((secret_key.secret_bytes(), chain_code_array, public_key_array.to_vec()))
+}
+
+fn generate_address_sha256(
+    public_key: &CryptoPublicKey,
+    public_key_hash: &[u8],
+) -> String {
+    println!("[+] {}", &t!("log.generate_address_sha256").to_string());
+
+    let public_key_bytes = match public_key {
+        CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
+        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
+    };
+    
+    println!("Public key bytes: {:?}", &public_key_bytes);
+
+    let hash160 = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
+
+    let mut payload = Vec::with_capacity(public_key_hash.len() + hash160.len());
+    payload.extend_from_slice(public_key_hash);
+    payload.extend_from_slice(&hash160);
+    println!("Extended sha256_and_ripemd160 payload: {:?}", &payload);
+
+    let checksum = qr2m_lib::calculate_double_sha256_hash(&payload);
+
+    let address_checksum = &checksum[0..4];
+    println!("Address checksum: {:?}", address_checksum);
+
+    let mut address_payload = payload;
+    address_payload.extend_from_slice(address_checksum);
+    println!("Extended Address payload: {:?}", address_payload);
+
+    bs58::encode(address_payload).into_string()
+}
+
+fn generate_address_keccak256(
+    public_key: &CryptoPublicKey,
+    _public_key_hash: &[u8],
+) -> String {
+    let public_key_bytes = match public_key {
+        CryptoPublicKey::Secp256k1(key) => key.serialize_uncompressed().to_vec(),
+        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
+    };
+    println!("Public key bytes: {:?}", &public_key_bytes);
+
+    let public_key_slice = match public_key {
+        CryptoPublicKey::Secp256k1(_) => &public_key_bytes[1..],
+        CryptoPublicKey::Ed25519(_) => &public_key_bytes[..],
+    };
+
+    let mut keccak = Keccak256::new();
+    keccak.update(public_key_slice);
+    let keccak_result = keccak.finalize();
+    println!("Keccak256 hash result: {:?}", &keccak_result);
+
+    let address_bytes = &keccak_result[12..];
+    println!("Address bytes: {:?}", address_bytes);
+
+    let address = format!("0x{}", hex::encode(address_bytes));
+    println!("Generated Ethereum address: {:?}", address);
+
+    address
+}
+
+fn generate_sha256_ripemd160_address(
+    coin_index: u32,
+    public_key: &CryptoPublicKey,
+    public_key_hash: &[u8],
+) -> Result<String, Box<dyn std::error::Error>> {
+    let public_key_bytes = match public_key {
+        CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
+        CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
+    };
+    println!("Public key bytes: {:?}", &public_key_bytes);
+
+    let hash = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
+    let mut address_bytes = Vec::new();
+
+    address_bytes.extend_from_slice(public_key_hash);
+    address_bytes.extend(&hash);
+
+    let checksum = Sha256::digest(&Sha256::digest(&address_bytes));
+    let checksum = &checksum[0..4];
+
+    let mut full_address_bytes = address_bytes.clone();
+    full_address_bytes.extend(checksum);
+
+    let alphabet = match coin_index {
+        144 => bs58::Alphabet::RIPPLE,
+        _ => bs58::Alphabet::DEFAULT,
+    };
+
+    let encoded_address = bs58::encode(full_address_bytes).with_alphabet(alphabet).into_string();
+    println!("Base58 encoded address: {}", encoded_address);
+
+    Ok(encoded_address)
+}
+
+enum CryptoPublicKey {
+    Secp256k1(secp256k1::PublicKey),
+    Ed25519(ed25519_dalek::VerifyingKey),
+}
+
+
+// TESTING -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+
+fn create_info_message(
+    revealer: &gtk::Revealer,
+    message: &str,
+    message_type: gtk::MessageType,
+) {
+    println!("create_info_message: {}", message);
+
+    // Create the message box layout
+    let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+
+    // Add a message label
     let message_label = gtk::Label::new(Some(message));
+    message_label.set_hexpand(true);
 
-    // Add the label directly to the InfoBar
-    info_bar.add_child(&message_label);
+    // Style based on message type (e.g., error, info)
+    match message_type {
+        gtk::MessageType::Error => message_label.add_css_class("error-message"),
+        gtk::MessageType::Info => message_label.add_css_class("info-message"),
+        _ => {}
+    }
 
-    // Show the InfoBar and its label
-    info_bar.show();
-    message_label.show();
+    // Add a close button
+    let close_button = gtk::Button::with_label("Close");
+    close_button.connect_clicked({
+        let revealer = revealer.clone();
+        move |_| {
+            revealer.set_reveal_child(false);
+        }
+    });
+
+    // Assemble the message box
+    message_box.append(&message_label);
+    message_box.append(&close_button);
+
+    // Add the box to the revealer
+    revealer.set_child(Some(&message_box));
+    revealer.set_reveal_child(true); // Show the revealer
 }
