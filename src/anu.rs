@@ -29,14 +29,6 @@ const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 
 pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
     let start_time = SystemTime::now();
-
-    // crate::create_message_window(
-    //     "ANU QRNG API", 
-    //     &t!("UI.main.anu.download"), 
-    //     Some(true), 
-    //     Some(5)
-    // );
-    
     let (sender, receiver) = std::sync::mpsc::channel();
 
     fetch_anu_qrng_data(
@@ -46,68 +38,35 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
         sender
     );
 
-    let anu_data = receiver.recv().unwrap(); // Blocking call to wait for the response
+    let anu_data = receiver.recv().unwrap();
 
-    if !anu_data.as_ref().unwrap().is_empty() {
-        let app_settings = APPLICATION_SETTINGS.lock().unwrap(); // lock the Mutex for reading
-        let anu_enabled = app_settings.anu_enabled;
+    if let Some(anu_data) = anu_data.as_ref() {
+        if !anu_data.is_empty() {
+            // Handle logging and timestamp creation only if ANU is enabled
+            let log_enabled = {
+                let app_settings = APPLICATION_SETTINGS.lock().unwrap();
+                app_settings.anu_enabled
+            };
 
-        if anu_enabled {
-            create_anu_timestamp(start_time);
-            write_api_response_to_log(&anu_data);
+            if log_enabled {
+                create_anu_timestamp(start_time);
+                write_api_response_to_log(&Some(anu_data.to_string()));
+            }
         }
     } else {
         return String::new();
     }
 
     let entropy = match data_format {
-        "uint8" =>  {
+        "uint8" => {
             let uint8 = extract_uint8_data(&anu_data);
-
             process_uint8_data(&uint8)
         },
-        "uint16" =>  {
-            todo!(); // IMPLEMENT Create uint16 ANU extraction
-            
-        },
-        "hex16" =>  {
-            todo!(); // TODO Re-check if hex16 ANU extraction is working
-            // let hex_strings = extract_hex_strings(
-            //         &anu_data, 
-            //         hex_block_size.unwrap().try_into().unwrap()
-            //     );
-            //     let mut anu_qrng_binary = String::new();
-            //     for hex_string in hex_strings {
-            //         // println!("Hex string: {}", hex_string);
-            //         let bytes = hex::decode(hex_string).expect("Failed to decode hex string");
-            //         let binary_string: String = bytes.iter()
-            //             .map(|byte| format!("{:08b}", byte))
-            //             .collect();
-            //         // println!("Binary string: {:?}", binary_string);
-            //         anu_qrng_binary.push_str(&binary_string);
-            //     }
-            //     // Write all binary strings to a file
-            //     let qrng_file = format!("{}.binary", ANU_QRNG_FILE);
-            //     let mut file = File::create(&qrng_file).expect("Can not read file");
-            //     file.write_all(anu_qrng_binary.as_bytes()).expect("can not write to file");
-            //     if anu_qrng_binary.len() < entropy_length {
-            //         return Err(format!(
-            //             "Entropy string too short for requested entropy length: {}",
-            //             entropy_length
-            //         ).into());
-            //     }
-            //     let max_start = anu_qrng_binary.len() - entropy_length;
-            //     let start_point = rand::thread_rng().gen_range(0..=max_start);
-            //     entropy_raw_binary = anu_qrng_binary
-            //         .chars()
-            //         .skip(start_point)
-            //         .take(entropy_length)
-            //         .collect();
-            //     println!("Final entropy string: {}", entropy_raw_binary);
-        },
+        "uint16" => todo!(),
+        "hex16" => todo!(),
         _ => {
             eprintln!("{}", &t!("error.anu.format"));
-            return String::new()
+            return String::new();
         }
     };
 

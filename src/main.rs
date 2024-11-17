@@ -879,10 +879,14 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
             (rng_entropy_string, Some(mnemonic_rng_string))
         },
         "QRNG" => {
-            let app_settings = APPLICATION_SETTINGS.lock().unwrap();
-            let anu_format = app_settings.anu_data_format.clone();
-            let array_length = app_settings.anu_array_length;
-            let hex_block_size = app_settings.anu_hex_block_size;
+            let (anu_format, array_length, hex_block_size) = {
+                let app_settings = APPLICATION_SETTINGS.lock().unwrap();
+                (
+                    app_settings.anu_data_format.clone(),
+                    app_settings.anu_array_length,
+                    app_settings.anu_hex_block_size,
+                )
+            };
 
             let qrng_entropy_string = anu::get_entropy_from_anu(
                 entropy_length.try_into().unwrap(),
@@ -890,7 +894,7 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
                 array_length, 
                 Some(hex_block_size)
             );
-
+            
             println!("\t ANU data format: {:?}", anu_format);
             println!("\t ANUarray length: {:?}", array_length);
             println!("\t ANU hex block size: {:?}", hex_block_size);
@@ -1221,7 +1225,8 @@ fn load_icon_bytes(path: &str) -> Vec<u8> {
     buffer
 }
 
-pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow {    println!("[+] {}", &t!("log.create_settings_window").to_string());
+pub fn create_settings_window(_state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow { 
+    println!("[+] {}", &t!("log.create_settings_window").to_string());
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
