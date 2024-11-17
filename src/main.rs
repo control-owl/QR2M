@@ -2286,6 +2286,7 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     };
     
     application.style_manager().set_color_scheme(preferred_theme);
+    
 
     let window = gtk::ApplicationWindow::builder()
         .application(application)
@@ -2295,6 +2296,8 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
         .show_menubar(true)
         .decorated(true)
         .build();
+
+    setup_css();
 
     let header_bar = gtk::HeaderBar::new();
     let info_bar = gtk::Revealer::new();
@@ -4309,6 +4312,7 @@ fn main() {
 
     os::detect_os_and_user_dir();
 
+
     if let Err(err) = os::create_local_files() {
         eprintln!("Error creating local config files: {}", err);
     }
@@ -4316,6 +4320,7 @@ fn main() {
     let application = adw::Application::builder()
         .application_id("com.github.qr2m")
         .build();
+
 
     let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
 
@@ -4406,6 +4411,7 @@ fn main() {
 
     application.set_accels_for_action("app.about", &["F1"]);
     application.add_action(&about);
+
 
     application.run();
 }
@@ -4728,23 +4734,16 @@ fn create_info_message(
     message: &str,
     message_type: gtk::MessageType,
 ) {
-    println!("create_info_message: {}", message);
-
-    // Create the message box layout
     let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-
-    // Add a message label
     let message_label = gtk::Label::new(Some(message));
     message_label.set_hexpand(true);
 
-    // Style based on message type (e.g., error, info)
     match message_type {
-        gtk::MessageType::Error => message_label.add_css_class("error-message"),
-        gtk::MessageType::Info => message_label.add_css_class("info-message"),
-        _ => {}
+        gtk::MessageType::Error => message_box.add_css_class("error-message"),
+        gtk::MessageType::Warning => message_box.add_css_class("warning-message"),
+        _ => message_box.add_css_class("info-message"),
     }
 
-    // Add a close button
     let close_button = gtk::Button::with_label("Close");
     close_button.connect_clicked({
         let revealer = revealer.clone();
@@ -4753,11 +4752,20 @@ fn create_info_message(
         }
     });
 
-    // Assemble the message box
     message_box.append(&message_label);
     message_box.append(&close_button);
 
-    // Add the box to the revealer
     revealer.set_child(Some(&message_box));
-    revealer.set_reveal_child(true); // Show the revealer
+    revealer.set_reveal_child(true);
+}
+
+fn setup_css() {
+    let provider = gtk::CssProvider::new();
+    provider.load_from_path("res/style.css");
+
+    gtk::style_context_add_provider_for_display(
+        &gtk::gdk::Display::default().expect("Error initializing display"),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
 }
