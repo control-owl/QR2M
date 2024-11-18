@@ -151,6 +151,10 @@ UI:
         en: "Cancel"
         de: "Abbrechen"
         hr: "Otkazati"
+      default:
+        en: "Default config"
+        de: "Standardkonfiguration"
+        hr: "Standardne postavke"
       close:
         en: "Close"
         de: "Schließen"
@@ -462,6 +466,10 @@ error:
       en: "Entropy is empty"
       de: "Entropie ist leer"
       hr: "Entropija je prazna"
+    seed:
+      en: "Master keys can be generated after the seed is created"
+      de: "Hauptschlüssel können nach der Erstellung des Seeds generiert werden."
+      hr: "Glavni ključevi mogu se generirati nakon što je kreiran seed."
   wordlist:
     read:
       en: "Error reading from wordlist file: '%{value}'"

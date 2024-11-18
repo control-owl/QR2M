@@ -11,12 +11,12 @@ use std::{
     env,
     path::{Path, PathBuf},
     fs,
-    io::{self, Write, BufRead},
+    io::{self},
 };
 use crate::APP_NAME;
 
 const APP_LOCAL_CONFIG_FILE: &str = "qr2m.conf";
-pub const APP_LOCAL_DO_NOT_SHOW_FILE: &str = "qr2m.show";
+// pub const APP_LOCAL_DO_NOT_SHOW_FILE: &str = "qr2m.show";
 const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
 pub const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
 
@@ -31,7 +31,7 @@ pub struct LocalSettings {
     pub local_config_file: Option<PathBuf>,
     pub local_temp_dir: Option<PathBuf>,
     pub local_temp_file: Option<PathBuf>,
-    pub local_do_not_show_file: Option<PathBuf>,
+    // pub local_do_not_show_file: Option<PathBuf>,
 }
 
 
@@ -97,19 +97,27 @@ pub fn detect_os_and_user_dir() {
     };
 
     let local_config_file = local_config_dir.join(APP_LOCAL_CONFIG_FILE);
-    let local_do_not_show_file = local_config_dir.join(APP_LOCAL_DO_NOT_SHOW_FILE);
 
     let (config_dir, config_file) = if local_config_dir.is_symlink() {
         match fs::read_link(&local_config_dir) {
             Ok(target) => {
-                if target.is_dir() || target.is_relative()  {
-                    (target, local_config_file)
+                if target.is_dir() {
+                    // Check if the symlink target is writable
+                    if fs::metadata(&target).map(|m| m.permissions().readonly()).unwrap_or(true) {
+                        println!("[!] Symlink target is not writable: {:?}", &target);
+                        (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
+                    } else {
+                        println!("[+] Using writable symlink target: {:?}", &target);
+                        (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
+                    }
                 } else {
-                    (local_temp_dir.clone(), PathBuf::from(local_temp_dir.join(APP_LOCAL_CONFIG_FILE)))
+                    println!("[!] Symlink does not point to a directory: {:?}", &target);
+                    (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
                 }
             },
-            Err(_) => {
-                (local_temp_dir.clone(), PathBuf::from(local_temp_dir.join(APP_LOCAL_CONFIG_FILE)))
+            Err(e) => {
+                println!("[!] Failed to read symlink target: {:?}, Error: {}", &local_config_dir, e);
+                (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
             }
         }
     } else {
@@ -123,14 +131,12 @@ pub fn detect_os_and_user_dir() {
         println!("\t Configuration file: {:?}", &config_file);
         println!("\t Temp directory: {:?}", &local_temp_dir);
         println!("\t Temp file: {:?}", &local_temp_file);
-        println!("\t Do not show file: {:?}", &local_do_not_show_file);
         
         data.os = Some(os.clone());
         data.local_config_dir = Some(config_dir.clone());
         data.local_temp_dir = Some(local_temp_dir.clone());
         data.local_config_file = Some(config_file.clone());
         data.local_temp_file = Some(local_temp_file.clone());
-        data.local_do_not_show_file = Some(local_do_not_show_file.clone());
     });
 }
 
@@ -153,10 +159,10 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
         data.local_config_file.clone().unwrap()
     });
 
-    let local_do_not_show_file = LOCAL_DATA.with(|data| {
-        let data = data.borrow();
-        data.local_do_not_show_file.clone().unwrap()
-    });
+    // let local_do_not_show_file = LOCAL_DATA.with(|data| {
+    //     let data = data.borrow();
+    //     data.local_do_not_show_file.clone().unwrap()
+    // });
 
     if !local_config_dir.exists() {
         eprintln!("Local config directory not found!");
@@ -181,19 +187,19 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
         };
     }
 
-    if !Path::new(&local_do_not_show_file).exists() {
-        eprintln!("Default config file '{:?}' does not exist", local_config_file);
-        match fs::File::create(local_do_not_show_file) {
-            Ok(_) => {
-                println!("Local do-not-show file created");
-                return Ok(())
-            }
-            Err(err) => {
-                eprintln!("Failed to create do-not-show file: {}", err);
-                return Err(err.into())
-            }
-        };
-    }
+    // if !Path::new(&local_do_not_show_file).exists() {
+    //     eprintln!("Default config file '{:?}' does not exist", local_config_file);
+    //     match fs::File::create(local_do_not_show_file) {
+    //         Ok(_) => {
+    //             println!("Local do-not-show file created");
+    //             return Ok(())
+    //         }
+    //         Err(err) => {
+    //             eprintln!("Failed to create do-not-show file: {}", err);
+    //             return Err(err.into())
+    //         }
+    //     };
+    // }
 
     Ok(())
 
@@ -218,44 +224,44 @@ fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-pub fn save_do_not_show_setting(title: &str) -> Result<(), io::Error> {
-    let local_do_not_show_file = LOCAL_DATA.with(|data| {
-        let data = data.borrow();
-        data.local_do_not_show_file.clone().unwrap_or_default()
-    });
+// pub fn save_do_not_show_setting(title: &str) -> Result<(), io::Error> {
+//     let local_do_not_show_file = LOCAL_DATA.with(|data| {
+//         let data = data.borrow();
+//         data.local_do_not_show_file.clone().unwrap_or_default()
+//     });
 
-    let path = Path::new(&local_do_not_show_file);
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
+//     let path = Path::new(&local_do_not_show_file);
+//     let mut file = std::fs::OpenOptions::new()
+//         .create(true)
+//         .append(true)
+//         .open(path)?;
 
-    writeln!(file, "{}", title)?;
+//     writeln!(file, "{}", title)?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-pub fn load_do_not_show_settings() -> Result<std::collections::HashSet<String>, io::Error> {
-    let local_do_not_show_file = LOCAL_DATA.with(|data| {
-        let data = data.borrow();
-        data.local_do_not_show_file.clone().unwrap_or_default()
-    });
+// pub fn load_do_not_show_settings() -> Result<std::collections::HashSet<String>, io::Error> {
+//     let local_do_not_show_file = LOCAL_DATA.with(|data| {
+//         let data = data.borrow();
+//         data.local_do_not_show_file.clone().unwrap_or_default()
+//     });
 
-    let path = Path::new(&local_do_not_show_file);
-    let mut titles = std::collections::HashSet::new();
+//     let path = Path::new(&local_do_not_show_file);
+//     let mut titles = std::collections::HashSet::new();
 
-    if path.exists() {
-        let file = std::fs::File::open(path)?;
-        let reader = std::io::BufReader::new(file);
+//     if path.exists() {
+//         let file = std::fs::File::open(path)?;
+//         let reader = std::io::BufReader::new(file);
 
-        for line in reader.lines() {
-            let title = line?;
-            titles.insert(title);
-        }
-    }
+//         for line in reader.lines() {
+//             let title = line?;
+//             titles.insert(title);
+//         }
+//     }
 
-    Ok(titles)
-}
+//     Ok(titles)
+// }
 
 // fn write_to_do_not_show_file(settings: &std::collections::HashMap<String, bool>) -> Result<(), std::io::Error> {
 //     use std::fs::File;

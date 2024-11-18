@@ -106,6 +106,8 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
     "Symbol", 
     "Index",
 ];
+const APP_CSS_THEME_FILE: &str = "res/style.css";
+
 
 lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::default()));
@@ -422,31 +424,42 @@ impl AppSettings {
                 }
             },
             "gui_theme" => {
-                if new_value.as_str().map(|v| v != self.gui_theme).unwrap_or(false) {
-                    self.gui_theme = new_value.as_str().unwrap().to_string();
-                    println!("Updating key {:?} = {:?}", key, new_value);
-                    if let Some(state) = state {
-                        let mut state = state.lock().unwrap();
-                        state.theme = self.gui_theme.clone();
-                        state.apply_theme();
-                    }
+                if let Some(new_theme) = new_value.as_str() {
+                    if Some(new_theme) != Some(&self.gui_theme) {
+                        self.gui_theme = new_theme.to_string();
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        
+                        if let Some(state) = state {
+                            let mut state = state.lock().unwrap();
+                            state.theme = Some(self.gui_theme.clone());
+                            state.apply_theme();
+                        }
 
-                    self.save_settings();
+                        self.save_settings();
+                    }
+                } else {
+                    eprintln!("Received invalid value for gui_theme: {:?}", new_value);
                 }
             },
             "gui_language" => {
-                if new_value.as_str().map(|v| v != self.gui_language).unwrap_or(false) {
-                    self.gui_language = new_value.as_str().unwrap().to_string();
-                    println!("Updating key {:?} = {:?}", key, new_value);
-                    println!("gui_language {:?}", self.gui_language);
-                    if let Some(state) = state {
-                        let mut state = state.lock().unwrap();
-                        state.language = self.gui_language.clone();
-                        state.apply_language();
+                if let Some(new_language) = new_value.as_str() {
+                    if Some(new_language) != Some(&self.gui_language) {
+                        self.gui_language = new_language.to_string();
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        
+                        if let Some(state) = state {
+                            let mut state = state.lock().unwrap();
+                            state.language = Some(self.gui_language.clone());
+                            state.apply_language();
+                        }
+
+                        self.save_settings();
                     }
-                    self.save_settings();
+                } else {
+                    eprintln!("Received invalid value for gui_language: {:?}", new_value);
                 }
             },
+
             "gui_search" => {
                 if new_value.as_str().map(|v| v != self.gui_search).unwrap_or(false) {
                     self.gui_search = new_value.as_str().unwrap().to_string();
@@ -745,48 +758,65 @@ struct CryptoAddresses {
 type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 
 pub struct AppState {
-    pub language: String,
-    pub theme: String,
-    pub active_message: String,
+    pub language: Option<String>,
+    pub theme: Option<String>,
+    pub active_message: Option<String>,
+    pub info_bar: Option<gtk::Revealer>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
-            language: "en".to_string(),
-            theme: "System".to_string(),
-            // active_message: t!("hello").to_string(),
-            active_message: "".to_string(),
+            language: Some("en".to_string()),
+            theme: Some("System".to_string()),
+            active_message: Some("".to_string()),
+            info_bar: None,
         }
     }
 
     pub fn apply_theme(&self) {
-        let preferred_theme = match self.theme.as_str() {
-            "System" => adw::ColorScheme::PreferLight,
-            "Light" => adw::ColorScheme::ForceLight,
-            "Dark" => adw::ColorScheme::PreferDark,
-            _ => {
-                eprintln!(
-                    "{}",
-                    &t!("error.settings.parse", element = "gui_theme", value = self.theme)
-                );
-                adw::ColorScheme::PreferLight
-            }
-        };
+        if let Some(theme) = &self.theme {
+            let preferred_theme = match theme.as_str() {
+                "System" => adw::ColorScheme::PreferLight,
+                "Light" => adw::ColorScheme::ForceLight,
+                "Dark" => adw::ColorScheme::PreferDark,
+                _ => {
+                    eprintln!(
+                        "{}",
+                        &t!(
+                            "error.settings.parse", 
+                            element = "gui_theme", 
+                            value = theme
+                        )
+                    );
+                    adw::ColorScheme::PreferLight
+                }
+            };
 
-        adw::StyleManager::default().set_color_scheme(preferred_theme);
+            adw::StyleManager::default().set_color_scheme(preferred_theme);
+        } else {
+            eprintln!("Theme is not set. Using default color scheme.");
+            adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
+        }
     }
 
     pub fn apply_language(&mut self) {
-        let language_code = match self.language.as_str() {
-            "Deutsch" => "de",
-            "Hrvatski" => "hr",
-            "English" | _ => "en",
-        };
+        if let Some(language) = &self.language {
+            let language_code = match language.as_str() {
+                "Deutsch" => "de",
+                "Hrvatski" => "hr",
+                "English" => "en",
+                _ => "en",
+            };
 
-        rust_i18n::set_locale(language_code);
-        
-        self.active_message = t!("UI.messages.change-language.msg").to_string();
+            rust_i18n::set_locale(language_code);
+
+            self.active_message = Some(t!("UI.messages.change-language.msg").to_string());
+        } else {
+            eprintln!("Language is not set. Falling back to English.");
+            rust_i18n::set_locale("en");
+            self.active_message = Some("Default language set to English.".to_string());
+        }
     }
 
     pub fn update_infobar_message(
@@ -795,7 +825,7 @@ impl AppState {
         infobar: gtk::Revealer, 
         message_type: gtk::MessageType 
     ) {
-        self.active_message = message.clone();
+        self.active_message = Some(message.clone());
         create_info_message(&infobar, &message, message_type);
     }
 }
@@ -1222,7 +1252,7 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
         state.theme.clone()
     } else {
         let settings = AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
-        settings.gui_theme
+        Some(settings.gui_theme)
     };
 
     let settings = AppSettings::load_settings()
@@ -1247,11 +1277,13 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
     let general_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.general").to_string()));
     let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    general_settings_box.set_margin_bottom(10);
     general_settings_box.set_margin_top(10);
+    general_settings_box.set_margin_bottom(0);
     general_settings_box.set_margin_start(10);
     general_settings_box.set_margin_end(10);
     content_general_box.set_margin_start(20);
+    content_general_box.set_margin_bottom(20);
+
     general_settings_frame.set_hexpand(true);
     general_settings_frame.set_vexpand(true);
     general_settings_box.append(&general_settings_frame);
@@ -1396,11 +1428,13 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
     let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet").to_string()));
     let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    wallet_settings_box.set_margin_bottom(10);
     wallet_settings_box.set_margin_top(10);
+    wallet_settings_box.set_margin_bottom(0);
     wallet_settings_box.set_margin_start(10);
     wallet_settings_box.set_margin_end(10);
     content_wallet_box.set_margin_start(20);
+    content_wallet_box.set_margin_bottom(20);
+
     wallet_settings_frame.set_hexpand(true);
     wallet_settings_frame.set_vexpand(true);
     wallet_settings_box.append(&wallet_settings_frame);
@@ -1555,12 +1589,12 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
     let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu").to_string()));
     let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    anu_settings_box.set_margin_bottom(0);
     anu_settings_box.set_margin_top(10);
+    anu_settings_box.set_margin_bottom(0);
     anu_settings_box.set_margin_start(10);
     anu_settings_box.set_margin_end(10);
     content_anu_box.set_margin_start(20);
-    content_anu_box.set_margin_top(10);
+    content_anu_box.set_margin_bottom(20);
     anu_settings_box.append(&anu_settings_frame);
     anu_settings_frame.set_child(Some(&content_anu_box));
     anu_settings_frame.set_hexpand(true);
@@ -1769,12 +1803,13 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
     let proxy_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.proxy").to_string()));
     let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    proxy_settings_box.set_margin_bottom(0);
     proxy_settings_box.set_margin_top(10);
+    proxy_settings_box.set_margin_bottom(0);
     proxy_settings_box.set_margin_start(10);
     proxy_settings_box.set_margin_end(10);
     content_proxy_box.set_margin_start(20);
     content_proxy_box.set_margin_bottom(20);
+
     proxy_settings_box.append(&proxy_settings_frame);
     proxy_settings_frame.set_child(Some(&content_proxy_box));
     proxy_settings_frame.set_hexpand(true);
@@ -2093,9 +2128,13 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
     main_content_box.append(&stack);
     
     // Buttons
-    let buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let main_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let left_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let right_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+
     let save_button = gtk::Button::with_label(&t!("UI.element.button.save").to_string());
     let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel").to_string());
+    let default_button = gtk::Button::with_label(&t!("UI.element.button.default").to_string());
     // IMPLEMENT: apply button
 
 
@@ -2139,13 +2178,19 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
             }
     
             AppSettings::save_settings(&*settings);
-            
+                       
             if let Some(state) = &state {
                 let mut state = state.lock().unwrap();
+                let info_bar = state.info_bar.clone();
 
                 let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
-                state.theme = selected_theme;
+                state.theme = Some(selected_theme);
 
+                state.update_infobar_message(
+                    "Settings saved".to_string(),
+                    info_bar.unwrap(),
+                    gtk::MessageType::Info,
+                );
                 state.apply_theme();
             }
 
@@ -2161,15 +2206,24 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
         }
     ));
 
-    buttons_box.append(&save_button);
-    buttons_box.append(&cancel_button);
-    buttons_box.set_margin_bottom(10);
-    buttons_box.set_margin_top(10);
-    buttons_box.set_margin_start(10);
-    buttons_box.set_margin_end(10);
-    buttons_box.set_direction(gtk::TextDirection::Rtl);
+    main_buttons_box.append(&left_buttons_box);
+    main_buttons_box.append(&right_buttons_box);
+    left_buttons_box.append(&default_button);
+    
+    right_buttons_box.append(&save_button);
+    right_buttons_box.append(&cancel_button);
+    main_buttons_box.set_margin_bottom(10);
+    main_buttons_box.set_margin_top(10);
+    main_buttons_box.set_margin_start(10);
+    main_buttons_box.set_margin_end(10);
+
+    main_buttons_box.set_hexpand(true);
+    left_buttons_box.set_hexpand(true);
+    right_buttons_box.set_hexpand(true);
+    
+    right_buttons_box.set_direction(gtk::TextDirection::Rtl);
     main_settings_box.append(&main_content_box);
-    main_settings_box.append(&buttons_box);
+    main_settings_box.append(&main_buttons_box);
     settings_window.set_child(Some(&main_settings_box));
 
     settings_window
@@ -2263,17 +2317,21 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     label.set_text(&path);
 }
 
-pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<std::sync::Mutex<AppState>>) {
+// pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<std::sync::Mutex<AppState>>) {
+pub fn create_main_window(application: &adw::Application) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
+
+    AppSettings::load_settings()
+        .expect(&t!("error.settings.read").to_string());
 
     let app_settings = APPLICATION_SETTINGS.lock().unwrap();
     let gui_language = app_settings.gui_language.clone();
     let gui_theme = app_settings.gui_theme.clone();
     let window_width = app_settings.gui_last_width;
     let window_height = app_settings.gui_last_height;
+    let wallet_bip = app_settings.wallet_bip;
 
     os::switch_locale(&gui_language);
-      
     
     let preferred_theme = match String::from(&gui_theme).as_str() {
         "System" => adw::ColorScheme::PreferLight,
@@ -2286,7 +2344,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     };
     
     application.style_manager().set_color_scheme(preferred_theme);
-    
 
     let window = gtk::ApplicationWindow::builder()
         .application(application)
@@ -2303,6 +2360,7 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     let info_bar = gtk::Revealer::new();
     info_bar.set_transition_type(gtk::RevealerTransitionType::SlideDown);
     info_bar.set_hexpand(true);
+    info_bar.add_css_class("info-bar");
     window.set_titlebar(Some(&header_bar));
     
     let new_wallet_button = gtk::Button::new();
@@ -2329,37 +2387,31 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     header_bar.pack_start(&save_wallet_button);
     header_bar.pack_end(&settings_button);
     header_bar.pack_end(&about_button);
-
     
-    
-    // Button to open the settings window
-    let state_clone = std::sync::Arc::clone(&state);
+    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState {
+        active_message: Some("Welcome!".to_string()),
+        language: Some(app_settings.gui_language.clone()),
+        theme: Some(app_settings.gui_theme.clone()),
+        info_bar: None,
+    }));
 
+    let info_bar_clone = info_bar.clone();
+    state.lock().unwrap().info_bar = Some(info_bar.clone());
 
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
-        #[weak] info_bar,
-        // #[weak] settings_button,
-        // #[weak] about_button,
-        // #[weak] open_wallet_button,
-        // #[weak] save_wallet_button,
+        #[strong] state,
         move |_| {
             let main_context = glib::MainContext::default();
             let main_loop = glib::MainLoop::new(Some(&main_context), false);
-            let settings_window = create_settings_window(Some(std::sync::Arc::clone(&state_clone)));
+            let settings_window = create_settings_window(Some(std::sync::Arc::clone(&state)));
 
             settings_window.connect_close_request(clone!(
                 #[strong] main_loop,
-                #[strong] state_clone,
-                #[strong] info_bar,
+                #[strong] state,
                 move |_| {
-                    if let Ok(mut state) = state_clone.lock() {
+                    if let Ok(state) = state.lock() {
                         state.apply_theme();
-                        state.update_infobar_message(
-                            "new theme applied".to_string(),
-                            info_bar.clone(),
-                            gtk::MessageType::Info,
-                        );
                     } else {
                         eprintln!("Failed to lock AppState for applying theme.");
                     }
@@ -2370,13 +2422,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
 
             settings_window.show();
             main_loop.run();
-
-            // let theme_images = get_window_theme_icons();
-            // new_wallet_button.set_child(Some(&theme_images[0]));
-            // open_wallet_button.set_child(Some(&theme_images[1]));
-            // save_wallet_button.set_child(Some(&theme_images[2]));
-            // about_button.set_child(Some(&theme_images[3]));
-            // settings_button.set_child(Some(&theme_images[4]));
         }
     ));
     
@@ -2387,7 +2432,7 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     new_wallet_button.connect_clicked(clone!(
         #[weak] application,
         move |_| {
-            create_main_window(&application, state.clone());
+            create_main_window(&application);
         }
     ));
 
@@ -2395,8 +2440,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
         save_wallet_to_file();
     });
     
-    
-
 
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
@@ -2619,6 +2662,7 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 2: Coin
     // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Main: Sidebar 2: Coin
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     // coin_frame.set_child(Some(&coin_main_content_box));
@@ -2766,6 +2810,41 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
         column.add_attribute(&cell, "text", i as i32);
         coin_treeview.borrow().append_column(&column);
     }
+
+
+
+    let full_store = coin_store.borrow();
+    let verified_coins = coin_db::fetch_coins_from_database("Cmc_top", &full_store, "100");
+    let filtered_store = coin_tree_store.borrow_mut();
+
+    for found_coin in verified_coins {
+        // Check if the coin's status is verified
+        if found_coin.status == "Verified" {
+            let iter = filtered_store.append(None);
+            filtered_store.set(&iter, &[
+                (0, &found_coin.status),
+                (1, &found_coin.coin_index.to_string()),
+                (2, &found_coin.coin_symbol),
+                (3, &found_coin.coin_name),
+                (4, &found_coin.key_derivation),
+                (5, &found_coin.hash),
+                (6, &found_coin.private_header),
+                (7, &found_coin.public_header),
+                (8, &found_coin.public_key_hash),
+                (9, &found_coin.script_hash),
+                (10, &found_coin.wallet_import_format),
+                (11, &found_coin.evm),
+                (12, &found_coin.UCID),
+                (13, &found_coin.cmc_top),
+            ]);
+        }
+    }
+
+    coin_treeview.borrow().set_model(Some(&*filtered_store));
+
+
+
+            
     scrolled_window.set_child(Some(&*coin_treeview.borrow()));
     coin_frame.set_child(Some(&scrolled_window));
     coin_main_content_box.append(&coin_frame);
@@ -2810,8 +2889,9 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
 
 
     // -.-. --- .--. -.-- .-. .. --. .... -
-    // Sidebar 3 
+    // Sidebar 3: Address
     // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Main: Sidebar 3: Address
     let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     main_address_box.set_hexpand(true);
     main_address_box.set_vexpand(true);
@@ -2844,8 +2924,6 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
     
-    let wallet_bip = app_settings.wallet_bip;
-
     let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == wallet_bip).unwrap_or_else(|| {
         eprintln!("{}", &t!("error.bip.value", value = wallet_bip));
         1 // BIP44
@@ -3150,12 +3228,18 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        #[weak] address_store,
         // #[weak] save_wallet_button,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
             mnemonic_words_text.buffer().set_text("");
             seed_text.buffer().set_text("");
+            master_private_key_text.buffer().set_text("");
+            master_public_key_text.buffer().set_text("");
+            address_store.clear();
     
             // save_wallet_button.set_sensitive(false);
     }));
@@ -3268,9 +3352,12 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
                     }  
                 }
             } else {
-                master_private_key_text.buffer().set_text("Please generate seed");
-                // master_public_key_text.buffer().set_text("");
-                create_message_window("Empty seed", "Please generate seed first, then master keys", None, None);
+                create_info_message(
+                    &info_bar,
+                    &t!("error.entropy.seed").to_string(),
+                    gtk::MessageType::Warning,
+                );
+
             }
         }
     ));
@@ -3977,135 +4064,136 @@ pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<
 
     main_sidebar_box.append(&stack_sidebar);
     main_sidebar_box.append(&stack);
-    main_infobar_box.append(&info_bar);
+    main_infobar_box.append(&info_bar_clone);
     main_window_box.set_hexpand(true);
     main_infobar_box.set_hexpand(true);
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
 
     // Infobar
-    create_info_message(&info_bar, "This is an info message.", gtk::MessageType::Info);
-
-    
-    
+    create_info_message(
+        &info_bar_clone,
+        &t!("hello").to_string(),
+        gtk::MessageType::Info,
+    );
 
     window.set_child(Some(&main_window_box));
     window.present();
 }
 
-fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
-    println!("[+] {}", &t!("log.create_message_window").to_string());
+// fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
+//     println!("[+] {}", &t!("log.create_message_window").to_string());
     
-    if let Ok(settings) = os::load_do_not_show_settings() {
-        // Check if the title exists in the set of do-not-show titles
-        if settings.contains(title) {
-            println!("Skipping message window for title: {}", title);
-            return;
-        }
-    }
+//     if let Ok(settings) = os::load_do_not_show_settings() {
+//         // Check if the title exists in the set of do-not-show titles
+//         if settings.contains(title) {
+//             println!("Skipping message window for title: {}", title);
+//             return;
+//         }
+//     }
         
-    let message_window = gtk::MessageDialog::builder()
-        .title(title)
-        .resizable(false)
-        .modal(true)
-        .build();
+//     let message_window = gtk::MessageDialog::builder()
+//         .title(title)
+//         .resizable(false)
+//         .modal(true)
+//         .build();
 
-    let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    dialog_main_box.set_margin_bottom(20);
-    dialog_main_box.set_margin_top(20);
-    dialog_main_box.set_margin_start(50);
-    dialog_main_box.set_margin_end(50);
+//     let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//     dialog_main_box.set_margin_bottom(20);
+//     dialog_main_box.set_margin_top(20);
+//     dialog_main_box.set_margin_start(50);
+//     dialog_main_box.set_margin_end(50);
     
 
-    // Message label
-    let message_label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let message_label = gtk::Label::new(Some(&msg));
-    message_label_box.set_margin_bottom(10);
-    message_label.set_justify(gtk::Justification::Center);
+//     // Message label
+//     let message_label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//     let message_label = gtk::Label::new(Some(&msg));
+//     message_label_box.set_margin_bottom(10);
+//     message_label.set_justify(gtk::Justification::Center);
     
-    message_label_box.append(&message_label);
-    dialog_main_box.append(&message_label_box);
+//     message_label_box.append(&message_label);
+//     dialog_main_box.append(&message_label_box);
     
 
-    // Progress box
-    if progress_active.unwrap_or(false) {
-        let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        progress_main_box.set_margin_top(10);
-        progress_main_box.set_margin_bottom(10);
+//     // Progress box
+//     if progress_active.unwrap_or(false) {
+//         let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//         progress_main_box.set_margin_top(10);
+//         progress_main_box.set_margin_bottom(10);
 
-        let level_bar = gtk::LevelBar::new();
-        level_bar.set_max_value(100.0);
+//         let level_bar = gtk::LevelBar::new();
+//         level_bar.set_max_value(100.0);
 
-        progress_main_box.append(&level_bar);
-        dialog_main_box.append(&progress_main_box);
+//         progress_main_box.append(&level_bar);
+//         dialog_main_box.append(&progress_main_box);
 
-        let app_settings = APPLICATION_SETTINGS.lock().unwrap();
-        let notification_timeout = app_settings.gui_notification_timeout;
-        let wait_time = wait_time.unwrap_or(notification_timeout);
-        let level_bar_clone = level_bar.clone();
-        let message_window_clone = message_window.clone();
+//         let app_settings = APPLICATION_SETTINGS.lock().unwrap();
+//         let notification_timeout = app_settings.gui_notification_timeout;
+//         let wait_time = wait_time.unwrap_or(notification_timeout);
+//         let level_bar_clone = level_bar.clone();
+//         let message_window_clone = message_window.clone();
 
-        let mut progress = 0.0;
-        progress += 100.0 / wait_time as f64;
-        level_bar_clone.set_value(progress);
+//         let mut progress = 0.0;
+//         progress += 100.0 / wait_time as f64;
+//         level_bar_clone.set_value(progress);
         
-        glib::timeout_add_seconds_local(1, move || {
-            progress += 100.0 / wait_time as f64;
-            level_bar_clone.set_value(progress);
-            if progress >= 100.0 {
-                message_window_clone.close();
-                glib::ControlFlow::Break
-            } else {
-                glib::ControlFlow::Continue
-            }
-        });
-    }
+//         glib::timeout_add_seconds_local(1, move || {
+//             progress += 100.0 / wait_time as f64;
+//             level_bar_clone.set_value(progress);
+//             if progress >= 100.0 {
+//                 message_window_clone.close();
+//                 glib::ControlFlow::Break
+//             } else {
+//                 glib::ControlFlow::Continue
+//             }
+//         });
+//     }
 
-    // Do not show
-    let do_not_show_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let do_not_show_label = gtk::Label::new(Some(&t!("UI.messages.dialog.do-not-show").to_string()));
-    let do_not_show_checkbox = gtk::CheckButton::new();
+//     // Do not show
+//     let do_not_show_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//     let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+//     let do_not_show_label = gtk::Label::new(Some(&t!("UI.messages.dialog.do-not-show").to_string()));
+//     let do_not_show_checkbox = gtk::CheckButton::new();
     
-    do_not_show_main_box.set_margin_top(10);
-    do_not_show_content_box.set_halign(gtk::Align::Center);
+//     do_not_show_main_box.set_margin_top(10);
+//     do_not_show_content_box.set_halign(gtk::Align::Center);
 
-    do_not_show_content_box.append(&do_not_show_label);
-    do_not_show_content_box.append(&do_not_show_checkbox);
-    do_not_show_main_box.append(&do_not_show_content_box);
+//     do_not_show_content_box.append(&do_not_show_label);
+//     do_not_show_content_box.append(&do_not_show_checkbox);
+//     do_not_show_main_box.append(&do_not_show_content_box);
 
-    // Close button
-    let close_dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let close_dialog_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let close_dialog_button = gtk::Button::with_label(&t!("UI.messages.dialog.close").to_string());
+//     // Close button
+//     let close_dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+//     let close_dialog_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+//     let close_dialog_button = gtk::Button::with_label(&t!("UI.messages.dialog.close").to_string());
     
-    close_dialog_main_box.set_margin_top(10);
-    close_dialog_content_box.set_halign(gtk::Align::Center);
+//     close_dialog_main_box.set_margin_top(10);
+//     close_dialog_content_box.set_halign(gtk::Align::Center);
 
-    close_dialog_content_box.append(&close_dialog_button);
-    close_dialog_main_box.append(&close_dialog_content_box);
+//     close_dialog_content_box.append(&close_dialog_button);
+//     close_dialog_main_box.append(&close_dialog_content_box);
 
-    // Connections
-    dialog_main_box.append(&do_not_show_main_box);
-    dialog_main_box.append(&close_dialog_main_box);
-    message_window.set_child(Some(&dialog_main_box));
+//     // Connections
+//     dialog_main_box.append(&do_not_show_main_box);
+//     dialog_main_box.append(&close_dialog_main_box);
+//     message_window.set_child(Some(&dialog_main_box));
 
-    let title_owned = title.to_string();
-    println!("title_owned: {:?}", title_owned);
-    close_dialog_button.connect_clicked(clone!(
-        #[weak] message_window,
-        move |_| {
-            if do_not_show_checkbox.is_active() {
-                if let Err(err) = os::save_do_not_show_setting(&title_owned) {
-                    eprintln!("Failed to save do not show setting: {:?}", err);
-                }
-            }
-            message_window.close();
-        }
-    ));
+//     let title_owned = title.to_string();
+//     println!("title_owned: {:?}", title_owned);
+//     close_dialog_button.connect_clicked(clone!(
+//         #[weak] message_window,
+//         move |_| {
+//             if do_not_show_checkbox.is_active() {
+//                 if let Err(err) = os::save_do_not_show_setting(&title_owned) {
+//                     eprintln!("Failed to save do not show setting: {:?}", err);
+//                 }
+//             }
+//             message_window.close();
+//         }
+//     ));
 
-    message_window.show();
-}
+//     message_window.show();
+// }
 
 fn save_wallet_to_file() {
     // TODO: Check if wallet is created before proceeding
@@ -4312,7 +4400,6 @@ fn main() {
 
     os::detect_os_and_user_dir();
 
-
     if let Err(err) = os::create_local_files() {
         eprintln!("Error creating local config files: {}", err);
     }
@@ -4321,20 +4408,10 @@ fn main() {
         .application_id("com.github.qr2m")
         .build();
 
-
     let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
 
     application.connect_activate(|app| {
-        let settings = AppSettings::load_settings()
-            .expect(&t!("error.file.read").to_string());
-
-        let state = std::sync::Arc::new(std::sync::Mutex::new(AppState {
-            active_message: "Welcome!".to_string(),
-            language: settings.gui_language,
-            theme: settings.gui_theme,
-        }));
-
-        create_main_window(&app, state);
+        create_main_window(&app);
     });
 
     let quit = gio::SimpleAction::new("quit", None);
@@ -4354,10 +4431,8 @@ fn main() {
     
     new.connect_activate(clone!(
         #[weak] application,
-        #[weak] state,
         move |_action, _parameter| {
-            let new_state = state.clone();
-            create_main_window(&application, new_state);
+            create_main_window(&application);
         }
     ));
 
@@ -4411,7 +4486,6 @@ fn main() {
 
     application.set_accels_for_action("app.about", &["F1"]);
     application.add_action(&about);
-
 
     application.run();
 }
@@ -4728,8 +4802,7 @@ enum CryptoPublicKey {
 // TESTING -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-
-fn create_info_message(
+pub fn create_info_message(
     revealer: &gtk::Revealer,
     message: &str,
     message_type: gtk::MessageType,
@@ -4739,29 +4812,47 @@ fn create_info_message(
     message_label.set_hexpand(true);
 
     match message_type {
-        gtk::MessageType::Error => message_box.add_css_class("error-message"),
-        gtk::MessageType::Warning => message_box.add_css_class("warning-message"),
-        _ => message_box.add_css_class("info-message"),
+        gtk::MessageType::Error => message_box.set_css_classes(&vec!["info-bar", "error-message"]),
+        gtk::MessageType::Warning => message_box.set_css_classes(&vec!["info-bar", "warning-message"]),
+        _ => message_box.set_css_classes(&vec!["info-bar", "info-message"]),
     }
 
     let close_button = gtk::Button::with_label("Close");
-    close_button.connect_clicked({
-        let revealer = revealer.clone();
-        move |_| {
+    let gesture = gtk::GestureClick::new();
+    
+    gesture.connect_pressed(clone!(
+        #[weak] revealer,
+        move |_gesture, _n_press, _x, _y| {
             revealer.set_reveal_child(false);
         }
-    });
+    ));
 
     message_box.append(&message_label);
+    revealer.add_controller(gesture);
     message_box.append(&close_button);
-
     revealer.set_child(Some(&message_box));
     revealer.set_reveal_child(true);
+
+    // BUG: Previous timeout is killing next message if closed before timeout came
+    // let timeout = match message_type {
+    //     gtk::MessageType::Info => Some(5),       // Info: 5 seconds
+    //     gtk::MessageType::Warning => Some(10),   // Warning: 10 seconds
+    //     _ => None,                               // Error: No timeout
+    // };
+    // if let Some(duration) = timeout {
+    //     let revealer_clone = revealer.clone();
+    //     glib::timeout_add_local_once(
+    //         std::time::Duration::from_secs(duration as u64),
+    //         move || {
+    //             revealer_clone.set_reveal_child(false);
+    //         },
+    //     );
+    // }
 }
 
 fn setup_css() {
     let provider = gtk::CssProvider::new();
-    provider.load_from_path("res/style.css");
+    provider.load_from_path(APP_CSS_THEME_FILE);
 
     gtk::style_context_add_provider_for_display(
         &gtk::gdk::Display::default().expect("Error initializing display"),

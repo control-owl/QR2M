@@ -1,36 +1,36 @@
-/* Base styles for InfoBar container */
 .info-bar {
-    border-radius: 5px;
-    padding: 15px;
+    border-radius: 10px;
+    margin: 0px 5px 5px 5px;
     font-family: Arial, sans-serif;
     font-size: 14px;
+    box-sizing: border-box;
 }
 
-/* Optional: A simple hover effect to show interactivity */
+.info-bar .info-message,
+.info-bar .warning-message,
+.info-bar .error-message {
+    padding: 5px 10px 5px 5px;
+}
+
 .info-bar:hover {
     opacity: 0.9;
 }
 
-
-
-/* Info message style - light blue background */
 .info-message {
-    background-color: #b3d9ff; /* Light Blue */
-    color: #000000; /* Black text for good contrast */
-    border: 1px solid #80bfff; /* Slightly darker blue border */
+    background-color: #b3d9ff;
+    color: #000000;
+    border: 1px solid #80bfff;
 }
 
-/* Warning message style - light yellow background */
 .warning-message {
-    background-color: #ffffcc; /* Light Yellow */
-    color: #333333; /* Dark grey text for visibility */
-    border: 1px solid #ffcc00; /* Slightly darker yellow border */
+    background-color: #ffffcc;
+    color: #333333;
+    border: 1px solid #ffcc00;
 }
 
-/* Error message style - light red background */
 .error-message {
-    background-color: #ffcccc; /* Light Red */
-    color: #800000; /* Dark Red text for contrast */
-    border: 1px solid #ff6666; /* Slightly darker red border */
+    background-color: #ffcccc;
+    color: #800000;
+    border: 1px solid #ff6666;
 }
 

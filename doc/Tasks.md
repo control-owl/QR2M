@@ -42,7 +42,7 @@
     - [x] about
 - [x] theme (auto)
 - [ ] Shortcuts Window
-- [ ] buy me a coffee
+- [x] buy me a coffee
 - [x] create filters for cointree
 - [ ] copy-button in all major fields
 - [ ] remove unnecessary BIPs unless coin is BTC

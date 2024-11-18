@@ -22,7 +22,7 @@
   "extensions.autoUpdate": false,
   "workbench.colorCustomizations": {},
   "terminal.integrated.tabs.enabled": false,
-  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.colorTheme": "Default Dark+",
   "todo-tree.highlights.defaultHighlight": {
     "type": "text"
   },
@@ -213,6 +213,7 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "cSpell.words": [
+    "iancoleman",
     "oneshot",
     "serde"
   ]

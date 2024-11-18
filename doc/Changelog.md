@@ -1,3 +1,10 @@
+# version 0.60.0
+- remove message_window
+- added new gtk4 revealer
+- some messages migrated to revealer
+- revealer css styles
+- some optimization with cloning and states
+
 # version 0.50.2
 - improved theme switching
 

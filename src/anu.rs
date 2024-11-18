@@ -109,12 +109,14 @@ fn fetch_anu_qrng_data(
             
             eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
             sender.send(Some(String::new())).unwrap();
-            crate::create_message_window(
-                "ANU API Timeout", 
-                &t!("error.anu.timeout", value = remaining_seconds), 
-                Some(true), 
-                Some(remaining_seconds as u32)
-            );
+            
+
+            // let info_bar = crate::
+            // crate::create_info_message(
+            //     &crate::gtk::Revealer::new(),
+            //     &t!("error.anu.timeout", value = remaining_seconds).to_string(),
+            //     crate::gtk::MessageType::Warning,
+            // );
             return;
         }
 
