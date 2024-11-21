@@ -17,6 +17,10 @@ fn main() {
                 std::process::exit(1);
             }
         }
+
+        if env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "windows" {
+            bill_mainfest_gates();
+        }
     }
 }
 
@@ -38,4 +42,35 @@ fn copy_dir_recursively(source: &Path, destination: &Path) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+fn bill_mainfest_gates() {
+    let build_directory = env::var("OUT_DIR").unwrap();
+    let bill_path = Path::new("app.manifest");
+    let rc_path = PathBuf::from(&build_directory).join("app.rc");
+    let res_path = PathBuf::from(&build_directory).join("app.res");
+
+    if !bill_path.exists() {
+        eprintln!("Manifest file not found: {}", bill_path.display());
+        std::process::exit(1);
+    }
+
+    let rc_content = format!(r#"1 24 "{}""#, bill_path.display());
+    fs::write(&rc_path, rc_content).expect("Failed to write .rc file");
+
+    let status = std::process::Command::new("x86_64-w64-mingw32-windres")
+        .args(&["-o", &res_path.to_string_lossy(), &rc_path.to_string_lossy()])
+        .status()
+        .expect("Failed to execute windres");
+
+    if !status.success() {
+        eprintln!("Failed to compile .rc file into .res file");
+        std::process::exit(1);
+    }
+
+    println!("cargo:rustc-link-arg-bins={}", res_path.display());
+
+    // fribi pgp missing keys
+    // again windows compile failed
+    // fcking gates
 }
