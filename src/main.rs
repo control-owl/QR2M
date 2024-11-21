@@ -4405,7 +4405,7 @@ fn main() {
     }
 
     let application = adw::Application::builder()
-        .application_id("com.github.qr2m")
+        .application_id("com.github.control-owl.qr2m")
         .build();
 
     let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
