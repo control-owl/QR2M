@@ -1,0 +1,35 @@
+1 ICON "favicon.ico"
+1 24 "app.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
+FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+FILEFLAGS 0x1L
+#else
+FILEFLAGS 0x0L
+#endif
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"  // Language and codepage (en-US, Unicode)
+        BEGIN
+            VALUE "CompanyName", "D3BUG\0"
+            VALUE "FileDescription", "Quantum Random Rust Mnemonic\0"
+            VALUE "FileVersion", "0.60.0\0"
+            VALUE "InternalName", "qr2m.exe\0"
+            VALUE "LegalCopyright", "Copyright © 2024 Control-Owl\0"
+            VALUE "OriginalFilename", "qr2m.exe\0"
+            VALUE "ProductName", "QR2M\0"
+            VALUE "ProductVersion", "0.60.0\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200  // English (US), Unicode
+    END
+END

@@ -4,7 +4,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
+#![windows_subsystem = "windows"]
 #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -2232,7 +2232,7 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("lib/logo.png"))
+    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("res/logo.png"))
         .expect("Can not load logo image");
 
     let app_license = fs::read_to_string("LICENSE.txt").unwrap();
