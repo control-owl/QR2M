@@ -41,31 +41,12 @@ pub struct LocalSettings {
 pub fn detect_os_and_user_dir() {
     println!("[+] {}", &t!("log.detecting-local-os").to_string());
 
-    let os = if cfg!(target_os = "windows") {
-        "windows".to_string()
-    } else if cfg!(target_os = "macos") {
-        "macos".to_string()
-    } else if cfg!(target_os = "linux") {
-        "linux".to_string()
-    } else if cfg!(target_os = "android") {
-        "android".to_string()
-    } else if cfg!(target_os = "ios") {
-        "ios".to_string()
-    } else if cfg!(target_os = "freebsd") {
-        "freebsd".to_string()
-    } else if cfg!(target_os = "dragonfly") {
-        "dragonfly".to_string()
-    } else if cfg!(target_os = "openbsd") {
-        "openbsd".to_string()
-    } else if cfg!(target_os = "netbsd") {
-        "netbsd".to_string()
-    } else if cfg!(target_os = "solaris") {
-        "solaris".to_string()
-    } else if cfg!(target_os = "redox") {
-        "redox".to_string()
-    } else {
-        "unknown".to_string()
-    };
+    let os = match std::env::consts::OS {
+        "windows" => "windows",
+        "macos" => "macos",
+        "linux" => "linux",
+        _ => "unknown",
+    }.to_string();
 
     let app_name = APP_NAME.unwrap();
 
@@ -87,7 +68,7 @@ pub fn detect_os_and_user_dir() {
             path.push(app_name);
             path
         },
-        "android" | "ios" | "macos" | "freebsd" | "dragonfly" | "openbsd" | "netbsd" | "solaris" | "redox" => {
+        "macos" => {
             // /home/<Username>/<AppName>/
             let mut path = PathBuf::from(env::var("HOME").unwrap_or_else(|_| "/".to_string()));
             path.push(app_name);

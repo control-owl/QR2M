@@ -11,7 +11,7 @@ use std::fs::File;
 use csv::ReaderBuilder;
 use gtk4 as gtk;
 
-const COINLIST_FILE: &str = "lib/ECDB.csv";
+const COINLIST_FILE: &str = "res/ECDB.csv";
 
 // Coin status 2024-11-16
 pub const VALID_COIN_STATUS_NAME: &'static [&'static str] = &[

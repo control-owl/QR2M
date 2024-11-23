@@ -34,6 +34,8 @@ lazy_static = "1.5.0"   # Multithreading
 
 # Testing
 ed25519-dalek = "2.1.1" # Solana                    
+include_dir = "0.7.4"
+# gdk-pixbuf = "0.20.4"
 
 
 [package.metadata.included]

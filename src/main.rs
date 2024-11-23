@@ -33,6 +33,11 @@ use gtk::{gio, glib::clone, Stack, StackSidebar};
 use num_bigint::BigUint;
 use sha3::Keccak256;
 
+
+use include_dir::{include_dir, Dir, };
+static RES_DIR: Dir<'_> = include_dir!("res");
+
+
 // Mods
 mod anu;
 mod coin_db;
@@ -44,6 +49,8 @@ mod test_vectors;
 #[macro_use]
 extern crate rust_i18n;
 i18n!("locale", fallback = "en");
+
+
 
 // Default settings
 // RESEARCH: How to translate const strings
@@ -58,7 +65,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 10;
-const WORDLIST_FILE: &str = "lib/bip39-mnemonic-words-english.txt";
+const WORDLIST_FILE: &str = "res/bip39-mnemonic-words-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
@@ -2229,11 +2236,57 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
     settings_window
 }
 
+fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
+    let empty_image: Vec<u8> = [1, 64, 112]
+        .iter()
+        .cycle()
+        .take(300)
+        .copied()
+        .collect();
+
+    let default_image_extension = "png";
+    let image_file_name = format!("{}.{}", image_name, default_image_extension);
+
+    match RES_DIR.get_file(image_file_name.clone()) {
+        Some(file) => {
+            let image_data = file.contents();
+            let image_bytes = glib::Bytes::from_static(image_data);
+            let cursor = std::io::Cursor::new(image_bytes);
+
+            match gtk::gdk_pixbuf::Pixbuf::from_read(cursor) {
+                Ok(pixbuf) => pixbuf,
+                Err(_) => 
+                    gtk::gdk_pixbuf::Pixbuf::from_bytes(
+                        &gtk::glib::Bytes::from(&empty_image),
+                        gtk::gdk_pixbuf::Colorspace::Rgb,
+                        false,
+                        8,
+                        10,
+                        10,
+                        30,
+                ),
+            }
+        }
+        None => {
+            eprintln!("Failed to get {} from embedded resources", image_file_name);
+            gtk::gdk_pixbuf::Pixbuf::from_bytes(
+                &gtk::glib::Bytes::from(&empty_image),
+                gtk::gdk_pixbuf::Colorspace::Rgb,
+                false,
+                8,
+                10,
+                10,
+                30,
+            )
+        }
+    }
+}
+
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let logo = gtk::gdk::Texture::from_file(&gio::File::for_path("res/logo.png"))
-        .expect("Can not load logo image");
+    let logo_resource = get_image_from_resources("logo");
+    let logo_picture = gtk::Picture::for_pixbuf(&logo_resource).paintable().unwrap();
 
     let app_license = fs::read_to_string("LICENSE.txt").unwrap();
     let lgpl_license = fs::read_to_string("LICENSE-LGPL-2.1.txt").unwrap();
@@ -2259,7 +2312,7 @@ fn create_about_window() {
         .license(licenses)
         .wrap_license(true)
         .comments(&t!("UI.about.description").to_string())
-        .logo(&logo)
+        .logo(&logo_picture)
         .comments(comments)
         .build();
 
