@@ -1,3 +1,6 @@
+# version 0.70.0
+- all resources are embedded in binary - standalone app
+
 # version 0.60.1
 - new button: random mnemonic words
 - improved logic by RNG+

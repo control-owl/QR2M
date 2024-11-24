@@ -48,7 +48,7 @@ mod test_vectors;
 // Multi-language support
 #[macro_use]
 extern crate rust_i18n;
-i18n!("locale", fallback = "en");
+i18n!("res/locale", fallback = "en");
 
 
 
