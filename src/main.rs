@@ -56,7 +56,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 10;
-const WORDLIST_FILE: &str = "res/bip39-mnemonic-words-english.txt";
+const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
 const APP_DEFAULT_CONFIG_FILE: &str = "default.conf";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
@@ -149,10 +149,8 @@ impl AppSettings {
     fn load_settings() -> io::Result<Self> {
         println!("[+] {}", &t!("log.load-settings").to_string());
         
-        let local_config_file = os::LOCAL_DATA.with(|data| {
-            let data = data.borrow();
-            data.local_config_file.clone().unwrap()
-        });
+        let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
+        let local_config_file = local_settings.local_config_file.clone().unwrap();
         
         println!("\t Settings file: {:?}", local_config_file);
 
@@ -583,10 +581,8 @@ impl AppSettings {
     }
 
     fn save_settings(&self) {
-        let local_config_file = os::LOCAL_DATA.with(|data| {
-            let data = data.borrow();
-            data.local_config_file.clone().unwrap()
-        });
+        let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
+        let local_config_file = local_settings.local_config_file.clone().unwrap();
 
         let config_str = fs::read_to_string(&local_config_file)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to read config file: {}", e)))
@@ -845,7 +841,7 @@ fn print_program_info() {
     println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
 }
 
-fn generate_entropy(source: &str, entropy_length: u64) -> String {
+fn generate_entropy(source: &str, entropy_length: u64, state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> String {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
     println!("\t Entropy source: {:?}", source);
     println!("\t Entropy length: {:?}", entropy_length);
@@ -867,6 +863,17 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
         },
         
         "QRNG" => {
+            if let Some(state) = &state {
+                let mut state = state.lock().unwrap();
+                let info_bar = state.info_bar.clone();
+
+                state.update_infobar_message(
+                    "Reqesting QRNG from ANU API ...".to_string(),
+                    info_bar.unwrap(),
+                    gtk::MessageType::Info,
+                );
+            }
+
             let (anu_format, array_length, hex_block_size) = {
                 let app_settings = APPLICATION_SETTINGS.lock().unwrap();
                 (
@@ -876,22 +883,49 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 )
             };
 
-            let qrng_entropy_string = anu::get_entropy_from_anu(
-                entropy_length.try_into().unwrap(),
-                &anu_format, 
-                array_length, 
-                Some(hex_block_size)
-            );
-            
-            println!("\t ANU data format: {:?}", anu_format);
-            println!("\t ANUarray length: {:?}", array_length);
-            println!("\t ANU hex block size: {:?}", hex_block_size);
-            println!("\t QRNG Entropy: {:?}", qrng_entropy_string);
+            let open_context = glib::MainContext::default();
+            let open_loop = glib::MainLoop::new(Some(&open_context), false);
+            let (tx, rx) = std::sync::mpsc::channel();
 
-            let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-            wallet_settings.entropy_string = Some(qrng_entropy_string.clone());
-            
-            qrng_entropy_string
+            std::thread::spawn(clone!(
+                #[strong] open_loop,
+                move || {
+                    let qrng_entropy_string = anu::get_entropy_from_anu(
+                        entropy_length.try_into().unwrap(),
+                        &anu_format,
+                        array_length,
+                        Some(hex_block_size),
+                    );
+
+                    if let Err(err) = tx.send(qrng_entropy_string) {
+                        println!("Error sending data back: {}", err);
+                    }
+
+                    open_loop.quit();
+                }
+            ));
+
+            open_loop.run();
+
+            match rx.recv() {
+                Ok(received_qrng_entropy_string) => {
+                    if let Some(state) = &state {
+                        let mut state = state.lock().unwrap();
+                        let info_bar = state.info_bar.clone();
+                        state.update_infobar_message(
+                            format!("QRNG Data received"),
+                            info_bar.unwrap(),
+                            gtk::MessageType::Info,
+                        );
+                    }
+
+                    received_qrng_entropy_string
+                },
+                Err(_) => {
+                    println!("Error retrieving entropy from ANU API.");
+                    String::new()
+                }
+            }
         },
         "File" => {
             let open_context = glib::MainContext::default();
@@ -967,17 +1001,12 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     let mnemonic_decimal: Vec<u32> = chunks.iter()
         .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
         .collect();
-   
-    let mnemonic_file_content = match fs::read_to_string(WORDLIST_FILE) {
-        Ok(content) => content,
-        Err(err) => {
-            println!("{}", &t!("error.wordlist.read", value = err));
-            return String::new();
-        }
-    };
+    
+    let worldlist_path = std::path::Path::new("coin").join(WORDLIST_FILE);
+    let worldlist = qr2m_lib::get_text_from_resources(&worldlist_path.to_str().unwrap());
 
     let bad_word = t!("error.wordlist.word").to_string();
-    let mnemonic_words_vector: Vec<&str> = mnemonic_file_content.lines().collect();
+    let mnemonic_words_vector: Vec<&str> = worldlist.lines().collect();
     let mnemonic_words_vector: Vec<&str> = mnemonic_decimal.iter().map(|&decimal| {
         if (decimal as usize) < mnemonic_words_vector.len() {
             mnemonic_words_vector[decimal as usize]
@@ -2084,6 +2113,7 @@ pub fn create_main_window(application: &adw::Application) {
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
+        #[strong] state,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -2099,6 +2129,7 @@ pub fn create_main_window(application: &adw::Application) {
             let pre_entropy = generate_entropy(
                 &source,
                 *entropy_length as u64,
+                Some(std::sync::Arc::clone(&state)),
             );
                 
             if !pre_entropy.is_empty() {

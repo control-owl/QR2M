@@ -18,8 +18,8 @@ use crate::APP_NAME;
 const APP_LOCAL_CONFIG_FILE: &str = "qr2m.conf";
 const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
 
-thread_local! {
-    pub static LOCAL_DATA: std::cell::RefCell<LocalSettings> = std::cell::RefCell::new(LocalSettings::default());
+lazy_static::lazy_static! {
+    pub static ref LOCAL_SETTINGS: std::sync::Arc<std::sync::Mutex<LocalSettings>> = std::sync::Arc::new(std::sync::Mutex::new(LocalSettings::default()));
 }
 
 #[derive(Debug, Default)]
@@ -102,20 +102,18 @@ pub fn detect_os_and_user_dir() {
         (local_config_dir, local_config_file)
     };
 
-    LOCAL_DATA.with(|data| {
-        let mut data = data.borrow_mut();
-        println!("\t OS: {:?}", &os);
-        println!("\t Config directory: {:?}", &config_dir);
-        println!("\t Configuration file: {:?}", &config_file);
-        println!("\t Temp directory: {:?}", &local_temp_dir);
-        println!("\t Temp file: {:?}", &local_temp_file);
-        
-        data.os = Some(os.clone());
-        data.local_config_dir = Some(config_dir.clone());
-        data.local_temp_dir = Some(local_temp_dir.clone());
-        data.local_config_file = Some(config_file.clone());
-        data.local_temp_file = Some(local_temp_file.clone());
-    });
+    let mut local_settings = LOCAL_SETTINGS.lock().unwrap();
+    local_settings.os = Some(os.clone());
+    local_settings.local_config_dir = Some(config_dir.clone());
+    local_settings.local_temp_dir = Some(local_temp_dir.clone());
+    local_settings.local_config_file = Some(config_file.clone());
+    local_settings.local_temp_file = Some(local_temp_file.clone());
+
+    println!("\t OS: {:?}", &os);
+    println!("\t Config directory: {:?}", &config_dir);
+    println!("\t Configuration file: {:?}", &config_file);
+    println!("\t Temp directory: {:?}", &local_temp_dir);
+    println!("\t Temp file: {:?}", &local_temp_file);
 }
 
 pub fn switch_locale(lang: &str) {
@@ -127,15 +125,9 @@ pub fn switch_locale(lang: &str) {
 }
 
 pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
-    let local_config_dir = LOCAL_DATA.with(|data| {
-        let data = data.borrow();
-        data.local_config_dir.clone().unwrap()
-    });
-
-    let local_config_file = LOCAL_DATA.with(|data| {
-        let data = data.borrow();
-        data.local_config_file.clone().unwrap()
-    });
+    let local_settings = LOCAL_SETTINGS.lock().unwrap();
+    let local_config_file = local_settings.local_config_file.clone().unwrap();
+    let local_config_dir = local_settings.local_config_dir.clone().unwrap();
 
     if !local_config_dir.exists() {
         eprintln!("Local config directory not found. Creating it.");

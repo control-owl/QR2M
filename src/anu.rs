@@ -15,10 +15,13 @@ use std::{
     time::{Duration, SystemTime}
 };
 use rand::Rng;
+use crate::os::LOCAL_SETTINGS;
+
 
 use crate::APPLICATION_SETTINGS;
 
-const ANU_TIMESTAMP_FILE: &str = "tmp/anu.timestamp";
+const ANU_TIMESTAMP_FILE: &str = "anu.timestamp";
+const ANU_RESPONSE_FILE: &str = "anu.api";
 const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
@@ -42,7 +45,6 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
 
     if let Some(anu_data) = anu_data.as_ref() {
         if !anu_data.is_empty() {
-            // Handle logging and timestamp creation only if ANU is enabled
             let log_enabled = {
                 let app_settings = APPLICATION_SETTINGS.lock().unwrap();
                 app_settings.anu_enabled
@@ -174,7 +176,10 @@ fn fetch_anu_qrng_data(
 }
 
 fn load_last_anu_request() -> Option<SystemTime> {
-    let path = Path::new(ANU_TIMESTAMP_FILE);
+    let local_settings = LOCAL_SETTINGS.lock().unwrap();
+    let temp_dir = local_settings.local_temp_dir.clone().unwrap();
+
+    let path = Path::new(&temp_dir);
     if path.exists() {
         if let Ok(file) = File::open(path) {
             let reader = BufReader::new(file);
@@ -189,27 +194,35 @@ fn load_last_anu_request() -> Option<SystemTime> {
 }
 
 fn create_anu_timestamp(time: SystemTime) {
+    let local_settings = LOCAL_SETTINGS.lock().unwrap();
+    let local_temp_dir = local_settings.local_temp_dir.clone().unwrap();
+    let local_anu_timestamp_file = std::path::Path::new(&local_temp_dir).join(ANU_TIMESTAMP_FILE);
+    
+    println!("local_anu_timestamp_file: {:?}", local_anu_timestamp_file);
+
+
     let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
 
-    if let Some(parent) = Path::new(ANU_TIMESTAMP_FILE).parent() {
+    if let Some(parent) = Path::new(&local_anu_timestamp_file).parent() {
         fs::create_dir_all(parent).expect("Can not create log directory");
     }
 
-    let mut file = File::create(ANU_TIMESTAMP_FILE).expect("Can not create ANU timestamp file");
+    let mut file = File::create(local_anu_timestamp_file).expect("Can not create ANU timestamp file");
 
     file.write_all(timestamp.as_bytes()).expect("Can not write to ANU timestamp file");
 }
 
 fn write_api_response_to_log(response: &Option<String>) {
-    let local_temp_file = crate::os::LOCAL_DATA.with(|data| {
-        let data = data.borrow();
-        data.local_temp_file.clone().unwrap() // Assuming local_config_file is an Option<PathBuf>
-    });
+    let local_settings = LOCAL_SETTINGS.lock().unwrap();
+    let local_temp_dir = local_settings.local_temp_dir.clone().unwrap();
+    let local_anu_response_file = std::path::Path::new(&local_temp_dir).join(ANU_RESPONSE_FILE);
 
-    if let Some(parent) = Path::new(&local_temp_file).parent() {
+    println!("local_anu_response_file: {:?}", local_anu_response_file);
+
+    if let Some(parent) = Path::new(&local_anu_response_file).parent() {
         match fs::create_dir_all(parent) {
             Ok(_) => {
-                let mut file = match File::create(&local_temp_file) {
+                let mut file = match File::create(&local_anu_response_file) {
                     Ok(file) => file,
                     Err(e) => {
                         eprintln!("Error creating file: {}", e);
