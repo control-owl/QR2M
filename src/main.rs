@@ -1272,7 +1272,7 @@ pub fn create_main_window(application: &adw::Application) {
         .decorated(true)
         .build();
 
-    setup_css();
+    qr2m_lib::setup_css();
 
     let header_bar = gtk::HeaderBar::new();
     let info_bar = gtk::Revealer::new();
