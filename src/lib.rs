@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "QRNG Library"
 // copyright = "Copyright © 2023-2024 D3BUG"
-// version = "2024-06-16"
+// version = "2024-11-24"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -197,3 +197,23 @@ fn generate_empty_image() -> gtk::gdk_pixbuf::Pixbuf {
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+pub fn setup_css() {
+    let provider = gtk::CssProvider::new();
+    let css_path = std::path::Path::new("theme").join("basic").join("style.css");
+    let css_path_str = css_path.to_str().expect("Failed to convert path to string");
+    let css_content = get_text_from_resources(css_path_str);
+
+    if css_content.is_empty() {
+        eprintln!("Failed to load CSS from resources.");
+    } else {
+        provider.load_from_data(&css_content);
+    }
+
+    gtk::style_context_add_provider_for_display(
+        &gtk::gdk::Display::default().expect("Error initializing display"),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+}

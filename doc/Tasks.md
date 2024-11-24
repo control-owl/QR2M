@@ -49,6 +49,7 @@
 - [ ] create logging
 - [ ] Restore mnemonic passphrase from a file
 - [x] Set length of RNG mnemonic passphrase
+- [ ] Create tooltips
 
 ---
 

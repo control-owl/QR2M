@@ -3,7 +3,6 @@
     margin: 0px 5px 5px 5px;
     font-family: Arial, sans-serif;
     font-size: 14px;
-    /* box-sizing: border-box; */
 }
 
 .info-bar .info-message,
@@ -37,8 +36,4 @@
 .button {
     padding: 5px;
 
-}
-
-.about-dialog-comments {
-    font-size: 4px;
 }

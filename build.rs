@@ -57,9 +57,6 @@ fn bill_mainfest_gates() {
         std::process::exit(1);
     }
 
-    // let rc_content = format!(r#"1 24 "{}""#, bill_path.display());
-    // fs::write(&rc_path, rc_content).expect("Failed to write .rc file");
-
     if cfg!(target_os = "windows") {
         let status = std::process::Command::new("C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages\\microsoft.windows.sdk.buildtools\\10.0.26100.1742\\bin\\10.0.26100.0\\x64\\rc.exe")
             .args(&["/fo", &res_path.to_string_lossy(), &rc_path.to_string_lossy()])
@@ -85,9 +82,4 @@ fn bill_mainfest_gates() {
 
         println!("cargo:rustc-link-arg-bins={}", res_path.display());
     }
-
-
-    // fribi pgp missing keys
-    // again windows compile failed
-    // fcking gates
 }

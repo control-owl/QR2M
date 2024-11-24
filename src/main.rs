@@ -33,11 +33,6 @@ use gtk::{gio, glib::clone, Stack, StackSidebar};
 use num_bigint::BigUint;
 use sha3::Keccak256;
 
-
-// use include_dir::{include_dir, Dir, };
-// pub static RES_DIR: Dir<'_> = include_dir!("res");
-
-
 // Mods
 mod anu;
 mod coin_db;
@@ -50,11 +45,7 @@ mod test_vectors;
 extern crate rust_i18n;
 i18n!("res/locale", fallback = "en");
 
-
-
 // Default settings
-// RESEARCH: How to translate const strings
-// FEATURE: Create tooltip for every gtk4 object
 const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
@@ -114,8 +105,6 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
     "Symbol", 
     "Index",
 ];
-// const APP_CSS_THEME_FILE: &str = "res/style.css";
-
 
 lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::default()));
@@ -854,7 +843,6 @@ fn print_program_info() {
     println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
     println!("Start time (UNIX): {:?}", &timestamp.to_string());
     println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
-
 }
 
 fn generate_entropy(source: &str, entropy_length: u64) -> String {
@@ -959,10 +947,6 @@ fn generate_entropy(source: &str, entropy_length: u64) -> String {
                 }
             }
         },
-        // "Wallet" => {
-
-        //     // return (String::new(), None)
-        // },
         _ => {
             println!("{}", &t!("error.entropy.create.source"));
             return String::new()
@@ -1157,1112 +1141,101 @@ fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header:
 // GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-fn get_window_theme_icons() -> [gtk::Image; 5] {
-    println!("[+] {}", &t!("log.get_window_theme_icons").to_string());
+fn main() {
+    print_program_info();
 
-    let settings = gtk::Settings::default().unwrap();
-    let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
-        "dark"
-    } else {
-        "light"
-    };
+    os::detect_os_and_user_dir();
 
-    let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
-    println!("\t Theme path: {:?}", theme_base_path);
-
-    let icon_files = [
-        "new-wallet.png",
-        "open-wallet.png",
-        "save-wallet.png",
-        "about.png",
-        "settings.png",
-    ];
-
-    let mut images = Vec::new();
-
-    for icon_file in icon_files.iter() {
-        let icon_path = theme_base_path.join(icon_file);
-
-        let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
-
-        images.push(valid_icon);
+    if let Err(err) = os::create_local_files() {
+        eprintln!("Error creating local config files: {}", err);
     }
 
-    let final_images: [gtk::Image; 5] = core::array::from_fn(|i| gtk::Image::from_pixbuf(Some(&images[i])));
-
-    final_images
-}
-
-pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow { 
-    println!("[+] {}", &t!("log.create_settings_window").to_string());
-
-    if let Some(state) = &state {
-        let state = state.lock().unwrap();
-        state.theme.clone()
-    } else {
-        let settings = AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
-        Some(settings.gui_theme)
-    };
-
-    let settings = AppSettings::load_settings()
-        .expect(&t!("error.settings.read").to_string());
-
-    let settings_window = gtk::ApplicationWindow::builder()
-        .title(t!("UI.settings").to_string())
-        .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
-        .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
-        .resizable(false)
-        .modal(true)
+    let application = adw::Application::builder()
+        .application_id("wtf.r_o0_t.qr2m")
         .build();
 
-    let stack = Stack::new();
-    let stack_sidebar = StackSidebar::new();
-    stack_sidebar.set_stack(&stack);
+    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+
+    application.connect_activate(|app| {
+        create_main_window(&app);
+    });
+
+    let quit = gio::SimpleAction::new("quit", None);
+    let new = gio::SimpleAction::new("new", None);
+    let open = gio::SimpleAction::new("open", None);
+    let save = gio::SimpleAction::new("save", None);
+    let settings = gio::SimpleAction::new("settings", None);
+    let about = gio::SimpleAction::new("about", None);
     
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // JUMP: Settings: Sidebar 1: General settings
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let general_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.general").to_string()));
-    let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-
-    general_settings_box.set_margin_top(10);
-    general_settings_box.set_margin_bottom(0);
-    general_settings_box.set_margin_start(10);
-    general_settings_box.set_margin_end(10);
-    content_general_box.set_margin_start(20);
-    content_general_box.set_margin_bottom(20);
-
-    general_settings_frame.set_hexpand(true);
-    general_settings_frame.set_vexpand(true);
-    general_settings_box.append(&general_settings_frame);
-    general_settings_frame.set_child(Some(&content_general_box));
-
-    // GUI theme color
-    let default_gui_theme_color_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_gui_theme_color_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_theme_color_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_theme_color_label = gtk::Label::new(Some(&t!("UI.settings.general.theme").to_string()));
-    let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
-    let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
-    let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
-    let default_gui_theme = valid_gui_themes_as_strings
-        .iter()
-        .position(|s| *s == settings.gui_theme) 
-        .unwrap_or(0);
-
-    gui_theme_dropdown.set_selected(default_gui_theme.try_into().unwrap());
-    gui_theme_dropdown.set_size_request(200, 10);
-    default_gui_theme_color_box.set_hexpand(true);
-    default_gui_theme_color_item_box.set_hexpand(true);
-    default_gui_theme_color_item_box.set_margin_end(20);
-    default_gui_theme_color_item_box.set_halign(gtk::Align::End);
-    
-    default_gui_theme_color_label_box.append(&default_gui_theme_color_label);
-    default_gui_theme_color_item_box.append(&gui_theme_dropdown);
-    default_gui_theme_color_box.append(&default_gui_theme_color_label_box);
-    default_gui_theme_color_box.append(&default_gui_theme_color_item_box);
-    content_general_box.append(&default_gui_theme_color_box);
-
-    // GUI language
-    let default_gui_language_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_language_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_language_label = gtk::Label::new(Some(&t!("UI.settings.general.language").to_string()));
-    let valid_gui_languages_as_strings: Vec<String> = APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
-    let valid_gui_languages_as_str_refs: Vec<&str> = valid_gui_languages_as_strings.iter().map(|s| s.as_ref()).collect();
-    let default_gui_language_dropdown = gtk::DropDown::from_strings(&valid_gui_languages_as_str_refs);
-    let default_gui_language = valid_gui_languages_as_strings
-        .iter()
-        .position(|s| *s == settings.gui_language) 
-        .unwrap_or(0);
-
-    default_gui_language_dropdown.set_selected(default_gui_language.try_into().unwrap());
-    default_gui_language_dropdown.set_size_request(200, 10);
-    default_gui_language_box.set_hexpand(true);
-    default_gui_language_item_box.set_hexpand(true);
-    default_gui_language_item_box.set_margin_end(20);
-    default_gui_language_item_box.set_halign(gtk::Align::End);
-    
-    default_gui_language_label_box.append(&default_gui_language_label);
-    default_gui_language_item_box.append(&default_gui_language_dropdown);
-    default_gui_language_box.append(&default_gui_language_label_box);
-    default_gui_language_box.append(&default_gui_language_item_box);
-    content_general_box.append(&default_gui_language_box);
-
-    // GUI: Save last window size
-    let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let window_save_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let save_window_size_label = gtk::Label::new(Some(&t!("UI.settings.general.save_window").to_string()));
-    let save_window_size_checkbox = gtk::CheckButton::new();
-    let is_checked = settings.gui_save_size;
-
-    save_window_size_checkbox.set_active(is_checked);
-    window_save_label_box.set_hexpand(true);
-    window_save_item_box.set_hexpand(true);
-    window_save_item_box.set_margin_end(20);
-    window_save_item_box.set_halign(gtk::Align::End);
-
-    window_save_label_box.append(&save_window_size_label);
-    window_save_item_box.append(&save_window_size_checkbox);
-    window_save_box.append(&window_save_label_box);
-    window_save_box.append(&window_save_item_box);
-    content_general_box.append(&window_save_box);
-
-    // Default search parameter
-    let default_search_parameter_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_search_parameter_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_search_parameter_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_search_parameter_label = gtk::Label::new(Some(&t!("UI.settings.general.search").to_string()));
-    let valid_search_parameters_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
-    let valid_search_parameters_as_str_refs: Vec<&str> = valid_search_parameters_as_strings.iter().map(|s| s.as_ref()).collect();
-    let default_search_parameter_dropdown = gtk::DropDown::from_strings(&valid_search_parameters_as_str_refs);
-    let default_search_parameter = valid_search_parameters_as_strings
-        .iter()
-        .position(|s| *s == settings.gui_search) 
-        .unwrap_or(0);
-
-    default_search_parameter_dropdown.set_selected(default_search_parameter.try_into().unwrap());
-    default_search_parameter_dropdown.set_size_request(200, 10);
-    default_search_parameter_box.set_hexpand(true);
-    default_search_parameter_item_box.set_hexpand(true);
-    default_search_parameter_item_box.set_margin_end(20);
-    default_search_parameter_item_box.set_halign(gtk::Align::End);
-    
-    default_search_parameter_label_box.append(&default_search_parameter_label);
-    default_search_parameter_item_box.append(&default_search_parameter_dropdown);
-    default_search_parameter_box.append(&default_search_parameter_label_box);
-    default_search_parameter_box.append(&default_search_parameter_item_box);
-    content_general_box.append(&default_search_parameter_box);
-
-    // Notification timeout
-    let notification_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let notification_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let notification_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let notification_timeout_label = gtk::Label::new(Some(&t!("UI.settings.wallet.notification-timeout").to_string()));
-    let notification_timeout = settings.gui_notification_timeout as f64;
-    let notification_timeout_adjustment = gtk::Adjustment::new(
-        notification_timeout,
-        1.0,
-        120.0,
-        1.0,
-        10.0,
-        0.0,
+    quit.connect_activate(
+        glib::clone!(
+            #[weak] application,
+            move |_action, _parameter| {
+            application.quit();
+        }),
     );
-    let notification_timeout_spinbutton = gtk::SpinButton::new(Some(&notification_timeout_adjustment), 1.0, 0);
-
-    notification_timeout_spinbutton.set_size_request(200, 10);
-    notification_timeout_box.set_hexpand(true);
-    notification_timeout_item_box.set_hexpand(true);
-    notification_timeout_item_box.set_margin_end(20);
-    notification_timeout_item_box.set_halign(gtk::Align::End);
-
-    notification_timeout_label_box.append(&notification_timeout_label);
-    notification_timeout_item_box.append(&notification_timeout_spinbutton);
-    notification_timeout_box.append(&notification_timeout_label_box);
-    notification_timeout_box.append(&notification_timeout_item_box);
-    content_general_box.append(&notification_timeout_box);
-
-    stack.add_titled(
-        &general_settings_box,
-        Some("sidebar-settings-general"),
-        &t!("UI.settings.sidebar.general").to_string()
-    );
-
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // JUMP: Settings: Sidebar 2: Wallet settings
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet").to_string()));
-    let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    wallet_settings_box.set_margin_top(10);
-    wallet_settings_box.set_margin_bottom(0);
-    wallet_settings_box.set_margin_start(10);
-    wallet_settings_box.set_margin_end(10);
-    content_wallet_box.set_margin_start(20);
-    content_wallet_box.set_margin_bottom(20);
-
-    wallet_settings_frame.set_hexpand(true);
-    wallet_settings_frame.set_vexpand(true);
-    wallet_settings_box.append(&wallet_settings_frame);
-    wallet_settings_frame.set_child(Some(&content_wallet_box));
-
-    // Default entropy source
-    let qrng_enabled = settings.anu_enabled;
-    let valid_entropy_sources: Vec<&str> = if qrng_enabled {
-        VALID_ENTROPY_SOURCES.iter().cloned().collect()
-    } else {
-        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
-    };
-
-    let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_source_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source").to_string()));
-    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
-    let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
-    let default_entropy_source = valid_entropy_source_as_strings
-        .iter()
-        .position(|s| *s == settings.wallet_entropy_source) 
-        .unwrap_or(0);
-
-    entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
-    entropy_source_dropdown.set_size_request(200, 10);
-    default_entropy_source_box.set_hexpand(true);
-    default_entropy_source_item_box.set_hexpand(true);
-    default_entropy_source_item_box.set_margin_end(20);
-    default_entropy_source_item_box.set_halign(gtk::Align::End);
-
-    default_entropy_source_label_box.append(&default_entropy_source_label);
-    default_entropy_source_item_box.append(&entropy_source_dropdown);
-    default_entropy_source_box.append(&default_entropy_source_label_box);
-    default_entropy_source_box.append(&default_entropy_source_item_box);
-    content_wallet_box.append(&default_entropy_source_box);
-
-    // Default entropy length
-    let default_entropy_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.length").to_string()));
-    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
-    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
-    let default_entropy_length = valid_entropy_lengths_as_strings
-        .iter()
-        .position(|x| x.parse::<u32>().unwrap() == settings.wallet_entropy_length)
-        .unwrap_or(0);
-
-    entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
-    entropy_length_dropdown.set_size_request(200, 10);
-    default_entropy_length_box.set_hexpand(true);
-    default_entropy_length_item_box.set_hexpand(true);
-    default_entropy_length_item_box.set_margin_end(20);
-    default_entropy_length_item_box.set_halign(gtk::Align::End);
-
-    default_entropy_length_label_box.append(&default_entropy_length_label);
-    default_entropy_length_item_box.append(&entropy_length_dropdown);
-    default_entropy_length_box.append(&default_entropy_length_label_box);
-    default_entropy_length_box.append(&default_entropy_length_item_box);
-    content_wallet_box.append(&default_entropy_length_box);
-
-    // Default BIP
-    let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_bip_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_bip_label = gtk::Label::new(Some(&t!("UI.settings.wallet.bip").to_string()));
-    let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
-    let valid_bips_as_str_refs: Vec<&str> = valid_bips_as_strings.iter().map(|s| s.as_ref()).collect();
-    let bip_dropdown = gtk::DropDown::from_strings(&valid_bips_as_str_refs);
-    let default_bip = valid_bips_as_strings
-        .iter()
-        .position(|x| x.parse::<u32>().unwrap() == settings.wallet_bip)
-        .unwrap_or(1); // Default BIP44
-
-    bip_dropdown.set_selected(default_bip.try_into().unwrap());
-    bip_dropdown.set_size_request(200, 10);
-    default_bip_box.set_hexpand(true);
-    default_bip_item_box.set_hexpand(true);
-    default_bip_item_box.set_margin_end(20);
-    default_bip_item_box.set_halign(gtk::Align::End);
-    
-    default_bip_label_box.append(&default_bip_label);
-    default_bip_item_box.append(&bip_dropdown);
-    default_bip_box.append(&default_bip_label_box);
-    default_bip_box.append(&default_bip_item_box);
-    content_wallet_box.append(&default_bip_box);
-
-    // Default address count
-    let default_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_address_count_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_address_count_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_address_count_label = gtk::Label::new(Some(&t!("UI.settings.wallet.address-count").to_string()));
-    let default_address_count = settings.wallet_address_count as f64;
-    let address_count_adjustment = gtk::Adjustment::new(
-        default_address_count,
-        1.0,
-        2147483647.0,
-        1.0,
-        10.0,
-        0.0,
-    );
-    let address_count_spinbutton = gtk::SpinButton::new(Some(&address_count_adjustment), 1.0, 0);
-
-    address_count_spinbutton.set_size_request(200, 10);
-    default_address_count_box.set_hexpand(true);
-    default_address_count_item_box.set_hexpand(true);
-    default_address_count_item_box.set_margin_end(20);
-    default_address_count_item_box.set_halign(gtk::Align::End);
-
-    default_address_count_label_box.append(&default_address_count_label);
-    default_address_count_item_box.append(&address_count_spinbutton);
-    default_address_count_box.append(&default_address_count_label_box);
-    default_address_count_box.append(&default_address_count_item_box);
-    content_wallet_box.append(&default_address_count_box);
-
-
-    // Hardened addresses
-    let hardened_addresses_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let hardened_addresses_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let hardened_addresses_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let hardened_addresses_label = gtk::Label::new(Some(&t!("UI.settings.wallet.hardened").to_string()));
-    let hardened_addresses_checkbox = gtk::CheckButton::new();
-    let is_checked = settings.wallet_hardened_address;
-
-    hardened_addresses_checkbox.set_active(is_checked);
-    hardened_addresses_label_box.set_hexpand(true);
-    hardened_addresses_item_box.set_hexpand(true);
-    hardened_addresses_item_box.set_margin_end(20);
-    hardened_addresses_item_box.set_halign(gtk::Align::End);
-
-    hardened_addresses_label_box.append(&hardened_addresses_label);
-    hardened_addresses_item_box.append(&hardened_addresses_checkbox);
-    hardened_addresses_box.append(&hardened_addresses_label_box);
-    hardened_addresses_box.append(&hardened_addresses_item_box);
-    content_wallet_box.append(&hardened_addresses_box);
-
-
-    stack.add_titled(
-        &wallet_settings_box, 
-        Some("sidebar-settings-wallet"), 
-        &t!("UI.settings.sidebar.wallet").to_string()
-    );
-
-
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // JUMP: Settings: Sidebar 3: ANU settings
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu").to_string()));
-    let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-
-    anu_settings_box.set_margin_top(10);
-    anu_settings_box.set_margin_bottom(0);
-    anu_settings_box.set_margin_start(10);
-    anu_settings_box.set_margin_end(10);
-    content_anu_box.set_margin_start(20);
-    content_anu_box.set_margin_bottom(20);
-    anu_settings_box.append(&anu_settings_frame);
-    anu_settings_frame.set_child(Some(&content_anu_box));
-    anu_settings_frame.set_hexpand(true);
-    anu_settings_frame.set_vexpand(true);
-
-    // Use ANU QRNG API
-    let use_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let use_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.use_anu").to_string()));
-    let use_anu_api_checkbox = gtk::CheckButton::new();
-    let is_checked = settings.anu_enabled;
-
-    use_anu_api_checkbox.set_active(is_checked);
-    use_anu_api_label_box.set_hexpand(true);
-    use_anu_api_item_box.set_hexpand(true);
-    use_anu_api_item_box.set_margin_end(20);
-    use_anu_api_item_box.set_halign(gtk::Align::End);
-
-    use_anu_api_label_box.append(&use_anu_api_label);
-    use_anu_api_item_box.append(&use_anu_api_checkbox);
-    use_anu_api_box.append(&use_anu_api_label_box);
-    use_anu_api_box.append(&use_anu_api_item_box);
-    content_anu_box.append(&use_anu_api_box);
-
-    // Log ANU QRNG API
-    let log_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let log_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let log_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let log_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.log").to_string()));
-    let log_anu_api_checkbox = gtk::CheckButton::new();
-
-    log_anu_api_checkbox.set_active(settings.anu_log);
-    log_anu_api_label_box.set_hexpand(true);
-    log_anu_api_item_box.set_hexpand(true);
-    log_anu_api_item_box.set_margin_end(20);
-    log_anu_api_item_box.set_halign(gtk::Align::End);
-
-    log_anu_api_label_box.append(&log_anu_api_label);
-    log_anu_api_item_box.append(&log_anu_api_checkbox);
-    log_anu_api_box.append(&log_anu_api_label_box);
-    log_anu_api_box.append(&log_anu_api_item_box);
-    content_anu_box.append(&log_anu_api_box);
-
-    // ANU API data type
-    let default_api_data_format_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_api_data_format_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_api_data_format_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.type").to_string()));
-    let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT.iter().map(|&x| x.to_string()).collect();
-    let valid_api_data_formats_as_str_refs: Vec<&str> = valid_api_data_formats_as_strings.iter().map(|s| s.as_ref()).collect();
-    let anu_data_format_dropdown = gtk::DropDown::from_strings(&valid_api_data_formats_as_str_refs);
-    let default_api_data_format = valid_api_data_formats_as_strings
-        .iter()
-        .position(|x| x.parse::<String>().unwrap() == settings.anu_data_format)
-        .unwrap_or(0);
-
-    anu_data_format_dropdown.set_selected(default_api_data_format.try_into().unwrap());
-    anu_data_format_dropdown.set_size_request(200, 10);
-    default_api_data_format_box.set_hexpand(true);
-    default_api_data_format_item_box.set_hexpand(true);
-    default_api_data_format_item_box.set_margin_end(20);
-    default_api_data_format_item_box.set_halign(gtk::Align::End);
-    
-    default_api_data_format_label_box.append(&default_api_data_format_label);
-    default_api_data_format_item_box.append(&anu_data_format_dropdown);
-    default_api_data_format_box.append(&default_api_data_format_label_box);
-    default_api_data_format_box.append(&default_api_data_format_item_box);
-    content_anu_box.append(&default_api_data_format_box);
-
-    // ANU array length
-    let default_anu_array_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
-    let mut default_array_length = settings.anu_array_length;
-    default_array_length = std::cmp::max(ANU_MINIMUM_ARRAY_LENGTH, default_array_length);
-    default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
-
-    let array_length_adjustment = gtk::Adjustment::new(
-        default_array_length as f64,       
-        ANU_MINIMUM_ARRAY_LENGTH as f64,   
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
-        1.0,
-        10.0,
-        0.0,
-    );
-    let default_anu_array_length_spinbutton = gtk::SpinButton::new(Some(&array_length_adjustment), 1.0, 0);
-
-    default_anu_array_length_label_box.set_hexpand(true);
-    default_anu_array_length_item_box.set_hexpand(true);
-    default_anu_array_length_item_box.set_margin_end(20);
-    default_anu_array_length_item_box.set_halign(gtk::Align::End);
-    default_anu_array_length_spinbutton.set_size_request(200, 10);
-
-    default_anu_array_length_label_box.append(&default_anu_array_length_label);
-    default_anu_array_length_item_box.append(&default_anu_array_length_spinbutton);
-    default_anu_array_length_box.append(&default_anu_array_length_label_box);
-    default_anu_array_length_box.append(&default_anu_array_length_item_box);
-    content_anu_box.append(&default_anu_array_length_box);
-    
-    // ANU hex block size
-    let default_anu_hex_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_hex_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
-    
-    let mut default_hex_size = settings.anu_hex_block_size;
-    default_hex_size = std::cmp::max(1, default_hex_size);
-    default_hex_size = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_hex_size);
-
-    let hex_block_size_adjustment = gtk::Adjustment::new(
-        default_hex_size as f64,           
-        1.0,                               
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
-        1.0,
-        10.0,
-        0.0,
-    );
-    let default_anu_hex_length_spinbutton = gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
-
-    default_anu_hex_length_label_box.set_hexpand(true);
-    default_anu_hex_length_item_box.set_hexpand(true);
-    default_anu_hex_length_item_box.set_margin_end(20);
-    default_anu_hex_length_item_box.set_halign(gtk::Align::End);
-    default_anu_hex_length_spinbutton.set_size_request(200, 10);
-
-    default_anu_hex_length_label_box.append(&default_anu_hex_length_label);
-    default_anu_hex_length_item_box.append(&default_anu_hex_length_spinbutton);
-    default_anu_hex_length_box.append(&default_anu_hex_length_label_box);
-    default_anu_hex_length_box.append(&default_anu_hex_length_item_box);
-    content_anu_box.append(&default_anu_hex_length_box);
-
-    if anu_data_format_dropdown.selected() == 2 {
-        default_anu_hex_length_box.set_visible(true);
-    } else {
-        default_anu_hex_length_box.set_visible(false);
-    } ;
-
-    if use_anu_api_checkbox.is_active() {
-        default_api_data_format_box.set_visible(true);
-        log_anu_api_box.set_visible(true);
-        default_anu_array_length_box.set_visible(true);
-        if anu_data_format_dropdown.selected() as usize == 2 {
-            default_anu_hex_length_box.set_visible(true);
-        } else {
-            default_anu_hex_length_box.set_visible(false);
+    new.connect_activate(clone!(
+        #[weak] application,
+        move |_action, _parameter| {
+            create_main_window(&application);
         }
-    } else {
-        log_anu_api_box.set_visible(false);
-        default_api_data_format_box.set_visible(false);
-        default_anu_array_length_box.set_visible(false);
-        default_anu_hex_length_box.set_visible(false);
-    }
-    
-    // Actions
-    let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
-    let anu_data_format_dropdown_clone = anu_data_format_dropdown.clone();
+    ));
 
-    use_anu_api_checkbox.connect_toggled(move |checkbox| {
-        if checkbox.is_active() {
-            default_api_data_format_box.set_visible(true);
-            log_anu_api_box.set_visible(true);
-            default_anu_array_length_box.set_visible(true);
-            if anu_data_format_dropdown_clone.selected() as usize == 2 {
-                default_anu_hex_length_box_clone.set_visible(true);
-            } else {
-                default_anu_hex_length_box_clone.set_visible(false);
-            }
-        } else {
-            default_api_data_format_box.set_visible(false);
-            log_anu_api_box.set_visible(false);
-            default_anu_array_length_box.set_visible(false);
-            default_anu_hex_length_box_clone.set_visible(false);
-        }
+    open.connect_activate(move |_action, _parameter| {
+        open_wallet_from_file();
     });
     
+    save.connect_activate(|_action, _parameter| {
+        save_wallet_to_file();
+    });
 
-    anu_data_format_dropdown.connect_selected_notify(clone!(
-        #[weak] default_anu_hex_length_box,
-        // #[weak] anu_data_format_dropdown,
-        move |dd| {
-            if dd.selected() as usize == 2 {
-                default_anu_hex_length_box.set_visible(true);
-            } else {
-                default_anu_hex_length_box.set_visible(false);
-            }
-        }
-    ));
+    settings.connect_activate(clone!(
+        #[weak] state,
+        move |_action, _parameter| {
+            let main_context = glib::MainContext::default();
+            let main_loop = glib::MainLoop::new(Some(&main_context), false);
 
-
-    stack.add_titled(
-        &anu_settings_box, 
-        Some("sidebar-settings-anu"), 
-        &t!("UI.settings.sidebar.anu").to_string()
-    );
-
-
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // JUMP: Settings: Sidebar 4: Proxy settings
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    let scrolled_window = gtk::ScrolledWindow::new();
-    scrolled_window.set_max_content_height(400);
-    
-    let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let proxy_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.proxy").to_string()));
-    let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
-    proxy_settings_box.set_margin_top(10);
-    proxy_settings_box.set_margin_bottom(0);
-    proxy_settings_box.set_margin_start(10);
-    proxy_settings_box.set_margin_end(10);
-    content_proxy_box.set_margin_start(20);
-    content_proxy_box.set_margin_bottom(20);
-
-    proxy_settings_box.append(&proxy_settings_frame);
-    proxy_settings_frame.set_child(Some(&content_proxy_box));
-    proxy_settings_frame.set_hexpand(true);
-    proxy_settings_frame.set_vexpand(true);
-    // scrolled_window.set_margin_bottom(10);
-    scrolled_window.set_child(Some(&proxy_settings_box));
-
-    // Use proxy settings
-    let use_proxy_settings_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let use_proxy_settings_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_settings_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_settings_label = gtk::Label::new(Some(&t!("UI.settings.proxy.use").to_string()));
-    let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
-    let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
-    let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
-    let default_proxy_settings_format = valid_proxy_settings_as_strings
-        .iter()
-        .position(|x| x.parse::<String>().unwrap() == settings.proxy_status)
-        .unwrap_or(1);  // Default proxy: auto
-
-    use_proxy_settings_dropdown.set_selected(default_proxy_settings_format.try_into().unwrap());
-    use_proxy_settings_dropdown.set_size_request(200, 10);
-    use_proxy_settings_label_box.set_hexpand(true);
-    use_proxy_settings_item_box.set_hexpand(true);
-    use_proxy_settings_item_box.set_margin_end(20);
-    use_proxy_settings_item_box.set_halign(gtk::Align::End);
-
-    use_proxy_settings_label_box.append(&use_proxy_settings_label);
-    use_proxy_settings_item_box.append(&use_proxy_settings_dropdown);
-    use_proxy_settings_box.append(&use_proxy_settings_label_box);
-    use_proxy_settings_box.append(&use_proxy_settings_item_box);
-    content_proxy_box.append(&use_proxy_settings_box);
-
-    // Proxy manual settings
-    let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
-    // IMPLEMENT non-case sensitive input Manual/manual
-
-    if settings.proxy_status == "Manual" {
-        proxy_manual_settings_box.set_visible(true);
-    } else {
-        proxy_manual_settings_box.set_visible(false);
-    }
-
-    // Proxy server address
-    let proxy_server_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let proxy_server_address_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_address_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_address_label = gtk::Label::new(Some(&t!("UI.settings.proxy.address").to_string()));
-    let proxy_server_address_entry = gtk::Entry::new();
-
-    proxy_server_address_entry.set_size_request(200, 10);
-    proxy_server_address_label_box.set_hexpand(true);
-    proxy_server_address_item_box.set_hexpand(true);
-    proxy_server_address_item_box.set_margin_end(20);
-    proxy_server_address_item_box.set_halign(gtk::Align::End);
-    proxy_server_address_entry.set_text(&settings.proxy_server_address);
-
-    proxy_server_address_label_box.append(&proxy_server_address_label);
-    proxy_server_address_item_box.append(&proxy_server_address_entry);
-    proxy_server_address_box.append(&proxy_server_address_label_box);
-    proxy_server_address_box.append(&proxy_server_address_item_box);
-    proxy_manual_settings_box.append(&proxy_server_address_box);
-
-
-    // Proxy server port
-    let proxy_server_port_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let proxy_server_port_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_port_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_port_label = gtk::Label::new(Some(&t!("UI.settings.proxy.port").to_string()));
-    let proxy_server_port_entry = gtk::Entry::new();
-
-    proxy_server_port_entry.set_size_request(200, 10);
-    proxy_server_port_label_box.set_hexpand(true);
-    proxy_server_port_item_box.set_hexpand(true);
-    proxy_server_port_item_box.set_margin_end(20);
-    proxy_server_port_item_box.set_halign(gtk::Align::End);
-
-    if settings.proxy_server_port == 0 {
-        proxy_server_port_entry.set_text(&DEFAULT_PROXY_PORT.to_string());
-    } else {
-        proxy_server_port_entry.set_text(&settings.proxy_server_port.to_string());
-    }
-
-    proxy_server_port_label_box.append(&proxy_server_port_label);
-    proxy_server_port_item_box.append(&proxy_server_port_entry);
-    proxy_server_port_box.append(&proxy_server_port_label_box);
-    proxy_server_port_box.append(&proxy_server_port_item_box);
-    proxy_manual_settings_box.append(&proxy_server_port_box);
-    
-    // Use proxy credentials
-    let use_proxy_credentials_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let use_proxy_credentials_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_credentials_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_credentials_label = gtk::Label::new(Some(&t!("UI.settings.proxy.creds").to_string()));
-    let use_proxy_credentials_checkbox = gtk::CheckButton::new();
-    let is_checked = settings.proxy_login_credentials;
-    
-    use_proxy_credentials_checkbox.set_active(is_checked);
-    use_proxy_credentials_label_box.set_hexpand(true);
-    use_proxy_credentials_item_box.set_hexpand(true);
-    use_proxy_credentials_item_box.set_margin_end(20);
-    use_proxy_credentials_item_box.set_halign(gtk::Align::End);
-
-    use_proxy_credentials_label_box.append(&use_proxy_credentials_label);
-    use_proxy_credentials_item_box.append(&use_proxy_credentials_checkbox);
-    use_proxy_credentials_box.append(&use_proxy_credentials_label_box);
-    use_proxy_credentials_box.append(&use_proxy_credentials_item_box);
-    proxy_manual_settings_box.append(&use_proxy_credentials_box);
-
-    // Proxy credentials
-    let use_proxy_credentials_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
-    if settings.proxy_login_credentials == true {
-        use_proxy_credentials_content_box.set_visible(true);
-    } else {
-        use_proxy_credentials_content_box.set_visible(false);
-    }
-
-    // Proxy username
-    let proxy_username_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let proxy_username_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_username_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_username_label = gtk::Label::new(Some(&t!("UI.settings.proxy.username").to_string()));
-    let proxy_username_entry = gtk::Entry::new();
-
-    proxy_username_entry.set_size_request(200, 10);
-    proxy_username_label_box.set_hexpand(true);
-    proxy_username_item_box.set_hexpand(true);
-    proxy_username_item_box.set_margin_end(20);
-    proxy_username_item_box.set_halign(gtk::Align::End);
-    proxy_username_entry.set_text(&settings.proxy_login_username);
-
-    proxy_username_label_box.append(&proxy_username_label);
-    proxy_username_item_box.append(&proxy_username_entry);
-    proxy_username_box.append(&proxy_username_label_box);
-    proxy_username_box.append(&proxy_username_item_box);
-    use_proxy_credentials_content_box.append(&proxy_username_box);
-
-    // Proxy password
-    let proxy_password_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let proxy_password_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_password_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_password_label = gtk::Label::new(Some(&t!("UI.settings.proxy.password").to_string()));
-    let proxy_password_entry = gtk::PasswordEntry::new();
-
-    proxy_password_entry.set_size_request(200, 10);
-    proxy_password_label_box.set_hexpand(true);
-    proxy_password_item_box.set_hexpand(true);
-    proxy_password_item_box.set_margin_end(20);
-    proxy_password_item_box.set_halign(gtk::Align::End);
-
-    proxy_password_entry.set_show_peek_icon(true);
-    proxy_password_entry.set_text(&settings.proxy_login_password);
-
-    proxy_password_label_box.append(&proxy_password_label);
-    proxy_password_item_box.append(&proxy_password_entry);
-    proxy_password_box.append(&proxy_password_label_box);
-    proxy_password_box.append(&proxy_password_item_box);
-    use_proxy_credentials_content_box.append(&proxy_password_box);
-
-    proxy_manual_settings_box.append(&use_proxy_credentials_content_box);
-
-    // Use proxy PAC
-    let use_proxy_pac_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let use_proxy_pac_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_pac_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_pac_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac").to_string()));
-    let use_proxy_pac_checkbox = gtk::CheckButton::new();
-    let is_checked = settings.proxy_use_pac;
-    
-    use_proxy_pac_checkbox.set_active(is_checked);
-    use_proxy_pac_label_box.set_hexpand(true);
-    use_proxy_pac_item_box.set_hexpand(true);
-    use_proxy_pac_item_box.set_margin_end(20);
-    use_proxy_pac_item_box.set_halign(gtk::Align::End);
-
-    use_proxy_pac_label_box.append(&use_proxy_pac_label);
-    use_proxy_pac_item_box.append(&use_proxy_pac_checkbox);
-    use_proxy_pac_box.append(&use_proxy_pac_label_box);
-    use_proxy_pac_box.append(&use_proxy_pac_item_box);
-    proxy_manual_settings_box.append(&use_proxy_pac_box);
-
-    // Proxy PAC
-    let use_proxy_pac_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    
-    if settings.proxy_use_pac == true {
-        use_proxy_pac_content_box.set_visible(true);
-    } else {
-        use_proxy_pac_content_box.set_visible(false);
-    }
-
-    // Proxy PAC path
-    let proxy_pac_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let proxy_pac_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_pac_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_pac_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac.path").to_string()));
-    let proxy_pac_path_entry = gtk::Entry::new();
-
-    proxy_pac_path_entry.set_size_request(200, 10);
-    proxy_pac_path_label_box.set_hexpand(true);
-    proxy_pac_path_item_box.set_hexpand(true);
-    proxy_pac_path_item_box.set_margin_end(20);
-    proxy_pac_path_item_box.set_halign(gtk::Align::End);
-    proxy_pac_path_entry.set_text(&settings.proxy_script_address);
-
-    proxy_pac_path_label_box.append(&proxy_pac_path_label);
-    proxy_pac_path_item_box.append(&proxy_pac_path_entry);
-    proxy_pac_path_box.append(&proxy_pac_path_label_box);
-    proxy_pac_path_box.append(&proxy_pac_path_item_box);
-    use_proxy_pac_content_box.append(&proxy_pac_path_box);
-
-    proxy_manual_settings_box.append(&use_proxy_pac_content_box);
-
-
-    // Use proxy SSL
-    let use_proxy_ssl_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let use_proxy_ssl_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_ssl_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_ssl_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl").to_string()));
-    let use_proxy_ssl_checkbox = gtk::CheckButton::new();
-    let is_checked = settings.proxy_use_ssl;
-    
-    use_proxy_ssl_checkbox.set_active(is_checked);
-    use_proxy_ssl_label_box.set_hexpand(true);
-    use_proxy_ssl_item_box.set_hexpand(true);
-    use_proxy_ssl_item_box.set_margin_end(20);
-    use_proxy_ssl_item_box.set_halign(gtk::Align::End);
-
-    use_proxy_ssl_label_box.append(&use_proxy_ssl_label);
-    use_proxy_ssl_item_box.append(&use_proxy_ssl_checkbox);
-    use_proxy_ssl_box.append(&use_proxy_ssl_label_box);
-    use_proxy_ssl_box.append(&use_proxy_ssl_item_box);
-    proxy_manual_settings_box.append(&use_proxy_ssl_box);
-
-
-    // Proxy SSL certificate
-    let use_proxy_ssl_certificate_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    
-    if settings.proxy_use_ssl == true {
-        use_proxy_ssl_certificate_content_box.set_visible(true);
-    } else {
-        use_proxy_ssl_certificate_content_box.set_visible(false);
-    }
-
-    // Proxy SSL certificate path
-    let proxy_ssl_certificate_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    let proxy_ssl_certificate_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_ssl_certificate_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_ssl_certificate_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl.path").to_string()));
-    let proxy_ssl_certificate_path_entry = gtk::Entry::new();
-
-    proxy_ssl_certificate_path_entry.set_size_request(200, 10);
-    proxy_ssl_certificate_path_label_box.set_hexpand(true);
-    proxy_ssl_certificate_path_item_box.set_hexpand(true);
-    proxy_ssl_certificate_path_item_box.set_margin_end(20);
-    proxy_ssl_certificate_path_item_box.set_halign(gtk::Align::End);
-    proxy_ssl_certificate_path_entry.set_text(&settings.proxy_ssl_certificate);
-
-    proxy_ssl_certificate_path_label_box.append(&proxy_ssl_certificate_path_label);
-    proxy_ssl_certificate_path_item_box.append(&proxy_ssl_certificate_path_entry);
-    proxy_ssl_certificate_path_box.append(&proxy_ssl_certificate_path_label_box);
-    proxy_ssl_certificate_path_box.append(&proxy_ssl_certificate_path_item_box);
-    use_proxy_ssl_certificate_content_box.append(&proxy_ssl_certificate_path_box);
-    proxy_manual_settings_box.append(&use_proxy_ssl_certificate_content_box);
-
-    content_proxy_box.append(&proxy_manual_settings_box);
-
-    stack.add_titled(
-        &scrolled_window,
-        Some("sidebar-settings-proxy"),
-        &t!("UI.settings.sidebar.proxy").to_string()
-    );
-
-    // Actions
-    use_proxy_settings_dropdown.connect_selected_notify(clone!(
-        #[weak] proxy_manual_settings_box,
-        move |dd| {
-            let value = dd.selected() as usize;
-            let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
-            let settings = selected_proxy_settings_value.unwrap();
+            let settings_window = create_settings_window(Some(state.clone()));
+            settings_window.connect_close_request(clone!(
+                #[strong] main_loop,
+                move |_| {
+                    state.lock().unwrap().apply_theme();
+                    main_loop.quit();
+                    glib::Propagation::Proceed
+                }
+            ));
             
-            if *settings == "Manual" {
-                proxy_manual_settings_box.set_visible(true);
-            } else {
-                proxy_manual_settings_box.set_visible(false);
-            }
+            settings_window.show();
+            main_loop.run();
         }
     ));
 
-    use_proxy_credentials_checkbox.connect_active_notify(clone!(
-        #[weak] use_proxy_credentials_content_box,
-        move |cb| {
-            use_proxy_credentials_content_box.set_visible(cb.is_active());
-        }
-    ));
+    about.connect_activate(move |_action, _parameter| {
+        create_about_window();
+    });
 
-    use_proxy_pac_checkbox.connect_active_notify(clone!(
-        #[weak] use_proxy_pac_content_box,
-        move |cb| {
-            use_proxy_pac_content_box.set_visible(cb.is_active());
-        }
-    ));
+    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    application.add_action(&quit);
 
-    use_proxy_ssl_checkbox.connect_active_notify(clone!(
-        // #[weak] use_proxy_ssl_checkbox,
-        move |cb| {
-            use_proxy_ssl_certificate_content_box.set_visible(cb.is_active());
-        }
-    ));
+    application.set_accels_for_action("app.new", &["<Primary>N"]);
+    application.add_action(&new);
 
-    // Compose settings window
-    let main_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    main_content_box.append(&stack_sidebar);
-    main_content_box.append(&stack);
-    
-    // Buttons
-    let main_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let left_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let right_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    application.set_accels_for_action("app.open", &["<Primary>O"]);
+    application.add_action(&open);
 
-    let save_button = gtk::Button::with_label(&t!("UI.element.button.save").to_string());
-    let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel").to_string());
-    let default_button = gtk::Button::with_label(&t!("UI.element.button.default").to_string());
-    // IMPLEMENT: apply button
+    application.set_accels_for_action("app.save", &["<Primary>S"]);
+    application.add_action(&save);
 
+    application.set_accels_for_action("app.settings", &["F5"]);
+    application.add_action(&settings);
 
-    // JUMP: Save settings button
-    save_button.connect_clicked(clone!(
-        #[weak] settings_window,
-        #[strong] state,
-        move |_| {
-            let mut settings = APPLICATION_SETTINGS.lock().unwrap();
-    
-            let updates = vec![
-                ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),
-                ("wallet_entropy_length", toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64)),
-                ("wallet_bip", toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64)),
-                ("wallet_address_count", toml_edit::value(address_count_spinbutton.value_as_int() as i64)),
-                ("wallet_hardened_address", toml_edit::value(hardened_addresses_checkbox.is_active())),
-                ("gui_save_size", toml_edit::value(save_window_size_checkbox.is_active())),
-                ("gui_theme", toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize])),
-                ("gui_language", toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize])),
-                ("gui_search", toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize])),
-                ("gui_notification_timeout", toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64)),
-                ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
-                ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
-                ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
-                ("anu_array_length", toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64)),
-                ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
-                ("proxy_status", toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize])),
-                ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
-                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or_default() as i64)),
-                ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
-                ("proxy_script_address", toml_edit::value(proxy_pac_path_entry.text().to_string())),
-                ("proxy_login_credentials", toml_edit::value(use_proxy_credentials_checkbox.is_active())),
-                ("proxy_login_username", toml_edit::value(proxy_username_entry.text().to_string())),
-                ("proxy_login_password", toml_edit::value(proxy_password_entry.text().to_string())),
-                ("proxy_use_ssl", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
-                ("proxy_ssl_certificate", toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string())),
-            ];
-    
-            for (key, value) in updates {
-                settings.update_value(key, value, None);
-            }
-    
-            AppSettings::save_settings(&*settings);
-                       
-            if let Some(state) = &state {
-                let mut state = state.lock().unwrap();
-                let info_bar = state.info_bar.clone();
+    application.set_accels_for_action("app.about", &["F1"]);
+    application.add_action(&about);
 
-                let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
-                state.theme = Some(selected_theme);
-
-                state.update_infobar_message(
-                    "Settings saved".to_string(),
-                    info_bar.unwrap(),
-                    gtk::MessageType::Info,
-                );
-                state.apply_theme();
-            }
-
-            settings_window.close();
-        }
-    ));
-    
-    
-    cancel_button.connect_clicked(clone!(
-        #[weak] settings_window,
-        move |_| {
-            settings_window.close()
-        }
-    ));
-
-    main_buttons_box.append(&left_buttons_box);
-    main_buttons_box.append(&right_buttons_box);
-    left_buttons_box.append(&default_button);
-    
-    right_buttons_box.append(&save_button);
-    right_buttons_box.append(&cancel_button);
-    main_buttons_box.set_margin_bottom(10);
-    main_buttons_box.set_margin_top(10);
-    main_buttons_box.set_margin_start(10);
-    main_buttons_box.set_margin_end(10);
-
-    main_buttons_box.set_hexpand(true);
-    left_buttons_box.set_hexpand(true);
-    right_buttons_box.set_hexpand(true);
-    
-    right_buttons_box.set_direction(gtk::TextDirection::Rtl);
-    main_settings_box.append(&main_content_box);
-    main_settings_box.append(&main_buttons_box);
-    settings_window.set_child(Some(&main_settings_box));
-
-    settings_window
+    application.run();
 }
 
-
-fn create_about_window() {
-    println!("[+] {}", &t!("log.create_about_window").to_string());
-
-    let pixy = qr2m_lib::get_image_from_resources("logo.png");
-    let logo_picture = gtk::Picture::for_pixbuf(&pixy).paintable().unwrap();
-
-    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
-    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
-    
-    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
-    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
-    
-    let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
-
-    let they_forced_me = [
-        "This application uses GTK4 for its GUI.",
-        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
-        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
-    ];
-    let comments = they_forced_me.join(" ");
-
-    let help_window = gtk::AboutDialog::builder()
-        .modal(true)
-        // .default_width(600)
-        .default_height(400)
-        .program_name(APP_DESCRIPTION.unwrap())
-        .version(APP_VERSION.unwrap())
-        .website("https://www.github.com/control-owl/qr2m")
-        .website_label("GitHub project")
-        .authors([APP_AUTHOR.unwrap()])
-        .copyright("Copyright [2023-2024] Control Owl")
-        .license(licenses)
-        .wrap_license(true)
-        .comments(&t!("UI.about.description").to_string())
-        .logo(&logo_picture)
-        .comments(comments)
-        .build();
-
-    help_window.show();
-
-}
-
-fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
-    println!("[+] {}", &t!("log.update_derivation_label").to_string());
-    println!("\t Derivation Path: {:?}", DP);
-
-    let mut path = String::new();
-    path.push_str("m");
-
-    if DP.bip.unwrap() == 32  {
-        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
-        if DP.hardened_coin.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
-        if DP.hardened_address.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-    } else {
-        path.push_str(&format!("/{}", DP.bip.unwrap_or_default()));
-        if DP.hardened_bip.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
-        if DP.hardened_coin.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
-        if DP.hardened_address.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
-    }
-    
-    println!("\t Derivation path: {:?}", &path);
-
-    label.set_text(&path);
-}
-
-// pub fn create_main_window(application: &adw::Application, state: std::sync::Arc<std::sync::Mutex<AppState>>) {
 pub fn create_main_window(application: &adw::Application) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -2467,7 +1440,7 @@ pub fn create_main_window(application: &adw::Application) {
     );
     let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&adjustment));
     let mnemonic_passphrase_length_info = gtk::Entry::new();
-     
+        
     mnemonic_passphrase_items_box.set_hexpand(true);
     mnemonic_passphrase_scale_box.set_hexpand(true);
     mnemonic_passphrase_length_box.set_hexpand(true);
@@ -4040,102 +3013,1031 @@ pub fn create_main_window(application: &adw::Application) {
     window.present();
 }
 
-fn save_wallet_to_file() {
-    // TODO: Check if wallet is created before proceeding
-    let save_context = glib::MainContext::default();
-    let save_loop = glib::MainLoop::new(Some(&save_context), false);
-    
-    let wallet_settings = WALLET_SETTINGS.lock().unwrap();
-    let entropy_string = wallet_settings.entropy_string.clone().unwrap_or_default();
-    let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap_or_default();
+pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow { 
+    println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    let save_window = gtk::Window::new();
-    let save_dialog = gtk::FileChooserNative::new(
-        Some(t!("UI.dialog.save").to_string().as_str()),
-        Some(&save_window),
-        gtk::FileChooserAction::Save,
-        Some(&t!("UI.element.button.save")),
-        Some(&t!("UI.element.button.cancel"))
-    );
-
-    let filter = gtk::FileFilter::new();
-    filter.add_pattern(&format!("*.{}",WALLET_DEFAULT_EXTENSION));
-    filter.set_name(Some(&format!("Wallet file (*.{})",WALLET_DEFAULT_EXTENSION)));
-    save_dialog.add_filter(&filter);
-    
-    let all_files_filter = gtk::FileFilter::new();
-    all_files_filter.add_pattern("*");
-    all_files_filter.set_name(Some("All files"));
-    save_dialog.add_filter(&all_files_filter);
-
-    save_dialog.connect_response(clone!(
-        #[strong] save_loop,
-        move |save_dialog, response| {
-            if response == gtk::ResponseType::Accept {
-                if let Some(file) = save_dialog.file() {
-                    if let Some(path) = file.path() {
-                        println!("path: {:?}", path);
-                        let wallet_data = format!("version = {}\n{}\n{}", WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase);
-                        let wallet_file = format!{"{}.{}", path.display(), WALLET_DEFAULT_EXTENSION};
-
-                        std::fs::write(wallet_file, wallet_data).expect("Unable to write file");
-                        save_loop.quit();
-                    }
-                }
-            }
-            save_dialog.destroy();
-            save_loop.quit();
-        }
-    ));
-    save_dialog.show();
-    save_loop.run();
-}
-
-fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<String>), String> {
-    let file = File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
-    let mut lines = std::io::BufReader::new(file).lines();
-
-    let version_line = match lines.next() {
-        Some(Ok(line)) => line,
-        Some(Err(_)) => return Err("Error: Failed to read the version line".to_string()),
-        None => return Err("Error: File is empty, missing version line".to_string()),
+    if let Some(state) = &state {
+        let state = state.lock().unwrap();
+        state.theme.clone()
+    } else {
+        let settings = AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
+        Some(settings.gui_theme)
     };
 
-    let version = parse_wallet_version(&version_line)?;
+    let settings = AppSettings::load_settings()
+        .expect(&t!("error.settings.read").to_string());
 
-    match version {
-        1 => {
-            let entropy = match lines.next() {
-                Some(Ok(line)) => line,
-                Some(Err(_)) => return Err("Error: Failed to read entropy line".to_string()),
-                None => return Err("Error: Missing entropy line for version 1 wallet".to_string()),
-            };
+    let settings_window = gtk::ApplicationWindow::builder()
+        .title(t!("UI.settings").to_string())
+        .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
+        .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
+        .resizable(false)
+        .modal(true)
+        .build();
 
-            if !qr2m_lib::is_valid_entropy(&entropy) {
-                return Err("Error: Invalid entropy size.".to_string());
-            }
+    let stack = Stack::new();
+    let stack_sidebar = StackSidebar::new();
+    stack_sidebar.set_stack(&stack);
+    
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Settings: Sidebar 1: General settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let general_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.general").to_string()));
+    let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-            let passphrase = match lines.next() {
-                Some(Ok(line)) => Some(line),
-                Some(Err(_)) => return Err("Error: Failed to read passphrase line".to_string()),
-                None => None,
-            };
+    general_settings_box.set_margin_top(10);
+    general_settings_box.set_margin_bottom(0);
+    general_settings_box.set_margin_start(10);
+    general_settings_box.set_margin_end(10);
+    content_general_box.set_margin_start(20);
+    content_general_box.set_margin_bottom(20);
 
-            Ok((version, entropy, passphrase))
-        },
-        _ => Err(format!("Error: Unsupported wallet version '{}'", version)),
-    }
-}
+    general_settings_frame.set_hexpand(true);
+    general_settings_frame.set_vexpand(true);
+    general_settings_box.append(&general_settings_frame);
+    general_settings_frame.set_child(Some(&content_general_box));
 
-fn parse_wallet_version(line: &str) -> Result<u8, String> {
-    if line.starts_with("version = ") {
-        match line["version = ".len()..].parse::<u8>() {
-            Ok(version) => Ok(version),
-            Err(_) => Err("Error: Invalid version format, expected an integer".to_string()),
+    // GUI theme color
+    let default_gui_theme_color_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_gui_theme_color_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_theme_color_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_theme_color_label = gtk::Label::new(Some(&t!("UI.settings.general.theme").to_string()));
+    let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
+    let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
+    let default_gui_theme = valid_gui_themes_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_theme) 
+        .unwrap_or(0);
+
+    gui_theme_dropdown.set_selected(default_gui_theme.try_into().unwrap());
+    gui_theme_dropdown.set_size_request(200, 10);
+    default_gui_theme_color_box.set_hexpand(true);
+    default_gui_theme_color_item_box.set_hexpand(true);
+    default_gui_theme_color_item_box.set_margin_end(20);
+    default_gui_theme_color_item_box.set_halign(gtk::Align::End);
+    
+    default_gui_theme_color_label_box.append(&default_gui_theme_color_label);
+    default_gui_theme_color_item_box.append(&gui_theme_dropdown);
+    default_gui_theme_color_box.append(&default_gui_theme_color_label_box);
+    default_gui_theme_color_box.append(&default_gui_theme_color_item_box);
+    content_general_box.append(&default_gui_theme_color_box);
+
+    // GUI language
+    let default_gui_language_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_language_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_language_label = gtk::Label::new(Some(&t!("UI.settings.general.language").to_string()));
+    let valid_gui_languages_as_strings: Vec<String> = APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_languages_as_str_refs: Vec<&str> = valid_gui_languages_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_gui_language_dropdown = gtk::DropDown::from_strings(&valid_gui_languages_as_str_refs);
+    let default_gui_language = valid_gui_languages_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_language) 
+        .unwrap_or(0);
+
+    default_gui_language_dropdown.set_selected(default_gui_language.try_into().unwrap());
+    default_gui_language_dropdown.set_size_request(200, 10);
+    default_gui_language_box.set_hexpand(true);
+    default_gui_language_item_box.set_hexpand(true);
+    default_gui_language_item_box.set_margin_end(20);
+    default_gui_language_item_box.set_halign(gtk::Align::End);
+    
+    default_gui_language_label_box.append(&default_gui_language_label);
+    default_gui_language_item_box.append(&default_gui_language_dropdown);
+    default_gui_language_box.append(&default_gui_language_label_box);
+    default_gui_language_box.append(&default_gui_language_item_box);
+    content_general_box.append(&default_gui_language_box);
+
+    // GUI: Save last window size
+    let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let window_save_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let save_window_size_label = gtk::Label::new(Some(&t!("UI.settings.general.save_window").to_string()));
+    let save_window_size_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.gui_save_size;
+
+    save_window_size_checkbox.set_active(is_checked);
+    window_save_label_box.set_hexpand(true);
+    window_save_item_box.set_hexpand(true);
+    window_save_item_box.set_margin_end(20);
+    window_save_item_box.set_halign(gtk::Align::End);
+
+    window_save_label_box.append(&save_window_size_label);
+    window_save_item_box.append(&save_window_size_checkbox);
+    window_save_box.append(&window_save_label_box);
+    window_save_box.append(&window_save_item_box);
+    content_general_box.append(&window_save_box);
+
+    // Default search parameter
+    let default_search_parameter_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_search_parameter_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_search_parameter_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_search_parameter_label = gtk::Label::new(Some(&t!("UI.settings.general.search").to_string()));
+    let valid_search_parameters_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
+    let valid_search_parameters_as_str_refs: Vec<&str> = valid_search_parameters_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_search_parameter_dropdown = gtk::DropDown::from_strings(&valid_search_parameters_as_str_refs);
+    let default_search_parameter = valid_search_parameters_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_search) 
+        .unwrap_or(0);
+
+    default_search_parameter_dropdown.set_selected(default_search_parameter.try_into().unwrap());
+    default_search_parameter_dropdown.set_size_request(200, 10);
+    default_search_parameter_box.set_hexpand(true);
+    default_search_parameter_item_box.set_hexpand(true);
+    default_search_parameter_item_box.set_margin_end(20);
+    default_search_parameter_item_box.set_halign(gtk::Align::End);
+    
+    default_search_parameter_label_box.append(&default_search_parameter_label);
+    default_search_parameter_item_box.append(&default_search_parameter_dropdown);
+    default_search_parameter_box.append(&default_search_parameter_label_box);
+    default_search_parameter_box.append(&default_search_parameter_item_box);
+    content_general_box.append(&default_search_parameter_box);
+
+    // Notification timeout
+    let notification_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let notification_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let notification_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let notification_timeout_label = gtk::Label::new(Some(&t!("UI.settings.wallet.notification-timeout").to_string()));
+    let notification_timeout = settings.gui_notification_timeout as f64;
+    let notification_timeout_adjustment = gtk::Adjustment::new(
+        notification_timeout,
+        1.0,
+        120.0,
+        1.0,
+        10.0,
+        0.0,
+    );
+    let notification_timeout_spinbutton = gtk::SpinButton::new(Some(&notification_timeout_adjustment), 1.0, 0);
+
+    notification_timeout_spinbutton.set_size_request(200, 10);
+    notification_timeout_box.set_hexpand(true);
+    notification_timeout_item_box.set_hexpand(true);
+    notification_timeout_item_box.set_margin_end(20);
+    notification_timeout_item_box.set_halign(gtk::Align::End);
+
+    notification_timeout_label_box.append(&notification_timeout_label);
+    notification_timeout_item_box.append(&notification_timeout_spinbutton);
+    notification_timeout_box.append(&notification_timeout_label_box);
+    notification_timeout_box.append(&notification_timeout_item_box);
+    content_general_box.append(&notification_timeout_box);
+
+    stack.add_titled(
+        &general_settings_box,
+        Some("sidebar-settings-general"),
+        &t!("UI.settings.sidebar.general").to_string()
+    );
+
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Settings: Sidebar 2: Wallet settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet").to_string()));
+    let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    
+    wallet_settings_box.set_margin_top(10);
+    wallet_settings_box.set_margin_bottom(0);
+    wallet_settings_box.set_margin_start(10);
+    wallet_settings_box.set_margin_end(10);
+    content_wallet_box.set_margin_start(20);
+    content_wallet_box.set_margin_bottom(20);
+
+    wallet_settings_frame.set_hexpand(true);
+    wallet_settings_frame.set_vexpand(true);
+    wallet_settings_box.append(&wallet_settings_frame);
+    wallet_settings_frame.set_child(Some(&content_wallet_box));
+
+    // Default entropy source
+    let qrng_enabled = settings.anu_enabled;
+    let valid_entropy_sources: Vec<&str> = if qrng_enabled {
+        VALID_ENTROPY_SOURCES.iter().cloned().collect()
+    } else {
+        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
+    };
+
+    let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_source_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source").to_string()));
+    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+    let default_entropy_source = valid_entropy_source_as_strings
+        .iter()
+        .position(|s| *s == settings.wallet_entropy_source) 
+        .unwrap_or(0);
+
+    entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
+    entropy_source_dropdown.set_size_request(200, 10);
+    default_entropy_source_box.set_hexpand(true);
+    default_entropy_source_item_box.set_hexpand(true);
+    default_entropy_source_item_box.set_margin_end(20);
+    default_entropy_source_item_box.set_halign(gtk::Align::End);
+
+    default_entropy_source_label_box.append(&default_entropy_source_label);
+    default_entropy_source_item_box.append(&entropy_source_dropdown);
+    default_entropy_source_box.append(&default_entropy_source_label_box);
+    default_entropy_source_box.append(&default_entropy_source_item_box);
+    content_wallet_box.append(&default_entropy_source_box);
+
+    // Default entropy length
+    let default_entropy_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_entropy_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.length").to_string()));
+    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    let default_entropy_length = valid_entropy_lengths_as_strings
+        .iter()
+        .position(|x| x.parse::<u32>().unwrap() == settings.wallet_entropy_length)
+        .unwrap_or(0);
+
+    entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
+    entropy_length_dropdown.set_size_request(200, 10);
+    default_entropy_length_box.set_hexpand(true);
+    default_entropy_length_item_box.set_hexpand(true);
+    default_entropy_length_item_box.set_margin_end(20);
+    default_entropy_length_item_box.set_halign(gtk::Align::End);
+
+    default_entropy_length_label_box.append(&default_entropy_length_label);
+    default_entropy_length_item_box.append(&entropy_length_dropdown);
+    default_entropy_length_box.append(&default_entropy_length_label_box);
+    default_entropy_length_box.append(&default_entropy_length_item_box);
+    content_wallet_box.append(&default_entropy_length_box);
+
+    // Default BIP
+    let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_bip_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_bip_label = gtk::Label::new(Some(&t!("UI.settings.wallet.bip").to_string()));
+    let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
+    let valid_bips_as_str_refs: Vec<&str> = valid_bips_as_strings.iter().map(|s| s.as_ref()).collect();
+    let bip_dropdown = gtk::DropDown::from_strings(&valid_bips_as_str_refs);
+    let default_bip = valid_bips_as_strings
+        .iter()
+        .position(|x| x.parse::<u32>().unwrap() == settings.wallet_bip)
+        .unwrap_or(1); // Default BIP44
+
+    bip_dropdown.set_selected(default_bip.try_into().unwrap());
+    bip_dropdown.set_size_request(200, 10);
+    default_bip_box.set_hexpand(true);
+    default_bip_item_box.set_hexpand(true);
+    default_bip_item_box.set_margin_end(20);
+    default_bip_item_box.set_halign(gtk::Align::End);
+    
+    default_bip_label_box.append(&default_bip_label);
+    default_bip_item_box.append(&bip_dropdown);
+    default_bip_box.append(&default_bip_label_box);
+    default_bip_box.append(&default_bip_item_box);
+    content_wallet_box.append(&default_bip_box);
+
+    // Default address count
+    let default_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_address_count_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_address_count_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_address_count_label = gtk::Label::new(Some(&t!("UI.settings.wallet.address-count").to_string()));
+    let default_address_count = settings.wallet_address_count as f64;
+    let address_count_adjustment = gtk::Adjustment::new(
+        default_address_count,
+        1.0,
+        2147483647.0,
+        1.0,
+        10.0,
+        0.0,
+    );
+    let address_count_spinbutton = gtk::SpinButton::new(Some(&address_count_adjustment), 1.0, 0);
+
+    address_count_spinbutton.set_size_request(200, 10);
+    default_address_count_box.set_hexpand(true);
+    default_address_count_item_box.set_hexpand(true);
+    default_address_count_item_box.set_margin_end(20);
+    default_address_count_item_box.set_halign(gtk::Align::End);
+
+    default_address_count_label_box.append(&default_address_count_label);
+    default_address_count_item_box.append(&address_count_spinbutton);
+    default_address_count_box.append(&default_address_count_label_box);
+    default_address_count_box.append(&default_address_count_item_box);
+    content_wallet_box.append(&default_address_count_box);
+
+
+    // Hardened addresses
+    let hardened_addresses_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let hardened_addresses_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let hardened_addresses_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let hardened_addresses_label = gtk::Label::new(Some(&t!("UI.settings.wallet.hardened").to_string()));
+    let hardened_addresses_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.wallet_hardened_address;
+
+    hardened_addresses_checkbox.set_active(is_checked);
+    hardened_addresses_label_box.set_hexpand(true);
+    hardened_addresses_item_box.set_hexpand(true);
+    hardened_addresses_item_box.set_margin_end(20);
+    hardened_addresses_item_box.set_halign(gtk::Align::End);
+
+    hardened_addresses_label_box.append(&hardened_addresses_label);
+    hardened_addresses_item_box.append(&hardened_addresses_checkbox);
+    hardened_addresses_box.append(&hardened_addresses_label_box);
+    hardened_addresses_box.append(&hardened_addresses_item_box);
+    content_wallet_box.append(&hardened_addresses_box);
+
+
+    stack.add_titled(
+        &wallet_settings_box, 
+        Some("sidebar-settings-wallet"), 
+        &t!("UI.settings.sidebar.wallet").to_string()
+    );
+
+
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Settings: Sidebar 3: ANU settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu").to_string()));
+    let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+    anu_settings_box.set_margin_top(10);
+    anu_settings_box.set_margin_bottom(0);
+    anu_settings_box.set_margin_start(10);
+    anu_settings_box.set_margin_end(10);
+    content_anu_box.set_margin_start(20);
+    content_anu_box.set_margin_bottom(20);
+    anu_settings_box.append(&anu_settings_frame);
+    anu_settings_frame.set_child(Some(&content_anu_box));
+    anu_settings_frame.set_hexpand(true);
+    anu_settings_frame.set_vexpand(true);
+
+    // Use ANU QRNG API
+    let use_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.use_anu").to_string()));
+    let use_anu_api_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.anu_enabled;
+
+    use_anu_api_checkbox.set_active(is_checked);
+    use_anu_api_label_box.set_hexpand(true);
+    use_anu_api_item_box.set_hexpand(true);
+    use_anu_api_item_box.set_margin_end(20);
+    use_anu_api_item_box.set_halign(gtk::Align::End);
+
+    use_anu_api_label_box.append(&use_anu_api_label);
+    use_anu_api_item_box.append(&use_anu_api_checkbox);
+    use_anu_api_box.append(&use_anu_api_label_box);
+    use_anu_api_box.append(&use_anu_api_item_box);
+    content_anu_box.append(&use_anu_api_box);
+
+    // Log ANU QRNG API
+    let log_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let log_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let log_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let log_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.log").to_string()));
+    let log_anu_api_checkbox = gtk::CheckButton::new();
+
+    log_anu_api_checkbox.set_active(settings.anu_log);
+    log_anu_api_label_box.set_hexpand(true);
+    log_anu_api_item_box.set_hexpand(true);
+    log_anu_api_item_box.set_margin_end(20);
+    log_anu_api_item_box.set_halign(gtk::Align::End);
+
+    log_anu_api_label_box.append(&log_anu_api_label);
+    log_anu_api_item_box.append(&log_anu_api_checkbox);
+    log_anu_api_box.append(&log_anu_api_label_box);
+    log_anu_api_box.append(&log_anu_api_item_box);
+    content_anu_box.append(&log_anu_api_box);
+
+    // ANU API data type
+    let default_api_data_format_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_api_data_format_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_api_data_format_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.type").to_string()));
+    let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT.iter().map(|&x| x.to_string()).collect();
+    let valid_api_data_formats_as_str_refs: Vec<&str> = valid_api_data_formats_as_strings.iter().map(|s| s.as_ref()).collect();
+    let anu_data_format_dropdown = gtk::DropDown::from_strings(&valid_api_data_formats_as_str_refs);
+    let default_api_data_format = valid_api_data_formats_as_strings
+        .iter()
+        .position(|x| x.parse::<String>().unwrap() == settings.anu_data_format)
+        .unwrap_or(0);
+
+    anu_data_format_dropdown.set_selected(default_api_data_format.try_into().unwrap());
+    anu_data_format_dropdown.set_size_request(200, 10);
+    default_api_data_format_box.set_hexpand(true);
+    default_api_data_format_item_box.set_hexpand(true);
+    default_api_data_format_item_box.set_margin_end(20);
+    default_api_data_format_item_box.set_halign(gtk::Align::End);
+    
+    default_api_data_format_label_box.append(&default_api_data_format_label);
+    default_api_data_format_item_box.append(&anu_data_format_dropdown);
+    default_api_data_format_box.append(&default_api_data_format_label_box);
+    default_api_data_format_box.append(&default_api_data_format_item_box);
+    content_anu_box.append(&default_api_data_format_box);
+
+    // ANU array length
+    let default_anu_array_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
+    let mut default_array_length = settings.anu_array_length;
+    default_array_length = std::cmp::max(ANU_MINIMUM_ARRAY_LENGTH, default_array_length);
+    default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
+
+    let array_length_adjustment = gtk::Adjustment::new(
+        default_array_length as f64,       
+        ANU_MINIMUM_ARRAY_LENGTH as f64,   
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        1.0,
+        10.0,
+        0.0,
+    );
+    let default_anu_array_length_spinbutton = gtk::SpinButton::new(Some(&array_length_adjustment), 1.0, 0);
+
+    default_anu_array_length_label_box.set_hexpand(true);
+    default_anu_array_length_item_box.set_hexpand(true);
+    default_anu_array_length_item_box.set_margin_end(20);
+    default_anu_array_length_item_box.set_halign(gtk::Align::End);
+    default_anu_array_length_spinbutton.set_size_request(200, 10);
+
+    default_anu_array_length_label_box.append(&default_anu_array_length_label);
+    default_anu_array_length_item_box.append(&default_anu_array_length_spinbutton);
+    default_anu_array_length_box.append(&default_anu_array_length_label_box);
+    default_anu_array_length_box.append(&default_anu_array_length_item_box);
+    content_anu_box.append(&default_anu_array_length_box);
+    
+    // ANU hex block size
+    let default_anu_hex_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_anu_hex_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
+    
+    let mut default_hex_size = settings.anu_hex_block_size;
+    default_hex_size = std::cmp::max(1, default_hex_size);
+    default_hex_size = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_hex_size);
+
+    let hex_block_size_adjustment = gtk::Adjustment::new(
+        default_hex_size as f64,           
+        1.0,                               
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        1.0,
+        10.0,
+        0.0,
+    );
+    let default_anu_hex_length_spinbutton = gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
+
+    default_anu_hex_length_label_box.set_hexpand(true);
+    default_anu_hex_length_item_box.set_hexpand(true);
+    default_anu_hex_length_item_box.set_margin_end(20);
+    default_anu_hex_length_item_box.set_halign(gtk::Align::End);
+    default_anu_hex_length_spinbutton.set_size_request(200, 10);
+
+    default_anu_hex_length_label_box.append(&default_anu_hex_length_label);
+    default_anu_hex_length_item_box.append(&default_anu_hex_length_spinbutton);
+    default_anu_hex_length_box.append(&default_anu_hex_length_label_box);
+    default_anu_hex_length_box.append(&default_anu_hex_length_item_box);
+    content_anu_box.append(&default_anu_hex_length_box);
+
+    if anu_data_format_dropdown.selected() == 2 {
+        default_anu_hex_length_box.set_visible(true);
+    } else {
+        default_anu_hex_length_box.set_visible(false);
+    } ;
+
+    if use_anu_api_checkbox.is_active() {
+        default_api_data_format_box.set_visible(true);
+        log_anu_api_box.set_visible(true);
+        default_anu_array_length_box.set_visible(true);
+        if anu_data_format_dropdown.selected() as usize == 2 {
+            default_anu_hex_length_box.set_visible(true);
+        } else {
+            default_anu_hex_length_box.set_visible(false);
         }
     } else {
-        Err("Error: Version line is malformed, expected 'version = X' format".to_string())
+        log_anu_api_box.set_visible(false);
+        default_api_data_format_box.set_visible(false);
+        default_anu_array_length_box.set_visible(false);
+        default_anu_hex_length_box.set_visible(false);
     }
+    
+    // Actions
+    let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
+    let anu_data_format_dropdown_clone = anu_data_format_dropdown.clone();
+
+    use_anu_api_checkbox.connect_toggled(move |checkbox| {
+        if checkbox.is_active() {
+            default_api_data_format_box.set_visible(true);
+            log_anu_api_box.set_visible(true);
+            default_anu_array_length_box.set_visible(true);
+            if anu_data_format_dropdown_clone.selected() as usize == 2 {
+                default_anu_hex_length_box_clone.set_visible(true);
+            } else {
+                default_anu_hex_length_box_clone.set_visible(false);
+            }
+        } else {
+            default_api_data_format_box.set_visible(false);
+            log_anu_api_box.set_visible(false);
+            default_anu_array_length_box.set_visible(false);
+            default_anu_hex_length_box_clone.set_visible(false);
+        }
+    });
+    
+
+    anu_data_format_dropdown.connect_selected_notify(clone!(
+        #[weak] default_anu_hex_length_box,
+        // #[weak] anu_data_format_dropdown,
+        move |dd| {
+            if dd.selected() as usize == 2 {
+                default_anu_hex_length_box.set_visible(true);
+            } else {
+                default_anu_hex_length_box.set_visible(false);
+            }
+        }
+    ));
+
+
+    stack.add_titled(
+        &anu_settings_box, 
+        Some("sidebar-settings-anu"), 
+        &t!("UI.settings.sidebar.anu").to_string()
+    );
+
+
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    // JUMP: Settings: Sidebar 4: Proxy settings
+    // -.-. --- .--. -.-- .-. .. --. .... -
+    let scrolled_window = gtk::ScrolledWindow::new();
+    scrolled_window.set_max_content_height(400);
+    
+    let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let proxy_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.proxy").to_string()));
+    let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    
+    proxy_settings_box.set_margin_top(10);
+    proxy_settings_box.set_margin_bottom(0);
+    proxy_settings_box.set_margin_start(10);
+    proxy_settings_box.set_margin_end(10);
+    content_proxy_box.set_margin_start(20);
+    content_proxy_box.set_margin_bottom(20);
+
+    proxy_settings_box.append(&proxy_settings_frame);
+    proxy_settings_frame.set_child(Some(&content_proxy_box));
+    proxy_settings_frame.set_hexpand(true);
+    proxy_settings_frame.set_vexpand(true);
+    // scrolled_window.set_margin_bottom(10);
+    scrolled_window.set_child(Some(&proxy_settings_box));
+
+    // Use proxy settings
+    let use_proxy_settings_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_settings_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_settings_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_settings_label = gtk::Label::new(Some(&t!("UI.settings.proxy.use").to_string()));
+    let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
+    let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
+    let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
+    let default_proxy_settings_format = valid_proxy_settings_as_strings
+        .iter()
+        .position(|x| x.parse::<String>().unwrap() == settings.proxy_status)
+        .unwrap_or(1);  // Default proxy: auto
+
+    use_proxy_settings_dropdown.set_selected(default_proxy_settings_format.try_into().unwrap());
+    use_proxy_settings_dropdown.set_size_request(200, 10);
+    use_proxy_settings_label_box.set_hexpand(true);
+    use_proxy_settings_item_box.set_hexpand(true);
+    use_proxy_settings_item_box.set_margin_end(20);
+    use_proxy_settings_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_settings_label_box.append(&use_proxy_settings_label);
+    use_proxy_settings_item_box.append(&use_proxy_settings_dropdown);
+    use_proxy_settings_box.append(&use_proxy_settings_label_box);
+    use_proxy_settings_box.append(&use_proxy_settings_item_box);
+    content_proxy_box.append(&use_proxy_settings_box);
+
+    // Proxy manual settings
+    let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    
+    // IMPLEMENT non-case sensitive input Manual/manual
+
+    if settings.proxy_status == "Manual" {
+        proxy_manual_settings_box.set_visible(true);
+    } else {
+        proxy_manual_settings_box.set_visible(false);
+    }
+
+    // Proxy server address
+    let proxy_server_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_server_address_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_address_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_address_label = gtk::Label::new(Some(&t!("UI.settings.proxy.address").to_string()));
+    let proxy_server_address_entry = gtk::Entry::new();
+
+    proxy_server_address_entry.set_size_request(200, 10);
+    proxy_server_address_label_box.set_hexpand(true);
+    proxy_server_address_item_box.set_hexpand(true);
+    proxy_server_address_item_box.set_margin_end(20);
+    proxy_server_address_item_box.set_halign(gtk::Align::End);
+    proxy_server_address_entry.set_text(&settings.proxy_server_address);
+
+    proxy_server_address_label_box.append(&proxy_server_address_label);
+    proxy_server_address_item_box.append(&proxy_server_address_entry);
+    proxy_server_address_box.append(&proxy_server_address_label_box);
+    proxy_server_address_box.append(&proxy_server_address_item_box);
+    proxy_manual_settings_box.append(&proxy_server_address_box);
+
+
+    // Proxy server port
+    let proxy_server_port_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_server_port_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_port_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_server_port_label = gtk::Label::new(Some(&t!("UI.settings.proxy.port").to_string()));
+    let proxy_server_port_entry = gtk::Entry::new();
+
+    proxy_server_port_entry.set_size_request(200, 10);
+    proxy_server_port_label_box.set_hexpand(true);
+    proxy_server_port_item_box.set_hexpand(true);
+    proxy_server_port_item_box.set_margin_end(20);
+    proxy_server_port_item_box.set_halign(gtk::Align::End);
+
+    if settings.proxy_server_port == 0 {
+        proxy_server_port_entry.set_text(&DEFAULT_PROXY_PORT.to_string());
+    } else {
+        proxy_server_port_entry.set_text(&settings.proxy_server_port.to_string());
+    }
+
+    proxy_server_port_label_box.append(&proxy_server_port_label);
+    proxy_server_port_item_box.append(&proxy_server_port_entry);
+    proxy_server_port_box.append(&proxy_server_port_label_box);
+    proxy_server_port_box.append(&proxy_server_port_item_box);
+    proxy_manual_settings_box.append(&proxy_server_port_box);
+    
+    // Use proxy credentials
+    let use_proxy_credentials_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_credentials_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_credentials_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_credentials_label = gtk::Label::new(Some(&t!("UI.settings.proxy.creds").to_string()));
+    let use_proxy_credentials_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.proxy_login_credentials;
+    
+    use_proxy_credentials_checkbox.set_active(is_checked);
+    use_proxy_credentials_label_box.set_hexpand(true);
+    use_proxy_credentials_item_box.set_hexpand(true);
+    use_proxy_credentials_item_box.set_margin_end(20);
+    use_proxy_credentials_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_credentials_label_box.append(&use_proxy_credentials_label);
+    use_proxy_credentials_item_box.append(&use_proxy_credentials_checkbox);
+    use_proxy_credentials_box.append(&use_proxy_credentials_label_box);
+    use_proxy_credentials_box.append(&use_proxy_credentials_item_box);
+    proxy_manual_settings_box.append(&use_proxy_credentials_box);
+
+    // Proxy credentials
+    let use_proxy_credentials_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    
+    if settings.proxy_login_credentials == true {
+        use_proxy_credentials_content_box.set_visible(true);
+    } else {
+        use_proxy_credentials_content_box.set_visible(false);
+    }
+
+    // Proxy username
+    let proxy_username_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_username_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_username_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_username_label = gtk::Label::new(Some(&t!("UI.settings.proxy.username").to_string()));
+    let proxy_username_entry = gtk::Entry::new();
+
+    proxy_username_entry.set_size_request(200, 10);
+    proxy_username_label_box.set_hexpand(true);
+    proxy_username_item_box.set_hexpand(true);
+    proxy_username_item_box.set_margin_end(20);
+    proxy_username_item_box.set_halign(gtk::Align::End);
+    proxy_username_entry.set_text(&settings.proxy_login_username);
+
+    proxy_username_label_box.append(&proxy_username_label);
+    proxy_username_item_box.append(&proxy_username_entry);
+    proxy_username_box.append(&proxy_username_label_box);
+    proxy_username_box.append(&proxy_username_item_box);
+    use_proxy_credentials_content_box.append(&proxy_username_box);
+
+    // Proxy password
+    let proxy_password_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_password_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_password_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_password_label = gtk::Label::new(Some(&t!("UI.settings.proxy.password").to_string()));
+    let proxy_password_entry = gtk::PasswordEntry::new();
+
+    proxy_password_entry.set_size_request(200, 10);
+    proxy_password_label_box.set_hexpand(true);
+    proxy_password_item_box.set_hexpand(true);
+    proxy_password_item_box.set_margin_end(20);
+    proxy_password_item_box.set_halign(gtk::Align::End);
+
+    proxy_password_entry.set_show_peek_icon(true);
+    proxy_password_entry.set_text(&settings.proxy_login_password);
+
+    proxy_password_label_box.append(&proxy_password_label);
+    proxy_password_item_box.append(&proxy_password_entry);
+    proxy_password_box.append(&proxy_password_label_box);
+    proxy_password_box.append(&proxy_password_item_box);
+    use_proxy_credentials_content_box.append(&proxy_password_box);
+
+    proxy_manual_settings_box.append(&use_proxy_credentials_content_box);
+
+    // Use proxy PAC
+    let use_proxy_pac_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_pac_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_pac_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_pac_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac").to_string()));
+    let use_proxy_pac_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.proxy_use_pac;
+    
+    use_proxy_pac_checkbox.set_active(is_checked);
+    use_proxy_pac_label_box.set_hexpand(true);
+    use_proxy_pac_item_box.set_hexpand(true);
+    use_proxy_pac_item_box.set_margin_end(20);
+    use_proxy_pac_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_pac_label_box.append(&use_proxy_pac_label);
+    use_proxy_pac_item_box.append(&use_proxy_pac_checkbox);
+    use_proxy_pac_box.append(&use_proxy_pac_label_box);
+    use_proxy_pac_box.append(&use_proxy_pac_item_box);
+    proxy_manual_settings_box.append(&use_proxy_pac_box);
+
+    // Proxy PAC
+    let use_proxy_pac_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    
+    if settings.proxy_use_pac == true {
+        use_proxy_pac_content_box.set_visible(true);
+    } else {
+        use_proxy_pac_content_box.set_visible(false);
+    }
+
+    // Proxy PAC path
+    let proxy_pac_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_pac_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_pac_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_pac_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac.path").to_string()));
+    let proxy_pac_path_entry = gtk::Entry::new();
+
+    proxy_pac_path_entry.set_size_request(200, 10);
+    proxy_pac_path_label_box.set_hexpand(true);
+    proxy_pac_path_item_box.set_hexpand(true);
+    proxy_pac_path_item_box.set_margin_end(20);
+    proxy_pac_path_item_box.set_halign(gtk::Align::End);
+    proxy_pac_path_entry.set_text(&settings.proxy_script_address);
+
+    proxy_pac_path_label_box.append(&proxy_pac_path_label);
+    proxy_pac_path_item_box.append(&proxy_pac_path_entry);
+    proxy_pac_path_box.append(&proxy_pac_path_label_box);
+    proxy_pac_path_box.append(&proxy_pac_path_item_box);
+    use_proxy_pac_content_box.append(&proxy_pac_path_box);
+
+    proxy_manual_settings_box.append(&use_proxy_pac_content_box);
+
+
+    // Use proxy SSL
+    let use_proxy_ssl_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let use_proxy_ssl_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_ssl_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let use_proxy_ssl_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl").to_string()));
+    let use_proxy_ssl_checkbox = gtk::CheckButton::new();
+    let is_checked = settings.proxy_use_ssl;
+    
+    use_proxy_ssl_checkbox.set_active(is_checked);
+    use_proxy_ssl_label_box.set_hexpand(true);
+    use_proxy_ssl_item_box.set_hexpand(true);
+    use_proxy_ssl_item_box.set_margin_end(20);
+    use_proxy_ssl_item_box.set_halign(gtk::Align::End);
+
+    use_proxy_ssl_label_box.append(&use_proxy_ssl_label);
+    use_proxy_ssl_item_box.append(&use_proxy_ssl_checkbox);
+    use_proxy_ssl_box.append(&use_proxy_ssl_label_box);
+    use_proxy_ssl_box.append(&use_proxy_ssl_item_box);
+    proxy_manual_settings_box.append(&use_proxy_ssl_box);
+
+
+    // Proxy SSL certificate
+    let use_proxy_ssl_certificate_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    
+    if settings.proxy_use_ssl == true {
+        use_proxy_ssl_certificate_content_box.set_visible(true);
+    } else {
+        use_proxy_ssl_certificate_content_box.set_visible(false);
+    }
+
+    // Proxy SSL certificate path
+    let proxy_ssl_certificate_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let proxy_ssl_certificate_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_ssl_certificate_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let proxy_ssl_certificate_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl.path").to_string()));
+    let proxy_ssl_certificate_path_entry = gtk::Entry::new();
+
+    proxy_ssl_certificate_path_entry.set_size_request(200, 10);
+    proxy_ssl_certificate_path_label_box.set_hexpand(true);
+    proxy_ssl_certificate_path_item_box.set_hexpand(true);
+    proxy_ssl_certificate_path_item_box.set_margin_end(20);
+    proxy_ssl_certificate_path_item_box.set_halign(gtk::Align::End);
+    proxy_ssl_certificate_path_entry.set_text(&settings.proxy_ssl_certificate);
+
+    proxy_ssl_certificate_path_label_box.append(&proxy_ssl_certificate_path_label);
+    proxy_ssl_certificate_path_item_box.append(&proxy_ssl_certificate_path_entry);
+    proxy_ssl_certificate_path_box.append(&proxy_ssl_certificate_path_label_box);
+    proxy_ssl_certificate_path_box.append(&proxy_ssl_certificate_path_item_box);
+    use_proxy_ssl_certificate_content_box.append(&proxy_ssl_certificate_path_box);
+    proxy_manual_settings_box.append(&use_proxy_ssl_certificate_content_box);
+
+    content_proxy_box.append(&proxy_manual_settings_box);
+
+    stack.add_titled(
+        &scrolled_window,
+        Some("sidebar-settings-proxy"),
+        &t!("UI.settings.sidebar.proxy").to_string()
+    );
+
+    // Actions
+    use_proxy_settings_dropdown.connect_selected_notify(clone!(
+        #[weak] proxy_manual_settings_box,
+        move |dd| {
+            let value = dd.selected() as usize;
+            let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
+            let settings = selected_proxy_settings_value.unwrap();
+            
+            if *settings == "Manual" {
+                proxy_manual_settings_box.set_visible(true);
+            } else {
+                proxy_manual_settings_box.set_visible(false);
+            }
+        }
+    ));
+
+    use_proxy_credentials_checkbox.connect_active_notify(clone!(
+        #[weak] use_proxy_credentials_content_box,
+        move |cb| {
+            use_proxy_credentials_content_box.set_visible(cb.is_active());
+        }
+    ));
+
+    use_proxy_pac_checkbox.connect_active_notify(clone!(
+        #[weak] use_proxy_pac_content_box,
+        move |cb| {
+            use_proxy_pac_content_box.set_visible(cb.is_active());
+        }
+    ));
+
+    use_proxy_ssl_checkbox.connect_active_notify(clone!(
+        // #[weak] use_proxy_ssl_checkbox,
+        move |cb| {
+            use_proxy_ssl_certificate_content_box.set_visible(cb.is_active());
+        }
+    ));
+
+    // Compose settings window
+    let main_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    main_content_box.append(&stack_sidebar);
+    main_content_box.append(&stack);
+    
+    // Buttons
+    let main_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let left_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let right_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+
+    let save_button = gtk::Button::with_label(&t!("UI.element.button.save").to_string());
+    let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel").to_string());
+    let default_button = gtk::Button::with_label(&t!("UI.element.button.default").to_string());
+    // IMPLEMENT: apply button
+
+
+    // JUMP: Save settings button
+    save_button.connect_clicked(clone!(
+        #[weak] settings_window,
+        #[strong] state,
+        move |_| {
+            let mut settings = APPLICATION_SETTINGS.lock().unwrap();
+    
+            let updates = vec![
+                ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),
+                ("wallet_entropy_length", toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64)),
+                ("wallet_bip", toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64)),
+                ("wallet_address_count", toml_edit::value(address_count_spinbutton.value_as_int() as i64)),
+                ("wallet_hardened_address", toml_edit::value(hardened_addresses_checkbox.is_active())),
+                ("gui_save_size", toml_edit::value(save_window_size_checkbox.is_active())),
+                ("gui_theme", toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize])),
+                ("gui_language", toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize])),
+                ("gui_search", toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize])),
+                ("gui_notification_timeout", toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64)),
+                ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
+                ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
+                ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
+                ("anu_array_length", toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64)),
+                ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
+                ("proxy_status", toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize])),
+                ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
+                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or_default() as i64)),
+                ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
+                ("proxy_script_address", toml_edit::value(proxy_pac_path_entry.text().to_string())),
+                ("proxy_login_credentials", toml_edit::value(use_proxy_credentials_checkbox.is_active())),
+                ("proxy_login_username", toml_edit::value(proxy_username_entry.text().to_string())),
+                ("proxy_login_password", toml_edit::value(proxy_password_entry.text().to_string())),
+                ("proxy_use_ssl", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
+                ("proxy_ssl_certificate", toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string())),
+            ];
+    
+            for (key, value) in updates {
+                settings.update_value(key, value, None);
+            }
+    
+            AppSettings::save_settings(&*settings);
+                       
+            if let Some(state) = &state {
+                let mut state = state.lock().unwrap();
+                let info_bar = state.info_bar.clone();
+
+                let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
+                state.theme = Some(selected_theme);
+
+                state.update_infobar_message(
+                    "Settings saved".to_string(),
+                    info_bar.unwrap(),
+                    gtk::MessageType::Info,
+                );
+                state.apply_theme();
+            }
+
+            settings_window.close();
+        }
+    ));
+    
+    
+    cancel_button.connect_clicked(clone!(
+        #[weak] settings_window,
+        move |_| {
+            settings_window.close()
+        }
+    ));
+
+    main_buttons_box.append(&left_buttons_box);
+    main_buttons_box.append(&right_buttons_box);
+    left_buttons_box.append(&default_button);
+    
+    right_buttons_box.append(&save_button);
+    right_buttons_box.append(&cancel_button);
+    main_buttons_box.set_margin_bottom(10);
+    main_buttons_box.set_margin_top(10);
+    main_buttons_box.set_margin_start(10);
+    main_buttons_box.set_margin_end(10);
+
+    main_buttons_box.set_hexpand(true);
+    left_buttons_box.set_hexpand(true);
+    right_buttons_box.set_hexpand(true);
+    
+    right_buttons_box.set_direction(gtk::TextDirection::Rtl);
+    main_settings_box.append(&main_content_box);
+    main_settings_box.append(&main_buttons_box);
+    settings_window.set_child(Some(&main_settings_box));
+
+    settings_window
+}
+
+fn create_about_window() {
+    println!("[+] {}", &t!("log.create_about_window").to_string());
+
+    let pixy = qr2m_lib::get_image_from_resources("logo.png");
+    let logo_picture = gtk::Picture::for_pixbuf(&pixy).paintable().unwrap();
+
+    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
+    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
+    
+    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
+    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
+    
+    let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
+
+    let they_forced_me = [
+        "This application uses GTK4 for its GUI.",
+        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
+        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
+    ];
+    let comments = they_forced_me.join(" ");
+
+    let help_window = gtk::AboutDialog::builder()
+        .modal(true)
+        // .default_width(600)
+        .default_height(400)
+        .program_name(APP_DESCRIPTION.unwrap())
+        .version(APP_VERSION.unwrap())
+        .website("https://www.github.com/control-owl/qr2m")
+        .website_label("GitHub project")
+        .authors([APP_AUTHOR.unwrap()])
+        .copyright("Copyright [2023-2024] Control Owl")
+        .license(licenses)
+        .wrap_license(true)
+        .comments(&t!("UI.about.description").to_string())
+        .logo(&logo_picture)
+        .comments(comments)
+        .build();
+
+    help_window.show();
+
 }
 
 fn open_wallet_from_file() -> (String, Option<String>) {
@@ -4223,99 +4125,179 @@ fn open_wallet_from_file() -> (String, Option<String>) {
     }
 }
 
-fn main() {
-    print_program_info();
+fn save_wallet_to_file() {
+    // TODO: Check if wallet is created before proceeding
+    let save_context = glib::MainContext::default();
+    let save_loop = glib::MainLoop::new(Some(&save_context), false);
+    
+    let wallet_settings = WALLET_SETTINGS.lock().unwrap();
+    let entropy_string = wallet_settings.entropy_string.clone().unwrap_or_default();
+    let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap_or_default();
 
-    os::detect_os_and_user_dir();
+    let save_window = gtk::Window::new();
+    let save_dialog = gtk::FileChooserNative::new(
+        Some(t!("UI.dialog.save").to_string().as_str()),
+        Some(&save_window),
+        gtk::FileChooserAction::Save,
+        Some(&t!("UI.element.button.save")),
+        Some(&t!("UI.element.button.cancel"))
+    );
 
-    if let Err(err) = os::create_local_files() {
-        eprintln!("Error creating local config files: {}", err);
+    let filter = gtk::FileFilter::new();
+    filter.add_pattern(&format!("*.{}",WALLET_DEFAULT_EXTENSION));
+    filter.set_name(Some(&format!("Wallet file (*.{})",WALLET_DEFAULT_EXTENSION)));
+    save_dialog.add_filter(&filter);
+    
+    let all_files_filter = gtk::FileFilter::new();
+    all_files_filter.add_pattern("*");
+    all_files_filter.set_name(Some("All files"));
+    save_dialog.add_filter(&all_files_filter);
+
+    save_dialog.connect_response(clone!(
+        #[strong] save_loop,
+        move |save_dialog, response| {
+            if response == gtk::ResponseType::Accept {
+                if let Some(file) = save_dialog.file() {
+                    if let Some(path) = file.path() {
+                        println!("path: {:?}", path);
+                        let wallet_data = format!("version = {}\n{}\n{}", WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase);
+                        let wallet_file = format!{"{}.{}", path.display(), WALLET_DEFAULT_EXTENSION};
+
+                        std::fs::write(wallet_file, wallet_data).expect("Unable to write file");
+                        save_loop.quit();
+                    }
+                }
+            }
+            save_dialog.destroy();
+            save_loop.quit();
+        }
+    ));
+    save_dialog.show();
+    save_loop.run();
+}
+
+fn get_window_theme_icons() -> [gtk::Image; 5] {
+    println!("[+] {}", &t!("log.get_window_theme_icons").to_string());
+
+    let settings = gtk::Settings::default().unwrap();
+    let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
+        "dark"
+    } else {
+        "light"
+    };
+
+    let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
+    println!("\t Theme path: {:?}", theme_base_path);
+
+    let icon_files = [
+        "new-wallet.png",
+        "open-wallet.png",
+        "save-wallet.png",
+        "about.png",
+        "settings.png",
+    ];
+
+    let mut images = Vec::new();
+
+    for icon_file in icon_files.iter() {
+        let icon_path = theme_base_path.join(icon_file);
+
+        let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
+
+        images.push(valid_icon);
     }
 
-    let application = adw::Application::builder()
-        .application_id("wtf.r_o0_t.qr2m")
-        .build();
+    let final_images: [gtk::Image; 5] = core::array::from_fn(|i| gtk::Image::from_pixbuf(Some(&images[i])));
 
-    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+    final_images
+}
 
-    application.connect_activate(|app| {
-        create_main_window(&app);
-    });
+fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
+    println!("[+] {}", &t!("log.update_derivation_label").to_string());
+    println!("\t Derivation Path: {:?}", DP);
 
-    let quit = gio::SimpleAction::new("quit", None);
-    let new = gio::SimpleAction::new("new", None);
-    let open = gio::SimpleAction::new("open", None);
-    let save = gio::SimpleAction::new("save", None);
-    let settings = gio::SimpleAction::new("settings", None);
-    let about = gio::SimpleAction::new("about", None);
-    
-    quit.connect_activate(
-        glib::clone!(
-            #[weak] application,
-            move |_action, _parameter| {
-            application.quit();
-        }),
-    );
-    
-    new.connect_activate(clone!(
-        #[weak] application,
-        move |_action, _parameter| {
-            create_main_window(&application);
+    let mut path = String::new();
+    path.push_str("m");
+
+    if DP.bip.unwrap() == 32  {
+        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
+        if DP.hardened_coin.unwrap_or_default() {
+            path.push_str(&format!("'"));
         }
-    ));
 
-    open.connect_activate(move |_action, _parameter| {
-        open_wallet_from_file();
-    });
-    
-    save.connect_activate(|_action, _parameter| {
-        save_wallet_to_file();
-    });
-
-    settings.connect_activate(clone!(
-        #[weak] state,
-        move |_action, _parameter| {
-            let main_context = glib::MainContext::default();
-            let main_loop = glib::MainLoop::new(Some(&main_context), false);
-
-            let settings_window = create_settings_window(Some(state.clone()));
-            settings_window.connect_close_request(clone!(
-                #[strong] main_loop,
-                move |_| {
-                    state.lock().unwrap().apply_theme();
-                    main_loop.quit();
-                    glib::Propagation::Proceed
-                }
-            ));
-            
-            settings_window.show();
-            main_loop.run();
+        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
+        if DP.hardened_address.unwrap_or_default() {
+            path.push_str(&format!("'"));
         }
-    ));
+    } else {
+        path.push_str(&format!("/{}", DP.bip.unwrap_or_default()));
+        if DP.hardened_bip.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
 
-    about.connect_activate(move |_action, _parameter| {
-        create_about_window();
-    });
+        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
+        if DP.hardened_coin.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
 
-    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
-    application.add_action(&quit);
+        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
+        if DP.hardened_address.unwrap_or_default() {
+            path.push_str(&format!("'"));
+        }
 
-    application.set_accels_for_action("app.new", &["<Primary>N"]);
-    application.add_action(&new);
+        path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
+    }
+    
+    println!("\t Derivation path: {:?}", &path);
 
-    application.set_accels_for_action("app.open", &["<Primary>O"]);
-    application.add_action(&open);
+    label.set_text(&path);
+}
 
-    application.set_accels_for_action("app.save", &["<Primary>S"]);
-    application.add_action(&save);
+fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<String>), String> {
+    let file = File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
+    let mut lines = std::io::BufReader::new(file).lines();
 
-    application.set_accels_for_action("app.settings", &["F5"]);
-    application.add_action(&settings);
+    let version_line = match lines.next() {
+        Some(Ok(line)) => line,
+        Some(Err(_)) => return Err("Error: Failed to read the version line".to_string()),
+        None => return Err("Error: File is empty, missing version line".to_string()),
+    };
 
-    application.set_accels_for_action("app.about", &["F1"]);
-    application.add_action(&about);
+    let version = parse_wallet_version(&version_line)?;
 
-    application.run();
+    match version {
+        1 => {
+            let entropy = match lines.next() {
+                Some(Ok(line)) => line,
+                Some(Err(_)) => return Err("Error: Failed to read entropy line".to_string()),
+                None => return Err("Error: Missing entropy line for version 1 wallet".to_string()),
+            };
+
+            if !qr2m_lib::is_valid_entropy(&entropy) {
+                return Err("Error: Invalid entropy size.".to_string());
+            }
+
+            let passphrase = match lines.next() {
+                Some(Ok(line)) => Some(line),
+                Some(Err(_)) => return Err("Error: Failed to read passphrase line".to_string()),
+                None => None,
+            };
+
+            Ok((version, entropy, passphrase))
+        },
+        _ => Err(format!("Error: Unsupported wallet version '{}'", version)),
+    }
+}
+
+fn parse_wallet_version(line: &str) -> Result<u8, String> {
+    if line.starts_with("version = ") {
+        match line["version = ".len()..].parse::<u8>() {
+            Ok(version) => Ok(version),
+            Err(_) => Err("Error: Invalid version format, expected an integer".to_string()),
+        }
+    } else {
+        Err("Error: Version line is malformed, expected 'version = X' format".to_string())
+    }
 }
 
 
@@ -4678,22 +4660,5 @@ pub fn create_info_message(
     // }
 }
 
-fn setup_css() {
-    let provider = gtk::CssProvider::new();
-    let css_path = std::path::Path::new("theme").join("basic").join("style.css");
-    let css_path_str = css_path.to_str().expect("Failed to convert path to string");
-    let css_content = qr2m_lib::get_text_from_resources(css_path_str);
 
-    if css_content.is_empty() {
-        eprintln!("Failed to load CSS from resources.");
-    } else {
-        provider.load_from_data(&css_content);
-    }
-
-    gtk::style_context_add_provider_for_display(
-        &gtk::gdk::Display::default().expect("Error initializing display"),
-        &provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-}
 
