@@ -2850,6 +2850,7 @@ pub fn create_main_window(application: &adw::Application) {
             //     create_message_window("Empty seed", "Please generate seed first, then master keys", None, None);
             // }
 
+            // TODO: Save last address number, and next time generate from there afterwards
             let DP = derivation_label_text.text();
             let path = DP.to_string();
         
