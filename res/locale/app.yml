@@ -248,7 +248,7 @@ UI:
         priv:
           en: "Master private key"
           de: "Master Private Schlüssel"
-          hr: "Master privatni ključ"
+          hr: "Glavni privatni ključ"
         pub:
           en: "Master public key"
           de: "Master Public Schlüssel"
