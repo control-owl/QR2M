@@ -1,3 +1,7 @@
+# version 0.60.1
+- new button: random mnemonic words
+- improved logic by RNG+
+
 # version 0.60.0
 - remove message_window
 - added new gtk4 revealer

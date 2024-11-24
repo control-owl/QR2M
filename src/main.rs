@@ -858,13 +858,13 @@ fn print_program_info() {
 
 }
 
-fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option<u32>) -> (String, Option<String>) {
+fn generate_entropy(source: &str, entropy_length: u64) -> String {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
     println!("\t Entropy source: {:?}", source);
     println!("\t Entropy length: {:?}", entropy_length);
 
     match source {
-        "RNG" => {
+        "RNG" | "RNG+" => {
             let mut rng = rand::thread_rng();
             let rng_entropy_string: String = (0..entropy_length)
                 .map(|_| rng.gen_range(0..=1))
@@ -876,34 +876,9 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
             let mut wallet_settings = WALLET_SETTINGS.lock().unwrap(); // This locks the Mutex
             wallet_settings.entropy_string = Some(rng_entropy_string.clone());
 
-            (rng_entropy_string, None)
+            rng_entropy_string
         },
-        "RNG+" => {
-            let mut rng = rand::thread_rng();
-            let rng_entropy_string: String = (0..entropy_length)
-                .map(|_| rng.gen_range(0..=1))
-                .map(|bit| char::from_digit(bit, 10).unwrap())
-                .collect();
-
-            let length = match passphrase_length {
-                Some(value) => {value},
-                None => {0},
-            };
-
-            // let mut mnemonic_rng = rand::thread_rng();
-            // let value: String = (0..100).map(|_| char::from(rand::thread_rng().gen_range(32..127))).collect();
-
-            let mnemonic_rng_string: String = (0..length)
-                .map(|_| char::from(rand::thread_rng().gen_range(32..127)))
-                .collect();
-            println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
-
-            let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-            wallet_settings.entropy_string = Some(rng_entropy_string.clone());
-            wallet_settings.mnemonic_passphrase = Some(mnemonic_rng_string.clone());
-
-            (rng_entropy_string, Some(mnemonic_rng_string))
-        },
+        
         "QRNG" => {
             let (anu_format, array_length, hex_block_size) = {
                 let app_settings = APPLICATION_SETTINGS.lock().unwrap();
@@ -929,7 +904,7 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
             let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
             wallet_settings.entropy_string = Some(qrng_entropy_string.clone());
             
-            (qrng_entropy_string, None)
+            qrng_entropy_string
         },
         "File" => {
             let open_context = glib::MainContext::default();
@@ -977,11 +952,11 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
                     let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                     wallet_settings.entropy_string = Some(received_file_entropy_string.clone());
 
-                    (received_file_entropy_string, None)
+                    received_file_entropy_string
                 },
                 Err(_) => {
                     println!("{}", &t!("error.entropy.create.file"));
-                    (String::new(), None)
+                    String::new()
                 }
             }
         },
@@ -991,7 +966,7 @@ fn generate_entropy(source: &str, entropy_length: u64, passphrase_length: Option
         // },
         _ => {
             println!("{}", &t!("error.entropy.create.source"));
-            return (String::new(), None)
+            return String::new()
         }
     }
 }
@@ -2244,10 +2219,7 @@ fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
         .copied()
         .collect();
 
-    let default_image_extension = "png";
-    let image_file_name = format!("{}.{}", image_name, default_image_extension);
-
-    match RES_DIR.get_file(image_file_name.clone()) {
+    match RES_DIR.get_file(image_name) {
         Some(file) => {
             let image_data = file.contents();
             let image_bytes = glib::Bytes::from_static(image_data);
@@ -2268,7 +2240,7 @@ fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
             }
         }
         None => {
-            eprintln!("Failed to get {} from embedded resources", image_file_name);
+            eprintln!("Failed to get {} from embedded resources", image_name);
             gtk::gdk_pixbuf::Pixbuf::from_bytes(
                 &gtk::glib::Bytes::from(&empty_image),
                 gtk::gdk_pixbuf::Colorspace::Rgb,
@@ -2285,8 +2257,8 @@ fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let logo_resource = get_image_from_resources("logo");
-    let logo_picture = gtk::Picture::for_pixbuf(&logo_resource).paintable().unwrap();
+    let pixy = get_image_from_resources("logo.png");
+    let logo_picture = gtk::Picture::for_pixbuf(&pixy).paintable().unwrap();
 
     let app_license = fs::read_to_string("LICENSE.txt").unwrap();
     let lgpl_license = fs::read_to_string("LICENSE-LGPL-2.1.txt").unwrap();
@@ -2566,9 +2538,9 @@ pub fn create_main_window(application: &adw::Application) {
     let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
     let adjustment = gtk::Adjustment::new(
-        256.0,
-        1.0,
-        10240.0,
+        8.0 * 32.0,
+        8.0 * 2.0,
+        8.0 * 128.0,
         1.0,
         100.0,
         0.0,
@@ -2585,11 +2557,7 @@ pub fn create_main_window(application: &adw::Application) {
     let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
     let source = selected_entropy_source_value.unwrap();
 
-    if *source == "RNG+" {
-        mnemonic_passphrase_length_box.set_visible(true);
-    } else {
-        mnemonic_passphrase_length_box.set_visible(false);
-    }
+    
 
     mnemonic_passphrase_length_info.set_editable(false);
     mnemonic_passphrase_length_info.set_width_request(50);
@@ -2599,12 +2567,29 @@ pub fn create_main_window(application: &adw::Application) {
     mnemonic_passphrase_length_info.set_text("256");
     
     // Mnemonic passphrase
-    let mnemonic_passphrase_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
     let mnemonic_passphrase_text = gtk::Entry::new();
-    mnemonic_passphrase_box.set_hexpand(true);
+    mnemonic_passphrase_main_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
     
+
+    let pixy = get_image_from_resources("theme/basic/dark/random.svg");
+    let image = gtk::Picture::for_pixbuf(&pixy);
+
+    let random_mnemonic_passphrase_button = gtk::Button::new();
+    random_mnemonic_passphrase_button.set_child(Some(&image));
+
+    if *source == "RNG+" {
+        mnemonic_passphrase_length_box.set_visible(true);
+        random_mnemonic_passphrase_button.set_visible(true);
+    } else {
+        mnemonic_passphrase_length_box.set_visible(false);
+        random_mnemonic_passphrase_button.set_visible(false);
+    }
+
+
     let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     seed_buttons_box.set_halign(gtk::Align::Center);
 
@@ -2681,7 +2666,7 @@ pub fn create_main_window(application: &adw::Application) {
     entropy_length_box.append(&entropy_length_frame);
     entropy_header_first_box.append(&entropy_source_box);
     entropy_header_first_box.append(&entropy_length_box);
-    entropy_header_second_box.append(&mnemonic_passphrase_box);
+    entropy_header_second_box.append(&mnemonic_passphrase_main_box);
     entropy_header_second_box.append(&mnemonic_passphrase_length_box);
     entropy_header_box.append(&entropy_header_first_box);
     entropy_header_box.append(&entropy_header_second_box);
@@ -2694,10 +2679,12 @@ pub fn create_main_window(application: &adw::Application) {
     
     entropy_header_box.append(&seed_buttons_box);
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
-    mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_text));
+    mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
+    mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
+    mnemonic_passphrase_content_box.append(&random_mnemonic_passphrase_button);
     seed_frame.set_child(Some(&seed_text));
     mnemonic_words_box.append(&mnemonic_words_frame);
-    mnemonic_passphrase_box.append(&mnemonic_passphrase_frame);
+    mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
     seed_box.append(&seed_frame);
     body_box.append(&entropy_box);
     body_box.append(&mnemonic_words_box);
@@ -3203,9 +3190,7 @@ pub fn create_main_window(application: &adw::Application) {
         #[weak] entropy_length_dropdown,
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
-        #[weak] mnemonic_passphrase_scale,
         #[weak] seed_text,
-        // #[weak] save_wallet_button,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -3218,12 +3203,9 @@ pub fn create_main_window(application: &adw::Application) {
             entropy_text.buffer().set_text("");
             seed_text.buffer().set_text("");
 
-            let passphrase_length = mnemonic_passphrase_scale.value() as u32;
-
-            let (pre_entropy, rng_mnemonic) = generate_entropy(
+            let pre_entropy = generate_entropy(
                 &source,
                 *entropy_length as u64,
-                Some(passphrase_length)
             );
                 
             if !pre_entropy.is_empty() {
@@ -3238,23 +3220,7 @@ pub fn create_main_window(application: &adw::Application) {
                 let mnemonic_words = generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
                 
-                let passphrase_text:String;
-
-                match rng_mnemonic {
-                    Some(ref s) if !s.is_empty() => {
-                        println!("not empty {}", s);
-                        passphrase_text = rng_mnemonic.unwrap();
-                        mnemonic_passphrase_text.set_text(&passphrase_text)
-                    },
-                    Some(_) => {
-                        println!("empty");
-                        passphrase_text = mnemonic_passphrase_text.text().to_string();
-                    },
-                    None => {
-                        println!("empty");
-                        passphrase_text = mnemonic_passphrase_text.text().to_string();
-                    },
-                }
+                let passphrase_text = mnemonic_passphrase_text.text().to_string();
 
                 let seed = generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
@@ -3296,6 +3262,22 @@ pub fn create_main_window(application: &adw::Application) {
     
             // save_wallet_button.set_sensitive(false);
     }));
+    
+    random_mnemonic_passphrase_button.connect_clicked(clone!(
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_passphrase_scale,
+        move |_| {
+            let scale_value = mnemonic_passphrase_scale.value() as u32;
+
+            let mnemonic_rng_string: String = (0..scale_value)
+                        .map(|_| char::from(rand::thread_rng().gen_range(32..127)))
+                        .collect();
+            println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
+            mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
+
+        }
+    ));
+
 
     // JUMP: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
@@ -3417,6 +3399,7 @@ pub fn create_main_window(application: &adw::Application) {
 
     entropy_source_dropdown.connect_selected_notify(clone!(
         #[weak] generate_entropy_button,
+        #[weak] random_mnemonic_passphrase_button,
         move |entropy_source_dropdown| {
             let value = entropy_source_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
@@ -3424,8 +3407,10 @@ pub fn create_main_window(application: &adw::Application) {
     
             if *source == "RNG+" {
                 mnemonic_passphrase_length_box.set_visible(true);
+                random_mnemonic_passphrase_button.set_visible(true);
             } else {
                 mnemonic_passphrase_length_box.set_visible(false);
+                random_mnemonic_passphrase_button.set_visible(false);
             }
 
             if *source == "File" {
@@ -3456,7 +3441,7 @@ pub fn create_main_window(application: &adw::Application) {
     }));
     
     mnemonic_passphrase_text.connect_changed(clone!(
-        #[weak] generate_entropy_button,
+        // #[weak] generate_entropy_button,
         #[weak] entropy_text,
         #[weak] mnemonic_words_text,
         #[weak] seed_text,
@@ -3467,9 +3452,10 @@ pub fn create_main_window(application: &adw::Application) {
             let end_iter = entropy_buffer.end_iter();
             let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
 
-            if entropy_text == "" {
-                generate_entropy_button.emit_by_name::<()>("clicked", &[]);
-            } else {
+            if entropy_text != "" {
+                // generate_entropy_button.emit_by_name::<()>("clicked", &[]);
+                // println!("empty");
+            // } else {
                 let entropy_length = entropy_text.len();
                 let cut_entropy = entropy_length / 32;
                 let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
@@ -3485,7 +3471,6 @@ pub fn create_main_window(application: &adw::Application) {
                 let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
                 let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
 
-
                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                 wallet_settings.entropy_string = Some(final_entropy);
                 wallet_settings.mnemonic_words = Some(final_mnemonic_words);
@@ -3497,9 +3482,11 @@ pub fn create_main_window(application: &adw::Application) {
     
     mnemonic_passphrase_scale.connect_value_changed(clone!(
         #[weak] mnemonic_passphrase_length_info,
+        #[weak] random_mnemonic_passphrase_button,
         move |mnemonic_passphrase_scale| {
             let scale_value = mnemonic_passphrase_scale.value() as u32;
             mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
+            random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
         }
     ));
 
@@ -3518,7 +3505,6 @@ pub fn create_main_window(application: &adw::Application) {
             if full_entropy != "" {
                 let mnemonic_words = generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                
 
                 let (entropy_len, _checksum_len) = match full_entropy.len() {
                     132 => (128, 4),
