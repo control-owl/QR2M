@@ -1002,11 +1002,11 @@ fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
         .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
         .collect();
     
-    let worldlist_path = std::path::Path::new("coin").join(WORDLIST_FILE);
-    let worldlist = qr2m_lib::get_text_from_resources(&worldlist_path.to_str().unwrap());
+    let wordlist_path = std::path::Path::new("coin").join(WORDLIST_FILE);
+    let wordlist = qr2m_lib::get_text_from_resources(&wordlist_path.to_str().unwrap());
 
     let bad_word = t!("error.wordlist.word").to_string();
-    let mnemonic_words_vector: Vec<&str> = worldlist.lines().collect();
+    let mnemonic_words_vector: Vec<&str> = wordlist.lines().collect();
     let mnemonic_words_vector: Vec<&str> = mnemonic_decimal.iter().map(|&decimal| {
         if (decimal as usize) < mnemonic_words_vector.len() {
             mnemonic_words_vector[decimal as usize]
