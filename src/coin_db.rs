@@ -7,11 +7,11 @@
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-use std::fs::File;
+// use std::fs::File;
 use csv::ReaderBuilder;
 use gtk4 as gtk;
 
-const COINLIST_FILE: &str = "res/ECDB.csv";
+const COINLIST_FILE: &str = "ECDB.csv";
 
 // Coin status 2024-11-16
 pub const VALID_COIN_STATUS_NAME: &'static [&'static str] = &[
@@ -48,8 +48,16 @@ pub struct CoinDatabase {
 }
 
 pub fn create_coin_store() -> Vec<CoinDatabase> {
-    let file = File::open(&COINLIST_FILE).expect("can not open ECDB file");
-    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
+    let resource_path = std::path::Path::new("coin").join(COINLIST_FILE);
+    let path_str = resource_path.to_str().expect("Failed to convert path to string");
+    let csv_content = qr2m_lib::get_text_from_resources(path_str);
+
+    if csv_content.is_empty() {
+        eprintln!("Failed to retrieve CSV from embedded resources");
+        return Vec::new();
+    }
+
+    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(std::io::Cursor::new(csv_content));
     let mut coin_store = Vec::new();
 
     for result in rdr.records() {
@@ -104,7 +112,7 @@ pub fn create_coin_store() -> Vec<CoinDatabase> {
 }
 
 pub fn create_coin_completion_model() -> gtk::ListStore {
-    let valid_coin_symbols = create_coin_database(COINLIST_FILE);
+    let valid_coin_symbols = create_coin_database();
 
     let store = gtk::ListStore::new(&[
         glib::Type::STRING, // status
@@ -207,11 +215,17 @@ pub fn fetch_coins_from_database<'a>(
     result
 }
 
-fn create_coin_database(file_path: &str) -> Vec<CoinDatabase> {
-    let file = File::open(&file_path)
-        .expect(&t!("error.file.read", value = file_path).to_string());
+fn create_coin_database() -> Vec<CoinDatabase> {
 
-    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(file);
+    let resource_path = std::path::Path::new("coin").join("ECDB.csv");
+    let resource_path_str = resource_path.to_str().unwrap_or_default();
+    let csv_content = qr2m_lib::get_text_from_resources(resource_path_str);
+    if csv_content.is_empty() {
+        eprintln!("Error: Failed to retrieve CSV file from resources.");
+        return Vec::new();
+    }
+
+    let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_reader(csv_content.as_bytes());
 
     let coin_types: Vec<CoinDatabase> = rdr.records()
         .filter_map(|record| record.ok())

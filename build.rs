@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::io;
 
 fn main() {
-    let resources = ["config", "lib", "locale", "res"];
+    // let resources = ["config", "lib", "locale", "res"];
+    let resources = ["locale"];
     let output_directory = env::var("OUT_DIR").unwrap();
 
     for dir in resources {

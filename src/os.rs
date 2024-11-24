@@ -16,9 +16,7 @@ use std::{
 use crate::APP_NAME;
 
 const APP_LOCAL_CONFIG_FILE: &str = "qr2m.conf";
-// pub const APP_LOCAL_DO_NOT_SHOW_FILE: &str = "qr2m.show";
 const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
-pub const APP_DEFAULT_CONFIG_FILE: &str = "config/default.conf";
 
 thread_local! {
     pub static LOCAL_DATA: std::cell::RefCell<LocalSettings> = std::cell::RefCell::new(LocalSettings::default());
@@ -83,7 +81,6 @@ pub fn detect_os_and_user_dir() {
         match fs::read_link(&local_config_dir) {
             Ok(target) => {
                 if target.is_dir() {
-                    // Check if the symlink target is writable
                     if fs::metadata(&target).map(|m| m.permissions().readonly()).unwrap_or(true) {
                         println!("[!] Symlink target is not writable: {:?}", &target);
                         (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
@@ -140,13 +137,8 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
         data.local_config_file.clone().unwrap()
     });
 
-    // let local_do_not_show_file = LOCAL_DATA.with(|data| {
-    //     let data = data.borrow();
-    //     data.local_do_not_show_file.clone().unwrap()
-    // });
-
     if !local_config_dir.exists() {
-        eprintln!("Local config directory not found!");
+        eprintln!("Local config directory not found. Creating it.");
         fs::create_dir_all(&local_config_dir)?;
     }
 
@@ -155,36 +147,28 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !Path::new(&local_config_file).exists() {
-        eprintln!("Default config file '{:?}' does not exist", local_config_file);
-        match fs::copy(APP_DEFAULT_CONFIG_FILE, &local_config_file) {
-            Ok(_) => {
-                println!("Local config file created");
-                return Ok(())
-            }
-            Err(err) => {
-                eprintln!("Failed to copy default config file: {}", err);
-                return Err(err.into())
-            }
-        };
+        eprintln!(
+            "Local config file '{:?}' does not exist. Creating it from the default configuration.",
+            local_config_file
+        );
+
+        let default_config = qr2m_lib::get_text_from_resources(crate::APP_DEFAULT_CONFIG_FILE);
+
+        if default_config.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Default configuration is empty or missing in resources",
+            )
+            .into());
+        }
+
+        fs::write(&local_config_file, default_config)?;
+        println!("Local config file created successfully.");
     }
 
-    // if !Path::new(&local_do_not_show_file).exists() {
-    //     eprintln!("Default config file '{:?}' does not exist", local_config_file);
-    //     match fs::File::create(local_do_not_show_file) {
-    //         Ok(_) => {
-    //             println!("Local do-not-show file created");
-    //             return Ok(())
-    //         }
-    //         Err(err) => {
-    //             eprintln!("Failed to create do-not-show file: {}", err);
-    //             return Err(err.into())
-    //         }
-    //     };
-    // }
-
     Ok(())
-
 }
+
 
 fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
     let mut temp_file_path = dir.to_path_buf();

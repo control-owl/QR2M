@@ -34,8 +34,8 @@ use num_bigint::BigUint;
 use sha3::Keccak256;
 
 
-use include_dir::{include_dir, Dir, };
-static RES_DIR: Dir<'_> = include_dir!("res");
+// use include_dir::{include_dir, Dir, };
+// pub static RES_DIR: Dir<'_> = include_dir!("res");
 
 
 // Mods
@@ -66,6 +66,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
 ];
 const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 10;
 const WORDLIST_FILE: &str = "res/bip39-mnemonic-words-english.txt";
+const APP_DEFAULT_CONFIG_FILE: &str = "default.conf";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
@@ -113,7 +114,7 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
     "Symbol", 
     "Index",
 ];
-const APP_CSS_THEME_FILE: &str = "res/style.css";
+// const APP_CSS_THEME_FILE: &str = "res/style.css";
 
 
 lazy_static::lazy_static! {
@@ -169,15 +170,19 @@ impl AppSettings {
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                eprintln!("Failed to read local config file: {:?} \n Error: {:?}", local_config_file, err);
-                
-                match fs::read_to_string(&os::APP_DEFAULT_CONFIG_FILE) {
-                    Ok(contents) => contents,
-                    Err(err) => {
-                        eprintln!("Failed to read default and local config file.\n Error: {:?}", err);
-                        String::new()
-                    }
+                eprintln!(
+                    "Failed to read local config file: {:?} \nError: {:?}",
+                    local_config_file, err
+                );
+        
+                let default_config = qr2m_lib::get_text_from_resources(APP_DEFAULT_CONFIG_FILE);
+                if default_config.is_empty() {
+                    eprintln!("Default configuration from embedded resources is empty.");
+                } else {
+                    println!("Loaded default configuration from embedded resources.");
                 }
+        
+                default_config
             }
         };
 
@@ -204,13 +209,7 @@ impl AppSettings {
                 .unwrap_or_else(|| default_config.get(section_name).cloned().unwrap_or(toml::Value::Table(toml::value::Table::new())))
         }
         
-        let default_config_str = match fs::read_to_string(os::APP_DEFAULT_CONFIG_FILE) {
-            Ok(contents) => contents,
-            Err(err) => {
-                eprintln!("Failed to read default config file: {:?}\nError: {:?}", os::APP_DEFAULT_CONFIG_FILE, err);
-                String::new()
-            }
-        };
+        let default_config_str = qr2m_lib::get_text_from_resources(APP_DEFAULT_CONFIG_FILE);
         let default_config: toml::Value = default_config_str.parse().unwrap_or_else(|_| toml::Value::Table(toml::value::Table::new()));
         
         // Sections
@@ -1162,68 +1161,36 @@ fn get_window_theme_icons() -> [gtk::Image; 5] {
     println!("[+] {}", &t!("log.get_window_theme_icons").to_string());
 
     let settings = gtk::Settings::default().unwrap();
-    let theme_path;
-
-    if settings.is_gtk_application_prefer_dark_theme() {
-        theme_path = "res/theme/basic/dark".to_string();
+    let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
+        "dark"
     } else {
-        theme_path = "res/theme/basic/light".to_string();
-    }
+        "light"
+    };
 
-    println!("\t Theme: {:?}", theme_path);
+    let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
+    println!("\t Theme path: {:?}", theme_base_path);
 
-    // BUG: SVG is not working on my Windows, revert to PNG icons
-    // FEATURE: Check if svg can be loaded, if not, revert to png
-    let default_image_extension = "png";
-
-    let icon_new_wallet_bytes = load_icon_bytes(&format!("{}/new-wallet.{}", theme_path, default_image_extension));
-    let icon_open_wallet_bytes = load_icon_bytes(&format!("{}/open-wallet.{}", theme_path, default_image_extension));
-    let icon_save_wallet_bytes = load_icon_bytes(&format!("{}/save-wallet.{}", theme_path, default_image_extension));
-    let icon_about_bytes = load_icon_bytes(&format!("{}/about.{}", theme_path, default_image_extension));
-    let icon_settings_bytes = load_icon_bytes(&format!("{}/settings.{}", theme_path, default_image_extension));
-    
-    let icon_new_wallet = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_new_wallet_bytes)))
-        .build();
-
-    let icon_open_wallet = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_open_wallet_bytes)))
-        .build();
-    
-    let icon_save_wallet = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_save_wallet_bytes)))
-        .build();
-    
-    let icon_about = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_about_bytes)))
-        .build();
-    
-    let icon_settings = gtk::Image::builder()
-        .gicon(&gio::BytesIcon::new(&glib::Bytes::from(&icon_settings_bytes)))
-        .build();
-
-    let images: [gtk::Image; 5] = [
-        icon_new_wallet,
-        icon_open_wallet,
-        icon_save_wallet,
-        icon_about,
-        icon_settings,
+    let icon_files = [
+        "new-wallet.png",
+        "open-wallet.png",
+        "save-wallet.png",
+        "about.png",
+        "settings.png",
     ];
 
-    images
-    
-}
+    let mut images = Vec::new();
 
-fn load_icon_bytes(path: &str) -> Vec<u8> {
-    // println!("[+] {}", &t!("log.load_icon_bytes"));
-    println!("\t Icon: {:?}", path);
+    for icon_file in icon_files.iter() {
+        let icon_path = theme_base_path.join(icon_file);
 
-    let mut file = std::fs::File::open(path)
-        .expect(&t!("error.file.open", value = path).to_string());
-    let mut buffer = Vec::new();
-    
-    file.read_to_end(&mut buffer).expect(&t!("error.file.read", value = path).to_string());
-    buffer
+        let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
+
+        images.push(valid_icon);
+    }
+
+    let final_images: [gtk::Image; 5] = core::array::from_fn(|i| gtk::Image::from_pixbuf(Some(&images[i])));
+
+    final_images
 }
 
 pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow { 
@@ -2211,57 +2178,19 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
     settings_window
 }
 
-fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
-    let empty_image: Vec<u8> = [1, 64, 112]
-        .iter()
-        .cycle()
-        .take(300)
-        .copied()
-        .collect();
-
-    match RES_DIR.get_file(image_name) {
-        Some(file) => {
-            let image_data = file.contents();
-            let image_bytes = glib::Bytes::from_static(image_data);
-            let cursor = std::io::Cursor::new(image_bytes);
-
-            match gtk::gdk_pixbuf::Pixbuf::from_read(cursor) {
-                Ok(pixbuf) => pixbuf,
-                Err(_) => 
-                    gtk::gdk_pixbuf::Pixbuf::from_bytes(
-                        &gtk::glib::Bytes::from(&empty_image),
-                        gtk::gdk_pixbuf::Colorspace::Rgb,
-                        false,
-                        8,
-                        10,
-                        10,
-                        30,
-                ),
-            }
-        }
-        None => {
-            eprintln!("Failed to get {} from embedded resources", image_name);
-            gtk::gdk_pixbuf::Pixbuf::from_bytes(
-                &gtk::glib::Bytes::from(&empty_image),
-                gtk::gdk_pixbuf::Colorspace::Rgb,
-                false,
-                8,
-                10,
-                10,
-                30,
-            )
-        }
-    }
-}
 
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let pixy = get_image_from_resources("logo.png");
+    let pixy = qr2m_lib::get_image_from_resources("logo.png");
     let logo_picture = gtk::Picture::for_pixbuf(&pixy).paintable().unwrap();
 
-    let app_license = fs::read_to_string("LICENSE.txt").unwrap();
-    let lgpl_license = fs::read_to_string("LICENSE-LGPL-2.1.txt").unwrap();
+    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
+    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
+    
+    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
+    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
+    
     let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
 
     let they_forced_me = [
@@ -2287,15 +2216,6 @@ fn create_about_window() {
         .logo(&logo_picture)
         .comments(comments)
         .build();
-
-    // Create a CSS provider
-    let provider = gtk::CssProvider::new();
-    provider.load_from_data(
-        ".about-dialog-comments {
-            font-size: 4px;
-        }"
-    );
-    help_window.style_context().add_provider(&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     help_window.show();
 
@@ -2575,7 +2495,7 @@ pub fn create_main_window(application: &adw::Application) {
     mnemonic_passphrase_text.set_hexpand(true);
     
 
-    let pixy = get_image_from_resources("theme/basic/dark/random.svg");
+    let pixy = qr2m_lib::get_image_from_resources("theme/basic/dark/random.svg");
     let image = gtk::Picture::for_pixbuf(&pixy);
 
     let random_mnemonic_passphrase_button = gtk::Button::new();
@@ -4120,120 +4040,6 @@ pub fn create_main_window(application: &adw::Application) {
     window.present();
 }
 
-// fn create_message_window(title: &str, msg: &str, progress_active: Option<bool>, wait_time: Option<u32>) {
-//     println!("[+] {}", &t!("log.create_message_window").to_string());
-    
-//     if let Ok(settings) = os::load_do_not_show_settings() {
-//         // Check if the title exists in the set of do-not-show titles
-//         if settings.contains(title) {
-//             println!("Skipping message window for title: {}", title);
-//             return;
-//         }
-//     }
-        
-//     let message_window = gtk::MessageDialog::builder()
-//         .title(title)
-//         .resizable(false)
-//         .modal(true)
-//         .build();
-
-//     let dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//     dialog_main_box.set_margin_bottom(20);
-//     dialog_main_box.set_margin_top(20);
-//     dialog_main_box.set_margin_start(50);
-//     dialog_main_box.set_margin_end(50);
-    
-
-//     // Message label
-//     let message_label_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//     let message_label = gtk::Label::new(Some(&msg));
-//     message_label_box.set_margin_bottom(10);
-//     message_label.set_justify(gtk::Justification::Center);
-    
-//     message_label_box.append(&message_label);
-//     dialog_main_box.append(&message_label_box);
-    
-
-//     // Progress box
-//     if progress_active.unwrap_or(false) {
-//         let progress_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//         progress_main_box.set_margin_top(10);
-//         progress_main_box.set_margin_bottom(10);
-
-//         let level_bar = gtk::LevelBar::new();
-//         level_bar.set_max_value(100.0);
-
-//         progress_main_box.append(&level_bar);
-//         dialog_main_box.append(&progress_main_box);
-
-//         let app_settings = APPLICATION_SETTINGS.lock().unwrap();
-//         let notification_timeout = app_settings.gui_notification_timeout;
-//         let wait_time = wait_time.unwrap_or(notification_timeout);
-//         let level_bar_clone = level_bar.clone();
-//         let message_window_clone = message_window.clone();
-
-//         let mut progress = 0.0;
-//         progress += 100.0 / wait_time as f64;
-//         level_bar_clone.set_value(progress);
-        
-//         glib::timeout_add_seconds_local(1, move || {
-//             progress += 100.0 / wait_time as f64;
-//             level_bar_clone.set_value(progress);
-//             if progress >= 100.0 {
-//                 message_window_clone.close();
-//                 glib::ControlFlow::Break
-//             } else {
-//                 glib::ControlFlow::Continue
-//             }
-//         });
-//     }
-
-//     // Do not show
-//     let do_not_show_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//     let do_not_show_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-//     let do_not_show_label = gtk::Label::new(Some(&t!("UI.messages.dialog.do-not-show").to_string()));
-//     let do_not_show_checkbox = gtk::CheckButton::new();
-    
-//     do_not_show_main_box.set_margin_top(10);
-//     do_not_show_content_box.set_halign(gtk::Align::Center);
-
-//     do_not_show_content_box.append(&do_not_show_label);
-//     do_not_show_content_box.append(&do_not_show_checkbox);
-//     do_not_show_main_box.append(&do_not_show_content_box);
-
-//     // Close button
-//     let close_dialog_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-//     let close_dialog_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-//     let close_dialog_button = gtk::Button::with_label(&t!("UI.messages.dialog.close").to_string());
-    
-//     close_dialog_main_box.set_margin_top(10);
-//     close_dialog_content_box.set_halign(gtk::Align::Center);
-
-//     close_dialog_content_box.append(&close_dialog_button);
-//     close_dialog_main_box.append(&close_dialog_content_box);
-
-//     // Connections
-//     dialog_main_box.append(&do_not_show_main_box);
-//     dialog_main_box.append(&close_dialog_main_box);
-//     message_window.set_child(Some(&dialog_main_box));
-
-//     let title_owned = title.to_string();
-//     println!("title_owned: {:?}", title_owned);
-//     close_dialog_button.connect_clicked(clone!(
-//         #[weak] message_window,
-//         move |_| {
-//             if do_not_show_checkbox.is_active() {
-//                 if let Err(err) = os::save_do_not_show_setting(&title_owned) {
-//                     eprintln!("Failed to save do not show setting: {:?}", err);
-//                 }
-//             }
-//             message_window.close();
-//         }
-//     ));
-
-//     message_window.show();
-// }
-
 fn save_wallet_to_file() {
     // TODO: Check if wallet is created before proceeding
     let save_context = glib::MainContext::default();
@@ -4305,7 +4111,7 @@ fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<
                 None => return Err("Error: Missing entropy line for version 1 wallet".to_string()),
             };
 
-            if !is_valid_entropy(&entropy) {
+            if !qr2m_lib::is_valid_entropy(&entropy) {
                 return Err("Error: Invalid entropy size.".to_string());
             }
 
@@ -4330,23 +4136,6 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
     } else {
         Err("Error: Version line is malformed, expected 'version = X' format".to_string())
     }
-}
-
-fn is_valid_entropy(full_entropy: &str) -> bool {
-    let (entropy_len, checksum_len) = match full_entropy.len() {
-        132 => (128, 4),
-        165 => (160, 5),
-        198 => (192, 6),
-        231 => (224, 7),
-        264 => (256, 8),
-        _ => return false,
-    };
-
-    let (entropy, checksum) = full_entropy.split_at(entropy_len);
-
-    entropy.len() == entropy_len
-        && checksum.len() == checksum_len
-        && entropy.chars().all(|c| c == '0' || c == '1')
 }
 
 fn open_wallet_from_file() -> (String, Option<String>) {
@@ -4891,7 +4680,15 @@ pub fn create_info_message(
 
 fn setup_css() {
     let provider = gtk::CssProvider::new();
-    provider.load_from_path(APP_CSS_THEME_FILE);
+    let css_path = std::path::Path::new("theme").join("basic").join("style.css");
+    let css_path_str = css_path.to_str().expect("Failed to convert path to string");
+    let css_content = qr2m_lib::get_text_from_resources(css_path_str);
+
+    if css_content.is_empty() {
+        eprintln!("Failed to load CSS from resources.");
+    } else {
+        provider.load_from_data(&css_content);
+    }
 
     gtk::style_context_add_provider_for_display(
         &gtk::gdk::Display::default().expect("Error initializing display"),
@@ -4899,3 +4696,4 @@ fn setup_css() {
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 }
+

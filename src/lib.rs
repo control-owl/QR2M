@@ -8,6 +8,10 @@
 
 
 use sha2::{Digest, Sha256, Sha512};
+use include_dir::{include_dir, Dir};
+use gtk4 as gtk;
+
+pub static RES_DIR: Dir<'_> = include_dir!("res");
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -118,6 +122,77 @@ pub fn calculate_checksum_for_entropy(entropy: &str, entropy_length: &u32) -> St
     let checksum_length = entropy_length / 32;
     let entropy_checksum: String = hash_raw_binary.chars().take(checksum_length.try_into().unwrap()).collect();
     entropy_checksum
+}
+
+pub fn is_valid_entropy(full_entropy: &str) -> bool {
+    let (entropy_len, checksum_len) = match full_entropy.len() {
+        132 => (128, 4),
+        165 => (160, 5),
+        198 => (192, 6),
+        231 => (224, 7),
+        264 => (256, 8),
+        _ => return false,
+    };
+
+    let (entropy, checksum) = full_entropy.split_at(entropy_len);
+
+    entropy.len() == entropy_len
+        && checksum.len() == checksum_len
+        && entropy.chars().all(|c| c == '0' || c == '1')
+}
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+pub fn get_text_from_resources(file_name: &str) -> String {
+    match RES_DIR.get_file(file_name) {
+        Some(file) => match std::str::from_utf8(file.contents()) {
+            Ok(text) => text.to_string(),
+            Err(err) => {
+                eprintln!("Failed to read {} as UTF-8: {}", file_name, err);
+                String::new()
+            }
+        },
+        None => {
+            eprintln!("Failed to get {} from embedded resources", file_name);
+            String::new()
+        }
+    }
+}
+
+pub fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
+    match RES_DIR.get_file(image_name) {
+        Some(file) => {
+            let image_data = file.contents();
+            let image_bytes = glib::Bytes::from_static(image_data);
+            let cursor = std::io::Cursor::new(image_bytes);
+
+            match gtk::gdk_pixbuf::Pixbuf::from_read(cursor) {
+                Ok(pixbuf) => pixbuf,
+                Err(_) => {
+                    generate_empty_image()
+                }
+            }
+        }
+        None => {
+            eprintln!("Failed to get {} from embedded resources", image_name);
+            generate_empty_image()
+        }
+    }
+}
+
+fn generate_empty_image() -> gtk::gdk_pixbuf::Pixbuf {
+    let empty_image: Vec<u8> = vec![1, 64, 112].into_iter().cycle().take(300).collect();
+    gtk::gdk_pixbuf::Pixbuf::from_bytes(
+        &glib::Bytes::from(&empty_image),
+        gtk::gdk_pixbuf::Colorspace::Rgb,
+        false,
+        8,
+        10,
+        10,
+        30,
+    )
 }
 
 
