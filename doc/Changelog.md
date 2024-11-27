@@ -1,3 +1,6 @@
+# version 0.70.1
+- windows exe version finished
+
 # version 0.70.0
 - all resources are embedded in binary - standalone app
 
