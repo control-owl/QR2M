@@ -4191,11 +4191,10 @@ fn save_wallet_to_file() {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = save_dialog.file() {
                     if let Some(path) = file.path() {
-                        println!("path: {:?}", path);
+                        // TODO: Get data from struct
                         let wallet_data = format!("version = {}\n{}\n{}", WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase);
-                        let wallet_file = format!{"{}.{}", path.display(), WALLET_DEFAULT_EXTENSION};
 
-                        std::fs::write(wallet_file, wallet_data).expect("Unable to write file");
+                        std::fs::write(path, wallet_data).expect("Unable to write file");
                         save_loop.quit();
                     }
                 }
