@@ -760,7 +760,7 @@ impl AppState {
         Self {
             language: Some("en".to_string()),
             theme: Some("System".to_string()),
-            active_message: Some("".to_string()),
+            active_message: None,
             info_bar: None,
         }
     }
@@ -4674,21 +4674,7 @@ pub fn create_info_message(
     revealer.set_child(Some(&message_box));
     revealer.set_reveal_child(true);
 
-    // BUG: Previous timeout is killing next message if closed before timeout came
-    // let timeout = match message_type {
-    //     gtk::MessageType::Info => Some(5),       // Info: 5 seconds
-    //     gtk::MessageType::Warning => Some(10),   // Warning: 10 seconds
-    //     _ => None,                               // Error: No timeout
-    // };
-    // if let Some(duration) = timeout {
-    //     let revealer_clone = revealer.clone();
-    //     glib::timeout_add_local_once(
-    //         std::time::Duration::from_secs(duration as u64),
-    //         move || {
-    //             revealer_clone.set_reveal_child(false);
-    //         },
-    //     );
-    // }
+    // TODO: Create a queue for messages
 }
 
 
