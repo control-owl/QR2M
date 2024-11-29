@@ -1263,6 +1263,10 @@ fn main() {
     application.add_action(&about);
 
     application.run();
+
+
+    anu_window();
+
 }
 
 pub fn create_main_window(application: &adw::Application) {
@@ -4679,3 +4683,121 @@ pub fn create_info_message(
 
 
 
+
+
+
+fn get_qrng() -> String {
+    use rand::{Rng, thread_rng};
+
+    let mut rng = thread_rng();
+    let length = rng.gen_range(2..=1024);
+
+    let hex_chars: String = (0..length)
+        .map(|_| {
+            let random_char = rng.gen_range(0..16);
+            match random_char {
+                0..=9 => (b'0' + random_char as u8) as char,
+                10..=15 => (b'A' + (random_char - 10) as u8) as char, // A-F
+                _ => unreachable!(),
+            }
+        })
+        .collect();
+
+    println!("Generated String: {}", hex_chars);
+    hex_chars
+}
+
+
+fn anu_window() {
+    let app = gtk::Application::builder()
+        .application_id("wtf.r_o0_t.qr2m.qrng_checker")
+        .build();
+
+    app.connect_activate(|app| {
+        let window = gtk::ApplicationWindow::builder()
+            .application(app)
+            .title("QRNG Checker")
+            .default_width(600)
+            .default_height(600)
+            .build();
+
+        let main_grid_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+        let grid = gtk::Grid::builder()
+            .column_spacing(5)
+            .row_spacing(5)
+            .margin_start(10)
+            .margin_end(10)
+            .margin_top(10)
+            .margin_bottom(10)
+            .build();
+
+        main_grid_box.append(&grid);
+
+        let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+        let ok_button = gtk::Button::with_label("OK");
+        let cancel_button = gtk::Button::with_label("Cancel");
+        let new_button = gtk::Button::with_label("New QRNG");
+
+        main_button_box.append(&ok_button);
+        main_button_box.append(&new_button);
+        main_button_box.append(&cancel_button);
+
+        main_button_box.set_margin_bottom(10);
+        main_button_box.set_margin_top(10);
+        main_button_box.set_margin_start(10);
+        main_button_box.set_margin_end(10);
+
+        main_grid_box.append(&main_button_box);
+
+        let total_boxes = 1024;
+        let mut boxes = Vec::new();
+
+        for i in 0..total_boxes {
+            let label = gtk::Label::builder()
+                .label("  ")
+                .width_request(20)
+                .height_request(20)
+                .build();
+
+            label.set_css_classes(&["empty-box"]);
+            grid.attach(&label, (i % 32) as i32, (i / 32) as i32, 1, 1);
+            boxes.push(label);
+        }
+
+        let recolor_boxes = std::rc::Rc::new(std::cell::RefCell::new({
+            let boxes = boxes.clone();
+            move || {
+                let qrng_string = get_qrng();
+                let qrng_length = qrng_string.len();
+                println!("New QRNG Length: {}", qrng_length);
+
+                for (i, label) in boxes.iter().enumerate() {
+                    if i < qrng_length {
+                        label.set_css_classes(&["green-box"]);
+                    } else {
+                        label.set_css_classes(&["empty-box"]);
+                    }
+                }
+
+                if qrng_length == total_boxes {
+                    println!("Done");
+                } else {
+                    println!("Not enough");
+                }
+            }
+        }));
+
+        {
+            let recolor_boxes = recolor_boxes.clone();
+            new_button.connect_clicked(move |_| {
+                recolor_boxes.borrow_mut()();
+            });
+        }
+
+        window.set_child(Some(&main_grid_box));
+        window.show();
+    });
+
+    app.run();
+}
