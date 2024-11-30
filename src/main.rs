@@ -4037,7 +4037,7 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let pixy = qr2m_lib::get_image_from_resources("logo.svg");
+    let pixy = qr2m_lib::get_image_from_resources("logo/logo.svg");
     let logo_picture = gtk::Picture::for_pixbuf(&pixy).paintable().unwrap();
 
     let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
