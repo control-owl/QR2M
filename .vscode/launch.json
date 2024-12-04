@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'QR2M'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=QR2M",
+                    "--package=QR2M"
+                ],
+                "filter": {
+                    "name": "QR2M",
+                    "kind": "bin"
+                }
+            },
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
