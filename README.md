@@ -1,6 +1,6 @@
 # Quantum Random Rust Mnemonic (QR2M)
 
-<img src="./res/logo.svg" width="200" height="200" />
+<img src="./res/logo/logo.svg" width="200" height="200" />
 
 ```
  ██████╗ ██████╗ ██████╗ ███╗   ███╗
