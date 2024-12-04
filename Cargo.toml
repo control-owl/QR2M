@@ -47,9 +47,6 @@ LegalCopyright = "Copyright © 2023-2024 Control Owl"
 FileDescription = "Quantum Random Rust Mnemonic"
 
 
-# [package.metadata.included]
-# include = ["config/**", "doc/**", "lib/**", "locale/**", "res/**"]
-
 [package.metadata.excluded]
 exclude = ["build.rs"]
 
