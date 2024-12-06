@@ -748,81 +748,7 @@ struct CryptoAddresses {
 
 type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 
-// TODO: Test if this must be public
-pub struct AppState {
-    pub language: Option<String>,
-    pub theme: Option<String>,
-    pub active_message: Option<String>,
-    info_bar: Option<gtk::Revealer>,
-    message_queue: Option<std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<String>>>>
-}
 
-impl AppState {
-    pub fn new() -> Self {
-        Self {
-            language: Some("en".to_string()),
-            theme: Some("System".to_string()),
-            active_message: None,
-            info_bar: None,
-            message_queue: None,
-        }
-    }
-
-    pub fn apply_theme(&self) {
-        if let Some(theme) = &self.theme {
-            let preferred_theme = match theme.as_str() {
-                "System" => adw::ColorScheme::PreferLight,
-                "Light" => adw::ColorScheme::ForceLight,
-                "Dark" => adw::ColorScheme::PreferDark,
-                _ => {
-                    eprintln!(
-                        "{}",
-                        &t!(
-                            "error.settings.parse", 
-                            element = "gui_theme", 
-                            value = theme
-                        )
-                    );
-                    adw::ColorScheme::PreferLight
-                }
-            };
-
-            adw::StyleManager::default().set_color_scheme(preferred_theme);
-        } else {
-            eprintln!("Theme is not set. Using default color scheme.");
-            adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
-        }
-    }
-
-    pub fn apply_language(&mut self) {
-        if let Some(language) = &self.language {
-            let language_code = match language.as_str() {
-                "Deutsch" => "de",
-                "Hrvatski" => "hr",
-                "English" => "en",
-                _ => "en",
-            };
-
-            rust_i18n::set_locale(language_code);
-
-            self.active_message = Some(t!("UI.messages.change-language.msg").to_string());
-        } else {
-            eprintln!("Language is not set. Falling back to English.");
-            rust_i18n::set_locale("en");
-            self.active_message = Some("Default language set to English.".to_string());
-        }
-    }
-
-    pub fn update_infobar_message(
-        &mut self, 
-        message: String, 
-        infobar: gtk::Revealer, 
-        message_type: gtk::MessageType 
-    ) {
-        self.active_message = Some(message.clone());
-        create_info_message(&infobar, &message, message_type);
-    }
-}
 
 
 // BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -872,7 +798,7 @@ fn generate_entropy(source: &str, entropy_length: u64, state: Option<std::sync::
 
                 state.update_infobar_message(
                     "Reqesting QRNG from ANU API ...".to_string(),
-                    info_bar.unwrap(),
+                    // info_bar.unwrap(),
                     gtk::MessageType::Info,
                 );
             }
@@ -917,7 +843,7 @@ fn generate_entropy(source: &str, entropy_length: u64, state: Option<std::sync::
                         let info_bar = state.info_bar.clone();
                         state.update_infobar_message(
                             format!("QRNG Data received"),
-                            info_bar.unwrap(),
+                            // info_bar.unwrap(),
                             gtk::MessageType::Info,
                         );
                     }
@@ -1198,6 +1124,7 @@ fn main() {
     let save = gio::SimpleAction::new("save", None);
     let settings = gio::SimpleAction::new("settings", None);
     let about = gio::SimpleAction::new("about", None);
+    let test = gio::SimpleAction::new("test", None);
     
     quit.connect_activate(
         glib::clone!(
@@ -1220,6 +1147,10 @@ fn main() {
     
     save.connect_activate(|_action, _parameter| {
         save_wallet_to_file();
+    });
+    
+    test.connect_activate(|_action, _parameter| {
+        anu_window();
     });
 
     settings.connect_activate(clone!(
@@ -1265,11 +1196,10 @@ fn main() {
     application.set_accels_for_action("app.about", &["F1"]);
     application.add_action(&about);
 
+    application.set_accels_for_action("app.test", &["<Primary>T"]);
+    application.add_action(&test);
+
     application.run();
-
-
-    anu_window();
-
 }
 
 pub fn create_main_window(application: &adw::Application) {
@@ -2217,6 +2147,7 @@ pub fn create_main_window(application: &adw::Application) {
         #[weak] seed_text,
         #[weak] coin_treeview,
         #[weak] info_bar,
+        #[strong] state,
         move |_| {
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
@@ -2320,12 +2251,11 @@ pub fn create_main_window(application: &adw::Application) {
                     }  
                 }
             } else {
-                create_info_message(
-                    &info_bar,
-                    &t!("error.entropy.seed").to_string(),
-                    gtk::MessageType::Warning,
+                let mut state = state.lock().unwrap();
+                state.update_infobar_message(
+                    t!("error.entropy.seed").to_string(),
+                    gtk::MessageType::Error,
                 );
-
             }
         }
     ));
@@ -2870,6 +2800,7 @@ pub fn create_main_window(application: &adw::Application) {
         #[weak] address_store,
         #[weak] derivation_label_text,
         #[weak] info_bar,
+        #[strong] state,
         move |_| {
             println!("\n#### Generating addresses button ####");
         
@@ -2883,21 +2814,11 @@ pub fn create_main_window(application: &adw::Application) {
             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
 
-
-            // TODO: Check if master is empty, then show error msg
-            // if master_private_key_bytes. == "" {
-            //     master_private_key_text.buffer().set_text("Please generate seed");
-            //     // master_public_key_text.buffer().set_text("");
-            //     create_message_window("Empty seed", "Please generate seed first, then master keys", None, None);
-            // }
-
-            create_info_message(
-                &info_bar,
-                &t!("error.address.master").to_string(),
-                gtk::MessageType::Warning,
+            let mut state = state.lock().unwrap();
+            state.update_infobar_message(
+                t!("error.address.master").to_string(),
+                gtk::MessageType::Error,
             );
-
-            
 
             // TODO: Save last address number, and next time generate from there afterwards
             let DP = derivation_label_text.text();
@@ -3052,9 +2973,15 @@ pub fn create_main_window(application: &adw::Application) {
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
 
-    create_info_message(
-        &info_bar,
-        &t!("hello").to_string(),
+    // create_info_message(
+    //     &info_bar,
+    //     &t!("hello").to_string(),
+    //     gtk::MessageType::Info,
+    // );
+
+    let mut state = state.lock().unwrap();
+    state.update_infobar_message(
+        t!("hello").to_string(),
         gtk::MessageType::Info,
     );
 
@@ -4006,7 +3933,7 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
 
                 state.update_infobar_message(
                     "Settings saved".to_string(),
-                    info_bar.unwrap(),
+                    // info_bar.unwrap(),
                     gtk::MessageType::Info,
                 );
                 state.apply_theme();
@@ -4664,35 +4591,159 @@ pub fn create_info_message(
     revealer: &gtk::Revealer,
     message: &str,
     message_type: gtk::MessageType,
-) {
+) -> gtk::Box {
     let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
     let message_label = gtk::Label::new(Some(message));
     message_label.set_hexpand(true);
 
+    // Apply CSS classes based on the message type
     match message_type {
-        gtk::MessageType::Error => message_box.set_css_classes(&vec!["info-bar", "error-message"]),
-        gtk::MessageType::Warning => message_box.set_css_classes(&vec!["info-bar", "warning-message"]),
-        _ => message_box.set_css_classes(&vec!["info-bar", "info-message"]),
+        gtk::MessageType::Error => message_box.set_css_classes(&["error-message"]),
+        gtk::MessageType::Warning => message_box.set_css_classes(&["warning-message"]),
+        _ => message_box.set_css_classes(&["info-message"]),
     }
 
+    // Add a close button to hide the infobar manually
     let close_button = gtk::Button::with_label("Close");
-    let gesture = gtk::GestureClick::new();
-    
-    gesture.connect_pressed(clone!(
-        #[weak] revealer,
-        move |_gesture, _n_press, _x, _y| {
-            revealer.set_reveal_child(false);
-        }
-    ));
+    let revealer_clone = revealer.clone();
+    close_button.connect_clicked(move |_| {
+        revealer_clone.set_reveal_child(false); // Hide the infobar immediately
+    });
 
     message_box.append(&message_label);
-    revealer.add_controller(gesture);
     message_box.append(&close_button);
-    revealer.set_child(Some(&message_box));
-    revealer.set_reveal_child(true);
 
-    // TODO: Create a queue for messages
+    message_box
 }
+
+
+
+pub struct AppState {
+    language: Option<String>,
+    theme: Option<String>,
+    active_message: Option<String>,
+    info_bar: Option<gtk::Revealer>,
+    message_queue: Option<std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<String>>>>
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            language: Some("en".to_string()),
+            theme: Some("System".to_string()),
+            active_message: None,
+            info_bar: None,
+            message_queue: None,
+        }
+    }
+
+    pub fn apply_theme(&self) {
+        if let Some(theme) = &self.theme {
+            let preferred_theme = match theme.as_str() {
+                "System" => adw::ColorScheme::PreferLight,
+                "Light" => adw::ColorScheme::ForceLight,
+                "Dark" => adw::ColorScheme::PreferDark,
+                _ => {
+                    eprintln!(
+                        "{}",
+                        &t!(
+                            "error.settings.parse", 
+                            element = "gui_theme", 
+                            value = theme
+                        )
+                    );
+                    adw::ColorScheme::PreferLight
+                }
+            };
+
+            adw::StyleManager::default().set_color_scheme(preferred_theme);
+        } else {
+            eprintln!("Theme is not set. Using default color scheme.");
+            adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
+        }
+    }
+
+    pub fn apply_language(&mut self) {
+        if let Some(language) = &self.language {
+            let language_code = match language.as_str() {
+                "Deutsch" => "de",
+                "Hrvatski" => "hr",
+                "English" => "en",
+                _ => "en",
+            };
+
+            rust_i18n::set_locale(language_code);
+
+            self.active_message = Some(t!("UI.messages.change-language.msg").to_string());
+        } else {
+            eprintln!("Language is not set. Falling back to English.");
+            rust_i18n::set_locale("en");
+            self.active_message = Some("Default language set to English.".to_string());
+        }
+    }
+
+    pub fn update_infobar_message(&mut self, message: String, message_type: gtk::MessageType) {
+        if let Some(infobar) = &self.info_bar {
+
+            self.queue_message(message.clone());
+
+            let message_box = create_info_message(infobar, &message, message_type);
+            infobar.set_child(Some(&message_box));
+            infobar.set_reveal_child(true);
+        }
+    }
+
+    pub fn queue_message(&self, message: String) {
+        if let Some(queue) = &self.message_queue {
+            let mut queue = queue.lock().unwrap();
+            queue.push_back(message);
+            if queue.len() == 1 {
+                self.start_message_processor();
+            }
+        }
+    }
+
+    pub fn start_message_processor(&self) {
+        let queue = self.message_queue.clone().unwrap();
+        let infobar = self.info_bar.clone().unwrap();
+
+        // Process the messages
+        glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
+            let mut queue = queue.lock().unwrap();
+
+            if let Some(message) = queue.pop_front() {
+                // Display the message
+                AppState::display_message(&infobar, &message);
+
+                // Set the timer to hide the infobar after 5 seconds
+                let infobar_clone = infobar.clone();
+                glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
+                    infobar_clone.set_reveal_child(false);
+                    infobar_clone.hide();
+                    glib::ControlFlow::Break
+                });
+
+                // Continue processing
+                glib::ControlFlow::Continue
+            } else {
+                // Stop if no messages are left in the queue
+                glib::ControlFlow::Break
+            }
+        });
+    }
+
+    pub fn display_message(infobar: &gtk::Revealer, message: &str) {
+
+        if let Some(label) = infobar.child().and_then(|child| child.downcast::<gtk::Label>().ok()) {
+            label.set_text(message);
+        }
+
+        infobar.set_reveal_child(true);
+    }
+}
+
+
+
 
 
 
