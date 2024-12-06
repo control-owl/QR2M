@@ -748,11 +748,13 @@ struct CryptoAddresses {
 
 type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 
+// TODO: Test if this must be public
 pub struct AppState {
     pub language: Option<String>,
     pub theme: Option<String>,
     pub active_message: Option<String>,
-    pub info_bar: Option<gtk::Revealer>,
+    info_bar: Option<gtk::Revealer>,
+    message_queue: Option<std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<String>>>>
 }
 
 impl AppState {
@@ -762,6 +764,7 @@ impl AppState {
             theme: Some("System".to_string()),
             active_message: None,
             info_bar: None,
+            message_queue: None,
         }
     }
 
@@ -1344,9 +1347,10 @@ pub fn create_main_window(application: &adw::Application) {
         language: Some(app_settings.gui_language.clone()),
         theme: Some(app_settings.gui_theme.clone()),
         info_bar: None,
+        message_queue: None,
     }));
 
-    let info_bar_clone = info_bar.clone();
+    // let info_bar_clone = info_bar.clone();
     state.lock().unwrap().info_bar = Some(info_bar.clone());
 
     // JUMP: Main: Settings button action
@@ -2212,6 +2216,7 @@ pub fn create_main_window(application: &adw::Application) {
         #[strong] coin_entry,
         #[weak] seed_text,
         #[weak] coin_treeview,
+        #[weak] info_bar,
         move |_| {
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
@@ -2864,6 +2869,7 @@ pub fn create_main_window(application: &adw::Application) {
     generate_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] derivation_label_text,
+        #[weak] info_bar,
         move |_| {
             println!("\n#### Generating addresses button ####");
         
@@ -2884,6 +2890,14 @@ pub fn create_main_window(application: &adw::Application) {
             //     // master_public_key_text.buffer().set_text("");
             //     create_message_window("Empty seed", "Please generate seed first, then master keys", None, None);
             // }
+
+            create_info_message(
+                &info_bar,
+                &t!("error.address.master").to_string(),
+                gtk::MessageType::Warning,
+            );
+
+            
 
             // TODO: Save last address number, and next time generate from there afterwards
             let DP = derivation_label_text.text();
@@ -3032,15 +3046,14 @@ pub fn create_main_window(application: &adw::Application) {
 
     main_sidebar_box.append(&stack_sidebar);
     main_sidebar_box.append(&stack);
-    main_infobar_box.append(&info_bar_clone);
+    main_infobar_box.append(&info_bar);
     main_window_box.set_hexpand(true);
     main_infobar_box.set_hexpand(true);
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
 
-    // Infobar
     create_info_message(
-        &info_bar_clone,
+        &info_bar,
         &t!("hello").to_string(),
         gtk::MessageType::Info,
     );

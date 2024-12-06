@@ -552,8 +552,12 @@ error:
     wif:
       length:
         en: "Invalid WIF length: '%{value}'"
-        de: ""
-        hr: ""
+        de: "Ungültige WIF-Länge: '%{value}'"
+        hr: "Neispravna WIF dužina: '%{value}'"
+    master:
+      en: "Before creating an address, please create master keys"
+      de: "Bitte generieren Sie die Masterkeys, bevor Sie die Adress generieren "
+      hr: "Adresa može biti generiran tek kada napravite master ključeve"
 log:
   generate_entropy:
     en: "Generating entropy:"
