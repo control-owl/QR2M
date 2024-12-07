@@ -792,16 +792,16 @@ fn generate_entropy(source: &str, entropy_length: u64, state: Option<std::sync::
         },
         
         "QRNG" => {
-            if let Some(state) = &state {
-                let mut state = state.lock().unwrap();
-                let info_bar = state.info_bar.clone();
+            // if let Some(state) = &state {
+            //     let mut state = state.lock().unwrap();
+            //     let info_bar = state.info_bar.clone();
 
-                state.update_infobar_message(
-                    "Reqesting QRNG from ANU API ...".to_string(),
-                    // info_bar.unwrap(),
-                    gtk::MessageType::Info,
-                );
-            }
+            //     state.update_infobar_message(
+            //         "Reqesting QRNG from ANU API ...".to_string(),
+            //         // info_bar.unwrap(),
+            //         gtk::MessageType::Info,
+            //     );
+            // }
 
             let (anu_format, array_length, hex_block_size) = {
                 let app_settings = APPLICATION_SETTINGS.lock().unwrap();
@@ -838,15 +838,15 @@ fn generate_entropy(source: &str, entropy_length: u64, state: Option<std::sync::
 
             match rx.recv() {
                 Ok(received_qrng_entropy_string) => {
-                    if let Some(state) = &state {
-                        let mut state = state.lock().unwrap();
-                        let info_bar = state.info_bar.clone();
-                        state.update_infobar_message(
-                            format!("QRNG Data received"),
-                            // info_bar.unwrap(),
-                            gtk::MessageType::Info,
-                        );
-                    }
+                    // if let Some(state) = &state {
+                    //     let mut state = state.lock().unwrap();
+                    //     let info_bar = state.info_bar.clone();
+                    //     state.update_infobar_message(
+                    //         format!("QRNG Data received"),
+                    //         // info_bar.unwrap(),
+                    //         gtk::MessageType::Info,
+                    //     );
+                    // }
 
                     received_qrng_entropy_string
                 },
@@ -1273,15 +1273,15 @@ pub fn create_main_window(application: &adw::Application) {
     header_bar.pack_end(&about_button);
     
     let state = std::sync::Arc::new(std::sync::Mutex::new(AppState {
-        active_message: Some("Welcome!".to_string()),
+        // active_message: Some("Welcome!".to_string()),
         language: Some(app_settings.gui_language.clone()),
         theme: Some(app_settings.gui_theme.clone()),
-        info_bar: None,
-        message_queue: None,
+        // info_bar: None,
+        // message_queue: None,
     }));
 
     // let info_bar_clone = info_bar.clone();
-    state.lock().unwrap().info_bar = Some(info_bar.clone());
+    // state.lock().unwrap().info_bar = Some(info_bar.clone());
 
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
@@ -2252,10 +2252,10 @@ pub fn create_main_window(application: &adw::Application) {
                 }
             } else {
                 let mut state = state.lock().unwrap();
-                state.update_infobar_message(
-                    t!("error.entropy.seed").to_string(),
-                    gtk::MessageType::Error,
-                );
+                // state.update_infobar_message(
+                //     t!("error.entropy.seed").to_string(),
+                //     gtk::MessageType::Warning,
+                // );
             }
         }
     ));
@@ -2815,10 +2815,10 @@ pub fn create_main_window(application: &adw::Application) {
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
 
             let mut state = state.lock().unwrap();
-            state.update_infobar_message(
-                t!("error.address.master").to_string(),
-                gtk::MessageType::Error,
-            );
+            // state.update_infobar_message(
+            //     t!("error.address.master").to_string(),
+            //     gtk::MessageType::Warning,
+            // );
 
             // TODO: Save last address number, and next time generate from there afterwards
             let DP = derivation_label_text.text();
@@ -2965,6 +2965,8 @@ pub fn create_main_window(application: &adw::Application) {
     let main_infobar_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
 
+
+    
     main_sidebar_box.append(&stack_sidebar);
     main_sidebar_box.append(&stack);
     main_infobar_box.append(&info_bar);
@@ -2972,18 +2974,25 @@ pub fn create_main_window(application: &adw::Application) {
     main_infobar_box.set_hexpand(true);
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
-
+    
     // create_info_message(
-    //     &info_bar,
-    //     &t!("hello").to_string(),
-    //     gtk::MessageType::Info,
-    // );
+        //     &info_bar,
+        //     &t!("hello").to_string(),
+        //     gtk::MessageType::Info,
+        // );
+        
+        // let mut state = state.lock().unwrap();
+        // state.update_infobar_message(
+            //     t!("hello").to_string(),
+            //     gtk::MessageType::Info,
+            // );
+    let app_messages = AppMessages::new(info_bar.clone());
+    app_messages.queue_message("First message".to_string(), gtk::MessageType::Info);
+    app_messages.queue_message("An error occurred!".to_string(), gtk::MessageType::Error);
+    app_messages.queue_message("Warning: Proceed carefully.".to_string(), gtk::MessageType::Warning);
+    
+    
 
-    let mut state = state.lock().unwrap();
-    state.update_infobar_message(
-        t!("hello").to_string(),
-        gtk::MessageType::Info,
-    );
 
     window.set_child(Some(&main_window_box));
     window.present();
@@ -3926,16 +3935,16 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
                        
             if let Some(state) = &state {
                 let mut state = state.lock().unwrap();
-                let info_bar = state.info_bar.clone();
+                // let info_bar = state.info_bar.clone();
 
                 let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
                 state.theme = Some(selected_theme);
 
-                state.update_infobar_message(
-                    "Settings saved".to_string(),
-                    // info_bar.unwrap(),
-                    gtk::MessageType::Info,
-                );
+                // state.update_infobar_message(
+                //     "Settings saved".to_string(),
+                //     // info_bar.unwrap(),
+                //     gtk::MessageType::Info,
+                // );
                 state.apply_theme();
             }
 
@@ -4596,34 +4605,174 @@ pub fn create_info_message(
     let message_label = gtk::Label::new(Some(message));
     message_label.set_hexpand(true);
 
-    // Apply CSS classes based on the message type
     match message_type {
         gtk::MessageType::Error => message_box.set_css_classes(&["error-message"]),
         gtk::MessageType::Warning => message_box.set_css_classes(&["warning-message"]),
         _ => message_box.set_css_classes(&["info-message"]),
     }
 
-    // Add a close button to hide the infobar manually
     let close_button = gtk::Button::with_label("Close");
-    let revealer_clone = revealer.clone();
-    close_button.connect_clicked(move |_| {
-        revealer_clone.set_reveal_child(false); // Hide the infobar immediately
-    });
-
+    let gesture = gtk::GestureClick::new();
+    
+    gesture.connect_pressed(clone!(
+        #[weak] revealer,
+        move |_gesture, _n_press, _x, _y| {
+            revealer.set_reveal_child(false);
+        }
+    ));
+    
     message_box.append(&message_label);
     message_box.append(&close_button);
+    
+    revealer.add_controller(gesture);
+    revealer.set_child(Some(&message_box));
+    revealer.set_reveal_child(true);
 
     message_box
 }
+
+
+pub struct AppMessages {
+    info_bar: gtk::Revealer,
+    message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
+    processing: std::sync::Arc<std::sync::Mutex<bool>>,
+}
+
+impl AppMessages {
+    pub fn new(info_bar: gtk::Revealer) -> Self {
+        Self {
+            info_bar,
+            message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
+            processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
+        }
+    }
+
+    pub fn queue_message(&self, message: String, message_type: gtk::MessageType) {
+        let mut queue = self.message_queue.lock().unwrap();
+        queue.push_back((message, message_type));
+
+        if !*self.processing.lock().unwrap() {
+            self.start_message_processor();
+        }
+    }
+
+    fn start_message_processor(&self) {
+        let queue = self.message_queue.clone();
+        let info_bar = self.info_bar.clone();
+        let processing = self.processing.clone();
+    
+        {
+            let mut is_processing = processing.lock().unwrap();
+            if *is_processing {
+                return; // Already processing, return
+            }
+            *is_processing = true;
+        }
+    
+        glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
+            let mut queue_lock = queue.lock().unwrap();
+            if let Some((message, message_type)) = queue_lock.pop_front() {
+                // Show the message
+                AppMessages::create_info_message(&info_bar, &message, message_type);
+
+                // Wait 3 seconds to hide the message and then process the next
+                let info_bar_clone = info_bar.clone();
+                let queue_clone = queue.clone();
+                let processing_clone = processing.clone();
+                glib::timeout_add_local(std::time::Duration::from_secs(3), move || {
+                    info_bar_clone.set_reveal_child(false); // Hide message
+
+                    // Process the next message in the queue
+                    AppMessages::start_next_message(&queue_clone, &info_bar_clone, &processing_clone);
+
+                    glib::ControlFlow::Break
+                });
+
+                glib::ControlFlow::Break
+            } else {
+                // If no messages are left, set processing to false
+                *processing.lock().unwrap() = false;
+                glib::ControlFlow::Break
+            }
+        });
+    }
+
+    fn start_next_message(
+        queue: &std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
+        info_bar: &gtk::Revealer,
+        processing: &std::sync::Arc<std::sync::Mutex<bool>>,
+    ) {
+        let mut queue_lock = queue.lock().unwrap();
+        if let Some((message, message_type)) = queue_lock.pop_front() {
+            // Display the next message
+            AppMessages::create_info_message(info_bar, &message, message_type);
+
+            let info_bar_clone = info_bar.clone();
+            let queue_clone = queue.clone();
+            let processing_clone = processing.clone();
+
+            glib::timeout_add_local(std::time::Duration::from_secs(3), move || {
+                info_bar_clone.set_reveal_child(false); // Hide message
+
+                // Check if there are more messages in the queue
+                AppMessages::start_next_message(&queue_clone, &info_bar_clone, &processing_clone);
+
+                glib::ControlFlow::Break
+            });
+        } else {
+            // No more messages, stop processing
+            *processing.lock().unwrap() = false;
+        }
+    }
+
+    pub fn create_info_message(
+        revealer: &gtk::Revealer,
+        message: &str,
+        message_type: gtk::MessageType,
+    ) {
+        let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        let message_label = gtk::Label::new(Some(message));
+        message_label.set_hexpand(true);
+
+        match message_type {
+            gtk::MessageType::Error => message_box.set_css_classes(&["error-message"]),
+            gtk::MessageType::Warning => message_box.set_css_classes(&["warning-message"]),
+            _ => message_box.set_css_classes(&["info-message"]),
+        }
+
+        let close_button = gtk::Button::with_label("Close");
+        let gesture = gtk::GestureClick::new();
+
+        gesture.connect_pressed(clone!(
+            #[weak] revealer,
+            move |_gesture, _n_press, _x, _y| {
+                revealer.set_reveal_child(false);
+            }
+        ));
+
+        message_box.append(&message_label);
+        message_box.append(&close_button);
+
+        revealer.add_controller(gesture);
+        revealer.set_child(Some(&message_box));
+        revealer.set_reveal_child(true);
+    }
+}
+
+
+
+
+
+
+
+
+
 
 
 
 pub struct AppState {
     language: Option<String>,
     theme: Option<String>,
-    active_message: Option<String>,
-    info_bar: Option<gtk::Revealer>,
-    message_queue: Option<std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<String>>>>
 }
 
 impl AppState {
@@ -4631,9 +4780,6 @@ impl AppState {
         Self {
             language: Some("en".to_string()),
             theme: Some("System".to_string()),
-            active_message: None,
-            info_bar: None,
-            message_queue: None,
         }
     }
 
@@ -4674,72 +4820,15 @@ impl AppState {
 
             rust_i18n::set_locale(language_code);
 
-            self.active_message = Some(t!("UI.messages.change-language.msg").to_string());
+            // self.active_message = Some(t!("UI.messages.change-language.msg").to_string());
         } else {
             eprintln!("Language is not set. Falling back to English.");
             rust_i18n::set_locale("en");
-            self.active_message = Some("Default language set to English.".to_string());
+            // self.active_message = Some("Default language set to English.".to_string());
         }
     }
 
-    pub fn update_infobar_message(&mut self, message: String, message_type: gtk::MessageType) {
-        if let Some(infobar) = &self.info_bar {
-
-            self.queue_message(message.clone());
-
-            let message_box = create_info_message(infobar, &message, message_type);
-            infobar.set_child(Some(&message_box));
-            infobar.set_reveal_child(true);
-        }
-    }
-
-    pub fn queue_message(&self, message: String) {
-        if let Some(queue) = &self.message_queue {
-            let mut queue = queue.lock().unwrap();
-            queue.push_back(message);
-            if queue.len() == 1 {
-                self.start_message_processor();
-            }
-        }
-    }
-
-    pub fn start_message_processor(&self) {
-        let queue = self.message_queue.clone().unwrap();
-        let infobar = self.info_bar.clone().unwrap();
-
-        // Process the messages
-        glib::timeout_add_local(std::time::Duration::from_secs(2), move || {
-            let mut queue = queue.lock().unwrap();
-
-            if let Some(message) = queue.pop_front() {
-                // Display the message
-                AppState::display_message(&infobar, &message);
-
-                // Set the timer to hide the infobar after 5 seconds
-                let infobar_clone = infobar.clone();
-                glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
-                    infobar_clone.set_reveal_child(false);
-                    infobar_clone.hide();
-                    glib::ControlFlow::Break
-                });
-
-                // Continue processing
-                glib::ControlFlow::Continue
-            } else {
-                // Stop if no messages are left in the queue
-                glib::ControlFlow::Break
-            }
-        });
-    }
-
-    pub fn display_message(infobar: &gtk::Revealer, message: &str) {
-
-        if let Some(label) = infobar.child().and_then(|child| child.downcast::<gtk::Label>().ok()) {
-            label.set_text(message);
-        }
-
-        infobar.set_reveal_child(true);
-    }
+    
 }
 
 

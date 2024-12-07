@@ -1,3 +1,6 @@
+# version 0.70.2
+- message queue - beta
+
 # version 0.70.1
 - windows exe version finished
 
