@@ -7,7 +7,7 @@
 #![windows_subsystem = "windows"]
 #![allow(non_snake_case)]
 // #![allow(unused_imports)]
-// #![allow(unused_variables)]
+#![allow(unused_variables)]
 // #![allow(unused_assignments)]
 // #![allow(dead_code)]
 // #![allow(unused_mut)]
@@ -426,6 +426,8 @@ impl AppSettings {
                             let mut state = state.lock().unwrap();
                             state.theme = Some(self.gui_theme.clone());
                             state.apply_theme();
+                        } else {
+                            println!("State in gui_theme is None");
                         }
 
                         self.save_settings();
@@ -444,6 +446,8 @@ impl AppSettings {
                             let mut state = state.lock().unwrap();
                             state.language = Some(self.gui_language.clone());
                             state.apply_language();
+                        } else {
+                            eprintln!("State in gui_language is None");
                         }
 
                         self.save_settings();
@@ -452,7 +456,6 @@ impl AppSettings {
                     eprintln!("Received invalid value for gui_language: {:?}", new_value);
                 }
             },
-
             "gui_search" => {
                 if new_value.as_str().map(|v| v != self.gui_search).unwrap_or(false) {
                     self.gui_search = new_value.as_str().unwrap().to_string();
@@ -770,7 +773,11 @@ fn print_program_info() {
     println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
 }
 
-fn generate_entropy(source: &str, entropy_length: u64, state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> String {
+fn generate_entropy(
+    source: &str, 
+    entropy_length: u64, 
+    // state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
+) -> String {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
     println!("\t Entropy source: {:?}", source);
     println!("\t Entropy length: {:?}", entropy_length);
@@ -1114,95 +1121,101 @@ fn main() {
 
     let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
 
-    application.connect_activate(|app| {
-        create_main_window(&app);
-    });
+    application.connect_activate(clone!(
+        #[strong] state,
+        move |app| {
+            create_main_window(&app, state.clone());
+        }
+    ));
 
-    let quit = gio::SimpleAction::new("quit", None);
+    setup_app_actions(&application, state.clone());
+
+    application.run();
+}
+
+
+
+fn setup_app_actions(
+    application: &adw::Application, 
+    state: std::sync::Arc<std::sync::Mutex<AppState>>,
+) {
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
     let save = gio::SimpleAction::new("save", None);
-    let settings = gio::SimpleAction::new("settings", None);
     let about = gio::SimpleAction::new("about", None);
+    let settings = gio::SimpleAction::new("settings", None);
+    let quit = gio::SimpleAction::new("quit", None);
     let test = gio::SimpleAction::new("test", None);
     
-    quit.connect_activate(
-        glib::clone!(
-            #[weak] application,
-            move |_action, _parameter| {
-            application.quit();
-        }),
-    );
-    
     new.connect_activate(clone!(
+        #[strong] state,
         #[weak] application,
         move |_action, _parameter| {
-            create_main_window(&application);
+            create_main_window(&application, state.clone());
         }
     ));
 
     open.connect_activate(move |_action, _parameter| {
         open_wallet_from_file();
     });
-    
+
     save.connect_activate(|_action, _parameter| {
         save_wallet_to_file();
     });
-    
-    test.connect_activate(|_action, _parameter| {
-        anu_window();
-    });
-
-    settings.connect_activate(clone!(
-        #[weak] state,
-        move |_action, _parameter| {
-            let main_context = glib::MainContext::default();
-            let main_loop = glib::MainLoop::new(Some(&main_context), false);
-
-            let settings_window = create_settings_window(Some(state.clone()));
-            settings_window.connect_close_request(clone!(
-                #[strong] main_loop,
-                move |_| {
-                    state.lock().unwrap().apply_theme();
-                    main_loop.quit();
-                    glib::Propagation::Proceed
-                }
-            ));
-            
-            settings_window.show();
-            main_loop.run();
-        }
-    ));
 
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
     });
 
-    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
-    application.add_action(&quit);
+    settings.connect_activate(clone!(
+        #[strong] state,
+        move |_action, _parameter| {
+            let settings_window = create_settings_window(state.clone());
+            settings_window.connect_close_request(clone!(
+                #[strong] state,
+                move |_| {
+                    if let Ok(mut state) = state.lock() {
+                        state.apply_theme();
+                    }
+                    glib::Propagation::Proceed
+                }
+            ));
+            settings_window.show();
+        }
+    ));
+
+    quit.connect_activate(clone!(
+        #[weak] application,
+        move |_action, _parameter| {
+            application.quit();
+        }
+    ));
+
+    test.connect_activate(|_action, _parameter| {
+        anu_window();
+    });
 
     application.set_accels_for_action("app.new", &["<Primary>N"]);
-    application.add_action(&new);
-
     application.set_accels_for_action("app.open", &["<Primary>O"]);
-    application.add_action(&open);
-
     application.set_accels_for_action("app.save", &["<Primary>S"]);
-    application.add_action(&save);
-
-    application.set_accels_for_action("app.settings", &["F5"]);
-    application.add_action(&settings);
-
     application.set_accels_for_action("app.about", &["F1"]);
-    application.add_action(&about);
-
+    application.set_accels_for_action("app.settings", &["F5"]);
+    application.set_accels_for_action("app.quit", &["<Primary>Q"]);
     application.set_accels_for_action("app.test", &["<Primary>T"]);
-    application.add_action(&test);
 
-    application.run();
+    application.add_action(&new);
+    application.add_action(&open);
+    application.add_action(&save);
+    application.add_action(&about);
+    application.add_action(&settings);
+    application.add_action(&quit);
+    application.add_action(&test);
 }
 
-pub fn create_main_window(application: &adw::Application) {
+fn create_main_window(
+    application: &adw::Application, 
+    state: std::sync::Arc<std::sync::Mutex<AppState>>,
+) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
     AppSettings::load_settings()
@@ -1247,6 +1260,17 @@ pub fn create_main_window(application: &adw::Application) {
     info_bar.add_css_class("info-bar");
     window.set_titlebar(Some(&header_bar));
     
+    {
+        if let Ok(mut state_guard) = state.lock() {
+            state_guard.language = Some(gui_language);
+            state_guard.theme = Some(gui_theme);
+            state_guard.initialize_app_messages(info_bar.clone());
+        }
+    }
+
+
+
+
     let new_wallet_button = gtk::Button::new();
     let open_wallet_button = gtk::Button::new();
     let save_wallet_button = gtk::Button::new();
@@ -1272,41 +1296,12 @@ pub fn create_main_window(application: &adw::Application) {
     header_bar.pack_end(&settings_button);
     header_bar.pack_end(&about_button);
     
-    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState {
-        // active_message: Some("Welcome!".to_string()),
-        language: Some(app_settings.gui_language.clone()),
-        theme: Some(app_settings.gui_theme.clone()),
-        // info_bar: None,
-        // message_queue: None,
-    }));
-
-    // let info_bar_clone = info_bar.clone();
-    // state.lock().unwrap().info_bar = Some(info_bar.clone());
-
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
         #[strong] state,
         move |_| {
-            let main_context = glib::MainContext::default();
-            let main_loop = glib::MainLoop::new(Some(&main_context), false);
-            let settings_window = create_settings_window(Some(std::sync::Arc::clone(&state)));
-
-            settings_window.connect_close_request(clone!(
-                #[strong] main_loop,
-                #[strong] state,
-                move |_| {
-                    if let Ok(state) = state.lock() {
-                        state.apply_theme();
-                    } else {
-                        eprintln!("Failed to lock AppState for applying theme.");
-                    }
-                    main_loop.quit();
-                    glib::Propagation::Proceed
-                }
-            ));
-
+            let settings_window = create_settings_window(state.clone());
             settings_window.show();
-            main_loop.run();
         }
     ));
     
@@ -1316,8 +1311,9 @@ pub fn create_main_window(application: &adw::Application) {
 
     new_wallet_button.connect_clicked(clone!(
         #[weak] application,
+        #[strong] state,
         move |_| {
-            create_main_window(&application);
+            create_main_window(&application, state.clone());
         }
     ));
 
@@ -1417,8 +1413,6 @@ pub fn create_main_window(application: &adw::Application) {
     let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
     let source = selected_entropy_source_value.unwrap();
 
-    
-
     mnemonic_passphrase_length_info.set_editable(false);
     mnemonic_passphrase_length_info.set_width_request(50);
     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
@@ -1433,7 +1427,6 @@ pub fn create_main_window(application: &adw::Application) {
     let mnemonic_passphrase_text = gtk::Entry::new();
     mnemonic_passphrase_main_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
-    
 
     let pixy = qr2m_lib::get_image_from_resources("theme/basic/dark/random.svg");
     let image = gtk::Picture::for_pixbuf(&pixy);
@@ -2067,7 +2060,7 @@ pub fn create_main_window(application: &adw::Application) {
             let pre_entropy = generate_entropy(
                 &source,
                 *entropy_length as u64,
-                Some(std::sync::Arc::clone(&state)),
+                // Some(std::sync::Arc::clone(&state)),
             );
                 
             if !pre_entropy.is_empty() {
@@ -2251,7 +2244,8 @@ pub fn create_main_window(application: &adw::Application) {
                     }  
                 }
             } else {
-                let mut state = state.lock().unwrap();
+                {}
+                // let mut state = state.lock().unwrap();
                 // state.update_infobar_message(
                 //     t!("error.entropy.seed").to_string(),
                 //     gtk::MessageType::Warning,
@@ -2814,7 +2808,7 @@ pub fn create_main_window(application: &adw::Application) {
             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
 
-            let mut state = state.lock().unwrap();
+            // let mut state = state.lock().unwrap();
             // state.update_infobar_message(
             //     t!("error.address.master").to_string(),
             //     gtk::MessageType::Warning,
@@ -2975,38 +2969,21 @@ pub fn create_main_window(application: &adw::Application) {
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
     
-    // create_info_message(
-        //     &info_bar,
-        //     &t!("hello").to_string(),
-        //     gtk::MessageType::Info,
-        // );
-        
-        // let mut state = state.lock().unwrap();
-        // state.update_infobar_message(
-            //     t!("hello").to_string(),
-            //     gtk::MessageType::Info,
-            // );
     let app_messages = AppMessages::new(info_bar.clone());
-    app_messages.queue_message("First message".to_string(), gtk::MessageType::Info);
-    app_messages.queue_message("An error occurred!".to_string(), gtk::MessageType::Error);
-    app_messages.queue_message("Warning: Proceed carefully.".to_string(), gtk::MessageType::Warning);
+    app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
     
-    
-
-
     window.set_child(Some(&main_window_box));
     window.present();
 }
 
-pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>) -> gtk::ApplicationWindow { 
+fn create_settings_window(
+    state: std::sync::Arc<std::sync::Mutex<AppState>>,
+) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    if let Some(state) = &state {
-        let state = state.lock().unwrap();
-        state.theme.clone()
-    } else {
-        let settings = AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
-        Some(settings.gui_theme)
+    let theme = {
+        let state_guard = state.lock().unwrap();
+        state_guard.theme.clone()
     };
 
     let settings = AppSettings::load_settings()
@@ -3928,24 +3905,21 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
             ];
     
             for (key, value) in updates {
-                settings.update_value(key, value, None);
+                settings.update_value(key, value, Some(state.clone()));
             }
     
             AppSettings::save_settings(&*settings);
                        
-            if let Some(state) = &state {
-                let mut state = state.lock().unwrap();
-                // let info_bar = state.info_bar.clone();
+            let mut state_lock = state.lock().unwrap();
+            let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
+            state_lock.theme = Some(selected_theme);
 
-                let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
-                state.theme = Some(selected_theme);
-
-                // state.update_infobar_message(
-                //     "Settings saved".to_string(),
-                //     // info_bar.unwrap(),
-                //     gtk::MessageType::Info,
-                // );
-                state.apply_theme();
+            if let Some(app_messages) = &state_lock.app_messages {
+                let app_messages = app_messages.clone();
+                let app_messages = app_messages.lock().unwrap();
+                app_messages.queue_message(t!("UI.messages.dialog.settings-saved").to_string(), gtk::MessageType::Info);
+            } else {
+                eprintln!("Error: AppMessages not initialized.");
             }
 
             settings_window.close();
@@ -3982,6 +3956,7 @@ pub fn create_settings_window(state: Option<std::sync::Arc<std::sync::Mutex<AppS
 
     settings_window
 }
+
 
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
@@ -4632,22 +4607,22 @@ pub fn create_info_message(
 }
 
 
-pub struct AppMessages {
-    info_bar: gtk::Revealer,
+struct AppMessages {
+    info_bar: Option<gtk::Revealer>,
     message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     processing: std::sync::Arc<std::sync::Mutex<bool>>,
 }
 
 impl AppMessages {
-    pub fn new(info_bar: gtk::Revealer) -> Self {
+    fn new(info_bar: gtk::Revealer) -> Self {
         Self {
-            info_bar,
+            info_bar: Some(info_bar),
             message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
             processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
         }
     }
 
-    pub fn queue_message(&self, message: String, message_type: gtk::MessageType) {
+    fn queue_message(&self, message: String, message_type: gtk::MessageType) {
         let mut queue = self.message_queue.lock().unwrap();
         queue.push_back((message, message_type));
 
@@ -4657,42 +4632,54 @@ impl AppMessages {
     }
 
     fn start_message_processor(&self) {
+        let info_bar = match &self.info_bar {
+            Some(info_bar) => info_bar.clone(),
+            None => {
+                eprintln!("Error: info_bar is not initialized.");
+                return;
+            }
+        };
+    
         let queue = self.message_queue.clone();
-        let info_bar = self.info_bar.clone();
         let processing = self.processing.clone();
     
         {
             let mut is_processing = processing.lock().unwrap();
             if *is_processing {
-                return; // Already processing, return
+                return;
             }
             *is_processing = true;
         }
     
-        glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
-            let mut queue_lock = queue.lock().unwrap();
-            if let Some((message, message_type)) = queue_lock.pop_front() {
-                // Show the message
-                AppMessages::create_info_message(&info_bar, &message, message_type);
-
-                // Wait 3 seconds to hide the message and then process the next
-                let info_bar_clone = info_bar.clone();
-                let queue_clone = queue.clone();
-                let processing_clone = processing.clone();
-                glib::timeout_add_local(std::time::Duration::from_secs(3), move || {
-                    info_bar_clone.set_reveal_child(false); // Hide message
-
-                    // Process the next message in the queue
-                    AppMessages::start_next_message(&queue_clone, &info_bar_clone, &processing_clone);
-
+        glib::timeout_add_local(std::time::Duration::from_millis(50), {
+            let queue = queue.clone();
+            let info_bar = info_bar.clone();
+            let processing = processing.clone();
+    
+            move || {
+                let mut queue_lock = queue.lock().unwrap();
+                if let Some((message, message_type)) = queue_lock.pop_front() {
+                    AppMessages::create_info_message(&info_bar, &message, message_type);
+    
+                    glib::timeout_add_local(std::time::Duration::from_secs(3), {
+                        let queue = queue.clone();
+                        let info_bar = info_bar.clone();
+                        let processing = processing.clone();
+    
+                        move || {
+                            info_bar.set_reveal_child(false);
+    
+                            AppMessages::start_next_message(&queue, &info_bar, &processing);
+    
+                            glib::ControlFlow::Break
+                        }
+                    });
+    
                     glib::ControlFlow::Break
-                });
-
-                glib::ControlFlow::Break
-            } else {
-                // If no messages are left, set processing to false
-                *processing.lock().unwrap() = false;
-                glib::ControlFlow::Break
+                } else {
+                    *processing.lock().unwrap() = false;
+                    glib::ControlFlow::Break
+                }
             }
         });
     }
@@ -4704,28 +4691,25 @@ impl AppMessages {
     ) {
         let mut queue_lock = queue.lock().unwrap();
         if let Some((message, message_type)) = queue_lock.pop_front() {
-            // Display the next message
             AppMessages::create_info_message(info_bar, &message, message_type);
-
-            let info_bar_clone = info_bar.clone();
-            let queue_clone = queue.clone();
-            let processing_clone = processing.clone();
-
+    
+            let queue = queue.clone();
+            let info_bar = info_bar.clone();
+            let processing = processing.clone();
+    
             glib::timeout_add_local(std::time::Duration::from_secs(3), move || {
-                info_bar_clone.set_reveal_child(false); // Hide message
-
-                // Check if there are more messages in the queue
-                AppMessages::start_next_message(&queue_clone, &info_bar_clone, &processing_clone);
-
+                info_bar.set_reveal_child(false);
+    
+                AppMessages::start_next_message(&queue, &info_bar, &processing);
+    
                 glib::ControlFlow::Break
             });
         } else {
-            // No more messages, stop processing
             *processing.lock().unwrap() = false;
         }
     }
 
-    pub fn create_info_message(
+    fn create_info_message(
         revealer: &gtk::Revealer,
         message: &str,
         message_type: gtk::MessageType,
@@ -4770,46 +4754,56 @@ impl AppMessages {
 
 
 
-pub struct AppState {
+struct AppState {
     language: Option<String>,
     theme: Option<String>,
+    app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
 }
 
 impl AppState {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             language: Some("en".to_string()),
             theme: Some("System".to_string()),
+            app_messages: None,
         }
     }
 
-    pub fn apply_theme(&self) {
+    fn initialize_app_messages(&mut self, info_bar: gtk::Revealer) {
+        self.app_messages = Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(info_bar))));
+    }
+
+    fn show_message(&self, message: String, message_type: gtk::MessageType) {
+        if let Some(app_messages) = &self.app_messages {
+            let app_messages = app_messages.lock().unwrap();
+            app_messages.queue_message(message, message_type);
+        }
+    }
+
+    fn apply_theme(&mut self) {
         if let Some(theme) = &self.theme {
             let preferred_theme = match theme.as_str() {
                 "System" => adw::ColorScheme::PreferLight,
                 "Light" => adw::ColorScheme::ForceLight,
                 "Dark" => adw::ColorScheme::PreferDark,
                 _ => {
-                    eprintln!(
-                        "{}",
-                        &t!(
-                            "error.settings.parse", 
-                            element = "gui_theme", 
-                            value = theme
-                        )
+                    self.show_message(
+                        t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
+                        gtk::MessageType::Error
                     );
                     adw::ColorScheme::PreferLight
                 }
             };
+            self.show_message("Theme changed.".to_string(), gtk::MessageType::Info);
 
             adw::StyleManager::default().set_color_scheme(preferred_theme);
         } else {
-            eprintln!("Theme is not set. Using default color scheme.");
+            self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
         }
     }
 
-    pub fn apply_language(&mut self) {
+    fn apply_language(&mut self) {
         if let Some(language) = &self.language {
             let language_code = match language.as_str() {
                 "Deutsch" => "de",
@@ -4817,18 +4811,15 @@ impl AppState {
                 "English" => "en",
                 _ => "en",
             };
-
+        
             rust_i18n::set_locale(language_code);
-
-            // self.active_message = Some(t!("UI.messages.change-language.msg").to_string());
+            self.show_message(t!("UI.messages.change-language").to_string(), gtk::MessageType::Info);
+            
         } else {
-            eprintln!("Language is not set. Falling back to English.");
             rust_i18n::set_locale("en");
-            // self.active_message = Some("Default language set to English.".to_string());
+            self.show_message("Language is not set. Falling back to English.".to_string(), gtk::MessageType::Warning);
         }
     }
-
-    
 }
 
 
@@ -4837,7 +4828,9 @@ impl AppState {
 
 
 
-
+// I have a new idea how to still generate secure entropy even if source is corrupted/monitored
+// It will take me time to implement it since I suck in Rust
+// But idea is already tested in my head :D
 
 fn get_qrng() -> String {
     use rand::{Rng, thread_rng};

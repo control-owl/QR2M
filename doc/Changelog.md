@@ -1,3 +1,7 @@
+# version 0.70.3
+- improved states
+- message queue
+
 # version 0.70.2
 - message queue - beta
 

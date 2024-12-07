@@ -403,15 +403,14 @@ UI:
         en: "Close"
         de: "Schließen"
         hr: "Zatvori"
+      settings-saved:
+        en: "Settings saved"
+        de: "Einstellungen gespeichert"
+        hr: "Postavke spremljene"
     change-language:
-      titel:
-        en: "Language changed"
-        de: "Sprache geändert"
-        hr: "Promjena jezika"
-      msg:
-        en: "Please re-open app to apply new language"
-        de: "Bitte öffnen Sie die App erneut, um die neue Sprache anzuwenden"
-        hr: "Ponovno otvorite aplikaciju da bi primjeni novi jezik"
+        en: "Please re-open app, or create new window to apply new language"
+        de: "Bitte öffnen Sie die App oder neue Fenster erneut, um die neue Sprache anzuwenden"
+        hr: "Ponovno otvorite aplikaciju ili otvorite novi prozor da bi primjeni novi jezik"
   dialog:
     open:
       en: "Please select a file"
