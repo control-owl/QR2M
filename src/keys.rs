@@ -334,7 +334,6 @@ pub fn generate_sha256_ripemd160_address(
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-
 pub fn generate_entropy(
     source: &str, 
     entropy_length: u64, 
@@ -663,4 +662,7 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
         master_public_key_bytes.to_vec(), 
     ))
 }
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
