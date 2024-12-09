@@ -1,3 +1,6 @@
+# version 0.70.4
+- random mnemonic passphrase length in settings
+
 # version 0.70.3
 - improved states
 - message queue

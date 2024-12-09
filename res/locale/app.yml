@@ -55,6 +55,10 @@ UI:
         en: "Timeout for all notifications (in seconds)"
         de: "Timeout für alle Benachrichtigungen (in Sekunden)"
         hr: "Istek vremena za sve obavijesti (u sekundama)"
+      mnemonic-length:
+        en: "Default mnemonic passphrase length"
+        de: "Standardlänge der mnemonischen Passphrase"
+        hr: "Zadana duljina mnemoničke lozinke"
     anu:
       en: "ANU settings"
       de: "ANU Einstellungen"

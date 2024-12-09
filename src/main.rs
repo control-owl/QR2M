@@ -4,7 +4,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 #![allow(unused_variables)]
@@ -56,6 +56,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Hrvatski",
 ];
 const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 10;
+const DEFAULT_MNEMONIC_LENGTH: u32 = 10;
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
 const APP_DEFAULT_CONFIG_FILE: &str = "default.conf";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
@@ -126,6 +127,7 @@ struct AppSettings {
     gui_language: String,
     gui_search: String,
     gui_notification_timeout: u32,
+    gui_mnemonic_length: u32,
     anu_enabled: bool,
     anu_data_format: String,
     anu_array_length: u32,
@@ -214,6 +216,7 @@ impl AppSettings {
         let gui_language = get_str(&gui_section, "language", &APP_LANGUAGE[0]);
         let gui_search = get_str(&gui_section, "search", &VALID_COIN_SEARCH_PARAMETER[0]);
         let gui_notification_timeout = get_u32(&gui_section, "notification_timeout", DEFAULT_NOTIFICATION_TIMEOUT);
+        let gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", DEFAULT_MNEMONIC_LENGTH);
 
         println!("\t Save last window size: {:?}", gui_save_size);
         println!("\t GUI width: {:?}", gui_last_width);
@@ -223,6 +226,7 @@ impl AppSettings {
         println!("\t Language: {:?}", gui_language);
         println!("\t Search: {:?}", gui_search);
         println!("\t Notification timeout: {:?}", gui_notification_timeout);
+        println!("\t Mnemonic passphrase length: {:?}", gui_mnemonic_length);
 
         // Wallet settings
         let wallet_entropy_source = get_str(&wallet_section, "entropy_source", &VALID_ENTROPY_SOURCES[0]);
@@ -292,6 +296,7 @@ impl AppSettings {
         application_settings.gui_language = gui_language.clone();
         application_settings.gui_search = gui_search.clone();
         application_settings.gui_notification_timeout = gui_notification_timeout.clone();
+        application_settings.gui_mnemonic_length = gui_mnemonic_length.clone();
 
         application_settings.anu_enabled = anu_enabled.clone();
         application_settings.anu_data_format = anu_data_format.clone();
@@ -326,6 +331,7 @@ impl AppSettings {
             gui_language,
             gui_search,
             gui_notification_timeout,
+            gui_mnemonic_length,
             anu_enabled,
             anu_data_format,
             anu_array_length,
@@ -470,6 +476,13 @@ impl AppSettings {
                     self.save_settings();
                 }
             },
+            "gui_mnemonic_length" => {
+                if new_value.as_integer().map(|v| v as u32 != self.gui_mnemonic_length).unwrap_or(false) {
+                    self.gui_mnemonic_length = new_value.as_integer().unwrap() as u32;
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            },
             "anu_enabled" => {
                 if new_value.as_bool().map(|v| v != self.anu_enabled).unwrap_or(false) {
                     self.anu_enabled = new_value.as_bool().unwrap();
@@ -580,7 +593,6 @@ impl AppSettings {
             },
             _ => {}
         }
-    
     }
 
     fn save_settings(&self) {
@@ -617,6 +629,7 @@ impl AppSettings {
                 gui_table["language"] = toml_edit::value(self.gui_language.clone());
                 gui_table["search"] = toml_edit::value(self.gui_search.clone());
                 gui_table["notification_timeout"] = toml_edit::value(self.gui_notification_timeout as i64);
+                gui_table["mnemonic_length"] = toml_edit::value(self.gui_mnemonic_length as i64);
             }
         }
     
@@ -804,7 +817,7 @@ fn generate_entropy(
             //     let info_bar = state.info_bar.clone();
 
             //     state.update_infobar_message(
-            //         "Reqesting QRNG from ANU API ...".to_string(),
+            //         "Requesting QRNG from ANU API ...".to_string(),
             //         // info_bar.unwrap(),
             //         gtk::MessageType::Info,
             //     );
@@ -1218,8 +1231,10 @@ fn create_main_window(
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
-    AppSettings::load_settings()
-        .expect(&t!("error.settings.read").to_string());
+    match AppSettings::load_settings() {
+        Ok(_) => println!("Settings loaded"),
+        Err(err) => eprintln!("{} \t {}", t!("error.settings.read").to_string(), err)
+    };
 
     let app_settings = APPLICATION_SETTINGS.lock().unwrap();
     let gui_language = app_settings.gui_language.clone();
@@ -1227,6 +1242,7 @@ fn create_main_window(
     let window_width = app_settings.gui_last_width;
     let window_height = app_settings.gui_last_height;
     let wallet_bip = app_settings.wallet_bip;
+    let default_mnemonic_length = app_settings.gui_mnemonic_length;
 
     os::switch_locale(&gui_language);
     
@@ -1267,9 +1283,6 @@ fn create_main_window(
             state_guard.initialize_app_messages(info_bar.clone());
         }
     }
-
-
-
 
     let new_wallet_button = gtk::Button::new();
     let open_wallet_button = gtk::Button::new();
@@ -1393,7 +1406,7 @@ fn create_main_window(
     let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
-    let adjustment = gtk::Adjustment::new(
+    let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
         8.0 * 32.0,
         8.0 * 2.0,
         8.0 * 128.0,
@@ -1401,7 +1414,7 @@ fn create_main_window(
         100.0,
         0.0,
     );
-    let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&adjustment));
+    let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
     let mnemonic_passphrase_length_info = gtk::Entry::new();
         
     mnemonic_passphrase_items_box.set_hexpand(true);
@@ -1416,9 +1429,7 @@ fn create_main_window(
     mnemonic_passphrase_length_info.set_editable(false);
     mnemonic_passphrase_length_info.set_width_request(50);
     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
-
-    // FEATURE: create settings, Get this value from settings
-    mnemonic_passphrase_length_info.set_text("256");
+    mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.to_string());
     
     // Mnemonic passphrase
     let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -3146,6 +3157,35 @@ fn create_settings_window(
     notification_timeout_box.append(&notification_timeout_item_box);
     content_general_box.append(&notification_timeout_box);
 
+    // Default mnemonic passphrase length
+    let mnemonic_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let mnemonic_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic-length").to_string()));
+    let mnemonic_length = settings.gui_mnemonic_length as f64;
+    let mnemonic_length_adjustment = gtk::Adjustment::new(
+        mnemonic_length,
+        8.0 * 2.0,
+        8.0 * 128.0,
+        1.0,
+        100.0,
+        0.0,
+    );
+    let mnemonic_length_spinbutton = gtk::SpinButton::new(Some(&mnemonic_length_adjustment), 1.0, 0);
+
+    mnemonic_length_spinbutton.set_size_request(200, 10);
+    mnemonic_length_box.set_hexpand(true);
+    mnemonic_length_item_box.set_hexpand(true);
+    mnemonic_length_item_box.set_margin_end(20);
+    mnemonic_length_item_box.set_halign(gtk::Align::End);
+
+    mnemonic_length_label_box.append(&mnemonic_length_label);
+    mnemonic_length_item_box.append(&mnemonic_length_spinbutton);
+    mnemonic_length_box.append(&mnemonic_length_label_box);
+    mnemonic_length_box.append(&mnemonic_length_item_box);
+    content_general_box.append(&mnemonic_length_box);
+
+
     stack.add_titled(
         &general_settings_box,
         Some("sidebar-settings-general"),
@@ -3887,6 +3927,7 @@ fn create_settings_window(
                 ("gui_language", toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize])),
                 ("gui_search", toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize])),
                 ("gui_notification_timeout", toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64)),
+                ("gui_mnemonic_length", toml_edit::value(mnemonic_length_spinbutton.value_as_int() as i64)),
                 ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
                 ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
                 ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
