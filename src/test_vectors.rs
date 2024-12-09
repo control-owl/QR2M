@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "QRNG testing vectors"
 // copyright = "Copyright © 2023-2024 D3BUG"
-// version = "2024-06-16"
+// version = "2024-12-09"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -61,7 +61,7 @@ mod tests {
         ];
 
         for vector in entropy_mnemonic_vectors {
-            let mnemonic = crate::generate_mnemonic_words(vector.entropy);
+            let mnemonic = crate::keys::generate_mnemonic_words(vector.entropy);
             assert_eq!(mnemonic, vector.mnemonic);
         }
     }
@@ -112,7 +112,7 @@ mod tests {
         ];
 
         for vector in test_vectors {
-            match crate::generate_master_keys(vector.seed, "0x0488ADE4", "0x0488B21E") {
+            match crate::keys::generate_master_keys(vector.seed, "0x0488ADE4", "0x0488B21E") {
                 Ok((
                     master_xprv, 
                     master_xpub,
@@ -187,7 +187,7 @@ mod tests {
             let master_private_key_bytes = hex::decode(vector.master_private_key).expect("can not decode master_private_key");
             let master_chain_code_bytes = hex::decode(vector.master_chain_code).expect("can not decode master_chain_code");
     
-            match crate::derive_child_key_secp256k1(
+            match crate::keys::derive_child_key_secp256k1(
                 &master_private_key_bytes,
                 &master_chain_code_bytes,
                 vector.index,

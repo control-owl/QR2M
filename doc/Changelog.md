@@ -1,3 +1,7 @@
+# version 0.70.5
+- new file: keys.rs
+- moved all key logic to a new file
+
 # version 0.70.4
 - random mnemonic passphrase length in settings
 

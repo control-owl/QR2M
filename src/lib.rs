@@ -195,10 +195,6 @@ fn generate_empty_image() -> gtk::gdk_pixbuf::Pixbuf {
     )
 }
 
-
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
 pub fn setup_css() {
     let provider = gtk::CssProvider::new();
     let css_path = std::path::Path::new("theme").join("basic").join("style.css");
@@ -217,3 +213,6 @@ pub fn setup_css() {
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 }
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

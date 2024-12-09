@@ -1,6 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "Development playground"
 // copyright = "Copyright © 2023-2024 D3BUG"
+// version = "2024-12-09"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -17,7 +18,7 @@ pub fn derive_from_path_ed25519(
     master_key: &[u8],
     master_chain_code: &[u8],
     path: &str,
-) -> crate::DerivationResult {
+) -> crate::keys::DerivationResult {
     println!("Deriving from path for ed25519: {}", path);
 
     println!("master_key: {:?}", &master_key);
@@ -67,7 +68,7 @@ fn derive_child_key_ed25519(
     parent_chain_code: &[u8],
     index: u32,
     hardened: bool,
-) -> crate::DerivationResult {
+) -> crate::keys::DerivationResult {
     println!("Deriving ed25519 child key");
     
     println!("parent_key: {:?}", &parent_key);
@@ -107,9 +108,9 @@ fn derive_child_key_ed25519(
     ))
 }
 
-pub fn generate_ed25519_address(public_key: &crate::CryptoPublicKey) -> String {
+pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> String {
     let public_key_bytes = match public_key {
-        crate::CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
+        crate::keys::CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
         _ => {
             eprintln!("generate_ed25519_address called with non-ed25519 key");
             Vec::new()

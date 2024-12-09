@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "OS specific tasks"
 // copyright = "Copyright © 2023-2024 D3BUG"
-// version = "2024-06-16"
+// version = "2024-12-09"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -179,58 +179,3 @@ fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
-// pub fn save_do_not_show_setting(title: &str) -> Result<(), io::Error> {
-//     let local_do_not_show_file = LOCAL_DATA.with(|data| {
-//         let data = data.borrow();
-//         data.local_do_not_show_file.clone().unwrap_or_default()
-//     });
-
-//     let path = Path::new(&local_do_not_show_file);
-//     let mut file = std::fs::OpenOptions::new()
-//         .create(true)
-//         .append(true)
-//         .open(path)?;
-
-//     writeln!(file, "{}", title)?;
-
-//     Ok(())
-// }
-
-// pub fn load_do_not_show_settings() -> Result<std::collections::HashSet<String>, io::Error> {
-//     let local_do_not_show_file = LOCAL_DATA.with(|data| {
-//         let data = data.borrow();
-//         data.local_do_not_show_file.clone().unwrap_or_default()
-//     });
-
-//     let path = Path::new(&local_do_not_show_file);
-//     let mut titles = std::collections::HashSet::new();
-
-//     if path.exists() {
-//         let file = std::fs::File::open(path)?;
-//         let reader = std::io::BufReader::new(file);
-
-//         for line in reader.lines() {
-//             let title = line?;
-//             titles.insert(title);
-//         }
-//     }
-
-//     Ok(titles)
-// }
-
-// fn write_to_do_not_show_file(settings: &std::collections::HashMap<String, bool>) -> Result<(), std::io::Error> {
-//     use std::fs::File;
-//     use std::io::BufWriter;
-    
-//     let local_do_not_show_file = LOCAL_DATA.with(|data| {
-//         let data = data.borrow();
-//         data.local_do_not_show_file.clone().unwrap()
-//     });
-
-//     let file = File::create(&local_do_not_show_file)?;
-//     let writer = BufWriter::new(file);
-//     serde_json::to_writer(writer, &settings)?;
-//     Ok(())
-// }
