@@ -628,6 +628,8 @@ log:
     en: "Local system"
   load-settings:
     en: "Loading user settings"
+  reset-config:
+    en: "Reset user config"
 
 # &t!("UI.settings.element.frame.select").to_string()
 # Some(&t!("log.settings").to_string())

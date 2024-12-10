@@ -125,15 +125,16 @@ pub fn switch_locale(lang: &str) {
 }
 
 pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
+    
     let local_settings = LOCAL_SETTINGS.lock().unwrap();
     let local_config_file = local_settings.local_config_file.clone().unwrap();
     let local_config_dir = local_settings.local_config_dir.clone().unwrap();
-
+    
     if !local_config_dir.exists() {
         eprintln!("Local config directory not found. Creating it.");
         fs::create_dir_all(&local_config_dir)?;
     }
-
+    
     if !is_directory_writable(&local_config_dir)? {
         return Err(io::Error::new(io::ErrorKind::PermissionDenied, "Directory not writable").into());
     }

@@ -7,7 +7,7 @@
 // #![windows_subsystem = "windows"]
 #![allow(non_snake_case)]
 // #![allow(unused_imports)]
-#![allow(unused_variables)]
+// #![allow(unused_variables)]
 // #![allow(unused_assignments)]
 // #![allow(dead_code)]
 // #![allow(unused_mut)]
@@ -1072,7 +1072,14 @@ fn setup_app_actions(
     ));
 
     test.connect_activate(|_action, _parameter| {
-        anu_window();
+        match reset_user_settings().unwrap().as_str() {
+            "OK" => {
+                println!("User config reset finished");
+            },
+            _ => {
+                eprintln!("User config reset error");
+            },
+        }
     });
 
     application.set_accels_for_action("app.new", &["<Primary>N"]);
@@ -1922,7 +1929,7 @@ fn create_main_window(
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
-        #[strong] state,
+        // #[strong] state,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -2017,8 +2024,8 @@ fn create_main_window(
         #[strong] coin_entry,
         #[weak] seed_text,
         #[weak] coin_treeview,
-        #[weak] info_bar,
-        #[strong] state,
+        // #[weak] info_bar,
+        // #[strong] state,
         move |_| {
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
@@ -2671,8 +2678,8 @@ fn create_main_window(
     generate_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] derivation_label_text,
-        #[weak] info_bar,
-        #[strong] state,
+        // #[weak] info_bar,
+        // #[strong] state,
         move |_| {
             println!("\n#### Generating addresses button ####");
         
@@ -2859,10 +2866,10 @@ fn create_settings_window(
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    let theme = {
-        let state_guard = state.lock().unwrap();
-        state_guard.theme.clone()
-    };
+    // let theme = {
+    //     let state_guard = state.lock().unwrap();
+    //     state_guard.theme.clone()
+    // };
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
@@ -3842,6 +3849,34 @@ fn create_settings_window(
         }
     ));
 
+    default_button.connect_clicked(clone!(
+        #[weak] settings_window,
+        // #[strong] state,
+        move |_| {
+            match reset_user_settings().unwrap().as_str() {
+                "OK" => {
+                    println!("User config reset finished");
+                    settings_window.close();
+                    
+
+                    AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
+                    
+                    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+
+                    AppState::apply_theme(& mut state.lock().unwrap());
+                    
+                    create_settings_window(state);
+                    
+                },
+                _ => {
+                    eprintln!("User config reset error");
+                },
+            }
+        }
+    ));
+
+
+
     main_buttons_box.append(&left_buttons_box);
     main_buttons_box.append(&right_buttons_box);
     left_buttons_box.append(&default_button);
@@ -4324,10 +4359,33 @@ fn anu_window() {
     app.run();
 }
 
-fn reset_user_settings() {
-    // Show warning
-        // YES
-            // remove local file 
-            // copy default file
-        // 
+fn reset_user_settings() -> Result<String, String> {
+    println!("[+] {}", &t!("log.reset-config").to_string());
+
+    {
+        let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
+        let local_config_file = local_settings.local_config_file.clone().unwrap();
+        
+        println!("\t Local config file: {:?}", local_config_file);
+        
+        match std::fs::remove_file(local_config_file) {
+            Ok(_) => {
+                println!("\t Local config file deleted");
+            },
+            Err(err) => {
+                eprintln!("\t Local config file NOT deleted \n {}", err);
+            },
+        };
+    }
+    
+    match os::create_local_files() {
+        Ok(_) => {
+            println!("\t New config file created");
+            Ok("OK".to_string())
+        },
+        Err(err) => {
+            eprintln!("\t New config file NOT created \n {}", err);
+            Err(err.to_string())
+        },
+    }
 }

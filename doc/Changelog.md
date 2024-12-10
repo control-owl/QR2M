@@ -1,3 +1,6 @@
+# version 0.70.6
+- reset user config in settings
+
 # version 0.70.5
 - new file: keys.rs
 - moved all key logic to a new file
