@@ -1028,9 +1028,10 @@ fn setup_app_actions(
     let test = gio::SimpleAction::new("test", None);
     
     new.connect_activate(clone!(
-        #[strong] state,
         #[weak] application,
         move |_action, _parameter| {
+            let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+
             create_main_window(&application, state.clone());
         }
     ));
@@ -1072,14 +1073,7 @@ fn setup_app_actions(
     ));
 
     test.connect_activate(|_action, _parameter| {
-        match reset_user_settings().unwrap().as_str() {
-            "OK" => {
-                println!("User config reset finished");
-            },
-            _ => {
-                eprintln!("User config reset error");
-            },
-        }
+        anu_window();
     });
 
     application.set_accels_for_action("app.new", &["<Primary>N"]);
@@ -1198,8 +1192,10 @@ fn create_main_window(
 
     new_wallet_button.connect_clicked(clone!(
         #[weak] application,
-        #[strong] state,
+        // #[strong] state,
         move |_| {
+            let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+
             create_main_window(&application, state.clone());
         }
     ));
@@ -3924,6 +3920,37 @@ fn create_settings_window(
     settings_window
 }
 
+fn reset_user_settings() -> Result<String, String> {
+    println!("[+] {}", &t!("log.reset-config").to_string());
+
+    {
+        let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
+        let local_config_file = local_settings.local_config_file.clone().unwrap();
+        
+        println!("\t Local config file: {:?}", local_config_file);
+        
+        match std::fs::remove_file(local_config_file) {
+            Ok(_) => {
+                println!("\t Local config file deleted");
+            },
+            Err(err) => {
+                eprintln!("\t Local config file NOT deleted \n {}", err);
+            },
+        };
+    }
+    
+    match os::create_local_files() {
+        Ok(_) => {
+            println!("\t New config file created");
+            Ok("OK".to_string())
+        },
+        Err(err) => {
+            eprintln!("\t New config file NOT created \n {}", err);
+            Err(err.to_string())
+        },
+    }
+}
+
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
@@ -4381,35 +4408,4 @@ fn anu_window() {
     });
 
     app.run();
-}
-
-fn reset_user_settings() -> Result<String, String> {
-    println!("[+] {}", &t!("log.reset-config").to_string());
-
-    {
-        let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
-        let local_config_file = local_settings.local_config_file.clone().unwrap();
-        
-        println!("\t Local config file: {:?}", local_config_file);
-        
-        match std::fs::remove_file(local_config_file) {
-            Ok(_) => {
-                println!("\t Local config file deleted");
-            },
-            Err(err) => {
-                eprintln!("\t Local config file NOT deleted \n {}", err);
-            },
-        };
-    }
-    
-    match os::create_local_files() {
-        Ok(_) => {
-            println!("\t New config file created");
-            Ok("OK".to_string())
-        },
-        Err(err) => {
-            eprintln!("\t New config file NOT created \n {}", err);
-            Err(err.to_string())
-        },
-    }
 }
