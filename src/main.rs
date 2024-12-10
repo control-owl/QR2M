@@ -3848,30 +3848,54 @@ fn create_settings_window(
             settings_window.close()
         }
     ));
-
+    
+    
+    
     default_button.connect_clicked(clone!(
         #[weak] settings_window,
-        // #[strong] state,
         move |_| {
-            match reset_user_settings().unwrap().as_str() {
-                "OK" => {
-                    println!("User config reset finished");
-                    settings_window.close();
-                    
 
-                    AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
-                    
-                    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+            let dialog = gtk::MessageDialog::builder()
+                .modal(true)
+                .text("Do you really want to reset config?")
+                .build();
 
-                    AppState::apply_theme(& mut state.lock().unwrap());
-                    
-                    create_settings_window(state);
-                    
-                },
-                _ => {
-                    eprintln!("User config reset error");
-                },
-            }
+            dialog.add_button("Yes", gtk::ResponseType::Yes);
+            dialog.add_button("No", gtk::ResponseType::No);
+            dialog.connect_response(clone!(
+                #[weak] settings_window,
+                move |dialog, response| {
+                match response {
+                    gtk::ResponseType::Yes => {
+                        match reset_user_settings().unwrap().as_str() {
+                            "OK" => {
+                                dialog.close();
+                                println!("User config reset finished");
+                                settings_window.close();
+                                
+            
+                                AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
+                                
+                                let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+            
+                                AppState::apply_theme(& mut state.lock().unwrap());
+                                
+                                create_settings_window(state);
+                                
+                            },
+                            _ => {
+                                eprintln!("User config reset error");
+                            },
+                        }
+                    },
+                    _ => {
+                        dialog.close();
+                    },
+                }
+            }));
+            dialog.show();
+
+            
         }
     ));
 
