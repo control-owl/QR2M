@@ -363,7 +363,7 @@ impl AppSettings {
             Ok(contents) => contents,
             Err(err) => {
                 eprintln!(
-                    "Failed to read local config file: {:?} \nError: {:?}",
+                    "Failed to read local config file: {:?} \n Error: {:?}",
                     local_config_file, err
                 );
         
@@ -1536,6 +1536,7 @@ fn create_main_window(
         coin_search_filter_dropdown.set_selected(index);
     } else {
         eprintln!("Invalid index for coin_search_filter_dropdown");
+        coin_search_filter_dropdown.set_selected(0);
     }    
     // coin_search_filter_dropdown.set_selected(default_coin_search_filter.try_into().unwrap());
     advance_search_filter_box.set_visible(false);
@@ -1925,7 +1926,7 @@ fn create_main_window(
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
-        // #[strong] state,
+        #[strong] state,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -1973,7 +1974,8 @@ fn create_main_window(
 
             } else {
                 eprintln!("{}", &t!("error.entropy.empty"));
-                // create_message_window("Empty entropy", "Please generate new entropy", None, None);
+                let lock_state = state.lock().unwrap();
+                AppState::show_message(&lock_state, t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
             }
         }
     ));
@@ -2021,7 +2023,7 @@ fn create_main_window(
         #[weak] seed_text,
         #[weak] coin_treeview,
         // #[weak] info_bar,
-        // #[strong] state,
+        #[strong] state,
         move |_| {
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
@@ -2109,7 +2111,15 @@ fn create_main_window(
                                 master_private_key_text.buffer().set_text(&xprv.0);
                                 master_public_key_text.buffer().set_text(&xprv.1);
                             },
-                            Err(err) => eprintln!("{}: {}", &t!("error.master.create"), err),
+                            Err(err) => {
+                                
+                                let lock_state = state.lock().unwrap();
+                                AppState::show_message(&lock_state, t!("error.master.create").to_string(), gtk::MessageType::Warning);
+                                eprintln!("{}: {}", &t!("error.master.create"), err)
+
+
+                            },
+
                         }
     
                         coin_entry.set_text(&coin_index);
@@ -2125,12 +2135,8 @@ fn create_main_window(
                     }  
                 }
             } else {
-                {}
-                // let mut state = state.lock().unwrap();
-                // state.update_infobar_message(
-                //     t!("error.entropy.seed").to_string(),
-                //     gtk::MessageType::Warning,
-                // );
+                let lock_state = state.lock().unwrap();
+                AppState::show_message(&lock_state, t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
             }
         }
     ));
@@ -3683,7 +3689,6 @@ fn create_settings_window(
     use_proxy_ssl_box.append(&use_proxy_ssl_item_box);
     proxy_manual_settings_box.append(&use_proxy_ssl_box);
 
-
     // Proxy SSL certificate
     let use_proxy_ssl_certificate_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     
@@ -3833,15 +3838,12 @@ fn create_settings_window(
         }
     ));
     
-    
     cancel_button.connect_clicked(clone!(
         #[weak] settings_window,
         move |_| {
             settings_window.close()
         }
     ));
-    
-    
     
     default_button.connect_clicked(clone!(
         #[weak] settings_window,
@@ -3854,44 +3856,42 @@ fn create_settings_window(
 
             dialog.add_button("Yes", gtk::ResponseType::Yes);
             dialog.add_button("No", gtk::ResponseType::No);
+
             dialog.connect_response(clone!(
                 #[weak] settings_window,
                 #[weak] state,
                 move |dialog, response| {
-                match response {
-                    gtk::ResponseType::Yes => {
-                        match reset_user_settings().unwrap().as_str() {
-                            "OK" => {
-                                let lock_state = state.lock().unwrap();
+                    match response {
+                        gtk::ResponseType::Yes => {
+                            let new_state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+                            let mut lock_new_state = new_state.lock().unwrap();
+                            let lock_state = state.lock().unwrap();
+                            
+                            match reset_user_settings().unwrap().as_str() {
+                                "OK" => {
+                                    dialog.close();
+                                    settings_window.close();
+                                    
+                                    AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
 
-                                dialog.close();
-                                settings_window.close();
-                                
-                                AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
-                                
-                                let new_state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
-                                let mut lock_new_state = new_state.lock().unwrap();
-                                
-                                AppState::apply_theme(&mut lock_new_state);
-                                AppState::show_message(&lock_state, t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
-                            },
-                            _ => {
-                                eprintln!("User config reset error");
-                            },
-                        }
-                    },
-                    _ => {
-                        dialog.close();
-                    },
+                                    AppState::apply_theme(&mut lock_new_state);
+                                    AppState::show_message(&lock_state, t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
+                                },
+                                _ => {
+                                    AppState::show_message(&lock_state, t!("error.settings.reset").to_string(), gtk::MessageType::Error);
+                                },
+                            }
+                        },
+                        _ => {
+                            dialog.close();
+                        },
+                    }
                 }
-            }));
-            dialog.show();
+            ));
 
-            
+            dialog.show();
         }
     ));
-
-
 
     main_buttons_box.append(&left_buttons_box);
     main_buttons_box.append(&right_buttons_box);
@@ -3930,7 +3930,8 @@ fn reset_user_settings() -> Result<String, String> {
                 println!("\t Local config file deleted");
             },
             Err(err) => {
-                eprintln!("\t Local config file NOT deleted \n {}", err);
+                // TODO: AppMessages
+                eprintln!("\t Local config file NOT deleted \n Error: {}", err);
             },
         };
     }
@@ -3941,6 +3942,7 @@ fn reset_user_settings() -> Result<String, String> {
             Ok("OK".to_string())
         },
         Err(err) => {
+            // TODO: AppMessages
             eprintln!("\t New config file NOT created \n {}", err);
             Err(err.to_string())
         },

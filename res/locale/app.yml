@@ -454,6 +454,10 @@ error:
       en: "'%{value}' not found in settings"
       de: "'%{value}' nicht in Einstellungen gefunden"
       hr: "'%{value}' nije pronađen u postavkama"
+    reset:
+      en: "Failed to reset user settings: '%{value}'"
+      de: "Benutzereinstellungen konnten nicht zurückgesetzt werden"
+      hr: "Poništavanje korisničkih postavki nije uspjelo"
   mpsc:
     send:
       en: "Error sending data through the mpsc channel '%{value}'"
