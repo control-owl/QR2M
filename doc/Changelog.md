@@ -1,3 +1,6 @@
+# version 0.70.7
+- settings state corrected
+
 # version 0.70.6
 - reset user config in settings
 

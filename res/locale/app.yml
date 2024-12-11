@@ -411,6 +411,10 @@ UI:
         en: "Settings saved"
         de: "Einstellungen gespeichert"
         hr: "Postavke spremljene"
+      settings-reset:
+        en: "Default configuration loaded successfully"
+        de: "Standardkonfiguration erfolgreich geladen"
+        hr: "Standardna konfiguracija uspješno učitana"
     change-language:
         en: "Please re-open app, or create new window to apply new language"
         de: "Bitte öffnen Sie die App oder neue Fenster erneut, um die neue Sprache anzuwenden"

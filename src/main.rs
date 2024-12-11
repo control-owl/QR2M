@@ -151,7 +151,7 @@ impl AppState {
                     adw::ColorScheme::PreferLight
                 }
             };
-            self.show_message("Theme changed.".to_string(), gtk::MessageType::Info);
+            // self.show_message("Theme changed.".to_string(), gtk::MessageType::Info);
 
             adw::StyleManager::default().set_color_scheme(preferred_theme);
         } else {
@@ -2677,6 +2677,8 @@ fn create_main_window(
         // #[weak] info_bar,
         // #[strong] state,
         move |_| {
+            // IMPLEMENT: Generating info_bar message
+            // IMPLEMENT
             println!("\n#### Generating addresses button ####");
         
             let wallet_settings = WALLET_SETTINGS.lock().unwrap();
@@ -2772,7 +2774,6 @@ fn create_main_window(
                         return;
                     }
                 };
-
                 
                 let address = match hash.as_str() {
                     "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
@@ -2794,7 +2795,6 @@ fn create_main_window(
                         return;
                     }
                 };
-
 
                 println!("Crypto address: {:?}", address);
 
@@ -2838,9 +2838,6 @@ fn create_main_window(
     let main_window_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let main_sidebar_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let main_infobar_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-
-
-
     
     main_sidebar_box.append(&stack_sidebar);
     main_sidebar_box.append(&stack);
@@ -3776,7 +3773,6 @@ fn create_settings_window(
     let save_button = gtk::Button::with_label(&t!("UI.element.button.save").to_string());
     let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel").to_string());
     let default_button = gtk::Button::with_label(&t!("UI.element.button.default").to_string());
-    // IMPLEMENT: apply button
 
 
     // JUMP: Save settings button
@@ -3860,24 +3856,24 @@ fn create_settings_window(
             dialog.add_button("No", gtk::ResponseType::No);
             dialog.connect_response(clone!(
                 #[weak] settings_window,
+                #[weak] state,
                 move |dialog, response| {
                 match response {
                     gtk::ResponseType::Yes => {
                         match reset_user_settings().unwrap().as_str() {
                             "OK" => {
+                                let lock_state = state.lock().unwrap();
+
                                 dialog.close();
-                                println!("User config reset finished");
                                 settings_window.close();
                                 
-            
                                 AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
                                 
-                                let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
-            
-                                AppState::apply_theme(& mut state.lock().unwrap());
+                                let new_state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+                                let mut lock_new_state = new_state.lock().unwrap();
                                 
-                                create_settings_window(state);
-                                
+                                AppState::apply_theme(&mut lock_new_state);
+                                AppState::show_message(&lock_state, t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                             },
                             _ => {
                                 eprintln!("User config reset error");
@@ -4147,7 +4143,7 @@ fn save_wallet_to_file() {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = save_dialog.file() {
                     if let Some(path) = file.path() {
-                        // TODO: Get data from struct
+                        // TODO: Get data from WalletSettings struct
                         let wallet_data = format!("version = {}\n{}\n{}", WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase);
 
                         std::fs::write(path, wallet_data).expect("Unable to write file");
