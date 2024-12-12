@@ -1616,10 +1616,6 @@ fn create_main_window(
     }
 
     coin_treeview.borrow().set_model(Some(&*filtered_store));
-
-
-
-            
     scrolled_window.set_child(Some(&*coin_treeview.borrow()));
     coin_frame.set_child(Some(&scrolled_window));
     coin_main_content_box.append(&coin_frame);
@@ -2012,7 +2008,6 @@ fn create_main_window(
                         .collect();
             println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
             mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
-
         }
     ));
 
@@ -2022,7 +2017,7 @@ fn create_main_window(
         #[strong] coin_entry,
         #[weak] seed_text,
         #[weak] coin_treeview,
-        // #[weak] info_bar,
+        #[weak] master_private_key_text,
         #[strong] state,
         move |_| {
             let buffer = seed_text.buffer();
@@ -2082,7 +2077,6 @@ fn create_main_window(
                         master_public_key_text.buffer().set_text("");
     
                         println!("\n#### Coin info ####");
-    
                         println!("status: {}", status);
                         println!("index: {}", coin_index);
                         println!("coin_symbol: {}", coin_symbol);
@@ -2097,6 +2091,7 @@ fn create_main_window(
                         println!("EVM: {}", evm);
                         println!("UCID: {}", UCID);
                         println!("cmc_top: {}", cmc_top);
+
                         let buffer = seed_text.buffer();
                         let start_iter = buffer.start_iter();
                         let end_iter = buffer.end_iter();
@@ -2116,14 +2111,10 @@ fn create_main_window(
                                 let lock_state = state.lock().unwrap();
                                 AppState::show_message(&lock_state, t!("error.master.create").to_string(), gtk::MessageType::Warning);
                                 eprintln!("{}: {}", &t!("error.master.create"), err)
-
-
                             },
-
                         }
     
                         coin_entry.set_text(&coin_index);
-    
 
                         let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                         wallet_settings.public_key_hash = Some(public_key_hash.clone());
@@ -2197,9 +2188,6 @@ fn create_main_window(
             let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
 
             if entropy_text != "" {
-                // generate_entropy_button.emit_by_name::<()>("clicked", &[]);
-                // println!("empty");
-            // } else {
                 let entropy_length = entropy_text.len();
                 let cut_entropy = entropy_length / 32;
                 let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
@@ -2274,7 +2262,6 @@ fn create_main_window(
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
         let coin_store = std::rc::Rc::clone(&coin_store);
         let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-        // let search_parameter = std::rc::Rc::clone(&coin_search_filter_dropdown);
 
         move |coin_search| {
             let search_text = coin_search.text().to_lowercase();
@@ -2597,7 +2584,6 @@ fn create_main_window(
         #[weak] bip_hardened_checkbox,
         move |_| {
             dp_clone.borrow_mut().update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
-            // println!("new DP: {:?}", dp_clone.borrow());
             update_derivation_label(*dp_clone.borrow(), derivation_label_text)
         }
     ));
@@ -2609,7 +2595,6 @@ fn create_main_window(
         #[weak] coin_hardened_checkbox,
         move |_| {
             dp_clone2.borrow_mut().update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
-            // println!("new DP: {:?}", dp_clone2.borrow());
             update_derivation_label(*dp_clone2.borrow(), derivation_label_text)
         }
     ));
@@ -2621,7 +2606,6 @@ fn create_main_window(
         #[weak] address_hardened_checkbox,
         move |_| {
             dp_clone3.borrow_mut().update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
-            // println!("new DP: {:?}", dp_clone3.borrow());
             update_derivation_label(*dp_clone3.borrow(), derivation_label_text)
         }
     ));
@@ -2635,7 +2619,6 @@ fn create_main_window(
             let purpose = purpose_dropdown.selected();
 
             dp_clone4.borrow_mut().update_field("purpose", Some(FieldValue::U32(purpose)));
-            // println!("new Purpose: {:?}", dp_clone4.borrow());
             update_derivation_label(*dp_clone4.borrow(), derivation_label_text);
         }
     ));
@@ -2652,7 +2635,6 @@ fn create_main_window(
 
             if my_int.is_ok() {
                 dp_clone5.borrow_mut().update_field("coin", Some(FieldValue::U32(my_int.unwrap())));
-                // println!("new Coin: {:?}", dp_clone5.borrow());
                 update_derivation_label(*dp_clone5.borrow(), derivation_label_text);
             }
         }
@@ -2670,7 +2652,6 @@ fn create_main_window(
 
             if my_int.is_ok() {
                 dp_clone6.borrow_mut().update_field("address", Some(FieldValue::U32(my_int.unwrap())));
-                // println!("new Address: {:?}", dp_clone6.borrow());
                 update_derivation_label(*dp_clone6.borrow(), derivation_label_text);
             }
         }
@@ -2680,159 +2661,164 @@ fn create_main_window(
     generate_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] derivation_label_text,
-        // #[weak] info_bar,
-        // #[strong] state,
+        #[weak] master_private_key_text,
+        #[strong] state,
         move |_| {
             // IMPLEMENT: Generating info_bar message
-            // IMPLEMENT
-            println!("\n#### Generating addresses button ####");
-        
-            let wallet_settings = WALLET_SETTINGS.lock().unwrap();
-            let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-            let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-            let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-            let hash = wallet_settings.hash.clone().unwrap_or_default();
-            let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-            let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-            let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
-            let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
 
-            // let mut state = state.lock().unwrap();
-            // state.update_infobar_message(
-            //     t!("error.address.master").to_string(),
-            //     gtk::MessageType::Warning,
-            // );
-
-            // TODO: Save last address number, and next time generate from there afterwards
-            let DP = derivation_label_text.text();
-            let path = DP.to_string();
-        
-            let address_count = address_options_spinbutton.text();
-            let address_count_str = address_count.as_str();
-            let address_count_int = address_count_str.parse::<u32>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT);
+            let buffer = master_private_key_text.buffer();
+            let start_iter = buffer.start_iter();
+            let end_iter = buffer.end_iter();
+            let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
             
-            let hardened = address_options_hardened_address_checkbox.is_active();
-        
-            let secp = secp256k1::Secp256k1::new();
-        
-            let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
-                &public_key_hash[2..]
+            if master_private_key_string == "" {
+                let lock_state = state.lock().unwrap();
+                AppState::show_message(&lock_state, t!("error.address.master").to_string(), gtk::MessageType::Error);
             } else {
-                &public_key_hash
-            };
-        
-            let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
-                Ok(vec) => vec,
-                Err(e) => {
-                    println!("Failed to convert: {}", e);
-                    return;
-                },
-            };
-
-            let mut addresses = Vec::new();
-        
-            for i in 0..address_count_int {
-                let full_path = if hardened {
-                    format!("{}/{}'", path, i)
-                } else {
-                    format!("{}/{}", path, i)
-                };
-        
-                let derived_child_keys = match key_derivation.as_str() {
-                    "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                    "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                    "N/A" | _ => {
-                        println!("Unsupported key derivation method: {:?}", key_derivation);
-                        return
-                    }
-                }.expect("Failed to derive key from path");
-
-                let public_key = match key_derivation.as_str() {
-                    "secp256k1" => {
-                        let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-                            &secp,
-                            &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-                        );
-                        keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-                    },
-                    "ed25519" => {
-                        let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-                        let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-                        keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-                    },
-                    "N/A" | _ => {
-                        println!("Unsupported key derivation method: {:?}", key_derivation);
-                        return;
-                    }
-                };
-
-                let public_key_encoded = match hash.as_str() {
-                    "sha256" | "sha256+ripemd160" => match &public_key {
-                        keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-                        keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-                    },
-                    "keccak256" => match &public_key {
-                        keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-                        keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-                    },
-                    "N/A" | _ => {
-                        println!("Unsupported hash method: {:?}", hash);
-                        return;
-                    }
-                };
+                println!("\n#### Generating addresses button ####");
+    
+                let wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+                let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+                let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+                let hash = wallet_settings.hash.clone().unwrap_or_default();
+                let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+                let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+                let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+                let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+      
+                // IMPLEMENT: Save last address number, and next time generate from there afterwards
+                let DP = derivation_label_text.text();
+                let path = DP.to_string();
+            
+                let address_count = address_options_spinbutton.text();
+                let address_count_str = address_count.as_str();
+                let address_count_int = address_count_str.parse::<u32>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT);
                 
-                let address = match hash.as_str() {
-                    "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-                    "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-                    "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-                        coin_index, 
-                        &public_key, 
-                        &public_key_hash_vec
-                    ) {
-                        Ok(addr) => addr,
-                        Err(e) => {
-                            println!("Error generating address: {}", e);
+                let hardened = address_options_hardened_address_checkbox.is_active();
+            
+                let secp = secp256k1::Secp256k1::new();
+            
+                let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
+                    &public_key_hash[2..]
+                } else {
+                    &public_key_hash
+                };
+            
+                let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
+                    Ok(vec) => vec,
+                    Err(e) => {
+                        println!("Failed to convert: {}", e);
+                        return;
+                    },
+                };
+    
+                let mut addresses = Vec::new();
+            
+                for i in 0..address_count_int {
+                    let full_path = if hardened {
+                        format!("{}/{}'", path, i)
+                    } else {
+                        format!("{}/{}", path, i)
+                    };
+            
+                    let derived_child_keys = match key_derivation.as_str() {
+                        "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
+                        "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
+                        "N/A" | _ => {
+                            println!("Unsupported key derivation method: {:?}", key_derivation);
+                            return
+                        }
+                    }.expect("Failed to derive key from path");
+    
+                    let public_key = match key_derivation.as_str() {
+                        "secp256k1" => {
+                            let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+                                &secp,
+                                &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+                            );
+                            keys::CryptoPublicKey::Secp256k1(secp_pub_key)
+                        },
+                        "ed25519" => {
+                            let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+                            let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+                            keys::CryptoPublicKey::Ed25519(pub_key_bytes)
+                        },
+                        "N/A" | _ => {
+                            println!("Unsupported key derivation method: {:?}", key_derivation);
                             return;
                         }
-                    },
-                    "ed25519" => dev::generate_ed25519_address(&public_key),
-                    "N/A" | _ => {
-                        println!("Unsupported hash method: {:?}", hash);
-                        return;
-                    }
-                };
-
-                println!("Crypto address: {:?}", address);
-
-                // IMPROVEMENT: remove hard-coding
-                let compressed = true;
-                
-                let priv_key_wif = keys::create_private_key_for_address(
-                    Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
-                    Some(compressed),
-                    Some(&wallet_import_format),
-                    &hash,
-                ).expect("Failed to convert private key to WIF");
-                
-                addresses.push(CryptoAddresses {
-                    coin_name: coin_name.clone(),
-                    derivation_path: full_path,
-                    address: address.clone(),
-                    public_key: public_key_encoded.clone(),
-                    private_key: priv_key_wif.clone(),
-                });
+                    };
+    
+                    let public_key_encoded = match hash.as_str() {
+                        "sha256" | "sha256+ripemd160" => match &public_key {
+                            keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+                            keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+                        },
+                        "keccak256" => match &public_key {
+                            keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+                            keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+                        },
+                        "N/A" | _ => {
+                            println!("Unsupported hash method: {:?}", hash);
+                            return;
+                        }
+                    };
+                    
+                    let address = match hash.as_str() {
+                        "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
+                        "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
+                        "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
+                            coin_index, 
+                            &public_key, 
+                            &public_key_hash_vec
+                        ) {
+                            Ok(addr) => addr,
+                            Err(e) => {
+                                println!("Error generating address: {}", e);
+                                return;
+                            }
+                        },
+                        "ed25519" => dev::generate_ed25519_address(&public_key),
+                        "N/A" | _ => {
+                            println!("Unsupported hash method: {:?}", hash);
+                            return;
+                        }
+                    };
+    
+                    println!("Crypto address: {:?}", address);
+    
+                    // IMPROVEMENT: remove hard-coding
+                    let compressed = true;
+                    
+                    let priv_key_wif = keys::create_private_key_for_address(
+                        Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
+                        Some(compressed),
+                        Some(&wallet_import_format),
+                        &hash,
+                    ).expect("Failed to convert private key to WIF");
+                    
+                    addresses.push(CryptoAddresses {
+                        coin_name: coin_name.clone(),
+                        derivation_path: full_path,
+                        address: address.clone(),
+                        public_key: public_key_encoded.clone(),
+                        private_key: priv_key_wif.clone(),
+                    });
+                }
+            
+                for address in addresses {
+                    let iter = address_store.append();
+                    address_store.set(&iter, &[
+                        (0, &address.coin_name),
+                        (1, &address.derivation_path),
+                        (2, &address.address),
+                        (3, &address.public_key),
+                        (4, &address.private_key),
+                    ]);
+                }
             }
-        
-            for address in addresses {
-                let iter = address_store.append();
-                address_store.set(&iter, &[
-                    (0, &address.coin_name),
-                    (1, &address.derivation_path),
-                    (2, &address.address),
-                    (3, &address.public_key),
-                    (4, &address.private_key),
-                ]);
-            }
+
         }
     ));
     
