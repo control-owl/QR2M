@@ -2673,7 +2673,7 @@ fn create_main_window(
             
             if master_private_key_string == "" {
                 let lock_state = state.lock().unwrap();
-                AppState::show_message(&lock_state, t!("error.address.master").to_string(), gtk::MessageType::Error);
+                AppState::show_message(&lock_state, t!("error.address.master").to_string(), gtk::MessageType::Warning);
             } else {
                 println!("\n#### Generating addresses button ####");
     
@@ -2850,11 +2850,6 @@ fn create_settings_window(
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
-
-    // let theme = {
-    //     let state_guard = state.lock().unwrap();
-    //     state_guard.theme.clone()
-    // };
 
     let settings = AppSettings::load_settings()
         .expect(&t!("error.settings.read").to_string());
