@@ -54,7 +54,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Deutsch",
     "Hrvatski",
 ];
-const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 10;
+const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 5;
 const DEFAULT_MNEMONIC_LENGTH: u32 = 10;
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
 const APP_DEFAULT_CONFIG_FILE: &str = "default.conf";
@@ -111,13 +111,14 @@ lazy_static::lazy_static! {
     static ref APPLICATION_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
 }
 
-struct AppState {
+
+struct GuiState {
     language: Option<String>,
     theme: Option<String>,
     app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
 }
 
-impl AppState {
+impl GuiState {
     fn new() -> Self {
         Self {
             language: Some("en".to_string()),
@@ -140,18 +141,10 @@ impl AppState {
     fn apply_theme(&mut self) {
         if let Some(theme) = &self.theme {
             let preferred_theme = match theme.as_str() {
-                "System" => adw::ColorScheme::PreferLight,
                 "Light" => adw::ColorScheme::ForceLight,
                 "Dark" => adw::ColorScheme::PreferDark,
-                _ => {
-                    self.show_message(
-                        t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
-                        gtk::MessageType::Error
-                    );
-                    adw::ColorScheme::PreferLight
-                }
+                _ => adw::ColorScheme::PreferLight
             };
-            // self.show_message("Theme changed.".to_string(), gtk::MessageType::Info);
 
             adw::StyleManager::default().set_color_scheme(preferred_theme);
         } else {
@@ -165,7 +158,6 @@ impl AppState {
             let language_code = match language.as_str() {
                 "Deutsch" => "de",
                 "Hrvatski" => "hr",
-                "English" => "en",
                 _ => "en",
             };
         
@@ -174,6 +166,7 @@ impl AppState {
             
         } else {
             rust_i18n::set_locale("en");
+            // TODO: Localize
             self.show_message("Language is not set. Falling back to English.".to_string(), gtk::MessageType::Warning);
         }
     }
@@ -234,7 +227,12 @@ impl AppMessages {
                     AppMessages::create_info_message(&info_bar, &message, message_type);
     
                     // IMPLEMENT: Connect to value from setting 
-                    glib::timeout_add_local(std::time::Duration::from_secs(3), {
+                    // Why the fuck did I created queue, it make no sense for stupid people
+                    // they will spam infobar and they will not see important message or too delayed compared to click
+                    // I had a better idea for a queue, and then I realized, people ...
+                    // Too bad that this will be removed
+                    // I spend so many hours to understand this
+                    glib::timeout_add_local(std::time::Duration::from_secs(DEFAULT_NOTIFICATION_TIMEOUT as u64), {
                         let queue = queue.clone();
                         let info_bar = info_bar.clone();
                         let processing = processing.clone();
@@ -560,7 +558,7 @@ impl AppSettings {
         &mut self,
         key: &str,
         new_value: toml_edit::Item,
-        state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
+        state: Option<std::sync::Arc<std::sync::Mutex<GuiState>>>,
     ) {
         match key {
             "wallet_entropy_source" => {
@@ -1002,7 +1000,7 @@ fn main() {
         .application_id("wtf.r_o0_t.qr2m")
         .build();
 
-    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+    let state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::new()));
 
     application.connect_activate(clone!(
         #[strong] state,
@@ -1018,7 +1016,7 @@ fn main() {
 
 fn setup_app_actions(
     application: &adw::Application, 
-    state: std::sync::Arc<std::sync::Mutex<AppState>>,
+    state: std::sync::Arc<std::sync::Mutex<GuiState>>,
 ) {
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
@@ -1031,7 +1029,7 @@ fn setup_app_actions(
     new.connect_activate(clone!(
         #[weak] application,
         move |_action, _parameter| {
-            let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+            let state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::new()));
 
             create_main_window(&application, state.clone());
         }
@@ -1097,7 +1095,7 @@ fn setup_app_actions(
 
 fn create_main_window(
     application: &adw::Application, 
-    state: std::sync::Arc<std::sync::Mutex<AppState>>,
+    state: std::sync::Arc<std::sync::Mutex<GuiState>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -1196,7 +1194,7 @@ fn create_main_window(
         #[weak] application,
         // #[strong] state,
         move |_| {
-            let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+            let state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::new()));
 
             create_main_window(&application, state.clone());
         }
@@ -1973,7 +1971,7 @@ fn create_main_window(
             } else {
                 eprintln!("{}", &t!("error.entropy.empty"));
                 let lock_state = state.lock().unwrap();
-                AppState::show_message(&lock_state, t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
+                GuiState::show_message(&lock_state, t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
             }
         }
     ));
@@ -2111,7 +2109,7 @@ fn create_main_window(
                             Err(err) => {
                                 
                                 let lock_state = state.lock().unwrap();
-                                AppState::show_message(&lock_state, t!("error.master.create").to_string(), gtk::MessageType::Warning);
+                                GuiState::show_message(&lock_state, t!("error.master.create").to_string(), gtk::MessageType::Warning);
                                 eprintln!("{}: {}", &t!("error.master.create"), err)
                             },
                         }
@@ -2129,7 +2127,7 @@ fn create_main_window(
                 }
             } else {
                 let lock_state = state.lock().unwrap();
-                AppState::show_message(&lock_state, t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
+                GuiState::show_message(&lock_state, t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
             }
         }
     ));
@@ -2675,7 +2673,7 @@ fn create_main_window(
             
             if master_private_key_string == "" {
                 let lock_state = state.lock().unwrap();
-                AppState::show_message(&lock_state, t!("error.address.master").to_string(), gtk::MessageType::Warning);
+                GuiState::show_message(&lock_state, t!("error.address.master").to_string(), gtk::MessageType::Warning);
             } else {
                 println!("\n#### Generating addresses button ####");
     
@@ -2849,7 +2847,7 @@ fn create_main_window(
 }
 
 fn create_settings_window(
-    state: std::sync::Arc<std::sync::Mutex<AppState>>,
+    state: std::sync::Arc<std::sync::Mutex<GuiState>>,
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
@@ -3846,7 +3844,7 @@ fn create_settings_window(
                 move |dialog, response| {
                     match response {
                         gtk::ResponseType::Yes => {
-                            let new_state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+                            let new_state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::new()));
                             let mut lock_new_state = new_state.lock().unwrap();
                             let lock_state = state.lock().unwrap();
                             
@@ -3857,11 +3855,11 @@ fn create_settings_window(
                                     
                                     AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
 
-                                    AppState::apply_theme(&mut lock_new_state);
-                                    AppState::show_message(&lock_state, t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
+                                    GuiState::apply_theme(&mut lock_new_state);
+                                    GuiState::show_message(&lock_state, t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
                                 _ => {
-                                    AppState::show_message(&lock_state, t!("error.settings.reset").to_string(), gtk::MessageType::Error);
+                                    GuiState::show_message(&lock_state, t!("error.settings.reset").to_string(), gtk::MessageType::Error);
                                 },
                             }
                         },
