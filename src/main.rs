@@ -233,6 +233,7 @@ impl AppMessages {
                 if let Some((message, message_type)) = queue_lock.pop_front() {
                     AppMessages::create_info_message(&info_bar, &message, message_type);
     
+                    // IMPLEMENT: Connect to value from setting 
                     glib::timeout_add_local(std::time::Duration::from_secs(3), {
                         let queue = queue.clone();
                         let info_bar = info_bar.clone();
@@ -1057,6 +1058,7 @@ fn setup_app_actions(
                 move |_| {
                     if let Ok(mut state) = state.lock() {
                         state.apply_theme();
+                        state.apply_language();
                     }
                     glib::Propagation::Proceed
                 }
