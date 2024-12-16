@@ -4254,6 +4254,9 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 // I have a new idea how to still generate secure entropy even if source is corrupted/monitored
 // It will take me time to implement it since I suck in Rust
 // But idea is already tested in my head :D
+// Update: I asked chatgpt if somebody else had a similar idea, and it could not find anyone
+// Since I asked there, and idea can be patented I think somebody will still it since I can not patent it. $$$
+// Idea: 10x1024 hex, random 32x8 extract, rest as mnemonic, good luck with brute-force
 
 fn get_qrng() -> String {
     use rand::{Rng, thread_rng};
