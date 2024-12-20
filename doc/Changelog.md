@@ -1,3 +1,6 @@
+# version 0.70.8
+- fixed logic with generating seed
+
 # version 0.70.7
 - settings state corrected
 

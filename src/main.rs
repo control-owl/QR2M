@@ -296,8 +296,7 @@ impl AppMessages {
             _ => message_box.set_css_classes(&["info-message"]),
         }
 
-        // TODO: Localize
-        let close_button = gtk::Button::with_label("Close");
+        let close_button = gtk::Button::with_label(&t!("UI.element.close").to_string());
         let gesture = gtk::GestureClick::new();
 
         gesture.connect_pressed(clone!(
@@ -1876,23 +1875,55 @@ fn create_main_window(
     open_wallet_button.connect_clicked(clone!(
         #[weak] entropy_text,
         #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
         move |_| {
             let (entropy, passphrase) = open_wallet_from_file();
 
             if !entropy.is_empty() {
                 println!("\t Wallet entropy: {:?}", entropy);
                 entropy_text.buffer().set_text(&entropy);
+                
+                match passphrase {
+                    Some(pass) => {
+                        println!("\t Mnemonic passphrase: {:?}", pass);
+                        mnemonic_passphrase_text.buffer().set_text(&pass);
+                    },
+                    None => {
+                        println!("\t No Mnemonic passphrase available");
+                    },
+                }
+
+                let buffer = entropy_text.buffer();
+                let start_iter = buffer.start_iter();
+                let end_iter = buffer.end_iter();
+                let full_entropy = buffer.text(&start_iter, &end_iter, false);
+
+                if full_entropy != "" {
+                    let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+                    mnemonic_words_text.buffer().set_text(&mnemonic_words);
+
+                    let (entropy_len, _checksum_len) = match full_entropy.len() {
+                        132 => (128, 4),
+                        165 => (160, 5),
+                        198 => (192, 6),
+                        231 => (224, 7),
+                        264 => (256, 8),
+                        _ => (0, 0),
+                    };
+                
+                    let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
+
+                    let seed = keys::generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
+                    let seed_hex = hex::encode(&seed[..]);
+                    seed_text.buffer().set_text(&seed_hex.to_string());
+                    
+                    println!("\t Seed (hex): {:?}", seed_hex);
+                }
+
+
             }
 
-            match passphrase {
-                Some(pass) => {
-                    println!("\t Mnemonic passphrase: {:?}", pass);
-                    mnemonic_passphrase_text.buffer().set_text(&pass);
-                },
-                None => {
-                    println!("\t No Mnemonic passphrase available");
-                },
-            }
         }
     ));
 
@@ -1914,9 +1945,9 @@ fn create_main_window(
             let source = selected_entropy_source_value.unwrap().to_string();
             let entropy_length = selected_entropy_length_value.unwrap(); 
 
-            mnemonic_words_text.buffer().set_text("");
-            entropy_text.buffer().set_text("");
-            seed_text.buffer().set_text("");
+            // mnemonic_words_text.buffer().set_text("");
+            // entropy_text.buffer().set_text("");
+            // seed_text.buffer().set_text("");
 
             let pre_entropy = keys::generate_entropy(
                 &source,
@@ -2204,40 +2235,40 @@ fn create_main_window(
     ));
 
     // JUMP: Main: Entropy change by import
-    let buffer = entropy_text.buffer();
-    buffer.connect_changed(clone!(
-        #[weak] entropy_text,
-        #[weak] mnemonic_passphrase_text,
-        move |_| {
+    // let buffer = entropy_text.buffer();
+    // buffer.connect_changed(clone!(
+    //     #[weak] entropy_text,
+    //     #[weak] mnemonic_passphrase_text,
+    //     move |_| {
 
-            let buffer = entropy_text.buffer();
-            let start_iter = buffer.start_iter();
-            let end_iter = buffer.end_iter();
-            let full_entropy = buffer.text(&start_iter, &end_iter, false);
+    //         let buffer = entropy_text.buffer();
+    //         let start_iter = buffer.start_iter();
+    //         let end_iter = buffer.end_iter();
+    //         let full_entropy = buffer.text(&start_iter, &end_iter, false);
 
-            if full_entropy != "" {
-                let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
-                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+    //         if full_entropy != "" {
+    //             let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+    //             mnemonic_words_text.buffer().set_text(&mnemonic_words);
 
-                let (entropy_len, _checksum_len) = match full_entropy.len() {
-                    132 => (128, 4),
-                    165 => (160, 5),
-                    198 => (192, 6),
-                    231 => (224, 7),
-                    264 => (256, 8),
-                    _ => (0, 0),
-                };
+    //             let (entropy_len, _checksum_len) = match full_entropy.len() {
+    //                 132 => (128, 4),
+    //                 165 => (160, 5),
+    //                 198 => (192, 6),
+    //                 231 => (224, 7),
+    //                 264 => (256, 8),
+    //                 _ => (0, 0),
+    //             };
             
-                let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
+    //             let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
 
-                let seed = keys::generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
+    //             let seed = keys::generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
+    //             let seed_hex = hex::encode(&seed[..]);
+    //             seed_text.buffer().set_text(&seed_hex.to_string());
                 
-                println!("\t Seed (hex): {:?}", seed_hex);
-            }
-        }
-    ));
+    //             println!("\t Seed (hex): {:?}", seed_hex);
+    //         }
+    //     }
+    // ));
 
     coin_search.connect_search_changed({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
@@ -2769,7 +2800,7 @@ fn create_main_window(
     
                     println!("Crypto address: {:?}", address);
     
-                    // IMPROVEMENT: remove hard-coding
+                    // IMPROVEMENT: remove hard-coding, add this option to UI
                     let compressed = true;
                     
                     let priv_key_wif = keys::create_private_key_for_address(
@@ -3452,8 +3483,6 @@ fn create_settings_window(
     // Proxy manual settings
     let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    // IMPLEMENT non-case sensitive input Manual/manual
-
     if settings.proxy_status == "Manual" {
         proxy_manual_settings_box.set_visible(true);
     } else {
@@ -4067,6 +4096,7 @@ fn open_wallet_from_file() -> (String, Option<String>) {
             (entropy.unwrap_or_else(|| String::new()), passphrase)
         },
         Err(_) => {
+            // IMPLEMENT: AppMessages
             println!("Error: Failed to read wallet file.");
             (String::new(), None)
         }

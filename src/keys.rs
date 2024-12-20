@@ -340,6 +340,7 @@ pub fn generate_entropy(
     // state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
 ) -> String {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
+
     println!("\t Entropy source: {:?}", source);
     println!("\t Entropy length: {:?}", entropy_length);
 
@@ -358,7 +359,6 @@ pub fn generate_entropy(
 
             rng_entropy_string
         },
-        
         "QRNG" => {
             // if let Some(state) = &state {
             //     let mut state = state.lock().unwrap();
