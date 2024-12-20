@@ -296,7 +296,7 @@ impl AppMessages {
             _ => message_box.set_css_classes(&["info-message"]),
         }
 
-        let close_button = gtk::Button::with_label(&t!("UI.element.close").to_string());
+        let close_button = gtk::Button::with_label(&t!("UI.element.button.close").to_string());
         let gesture = gtk::GestureClick::new();
 
         gesture.connect_pressed(clone!(
