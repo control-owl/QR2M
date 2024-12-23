@@ -12,6 +12,8 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// still nothing is working
+// maybe xmass will help to resolve this protocol
 
 
 pub fn derive_from_path_ed25519(
@@ -85,6 +87,7 @@ fn derive_child_key_ed25519(
     let result = hasher.finalize();
     
     if result.len() != 64 {
+        eprintln!("len is not 64, it is: {}", result.len());
         return None;
     }
     

@@ -38,6 +38,7 @@ pub fn derive_child_key_secp256k1(
     hardened: bool,
 ) -> DerivationResult {
     println!("[+] {}", &t!("log.derive_child_key").to_string());
+    
     println!("parent_key {:?}", parent_key);
     println!("parent_chain_code {:?}", parent_chain_code);
     println!("index {:?}", index);
