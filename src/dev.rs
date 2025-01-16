@@ -12,8 +12,6 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-// still nothing is working
-// maybe xmass will help to resolve this protocol
 
 
 pub fn derive_from_path_ed25519(
