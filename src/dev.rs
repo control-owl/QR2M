@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "Development playground"
-// copyright = "Copyright © 2023-2024 D3BUG"
-// version = "2024-12-09"
+// copyright = "Copyright © 2023-2025 Control Owl"
+// version = "2025-01-17"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -9,10 +9,13 @@
 
 use sha2::{Digest, Sha256};
 use ed25519_dalek::{SigningKey, VerifyingKey};
-
+use gtk4 as gtk;
+use libadwaita as adw;
+use adw::prelude::*;
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+// SOLANA
 
 pub fn derive_from_path_ed25519(
     master_key: &[u8],
@@ -124,3 +127,127 @@ pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> St
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+// NEW ANU LOGIC
+
+const QRNG_KEY_LEVEL: usize = 14;
+const QRNG_MAGIC_NUMBER: usize = 1024 * QRNG_KEY_LEVEL;
+
+
+fn get_qrng() -> String {
+    use rand::{Rng, thread_rng};
+
+    let mut rng = thread_rng();
+    let length = rng.gen_range(2..=QRNG_MAGIC_NUMBER);
+
+    let hex_chars: String = (0..length)
+        .map(|_| {
+            let random_char = rng.gen_range(0..16);
+            match random_char {
+                0..=9 => (b'0' + random_char as u8) as char,
+                10..=15 => (b'A' + (random_char - 10) as u8) as char, // A-F
+                _ => unreachable!(),
+            }
+        })
+        .collect();
+
+    println!("Generated String: {}", hex_chars);
+    hex_chars
+}
+
+pub fn anu_window() {
+    let app = gtk::Application::builder()
+        .application_id("wtf.r_o0_t.qr2m.qrng_checker")
+        .build();
+
+    app.connect_activate(|app| {
+        let window = gtk::ApplicationWindow::builder()
+            .application(app)
+            .title("QRNG Checker")
+            .default_width(1024)
+            .default_height(768)
+            .build();
+
+        let main_grid_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let scroll_window = gtk::ScrolledWindow::new();
+        scroll_window.set_hexpand(true);
+        scroll_window.set_vexpand(true);
+
+        let grid = gtk::Grid::builder()
+            .column_spacing(3)
+            .row_spacing(3)
+            .margin_start(5)
+            .margin_end(5)
+            .margin_top(5)
+            .margin_bottom(5)
+            .build();
+
+        scroll_window.set_child(Some(&grid));
+        main_grid_box.append(&scroll_window);
+
+        let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+        let ok_button = gtk::Button::with_label("OK");
+        let cancel_button = gtk::Button::with_label("Cancel");
+        let new_button = gtk::Button::with_label("New QRNG");
+
+        main_button_box.append(&ok_button);
+        main_button_box.append(&new_button);
+        main_button_box.append(&cancel_button);
+
+        main_button_box.set_margin_bottom(4);
+        main_button_box.set_margin_top(4);
+        main_button_box.set_margin_start(4);
+        main_button_box.set_margin_end(4);
+
+        main_grid_box.append(&main_button_box);
+
+        let mut boxes = Vec::new();
+
+        for i in 0..QRNG_MAGIC_NUMBER {
+            let small_box = gtk::Box::builder()
+                .width_request(7)
+                .height_request(7)
+                .build();
+
+            small_box.set_css_classes(&["empty-box"]);
+            // IMPLEMENT: Get window size, then calculate maximum boxes per row
+            grid.attach(&small_box, (i % 150) as i32, (i / 150) as i32, 1, 1);
+            boxes.push(small_box);
+        }
+
+        let recolor_boxes = std::rc::Rc::new(std::cell::RefCell::new({
+            let boxes = boxes.clone();
+            move || {
+                let qrng_string = get_qrng();
+                let qrng_length = qrng_string.len();
+                println!("New QRNG Length: {}", qrng_length);
+
+                for (i, small_box) in boxes.iter().enumerate() {
+                    if i < qrng_length {
+                        small_box.set_css_classes(&["green-box"]);
+                    } else {
+                        small_box.set_css_classes(&["empty-box"]);
+                    }
+                }
+
+                if qrng_length == QRNG_MAGIC_NUMBER {
+                    println!("Done");
+                } else {
+                    println!("Not enough");
+                }
+            }
+        }));
+
+        {
+            let recolor_boxes = recolor_boxes.clone();
+            new_button.connect_clicked(move |_| {
+                recolor_boxes.borrow_mut()();
+            });
+        }
+
+        window.set_child(Some(&main_grid_box));
+        window.show();
+    });
+
+    app.run();
+}

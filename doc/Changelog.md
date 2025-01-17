@@ -1,3 +1,6 @@
+# version 0.70.9
+- 2025 push
+
 # version 0.70.8
 - fixed logic with generating seed
 

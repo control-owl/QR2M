@@ -1,6 +1,6 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "OS specific tasks"
-// copyright = "Copyright © 2023-2024 D3BUG"
+// copyright = "Copyright © 2023-2025 Control Owl"
 // version = "2024-12-09"
 
 

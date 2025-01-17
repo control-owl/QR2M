@@ -1,4 +1,4 @@
-Copyright [2023-2024] Control Owl
+Copyright [2023-2025] Control Owl
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use the Software for personal use only. 
 

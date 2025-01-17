@@ -1,7 +1,7 @@
 [package]
 name = "QR2M"
 description = "Quantum Random Rust Mnemonic"
-version = "0.70.8"
+version = "0.70.9"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 license-file = "LICENSE.txt"
 repository = "https://github.com/control-owl/qr2m"
@@ -43,7 +43,7 @@ winres = "0.1.12"       # exe icon and description
 
 [package.metadata.winres]
 OriginalFilename = "QR2M.EXE"
-LegalCopyright = "Copyright © 2023-2024 Control Owl"
+LegalCopyright = "Copyright © 2023-2025 Control Owl"
 FileDescription = "Quantum Random Rust Mnemonic"
 
 
