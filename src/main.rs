@@ -112,11 +112,11 @@ lazy_static::lazy_static! {
 }
 
 struct GuiResources {
-    icons: [gtk::Image; 7],
+    icons: std::collections::HashMap<&'static str, gtk::Image>
 }
 
 impl GuiResources {
-    fn register_icons() -> [gtk::Image; 7] {
+    fn new() -> Self {
         let settings = gtk::Settings::default().unwrap();
         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
             "dark"
@@ -128,43 +128,33 @@ impl GuiResources {
         println!("\t Theme path: {:?}", theme_base_path);
 
         let icon_files = [
-            "new-wallet.png",
-            "open-wallet.png",
-            "save-wallet.png",
-            "about.png",
-            "settings.png",
-            "bell.png",
-            "notif.png",
+            ("new", "new-wallet.png"),
+            ("open", "open-wallet.png"),
+            ("save", "save-wallet.png"),
+            ("about", "about.png"),
+            ("settings", "settings.png"),
+            ("bell", "bell.png"),
+            ("notif", "notif.png"),
         ];
 
-        let mut images = Vec::new();
+        let mut icons = std::collections::HashMap::new();
 
-        for icon_file in icon_files.iter() {
-            let icon_path = theme_base_path.join(icon_file);
-
+        for (name, file) in icon_files.iter() {
+            let icon_path = theme_base_path.join(file);
             let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
+            let image = gtk::Image::from_pixbuf(Some(&valid_icon));
 
-            images.push(valid_icon);
+            icons.insert(*name, image);
         }
 
-        let final_images: [gtk::Image; 7] = core::array::from_fn(|i| gtk::Image::from_pixbuf(Some(&images[i])));
-
-        final_images
+        GuiResources { icons }
     }
 
-    fn get_icon(&self, name: &str) -> &gtk::Image {
-        match name {
-            "new-wallet" => self.icons.get(0).unwrap(),
-            "open-wallet" => self.icons.get(1).unwrap(),
-            "save-wallet" => self.icons.get(2).unwrap(),
-            "about" => self.icons.get(3).unwrap(),
-            "settings" => self.icons.get(4).unwrap(),
-            "bell" => self.icons.get(5).unwrap(),
-            "notif" => self.icons.get(6).unwrap(),
-            _ => self.icons.get(0).unwrap(),
-        }
+    fn get_icon(&self, name: &str) -> Option<&gtk::Image> {
+        self.icons.get(name)
     }
 }
+
 
 struct AppState {
     language: Option<String>,
@@ -392,7 +382,7 @@ impl AppMessages {
 
 struct AppLog {
     status: std::sync::Arc<std::sync::Mutex<bool>>,
-    button: Option<gtk::Button>,
+    button: std::sync::Arc<std::sync::Mutex<Option<gtk::Button>>>,
     messages: Option<std::collections::VecDeque<(String, gtk::MessageType)>>,
 }
 
@@ -400,7 +390,7 @@ impl AppLog {
     fn new(button: gtk::Button) -> Self {
         Self {
             status: std::sync::Arc::new(std::sync::Mutex::new(true)),
-            button: Some(button),
+            button: std::sync::Arc::new(std::sync::Mutex::new(Some(button))),
             messages: None,
         }
     }
@@ -411,7 +401,8 @@ impl AppLog {
         let is_active = status.lock().unwrap();
         println!("AppLog status: {}", is_active);
         
-        let fucking_button = self.button.clone().unwrap();
+        let lock_button = self.button.lock().unwrap();
+        let fucking_button = lock_button.clone().unwrap();
         fucking_button.set_sensitive(true);
         
         
@@ -1111,6 +1102,7 @@ fn main() {
 
     application.connect_activate(clone!(
         #[strong] state,
+        // #[strong] resources,
         move |app| {
             create_main_window(&app, state.clone());
         }
@@ -1124,6 +1116,7 @@ fn main() {
 fn setup_app_actions(
     application: &adw::Application, 
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
+    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
 ) {
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
@@ -1135,9 +1128,9 @@ fn setup_app_actions(
     
     new.connect_activate(clone!(
         #[weak] state,
+        // #[weak] resources,
         #[weak] application,
         move |_action, _parameter| {
-
             create_main_window(&application, state.clone());
         }
     ));
@@ -1205,6 +1198,7 @@ fn setup_app_actions(
 fn create_main_window(
     application: &adw::Application, 
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
+    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -1260,15 +1254,28 @@ fn create_main_window(
     let settings_button = gtk::Button::new();
     let log_button = gtk::Button::new();
 
-    let theme_images = GuiResources::register_icons();
-    new_wallet_button.set_child(Some(&theme_images[0]));
-    open_wallet_button.set_child(Some(&theme_images[1]));
-    save_wallet_button.set_child(Some(&theme_images[2]));
-    about_button.set_child(Some(&theme_images[3]));
-    settings_button.set_child(Some(&theme_images[4]));
-    log_button.set_child(Some(&theme_images[5]));
-    log_button.set_sensitive(false);
-    
+    let button_icons = [
+        (&new_wallet_button, "new"),
+        (&open_wallet_button, "open"),
+        (&save_wallet_button, "save"),
+        (&about_button, "about"),
+        (&settings_button, "settings"),
+        (&log_button, "notif"),
+    ];
+
+    let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
+    {
+
+        let lock_res = resources.lock().unwrap();
+
+        for (button, icon) in button_icons.iter() {
+            if let Some(icon) = lock_res.get_icon(icon) {
+                button.set_child(Some(icon));
+            }
+        }
+
+    }
+
     {
         if let Ok(mut state_lock) = state.lock() {
             state_lock.language = Some(gui_language);
@@ -1307,18 +1314,19 @@ fn create_main_window(
 
     log_button.connect_clicked(clone!(
         #[strong] state,
+        #[strong] resources,
         move |log_button| {
-            if log_button.is_sensitive() {
-                create_log_window(state.clone(), log_button.clone());
-            }
+            // if log_button.is_sensitive() {
+                create_log_window(state.clone(), log_button.clone(), resources.clone());
+            // }
         }
     ));
 
     new_wallet_button.connect_clicked(clone!(
         #[weak] application,
-        // #[strong] state,
         move |_| {
             let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+            // let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
 
             create_main_window(&application, state.clone());
         }
@@ -2981,16 +2989,16 @@ fn create_main_window(
 fn create_log_window(
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
     log_button: gtk::Button,
+    resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
 ) {
     println!("Log window started");
 
-    // state.lock().unwrap().
-
-
     let button = log_button.clone();
-    button.set_sensitive(false);
-    let theme_images = GuiResources::get_icon("notif");
-    button.set_child(Some(&theme_images[5]));
+    let lock_res = resources.lock().unwrap();
+    let icon = lock_res.get_icon("bell");
+
+    button.set_child(Some(icon.unwrap()));
+  
 }
 
 
