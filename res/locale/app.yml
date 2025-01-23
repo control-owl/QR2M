@@ -191,6 +191,10 @@ UI:
         en: "About %{value}"
         de: "Über %{value}"
         hr: "O programu %{value}"
+      log:
+        en: "Log %{value}"
+        de: "Protokoll %{value}"
+        hr: "Dnevnik %{value}"
     seed:
       en: "Seed"
       entropy:
@@ -397,6 +401,8 @@ UI:
         en: "Trying to retrieve QRNG from ANU API"
         de: "Versuch, QRNG von der ANU-API abzurufen"
         hr: "Pokušavam skinuti QRNG sa ANU API-ja"
+    log:
+      en: "Log"
   messages:
     dialog:
       do-not-show:
@@ -569,6 +575,15 @@ error:
       en: "Before creating an address, please create master keys"
       de: "Bitte generieren Sie die Masterkeys, bevor Sie die Adress generieren "
       hr: "Adresa može biti generiran tek kada napravite master ključeve"
+  wallet:
+    open:
+      en: "Failed to read wallet file"
+      de: "Wallet-Datei konnte nicht gelesen werden"
+      hr: "Čitanje datoteke novčanika nije uspjelo"
+    process:
+      en: "Error processing wallet file"
+      de: "Fehler bei der Verarbeitung der Wallet-Datei"
+      hr: "Pogreška pri obradi datoteke novčanika"
 log:
   generate_entropy:
     en: "Generating entropy:"
