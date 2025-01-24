@@ -1,3 +1,6 @@
+# version 0.71.0
+- log: trying to implement log window
+
 # version 0.70.9
 - 2025 push
 

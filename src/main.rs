@@ -178,8 +178,8 @@ impl AppState {
         self.app_messages = Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(info_bar))));
     }
 
-    fn initialize_app_log(&mut self, button: gtk::Button) {
-        self.app_log = Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(button))));
+    fn initialize_app_log(&mut self, log_button: gtk::Button) {
+        self.app_log = Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(log_button))));
     }
 
     fn show_message(&self, message: String, message_type: gtk::MessageType) {
@@ -387,26 +387,46 @@ struct AppLog {
 }
 
 impl AppLog {
-    fn new(button: gtk::Button) -> Self {
+    fn new(log_button: gtk::Button) -> Self {
         Self {
-            status: std::sync::Arc::new(std::sync::Mutex::new(true)),
-            button: std::sync::Arc::new(std::sync::Mutex::new(Some(button))),
+            status: std::sync::Arc::new(std::sync::Mutex::new(false)),
+            button: std::sync::Arc::new(std::sync::Mutex::new(Some(log_button))),
             messages: None,
         }
     }
 
-    fn activate_log(&mut self) {
-        println!("-----------------------------------------------ACTIVATING LOG FUNCTION");
+    fn initialize_app_log(
+        &mut self, 
+        button: gtk::Button,
+        resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
+    ) {
+        println!("-----------------------------------------------ACTIVATING APP LOG...");
+
         let status = self.status.clone();
-        let is_active = status.lock().unwrap();
+        let mut is_active = status.lock().unwrap();
         println!("AppLog status: {}", is_active);
         
-        let lock_button = self.button.lock().unwrap();
-        let fucking_button = lock_button.clone().unwrap();
-        fucking_button.set_sensitive(true);
+        if *is_active {
+            println!("AppLog is active....");
+        } else {
+            println!("AppLog is inactive. trying to activate...");
+            *is_active = true;
+            
+        }
         
+        println!("AppLog status: {}", is_active);
+        let notification_button = button.clone();
+    
+        let lock_resources = resources.lock().unwrap();
+
+        if let Some(icon) = lock_resources.get_icon("notif") {
+            notification_button.set_child(Some(icon));
+        };
         
+        self.button.lock().unwrap().replace(button);
         println!("Icon changed. Logging starts...");
+
+        // IMPLEMENT: Show log messages
     }
 }
 
@@ -1097,26 +1117,28 @@ fn main() {
     let application = adw::Application::builder()
         .application_id("wtf.r_o0_t.qr2m")
         .build();
-
-    let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
-
+    
     application.connect_activate(clone!(
-        #[strong] state,
+        // #[strong] state,
         // #[strong] resources,
+        // #[strong] log,
         move |app| {
-            create_main_window(&app, state.clone());
+            let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
+            let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
+            // let log = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
+
+            create_main_window(&app, state.clone(), resources.clone());
         }
     ));
-
-    setup_app_actions(&application, state.clone());
-
+    
     application.run();
 }
 
 fn setup_app_actions(
     application: &adw::Application, 
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
-    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
+    resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
+    app_log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) {
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
@@ -1124,14 +1146,16 @@ fn setup_app_actions(
     let about = gio::SimpleAction::new("about", None);
     let settings = gio::SimpleAction::new("settings", None);
     let quit = gio::SimpleAction::new("quit", None);
+    let log = gio::SimpleAction::new("log", None);
     let test = gio::SimpleAction::new("test", None);
     
     new.connect_activate(clone!(
-        #[weak] state,
-        // #[weak] resources,
         #[weak] application,
+        #[weak] state,
+        #[weak] resources,
+        // #[weak] app_log,
         move |_action, _parameter| {
-            create_main_window(&application, state.clone());
+            create_main_window(&application, state.clone(), resources.clone());
         }
     ));
 
@@ -1149,6 +1173,16 @@ fn setup_app_actions(
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
     });
+    
+    log.connect_activate(clone!(
+        #[weak] state,
+        #[weak] resources,
+        #[weak] app_log,
+        move |_action, _parameter| {
+            let log_window = create_log_window(state.clone(), resources.clone(), app_log.clone());
+            log_window.show()
+        }
+    ));
 
     settings.connect_activate(clone!(
         #[strong] state,
@@ -1198,9 +1232,11 @@ fn setup_app_actions(
 fn create_main_window(
     application: &adw::Application, 
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
-    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
+    resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
+    // app_log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
+
 
     match AppSettings::load_settings() {
         Ok(_) => println!("Settings loaded"),
@@ -1260,12 +1296,10 @@ fn create_main_window(
         (&save_wallet_button, "save"),
         (&about_button, "about"),
         (&settings_button, "settings"),
-        (&log_button, "notif"),
+        (&log_button, "bell"),
     ];
 
-    let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
     {
-
         let lock_res = resources.lock().unwrap();
 
         for (button, icon) in button_icons.iter() {
@@ -1273,7 +1307,6 @@ fn create_main_window(
                 button.set_child(Some(icon));
             }
         }
-
     }
 
     {
@@ -1281,9 +1314,10 @@ fn create_main_window(
             state_lock.language = Some(gui_language);
             state_lock.theme = Some(gui_theme);
             state_lock.initialize_app_messages(info_bar.clone());
-            state_lock.initialize_app_log(log_button.clone());
         }
     }
+    let app_log = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(log_button.clone())));
+    setup_app_actions(&application, state.clone(), resources.clone(), app_log.clone());
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -1315,10 +1349,10 @@ fn create_main_window(
     log_button.connect_clicked(clone!(
         #[strong] state,
         #[strong] resources,
+        #[strong] app_log,
         move |log_button| {
-            // if log_button.is_sensitive() {
-                create_log_window(state.clone(), log_button.clone(), resources.clone());
-            // }
+            let log_window = create_log_window(state.clone(), resources.clone(), app_log.clone());
+            log_window.show();
         }
     ));
 
@@ -1326,9 +1360,10 @@ fn create_main_window(
         #[weak] application,
         move |_| {
             let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
-            // let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
+            let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
+            // let app_log = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
 
-            create_main_window(&application, state.clone());
+            create_main_window(&application, state.clone(), resources.clone());
         }
     ));
 
@@ -2115,6 +2150,8 @@ fn create_main_window(
                 eprintln!("{}", &t!("error.entropy.empty"));
                 let lock_state = state.lock().unwrap();
                 AppState::show_message(&lock_state, t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
+
+                
             }
         }
     ));
@@ -2159,6 +2196,9 @@ fn create_main_window(
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
         #[strong] state,
+        #[strong] app_log,
+        #[strong] resources,
+        #[weak] log_button,
         move |_| {
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
@@ -2267,7 +2307,14 @@ fn create_main_window(
                 }
             } else {
                 let lock_state = state.lock().unwrap();
-                AppState::show_message(&lock_state, t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
+                let message = (t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
+                AppState::show_message(&lock_state, message.0, message.1);
+
+                {
+                    if let Ok(mut log_lock) = app_log.lock() {
+                        log_lock.initialize_app_log(log_button.clone(), resources.clone());
+                    }
+                }
             }
         }
     ));
@@ -2797,6 +2844,9 @@ fn create_main_window(
         #[weak] derivation_label_text,
         #[weak] master_private_key_text,
         #[strong] state,
+        #[strong] app_log,
+        #[strong] resources,
+        #[weak] log_button,
         move |_| {
             // IMPLEMENT: Generating info_bar message
 
@@ -2808,6 +2858,13 @@ fn create_main_window(
             if master_private_key_string == "" {
                 let lock_state = state.lock().unwrap();
                 AppState::show_message(&lock_state, t!("error.address.master").to_string(), gtk::MessageType::Warning);
+
+
+                {
+                    if let Ok(mut log_lock) = app_log.lock() {
+                        log_lock.initialize_app_log(log_button.clone(), resources.clone());
+                    }
+                }
             } else {
                 println!("\n#### Generating addresses button ####");
     
@@ -2978,8 +3035,13 @@ fn create_main_window(
     let app_messages = AppMessages::new(info_bar.clone());
     app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
     
-    let mut app_log = AppLog::new(log_button.clone());
-    app_log.activate_log();
+    // IMPLEMENT: Check if log is enabled in settings
+    let log_clone = app_log.clone();
+    {
+        if let Ok(mut log_lock) = log_clone.lock() {
+            log_lock.initialize_app_log(log_button.clone(), resources.clone());
+        }
+    }
 
     window.set_child(Some(&main_window_box));
     window.present();
@@ -2988,17 +3050,31 @@ fn create_main_window(
 
 fn create_log_window(
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
-    log_button: gtk::Button,
     resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
-) {
+    log: std::sync::Arc<std::sync::Mutex<AppLog>>,
+) -> gtk::ApplicationWindow {
     println!("Log window started");
 
-    let button = log_button.clone();
-    let lock_res = resources.lock().unwrap();
-    let icon = lock_res.get_icon("bell");
+    let log_window = gtk::ApplicationWindow::builder()
+        .title(t!("UI.main.log").to_string())
+        // .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
+        // .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
+        .resizable(true)
+        .modal(false)
+        .build();
 
-    button.set_child(Some(icon.unwrap()));
-  
+
+
+    let lock_log = log.lock().unwrap();
+    let lock_button = lock_log.button.lock().unwrap();
+    
+    let lock_resources = resources.lock().unwrap();
+    let lock_icon = lock_resources.get_icon("bell");
+    
+    
+    lock_button.clone().unwrap().set_child(lock_icon);
+
+    log_window
 }
 
 
