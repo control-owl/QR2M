@@ -1,3 +1,9 @@
+# version 0.71.1
+- how I understand Rust: 
+    - let something = nothing.clone().unwrap().try_into(no_error_please_please_please).clone().unwrap().lock().unwrap().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().unwrap()
+- but still I get what I want :D
+- log icon can be changed with states (do not forget to clone and unwrap).clone().unwrap()
+
 # version 0.71.0
 - log: trying to implement log window
 

@@ -1186,8 +1186,9 @@ fn setup_app_actions(
 
     settings.connect_activate(clone!(
         #[strong] state,
+        #[weak] app_log,
         move |_action, _parameter| {
-            let settings_window = create_settings_window(state.clone());
+            let settings_window = create_settings_window(state.clone(), app_log.clone());
             settings_window.connect_close_request(clone!(
                 #[strong] state,
                 move |_| {
@@ -1314,6 +1315,7 @@ fn create_main_window(
             state_lock.language = Some(gui_language);
             state_lock.theme = Some(gui_theme);
             state_lock.initialize_app_messages(info_bar.clone());
+            state_lock.initialize_app_log(log_button.clone());
         }
     }
     let app_log = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(log_button.clone())));
@@ -1336,8 +1338,9 @@ fn create_main_window(
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
         #[strong] state,
+        #[weak] app_log,
         move |_| {
-            let settings_window = create_settings_window(state.clone());
+            let settings_window = create_settings_window(state.clone(), app_log.clone());
             settings_window.show();
         }
     ));
@@ -1350,7 +1353,7 @@ fn create_main_window(
         #[strong] state,
         #[strong] resources,
         #[strong] app_log,
-        move |log_button| {
+        move |_| {
             let log_window = create_log_window(state.clone(), resources.clone(), app_log.clone());
             log_window.show();
         }
@@ -3080,6 +3083,7 @@ fn create_log_window(
 
 fn create_settings_window(
     state: std::sync::Arc<std::sync::Mutex<AppState>>,
+    app_log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
@@ -3991,6 +3995,14 @@ fn create_settings_window(
     let default_button = gtk::Button::with_label(&t!("UI.element.button.default").to_string());
 
 
+
+
+
+
+
+
+
+
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
         #[weak] settings_window,
@@ -4032,17 +4044,29 @@ fn create_settings_window(
             }
     
             AppSettings::save_settings(&*settings);
-                       
-            let mut state_lock = state.lock().unwrap();
-            let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
-            state_lock.theme = Some(selected_theme);
+            
+            {
+                let mut state_lock = state.lock().unwrap();
+                let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
+                state_lock.theme = Some(selected_theme);
 
-            if let Some(app_messages) = &state_lock.app_messages {
-                let app_messages = app_messages.clone();
-                let app_messages = app_messages.lock().unwrap();
-                app_messages.queue_message(t!("UI.messages.dialog.settings-saved").to_string(), gtk::MessageType::Info);
-            } else {
-                eprintln!("Error: AppMessages not initialized.");
+                if let Some(app_messages) = &state_lock.app_messages {
+                    let app_messages = app_messages.clone();
+                    let app_messages = app_messages.lock().unwrap();
+                    app_messages.queue_message(t!("UI.messages.dialog.settings-saved").to_string(), gtk::MessageType::Info);
+                    {
+                        let lock_log_state = state_lock.app_log.clone().unwrap();
+                        let lock_log = lock_log_state.lock().unwrap();
+                        let log_button = lock_log.button.lock().unwrap();
+                        if let Ok(mut log_lock) = app_log.lock() {
+                            let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
+        
+                            log_lock.initialize_app_log(log_button.clone().unwrap(), resources.clone());
+                        }
+                    }
+                } else {
+                    eprintln!("Error: AppMessages not initialized.");
+                }
             }
 
             settings_window.close();
