@@ -1,3 +1,6 @@
+# version 0.71.2
+- settings: log added
+
 # version 0.71.1
 - how I understand Rust: 
     - let something = nothing.clone().unwrap().try_into(no_error_please_please_please).clone().unwrap().lock().unwrap().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().clone().unwrap()

@@ -105,6 +105,11 @@ const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
     "Symbol", 
     "Index",
 ];
+const APP_LOG_LEVEL: &'static [&'static str] = &[
+    "Standard", 
+    "Verbose",
+    "Ultimate",
+];
 
 lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::default()));
@@ -448,6 +453,8 @@ struct AppSettings {
     gui_search: String,
     gui_notification_timeout: u32,
     gui_mnemonic_length: u32,
+    gui_log: bool,
+    gui_log_level: String,
     anu_enabled: bool,
     anu_data_format: String,
     anu_array_length: u32,
@@ -537,6 +544,8 @@ impl AppSettings {
         let gui_search = get_str(&gui_section, "search", &VALID_COIN_SEARCH_PARAMETER[0]);
         let gui_notification_timeout = get_u32(&gui_section, "notification_timeout", DEFAULT_NOTIFICATION_TIMEOUT);
         let gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", DEFAULT_MNEMONIC_LENGTH);
+        let gui_log = get_bool(&gui_section, "log", true);
+        let gui_log_level = get_str(&gui_section, "log_level", APP_LOG_LEVEL[0]);
 
         println!("\t Save last window size: {:?}", gui_save_size);
         println!("\t GUI width: {:?}", gui_last_width);
@@ -547,6 +556,8 @@ impl AppSettings {
         println!("\t Search: {:?}", gui_search);
         println!("\t Notification timeout: {:?}", gui_notification_timeout);
         println!("\t Mnemonic passphrase length: {:?}", gui_mnemonic_length);
+        println!("\t Log enabled: {:?}", gui_log);
+        println!("\t Log level: {:?}", gui_log_level);
 
         // Wallet settings
         let wallet_entropy_source = get_str(&wallet_section, "entropy_source", &VALID_ENTROPY_SOURCES[0]);
@@ -617,6 +628,8 @@ impl AppSettings {
         application_settings.gui_search = gui_search.clone();
         application_settings.gui_notification_timeout = gui_notification_timeout.clone();
         application_settings.gui_mnemonic_length = gui_mnemonic_length.clone();
+        application_settings.gui_log = gui_log.clone();
+        application_settings.gui_log_level = gui_log_level.clone();
 
         application_settings.anu_enabled = anu_enabled.clone();
         application_settings.anu_data_format = anu_data_format.clone();
@@ -652,6 +665,8 @@ impl AppSettings {
             gui_search,
             gui_notification_timeout,
             gui_mnemonic_length,
+            gui_log,
+            gui_log_level,
             anu_enabled,
             anu_data_format,
             anu_array_length,
@@ -803,6 +818,20 @@ impl AppSettings {
                     self.save_settings();
                 }
             },
+            "gui_log" => {
+                if new_value.as_bool().map(|v| v != self.gui_log).unwrap_or(false) {
+                    self.gui_log = new_value.as_bool().unwrap();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            },
+            "gui_log_level" => {
+                if new_value.as_str().map(|v| v != self.gui_log_level).unwrap_or(false) {
+                    self.gui_log_level = new_value.as_str().unwrap().to_string();
+                    println!("Updating key {:?} = {:?}", key, new_value);
+                    self.save_settings();
+                }
+            },
             "anu_enabled" => {
                 if new_value.as_bool().map(|v| v != self.anu_enabled).unwrap_or(false) {
                     self.anu_enabled = new_value.as_bool().unwrap();
@@ -950,6 +979,8 @@ impl AppSettings {
                 gui_table["search"] = toml_edit::value(self.gui_search.clone());
                 gui_table["notification_timeout"] = toml_edit::value(self.gui_notification_timeout as i64);
                 gui_table["mnemonic_length"] = toml_edit::value(self.gui_mnemonic_length as i64);
+                gui_table["log"] = toml_edit::value(self.gui_log);
+                gui_table["log_level"] = toml_edit::value(self.gui_log_level.clone());
             }
         }
     
@@ -3275,6 +3306,64 @@ fn create_settings_window(
     mnemonic_length_box.append(&mnemonic_length_item_box);
     content_general_box.append(&mnemonic_length_box);
 
+    // Log
+    let enable_gui_log_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let enable_gui_log_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let enable_gui_log_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let enable_gui_log_label = gtk::Label::new(Some(&t!("UI.main.log").to_string()));
+    let enable_gui_log_checkbox = gtk::CheckButton::new();
+    let enable_gui_log = settings.gui_log;
+
+    enable_gui_log_checkbox.set_active(enable_gui_log.try_into().unwrap());
+    enable_gui_log_box.set_hexpand(true);
+    enable_gui_log_item_box.set_hexpand(true);
+    enable_gui_log_item_box.set_margin_end(20);
+    enable_gui_log_item_box.set_halign(gtk::Align::End);
+    
+    enable_gui_log_label_box.append(&enable_gui_log_label);
+    enable_gui_log_item_box.append(&enable_gui_log_checkbox);
+    enable_gui_log_box.append(&enable_gui_log_label_box);
+    enable_gui_log_box.append(&enable_gui_log_item_box);
+    content_general_box.append(&enable_gui_log_box);
+
+    // Log level
+    let default_gui_log_level_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_gui_log_level_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_log_level_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_log_level_label = gtk::Label::new(Some(&t!("UI.settings.general.log-level").to_string()));
+    let valid_gui_log_level_as_strings: Vec<String> = APP_LOG_LEVEL.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_log_level_as_str_refs: Vec<&str> = valid_gui_log_level_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_gui_log_level_dropdown = gtk::DropDown::from_strings(&valid_gui_log_level_as_str_refs);
+    let default_gui_log_level = valid_gui_log_level_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_log_level) 
+        .unwrap_or(0);
+
+    default_gui_log_level_dropdown.set_selected(default_gui_log_level.try_into().unwrap());
+    default_gui_log_level_dropdown.set_size_request(200, 10);
+    default_gui_log_level_box.set_hexpand(true);
+    default_gui_log_level_item_box.set_hexpand(true);
+    default_gui_log_level_item_box.set_margin_end(20);
+    default_gui_log_level_item_box.set_halign(gtk::Align::End);
+    
+    default_gui_log_level_label_box.append(&default_gui_log_level_label);
+    default_gui_log_level_item_box.append(&default_gui_log_level_dropdown);
+    default_gui_log_level_box.append(&default_gui_log_level_label_box);
+    default_gui_log_level_box.append(&default_gui_log_level_item_box);
+    content_general_box.append(&default_gui_log_level_box);
+
+    if enable_gui_log == true {
+        default_gui_log_level_box.set_visible(true);
+    } else {
+        default_gui_log_level_box.set_visible(false);
+    };
+
+    enable_gui_log_checkbox.connect_active_notify(clone!(
+        #[weak] default_gui_log_level_box,
+        move |cb| {
+            default_gui_log_level_box.set_visible(cb.is_active());
+        }
+    ));
 
     stack.add_titled(
         &general_settings_box,
@@ -3414,7 +3503,6 @@ fn create_settings_window(
     default_address_count_box.append(&default_address_count_item_box);
     content_wallet_box.append(&default_address_count_box);
 
-
     // Hardened addresses
     let hardened_addresses_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let hardened_addresses_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -3434,7 +3522,6 @@ fn create_settings_window(
     hardened_addresses_box.append(&hardened_addresses_label_box);
     hardened_addresses_box.append(&hardened_addresses_item_box);
     content_wallet_box.append(&hardened_addresses_box);
-
 
     stack.add_titled(
         &wallet_settings_box, 
@@ -3593,7 +3680,7 @@ fn create_settings_window(
         default_anu_hex_length_box.set_visible(true);
     } else {
         default_anu_hex_length_box.set_visible(false);
-    } ;
+    };
 
     if use_anu_api_checkbox.is_active() {
         default_api_data_format_box.set_visible(true);
@@ -3609,7 +3696,7 @@ fn create_settings_window(
         default_api_data_format_box.set_visible(false);
         default_anu_array_length_box.set_visible(false);
         default_anu_hex_length_box.set_visible(false);
-    }
+    };
     
     // Actions
     let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
@@ -4022,6 +4109,8 @@ fn create_settings_window(
                 ("gui_search", toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize])),
                 ("gui_notification_timeout", toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64)),
                 ("gui_mnemonic_length", toml_edit::value(mnemonic_length_spinbutton.value_as_int() as i64)),
+                ("gui_log", toml_edit::value(enable_gui_log_checkbox.is_active())),
+                ("gui_log_level", toml_edit::value(APP_LOG_LEVEL[default_gui_log_level_dropdown.selected() as usize])),
                 ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
                 ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
                 ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),

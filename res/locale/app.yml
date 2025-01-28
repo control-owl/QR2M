@@ -28,6 +28,10 @@ UI:
         en: "Search for a coin by"
         de: "Suche nach einer Coin anhand"
         hr: "Traži coin po"
+      log-level:
+        en: "Log level"
+        de: "Protokollebene"
+        hr: "Razina dnevnika"
     wallet:
       en: "Wallet settings"
       de: "Wallet Einstellungen"
