@@ -166,6 +166,7 @@ struct AppState {
     theme: Option<String>,
     app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
     app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
+    // app_icons: option vector 6 icons
 
 }
 
