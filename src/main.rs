@@ -112,8 +112,51 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
 ];
 
 lazy_static::lazy_static! {
-    static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::default()));
+    static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref APPLICATION_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
+}
+
+struct SuperState {
+    language: Option<String>,
+    theme: Option<String>,
+    app_resources: Option<std::sync::Arc<std::sync::Mutex<GuiResources>>>,
+    app_settings: Option<std::sync::Arc<std::sync::Mutex<AppSettings>>>,
+    app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
+    app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
+    wallet_settings: Option<std::sync::Arc<std::sync::Mutex<WalletSettings>>>,
+    wallet_derivation: Option<std::sync::Arc<std::sync::Mutex<DerivationPath>>>,
+    wallet_addresses: Option<std::sync::Arc<std::sync::Mutex<CryptoAddresses>>>,
+}
+
+impl SuperState {
+    fn new() -> Self {
+        Self {
+            language: Some("en".to_string()),
+            theme: Some("System".to_string()),
+            app_resources: Some(std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()))),
+            app_settings: Some(std::sync::Arc::new(std::sync::Mutex::new(AppSettings::load_settings()))),
+            app_messages: Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(None)))),
+            app_log: Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(None)))),
+            wallet_settings: Some(std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()))),
+            wallet_derivation: Some(std::sync::Arc::new(std::sync::Mutex::new(DerivationPath::default()))),
+            wallet_addresses: Some(std::sync::Arc::new(std::sync::Mutex::new(CryptoAddresses::new()))),
+        }
+    }
+
+    fn init_app_messages(&mut self, info_bar: gtk::Revealer) {
+        if let Some(message) = &self.app_messages {
+            let mut lock_state = message.lock().unwrap();
+            lock_state.info_bar.replace(info_bar);
+        }
+    }
+
+    fn init_app_log(&mut self, log_button: gtk::Button) {
+        if let Some(bar) = &self.app_log {
+            let mut lock_state = bar.lock().unwrap();
+            lock_state.log_button.replace(log_button);
+        }
+    }
+
 }
 
 struct GuiResources {
@@ -181,11 +224,11 @@ impl AppState {
     }
 
     fn initialize_app_messages(&mut self, info_bar: gtk::Revealer) {
-        self.app_messages = Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(info_bar))));
+        self.app_messages = Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(Some(info_bar)))));
     }
 
     fn initialize_app_log(&mut self, log_button: gtk::Button) {
-        self.app_log = Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(log_button))));
+        self.app_log = Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(Some(log_button)))));
     }
 
     fn show_message(&self, message: String, message_type: gtk::MessageType) {
@@ -237,6 +280,7 @@ impl AppState {
     }
 }
 
+
 struct AppMessages {
     info_bar: Option<gtk::Revealer>,
     message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
@@ -244,9 +288,9 @@ struct AppMessages {
 }
 
 impl AppMessages {
-    fn new(info_bar: gtk::Revealer) -> Self {
+    fn new(info_bar: Option<gtk::Revealer>) -> Self {
         Self {
-            info_bar: Some(info_bar),
+            info_bar: info_bar,
             message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
             processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
         }
@@ -386,24 +430,25 @@ impl AppMessages {
     }
 }
 
+
 struct AppLog {
     status: std::sync::Arc<std::sync::Mutex<bool>>,
-    button: std::sync::Arc<std::sync::Mutex<Option<gtk::Button>>>,
+    log_button: Option<gtk::Button>,
     messages: Option<std::collections::VecDeque<(String, gtk::MessageType)>>,
 }
 
 impl AppLog {
-    fn new(log_button: gtk::Button) -> Self {
+    fn new(button: Option<gtk::Button>) -> Self {
         Self {
             status: std::sync::Arc::new(std::sync::Mutex::new(false)),
-            button: std::sync::Arc::new(std::sync::Mutex::new(Some(log_button))),
+            log_button: button,
             messages: None,
         }
     }
 
     fn initialize_app_log(
         &mut self, 
-        button: gtk::Button,
+        log_button: gtk::Button,
         resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
     ) {
         println!("-----------------------------------------------ACTIVATING APP LOG...");
@@ -421,7 +466,7 @@ impl AppLog {
         }
         
         println!("AppLog status: {}", is_active);
-        let notification_button = button.clone();
+        let notification_button = log_button.clone();
     
         let lock_resources = resources.lock().unwrap();
 
@@ -429,13 +474,12 @@ impl AppLog {
             notification_button.set_child(Some(icon));
         };
         
-        self.button.lock().unwrap().replace(button);
+        self.log_button.replace(log_button);
         println!("Icon changed. Logging starts...");
 
         // IMPLEMENT: Show log messages
     }
 }
-
 
 
 #[derive(Debug, Default)]
@@ -476,7 +520,7 @@ struct AppSettings {
 }
 
 impl AppSettings {
-    fn load_settings() -> io::Result<Self> {
+    fn load_settings() -> Self {
         println!("[+] {}", &t!("log.load-settings").to_string());
         
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
@@ -651,7 +695,7 @@ impl AppSettings {
         application_settings.proxy_retry_attempts = proxy_retry_attempts.clone();
         application_settings.proxy_timeout = proxy_timeout.clone();
 
-        Ok(AppSettings {
+        AppSettings {
             wallet_entropy_source,
             wallet_entropy_length,
             wallet_bip,
@@ -685,7 +729,7 @@ impl AppSettings {
             proxy_ssl_certificate,
             proxy_retry_attempts,
             proxy_timeout,
-        })
+        }
     }
 
     fn update_value(
@@ -1026,7 +1070,8 @@ impl AppSettings {
 
 }
 
-#[derive(Debug, Default)]
+
+// #[derive(Debug, Default)]
 struct WalletSettings {
     entropy_string: Option<String>,
     entropy_checksum: Option<String>,
@@ -1044,6 +1089,29 @@ struct WalletSettings {
     public_key_hash: Option<String>,
     key_derivation: Option<String>,
     hash: Option<String>,
+}
+
+impl WalletSettings {
+    fn new() -> Self {
+        Self { 
+            entropy_string: None, 
+            entropy_checksum: None, 
+            mnemonic_words: None, 
+            mnemonic_passphrase: None, 
+            seed: None, 
+            master_xprv: None, 
+            master_xpub: None, 
+            master_private_key_bytes: None, 
+            master_chain_code_bytes: None, 
+            master_public_key_bytes: None, 
+            coin_index: None, 
+            coin_name: None, 
+            wallet_import_format: None, 
+            public_key_hash: None, 
+            key_derivation: None, 
+            hash: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1084,6 +1152,7 @@ impl DerivationPath {
     }
 }
 
+
 #[derive(Debug)]
 enum FieldValue {
     U32(u32),
@@ -1106,13 +1175,27 @@ impl FieldValue {
     }
 }
 
+
 struct CryptoAddresses {
-    coin_name: String,
-    derivation_path: String,
-    address: String,
-    public_key: String,
-    private_key: String,
+    coin_name: Option<String>,
+    derivation_path: Option<String>,
+    address: Option<String>,
+    public_key: Option<String>,
+    private_key: Option<String>,
 }
+
+impl CryptoAddresses {
+    fn new() -> Self {
+        Self { 
+            coin_name: None,
+            derivation_path: None,
+            address: None,
+            public_key: None,
+            private_key: None,
+        }
+    }
+}
+
 
 
 // BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -1151,13 +1234,9 @@ fn main() {
         .build();
     
     application.connect_activate(clone!(
-        // #[strong] state,
-        // #[strong] resources,
-        // #[strong] log,
         move |app| {
             let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
             let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
-            // let log = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
 
             create_main_window(&app, state.clone(), resources.clone());
         }
@@ -1271,10 +1350,14 @@ fn create_main_window(
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
 
-    match AppSettings::load_settings() {
-        Ok(_) => println!("Settings loaded"),
-        Err(err) => eprintln!("{} \t {}", t!("error.settings.read").to_string(), err)
-    };
+    // match AppSettings::load_settings() {
+    //     Ok(_) => println!("Settings loaded"),
+    //     Err(err) => eprintln!("{} \t {}", t!("error.settings.read").to_string(), err)
+    // };
+    AppSettings::load_settings();
+    //     Ok(_) => println!("Settings loaded"),
+    //     Err(err) => eprintln!("{} \t {}", t!("error.settings.read").to_string(), err)
+    // };
 
     let app_settings = APPLICATION_SETTINGS.lock().unwrap();
     let gui_language = app_settings.gui_language.clone();
@@ -1350,7 +1433,7 @@ fn create_main_window(
             state_lock.initialize_app_log(log_button.clone());
         }
     }
-    let app_log = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(log_button.clone())));
+    let app_log = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(Some(log_button.clone()))));
     setup_app_actions(&application, state.clone(), resources.clone(), app_log.clone());
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
@@ -3025,11 +3108,11 @@ fn create_main_window(
                     ).expect("Failed to convert private key to WIF");
                     
                     addresses.push(CryptoAddresses {
-                        coin_name: coin_name.clone(),
-                        derivation_path: full_path,
-                        address: address.clone(),
-                        public_key: public_key_encoded.clone(),
-                        private_key: priv_key_wif.clone(),
+                        coin_name: Some(coin_name.clone()),
+                        derivation_path: Some(full_path),
+                        address: Some(address.clone()),
+                        public_key: Some(public_key_encoded.clone()),
+                        private_key: Some(priv_key_wif.clone()),
                     });
                 }
             
@@ -3067,7 +3150,7 @@ fn create_main_window(
     main_window_box.append(&main_infobar_box);
     main_window_box.set_hexpand(true);
     
-    let app_messages = AppMessages::new(info_bar.clone());
+    let app_messages = AppMessages::new(Some(info_bar.clone()));
     app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
     
     // IMPLEMENT: Check if log is enabled in settings
@@ -3101,7 +3184,7 @@ fn create_log_window(
 
 
     let lock_log = log.lock().unwrap();
-    let lock_button = lock_log.button.lock().unwrap();
+    let lock_button = lock_log.log_button.clone();
     
     let lock_resources = resources.lock().unwrap();
     let lock_icon = lock_resources.get_icon("bell");
@@ -3119,8 +3202,8 @@ fn create_settings_window(
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    let settings = AppSettings::load_settings()
-        .expect(&t!("error.settings.read").to_string());
+    let settings = AppSettings::load_settings();
+        // .expect(&t!("error.settings.read").to_string());
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.settings").to_string())
@@ -4147,7 +4230,7 @@ fn create_settings_window(
                     {
                         let lock_log_state = state_lock.app_log.clone().unwrap();
                         let lock_log = lock_log_state.lock().unwrap();
-                        let log_button = lock_log.button.lock().unwrap();
+                        let log_button = lock_log.log_button.clone();
                         if let Ok(mut log_lock) = app_log.lock() {
                             let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
         
@@ -4197,7 +4280,8 @@ fn create_settings_window(
                                     dialog.close();
                                     settings_window.close();
                                     
-                                    AppSettings::load_settings().expect(&t!("error.settings.read").to_string());
+                                    AppSettings::load_settings();
+                                    // .expect(&t!("error.settings.read").to_string());
 
                                     AppState::apply_theme(&mut lock_new_state);
                                     AppState::show_message(&lock_state, t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);

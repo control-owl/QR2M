@@ -162,7 +162,6 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-
 fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
     let mut temp_file_path = dir.to_path_buf();
     temp_file_path.push(".tmp");
