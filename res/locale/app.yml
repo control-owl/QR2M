@@ -342,6 +342,10 @@ UI:
           en: "Address count"
           de: "Adressanzahl"
           hr: "Broj adresa"
+        start:
+          en: "Address start"
+          de: "Adressbeginn"
+          hr: "Početak adrese"
         hardened:
           en: "Hardened address"
           de: "Gehärtete Adresse"

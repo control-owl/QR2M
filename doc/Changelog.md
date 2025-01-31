@@ -1,3 +1,8 @@
+# version 0.71.3
+- theme change upgraded
+- cargo dependencies upgraded
+- improved address creation
+
 # version 0.71.2
 - settings: log added
 

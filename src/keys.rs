@@ -347,9 +347,9 @@ pub fn generate_entropy(
 
     match source {
         "RNG" | "RNG+" => {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let rng_entropy_string: String = (0..entropy_length)
-                .map(|_| rng.gen_range(0..=1))
+                .map(|_| rng.random_range(0..=1))
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 

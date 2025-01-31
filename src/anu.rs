@@ -15,9 +15,8 @@ use std::{
     time::{Duration, SystemTime}
 };
 use rand::Rng;
+
 use crate::os::LOCAL_SETTINGS;
-
-
 use crate::APPLICATION_SETTINGS;
 
 const ANU_TIMESTAMP_FILE: &str = "anu.timestamp";
@@ -74,8 +73,8 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
 
     if entropy.len() > entropy_length {
         let original_len = entropy.len();
-        let mut rng = rand::thread_rng();
-        let start_index = rng.gen_range(0..original_len);
+        let mut rng = rand::rng();
+        let start_index = rng.random_range(0..original_len);
 
         let trimmed_entropy = if start_index + entropy_length < original_len {
             entropy[start_index..start_index + entropy_length].to_string()

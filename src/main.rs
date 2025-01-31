@@ -4,7 +4,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -110,22 +110,24 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
     "Verbose",
     "Ultimate",
 ];
+const WALLET_MAX_ADDRESSES: u32 = 2147483647;
+
+
 
 lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref APPLICATION_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
+    static ref CRYPTO_ADDRESS: std::sync::Arc<std::sync::Mutex<Vec<CryptoAddresses>>> = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
 }
 
 struct SuperState {
     language: Option<String>,
     theme: Option<String>,
-    app_resources: Option<std::sync::Arc<std::sync::Mutex<GuiResources>>>,
-    app_settings: Option<std::sync::Arc<std::sync::Mutex<AppSettings>>>,
+    log: Option<bool>,
+    icons: Option<std::collections::HashMap<&'static str, gtk::Image>>,
+    buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
     app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
     app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
-    wallet_settings: Option<std::sync::Arc<std::sync::Mutex<WalletSettings>>>,
-    wallet_derivation: Option<std::sync::Arc<std::sync::Mutex<DerivationPath>>>,
-    wallet_addresses: Option<std::sync::Arc<std::sync::Mutex<CryptoAddresses>>>,
 }
 
 impl SuperState {
@@ -133,13 +135,11 @@ impl SuperState {
         Self {
             language: Some("en".to_string()),
             theme: Some("System".to_string()),
-            app_resources: Some(std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()))),
-            app_settings: Some(std::sync::Arc::new(std::sync::Mutex::new(AppSettings::load_settings()))),
+            log: None,
+            icons: None,
+            buttons: None,
             app_messages: Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(None)))),
             app_log: Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(None)))),
-            wallet_settings: Some(std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()))),
-            wallet_derivation: Some(std::sync::Arc::new(std::sync::Mutex::new(DerivationPath::default()))),
-            wallet_addresses: Some(std::sync::Arc::new(std::sync::Mutex::new(CryptoAddresses::new()))),
         }
     }
 
@@ -171,19 +171,27 @@ impl SuperState {
                     adw::ColorScheme::PreferLight
                 }
             };
-            // self.show_message("Theme changed.".to_string(), gtk::MessageType::Info);
 
             adw::StyleManager::default().set_color_scheme(preferred_theme);
         } else {
             self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
         }
+
+        self.update_theme();
     }
 
     fn show_message(&self, message: String, message_type: gtk::MessageType) {
         if let Some(app_messages) = &self.app_messages {
             let app_messages = app_messages.lock().unwrap();
-            app_messages.queue_message(message, message_type);
+            app_messages.queue_message(message.clone(), message_type);
+
+            if let Some(status) = self.log {
+                if status == true {
+                        println!("sending message to log \n{:?} - {:?}", message_type, message.clone());
+
+                }
+            }
         }
     }
 
@@ -205,14 +213,7 @@ impl SuperState {
         }
     }
 
-}
-
-struct GuiResources {
-    icons: std::collections::HashMap<&'static str, gtk::Image>
-}
-
-impl GuiResources {
-    fn new() -> Self {
+    fn register_icons(&mut self) -> std::collections::HashMap<&'static str, gtk::Image> {
         let settings = gtk::Settings::default().unwrap();
         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
             "dark"
@@ -221,16 +222,16 @@ impl GuiResources {
         };
 
         let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
-        println!("\t Theme path: {:?}", theme_base_path);
+        println!("\t Registering icons for theme: {:?}", theme_base_path);
 
         let icon_files = [
-            ("new", "new-wallet.png"),
-            ("open", "open-wallet.png"),
-            ("save", "save-wallet.png"),
-            ("about", "about.png"),
-            ("settings", "settings.png"),
-            ("bell", "bell.png"),
-            ("notif", "notif.png"),
+            ("new",         "new-wallet.png"),
+            ("open",        "open-wallet.png"),
+            ("save",        "save-wallet.png"),
+            ("about",       "about.png"),
+            ("settings",    "settings.png"),
+            ("log",         "bell.png"),
+            ("notif",       "notif.png"),
         ];
 
         let mut icons = std::collections::HashMap::new();
@@ -243,13 +244,81 @@ impl GuiResources {
             icons.insert(*name, image);
         }
 
-        GuiResources { icons }
+        icons
     }
 
     fn get_icon(&self, name: &str) -> Option<&gtk::Image> {
-        self.icons.get(name)
+        match &self.icons {
+            Some(icon) => icon.get(name),
+            None => None,
+        }
+        
+    }
+
+    fn register_buttons(&mut self) {
+
+
+        if let (Some(buttons), Some(icons)) = (&self.buttons, &self.icons) {
+            for (name, button) in buttons {
+                if let Some(icon) = icons.get(name) {
+                    button.set_child(Some(icon));
+                } else {
+                    eprintln!("Warning: No icon found for button '{}'", name);
+                }
+            }
+        }
+
+    }
+
+    fn update_theme(&mut self) {
+        self.register_icons();
+        self.register_buttons();
     }
 }
+
+// struct GuiResources {
+//     icons: std::collections::HashMap<&'static str, gtk::Image>
+// }
+
+// impl GuiResources {
+//     fn new() -> Self {
+//         let settings = gtk::Settings::default().unwrap();
+//         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
+//             "dark"
+//         } else {
+//             "light"
+//         };
+
+//         let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
+//         println!("\t Theme path: {:?}", theme_base_path);
+
+//         let icon_files = [
+//             ("new", "new-wallet.png"),
+//             ("open", "open-wallet.png"),
+//             ("save", "save-wallet.png"),
+//             ("about", "about.png"),
+//             ("settings", "settings.png"),
+//             ("bell", "bell.png"),
+//             ("notif", "notif.png"),
+//         ];
+
+//         let mut icons = std::collections::HashMap::new();
+
+//         for (name, file) in icon_files.iter() {
+//             let icon_path = theme_base_path.join(file);
+//             let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
+//             let image = gtk::Image::from_pixbuf(Some(&valid_icon));
+
+//             icons.insert(*name, image);
+//         }
+
+//         GuiResources { icons }
+//     }
+
+//     fn get_icon(&self, name: &str) -> Option<&gtk::Image> {
+//         self.icons.get(name)
+//     }
+// }
 
 
 // struct AppState {
@@ -480,17 +549,17 @@ impl AppMessages {
 
 
 struct AppLog {
-    status: std::sync::Arc<std::sync::Mutex<bool>>,
+    _status: std::sync::Arc<std::sync::Mutex<bool>>,
     log_button: Option<gtk::Button>,
-    messages: Option<std::collections::VecDeque<(String, gtk::MessageType)>>,
+    _messages: Option<std::collections::VecDeque<(String, gtk::MessageType)>>,
 }
 
 impl AppLog {
     fn new(button: Option<gtk::Button>) -> Self {
         Self {
-            status: std::sync::Arc::new(std::sync::Mutex::new(false)),
+            _status: std::sync::Arc::new(std::sync::Mutex::new(false)),
             log_button: button,
-            messages: None,
+            _messages: None,
         }
     }
 
@@ -859,7 +928,10 @@ impl AppSettings {
                         if let Some(state) = super_state {
                             let mut state = state.lock().unwrap();
                             state.theme = Some(self.gui_theme.clone());
+
+                            println!("##################### Applying theme...");
                             state.apply_theme();
+                            state.icons = Some(state.register_icons());
                         } else {
                             println!("State in gui_theme is None");
                         }
@@ -914,6 +986,24 @@ impl AppSettings {
             "gui_log" => {
                 if new_value.as_bool().map(|v| v != self.gui_log).unwrap_or(false) {
                     self.gui_log = new_value.as_bool().unwrap();
+
+                    if let Some(state) = super_state {
+                        let mut super_state_lock = state.lock().unwrap();
+                        super_state_lock.log = new_value.as_bool();
+
+                        if let Some(status) = super_state_lock.log {
+                            if status == true {
+                                println!("Log status: {:?}", status);
+                            } else {
+                                println!("Log is disabled");
+                            }
+                        }
+                        
+                        
+                    } else {
+                        println!("State in gui_theme is None");
+                    }
+
                     println!("Updating key {:?} = {:?}", key, new_value);
                     self.save_settings();
                 }
@@ -1232,19 +1322,17 @@ struct CryptoAddresses {
     private_key: Option<String>,
 }
 
-impl CryptoAddresses {
-    fn new() -> Self {
-        Self { 
-            coin_name: None,
-            derivation_path: None,
-            address: None,
-            public_key: None,
-            private_key: None,
-        }
-    }
-}
-
-
+// impl CryptoAddresses {
+//     fn new() -> Self {
+//         Self {
+//             coin_name: None,
+//             derivation_path: None,
+//             address: None,
+//             public_key: None,
+//             private_key: None,
+//         }
+//     }
+// }
 
 // BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -1284,8 +1372,6 @@ fn main() {
     application.connect_activate(clone!(
         move |app| {
             let super_state =std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
-            // let state = std::sync::Arc::new(std::sync::Mutex::new(AppState::new()));
-            // let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
 
             create_main_window(&app, super_state);
         }
@@ -1297,8 +1383,6 @@ fn main() {
 fn setup_app_actions(
     application: &adw::Application, 
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
-    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
-    // app_log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) {
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
@@ -1312,8 +1396,6 @@ fn setup_app_actions(
     new.connect_activate(clone!(
         #[weak] application,
         #[weak] super_state,
-        // #[weak] resources,
-        // #[weak] app_log,
         move |_action, _parameter| {
             create_main_window(&application, super_state.clone());
         }
@@ -1351,6 +1433,7 @@ fn setup_app_actions(
                 move |_| {
                     if let Ok(mut state) = super_state.lock() {
                         state.apply_theme();
+                        state.register_icons();
                     }
                     glib::Propagation::Proceed
                 }
@@ -1390,20 +1473,10 @@ fn setup_app_actions(
 fn create_main_window(
     application: &adw::Application,
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
-    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
-    // app_log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
-
-    // match AppSettings::load_settings() {
-    //     Ok(_) => println!("Settings loaded"),
-    //     Err(err) => eprintln!("{} \t {}", t!("error.settings.read").to_string(), err)
-    // };
     AppSettings::load_settings();
-    //     Ok(_) => println!("Settings loaded"),
-    //     Err(err) => eprintln!("{} \t {}", t!("error.settings.read").to_string(), err)
-    // };
 
     let app_settings = APPLICATION_SETTINGS.lock().unwrap();
     let gui_language = app_settings.gui_language.clone();
@@ -1412,6 +1485,7 @@ fn create_main_window(
     let window_height = app_settings.gui_last_height;
     let wallet_bip = app_settings.wallet_bip;
     let default_mnemonic_length = app_settings.gui_mnemonic_length;
+    let app_log_status = app_settings.gui_log;
 
     os::switch_locale(&gui_language);
     
@@ -1452,37 +1526,46 @@ fn create_main_window(
     let settings_button = gtk::Button::new();
     let log_button = gtk::Button::new();
 
-    let button_icons = [
-        (&new_wallet_button, "new"),
-        (&open_wallet_button, "open"),
-        (&save_wallet_button, "save"),
-        (&about_button, "about"),
-        (&settings_button, "settings"),
-        (&log_button, "bell"),
+    let main_buttons = [
+        ("new", &new_wallet_button),
+        ("open", &open_wallet_button),
+        ("save", &save_wallet_button),
+        ("about", &about_button),
+        ("settings", &settings_button),
+        ("log", &log_button),
     ];
 
+    
+    
     {
         let mut lock_super_state = super_state.lock().unwrap();
-
-        if let Some(resources) = &lock_super_state.app_resources {
-            let lock_resources = resources.lock().unwrap();
-            
-            for (button, icon) in button_icons.iter() {
-                if let Some(icon) = lock_resources.get_icon(icon) {
-                    button.set_child(Some(icon));
-                }
+        lock_super_state.icons = Some(lock_super_state.register_icons());
+        
+        for (name, button) in main_buttons.iter() {
+            if let Some(icon) = lock_super_state.get_icon(name) {
+                button.set_child(Some(icon));
+            } else {
+                eprintln!("Warning: No icon found for button '{}'", name);
             }
         }
-
+        
         lock_super_state.language = Some(gui_language);
         lock_super_state.theme = Some(gui_theme);
+        lock_super_state.log = Some(app_log_status);
+        let button_map: std::collections::HashMap<&str, gtk::Button> = main_buttons
+            .iter()
+            .map(|(name, button)| (*name, (*button).clone()))
+            .collect();
+
+        lock_super_state.buttons = Some(button_map);
+
         lock_super_state.init_app_messages(info_bar.clone());
         lock_super_state.init_app_log(log_button.clone());
-
-
     }
 
     setup_app_actions(&application, super_state.clone());
+
+
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -1501,7 +1584,6 @@ fn create_main_window(
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
         #[strong] super_state,
-        // #[weak] app_log,
         move |_| {
             let settings_window = create_settings_window(super_state.clone());
             settings_window.show();
@@ -1537,7 +1619,6 @@ fn create_main_window(
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
-    // stack.set_transition_type(gtk::StackTransitionType::OverRight);
 
     // -.-. --- .--. -.-- .-. .. --. .... -
     // Sidebar 1: Seed
@@ -2036,7 +2117,7 @@ fn create_main_window(
     let adjustment = gtk::Adjustment::new(
         0.0,
         0.0,
-        2147483647.0,
+        WALLET_MAX_ADDRESSES as f64,
         1.0,
         100.0,
         0.0,
@@ -2083,8 +2164,7 @@ fn create_main_window(
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
 
-    generate_addresses_button_box.append(&generate_addresses_button);
-    generate_addresses_button_box.set_halign(gtk::Align::Center);
+    
 
     // Address tree
     let address_scrolled_window = gtk::ScrolledWindow::new();
@@ -2127,15 +2207,15 @@ fn create_main_window(
     let address_options_content = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     address_options_box.append(&address_options_content);
     
+
     // Address count
     let wallet_address_count = app_settings.wallet_address_count;
-
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_adjustment = gtk::Adjustment::new(
         wallet_address_count as f64,
         1.0,
-        2147483647.0,
+        WALLET_MAX_ADDRESSES as f64,
         1.0,
         10.0,
         0.0,
@@ -2144,6 +2224,23 @@ fn create_main_window(
     
     address_options_frame.set_child(Some(&address_options_address_count_box));
     address_options_address_count_box.append(&address_options_spinbutton);
+
+    // Address start
+    let address_start_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.start").to_string()));
+    let address_start_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_start_adjustment = gtk::Adjustment::new(
+        0.0,
+        0.0,
+        WALLET_MAX_ADDRESSES as f64 - wallet_address_count as f64,
+        1.0,
+        10.0,
+        0.0,
+    );
+    let address_start_spinbutton = gtk::SpinButton::new(Some(&address_start_adjustment), 1.0, 0);
+    
+    address_start_frame.set_child(Some(&address_start_address_count_box));
+    address_start_address_count_box.append(&address_start_spinbutton);
+
 
     // Hardened address
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
@@ -2182,11 +2279,16 @@ fn create_main_window(
     address_treeview_frame.set_child(Some(&address_scrolled_window));
     address_scrolled_window.set_child(Some(&address_treeview));
     address_options_content.append(&address_options_frame);
+    address_options_content.append(&address_start_frame);
     address_options_content.append(&address_options_hardened_address_frame);
-    address_options_content.append(&address_options_clear_addresses_button);
+    // address_options_content.append(&address_options_clear_addresses_button);
+    generate_addresses_button_box.append(&generate_addresses_button);
+    generate_addresses_button_box.append(&address_options_clear_addresses_button);
+    generate_addresses_button_box.set_halign(gtk::Align::Center);
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
     main_address_box.append(&generate_addresses_button_box);
+    // main_address_box.append(&address_options_clear_addresses_button);
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
     
@@ -2271,14 +2373,9 @@ fn create_main_window(
             let source = selected_entropy_source_value.unwrap().to_string();
             let entropy_length = selected_entropy_length_value.unwrap(); 
 
-            // mnemonic_words_text.buffer().set_text("");
-            // entropy_text.buffer().set_text("");
-            // seed_text.buffer().set_text("");
-
             let pre_entropy = keys::generate_entropy(
                 &source,
                 *entropy_length as u64,
-                // Some(std::sync::Arc::clone(&state)),
             );
                 
             if !pre_entropy.is_empty() {
@@ -2312,10 +2409,6 @@ fn create_main_window(
                 eprintln!("{}", &t!("error.entropy.empty"));
                 let lock_state = super_state.lock().unwrap();
                 lock_state.show_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
-                // let app_state = lock_state.app_state;
-                // AppState::show_message(&lock_state, t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
-
-                
             }
         }
     ));
@@ -2347,7 +2440,7 @@ fn create_main_window(
             let scale_value = mnemonic_passphrase_scale.value() as u32;
 
             let mnemonic_rng_string: String = (0..scale_value)
-                        .map(|_| char::from(rand::thread_rng().gen_range(32..127)))
+                        .map(|_| char::from(rand::rng().random_range(32..127)))
                         .collect();
             println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
             mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
@@ -2365,6 +2458,10 @@ fn create_main_window(
         // #[strong] resources,
         // #[weak] log_button,
         move |_| {
+
+            let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+            addr_lock.clear();
+
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
             let end_iter = buffer.end_iter();
@@ -3010,7 +3107,7 @@ fn create_main_window(
         #[strong] super_state,
         // #[strong] app_log,
         // #[strong] resources,
-        #[weak] log_button,
+        // #[weak] log_button,
         move |_| {
             // IMPLEMENT: Generating info_bar message
 
@@ -3048,7 +3145,7 @@ fn create_main_window(
             
                 let address_count = address_options_spinbutton.text();
                 let address_count_str = address_count.as_str();
-                let address_count_int = address_count_str.parse::<u32>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT);
+                let address_count_int = address_count_str.parse::<usize>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT as usize);
                 
                 let hardened = address_options_hardened_address_checkbox.is_active();
             
@@ -3068,118 +3165,143 @@ fn create_main_window(
                     },
                 };
     
-                let mut addresses = Vec::new();
-            
-                for i in 0..address_count_int {
-                    let full_path = if hardened {
-                        format!("{}/{}'", path, i)
+                // TODO: Move to new function
+                {
+                    let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+                    let current_len = addr_lock.len();
+                    println!("+++++++++++++++++++++current_len: {:?}",current_len);
+
+                    // IMPLEMENT: Upper limit 2147483647
+
+                    let current_count = address_count_int;  // 10
+                    let last_value;
+
+                        // 0       + 10                > 20
+                    if (current_len + address_count_int) >= WALLET_MAX_ADDRESSES as usize {
+                        last_value = current_count as usize;
                     } else {
-                        format!("{}/{}", path, i)
-                    };
-            
-                    let derived_child_keys = match key_derivation.as_str() {
-                        "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                        "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                        "N/A" | _ => {
-                            println!("Unsupported key derivation method: {:?}", key_derivation);
-                            return
-                        }
-                    }.expect("Failed to derive key from path");
-    
-                    let public_key = match key_derivation.as_str() {
-                        "secp256k1" => {
-                            let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-                                &secp,
-                                &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-                            );
-                            keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-                        },
-                        "ed25519" => {
-                            let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-                            let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-                            keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-                        },
-                        "N/A" | _ => {
-                            println!("Unsupported key derivation method: {:?}", key_derivation);
-                            return;
-                        }
-                    };
-    
-                    let public_key_encoded = match hash.as_str() {
-                        "sha256" | "sha256+ripemd160" => match &public_key {
-                            keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-                            keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-                        },
-                        "keccak256" => match &public_key {
-                            keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-                            keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-                        },
-                        "N/A" | _ => {
-                            println!("Unsupported hash method: {:?}", hash);
-                            return;
-                        }
-                    };
-                    
-                    let address = match hash.as_str() {
-                        "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-                        "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-                        "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-                            coin_index, 
-                            &public_key, 
-                            &public_key_hash_vec
-                        ) {
-                            Ok(addr) => addr,
-                            Err(e) => {
-                                println!("Error generating address: {}", e);
+                        last_value = current_len + address_count_int;
+                    }
+
+                    for i in current_len..last_value {
+                        let full_path = if hardened {
+                            format!("{}/{}'", path, i)
+                        } else {
+                            format!("{}/{}", path, i)
+                        };
+                
+                        let derived_child_keys = match key_derivation.as_str() {
+                            "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
+                            "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
+                            "N/A" | _ => {
+                                println!("Unsupported key derivation method: {:?}", key_derivation);
+                                return
+                            }
+                        }.expect("Failed to derive key from path");
+        
+                        let public_key = match key_derivation.as_str() {
+                            "secp256k1" => {
+                                let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+                                    &secp,
+                                    &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+                                );
+                                keys::CryptoPublicKey::Secp256k1(secp_pub_key)
+                            },
+                            "ed25519" => {
+                                let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+                                let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+                                keys::CryptoPublicKey::Ed25519(pub_key_bytes)
+                            },
+                            "N/A" | _ => {
+                                println!("Unsupported key derivation method: {:?}", key_derivation);
                                 return;
                             }
-                        },
-                        "ed25519" => dev::generate_ed25519_address(&public_key),
-                        "N/A" | _ => {
-                            println!("Unsupported hash method: {:?}", hash);
-                            return;
-                        }
-                    };
-    
-                    println!("Crypto address: {:?}", address);
-    
-                    // IMPROVEMENT: remove hard-coding, add this option to UI
-                    let compressed = true;
+                        };
+        
+                        let public_key_encoded = match hash.as_str() {
+                            "sha256" | "sha256+ripemd160" => match &public_key {
+                                keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+                                keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+                            },
+                            "keccak256" => match &public_key {
+                                keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+                                keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+                            },
+                            "N/A" | _ => {
+                                println!("Unsupported hash method: {:?}", hash);
+                                return;
+                            }
+                        };
+                        
+                        let address = match hash.as_str() {
+                            "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
+                            "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
+                            "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
+                                coin_index, 
+                                &public_key, 
+                                &public_key_hash_vec
+                            ) {
+                                Ok(addr) => addr,
+                                Err(e) => {
+                                    println!("Error generating address: {}", e);
+                                    return;
+                                }
+                            },
+                            "ed25519" => dev::generate_ed25519_address(&public_key),
+                            "N/A" | _ => {
+                                println!("Unsupported hash method: {:?}", hash);
+                                return;
+                            }
+                        };
+        
+                        println!("Crypto address: {:?}", address);
+        
+                        // IMPROVEMENT: remove hard-coding, add this option to UI
+                        let compressed = true;
+                        
+                        let priv_key_wif = keys::create_private_key_for_address(
+                            Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
+                            Some(compressed),
+                            Some(&wallet_import_format),
+                            &hash,
+                        ).expect("Failed to convert private key to WIF");
+                        
+                        addr_lock.push(CryptoAddresses {
+                            coin_name: Some(coin_name.clone()),
+                            derivation_path: Some(full_path.clone()),
+                            address: Some(address.clone()),
+                            public_key: Some(public_key_encoded.clone()),
+                            private_key: Some(priv_key_wif.clone()),
+                        });
+                        
+                        let iter = address_store.append();
+                        address_store.set(
+                            &iter,
+                            &[
+                                (0, &coin_name),
+                                (1, &full_path),
+                                (2, &address),
+                                (3, &public_key_encoded),
+                                (4, &priv_key_wif),
+                            ],
+                        );
+                    }
                     
-                    let priv_key_wif = keys::create_private_key_for_address(
-                        Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
-                        Some(compressed),
-                        Some(&wallet_import_format),
-                        &hash,
-                    ).expect("Failed to convert private key to WIF");
-                    
-                    addresses.push(CryptoAddresses {
-                        coin_name: Some(coin_name.clone()),
-                        derivation_path: Some(full_path),
-                        address: Some(address.clone()),
-                        public_key: Some(public_key_encoded.clone()),
-                        private_key: Some(priv_key_wif.clone()),
-                    });
+                    println!("Number of addresses: {:?}", addr_lock.len());
                 }
             
-                for address in addresses {
-                    let iter = address_store.append();
-                    address_store.set(&iter, &[
-                        (0, &address.coin_name),
-                        (1, &address.derivation_path),
-                        (2, &address.address),
-                        (3, &address.public_key),
-                        (4, &address.private_key),
-                    ]);
-                }
             }
-
         }
     ));
     
-    address_options_clear_addresses_button.connect_clicked(move |_| {
-        address_store.clear();
-    });
+    address_options_clear_addresses_button.connect_clicked(clone!(
+        #[weak] address_store,
+        move |_| {
+            address_store.clear();
+            let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+            addr_lock.clear();
+        }
+    ));
 
     // Main sidebar
     let main_window_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -3212,8 +3334,8 @@ fn create_main_window(
 }
 
 
-fn create_log_window(
-    super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+fn create_log_window(   
+    _super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
     // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
     // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) -> gtk::ApplicationWindow {
@@ -3229,21 +3351,21 @@ fn create_log_window(
 
 
 
-    let lock_super_state = super_state.lock().unwrap();
+    // let lock_super_state = super_state.lock().unwrap();
     
-    if let Some(app_log) = &lock_super_state.app_log {
-        let mut lock_app_log = app_log.lock().unwrap();
+    // if let Some(app_log) = &lock_super_state.app_log {
+    //     let mut lock_app_log = app_log.lock().unwrap();
         
-        if let Some(resources) = &lock_super_state.app_resources {
-            let lock_app_resources = resources.lock().unwrap();
-            let new_icon = lock_app_resources.get_icon("bell");
+    //     if let Some(resources) = &lock_super_state.app_resources {
+    //         let lock_app_resources = resources.lock().unwrap();
+    //         let new_icon = lock_app_resources.get_icon("bell");
             
-            let new_button = gtk::Button::new();
-            new_button.set_child(new_icon);
+    //         let new_button = gtk::Button::new();
+    //         new_button.set_child(new_icon);
 
-            lock_app_log.log_button.replace(new_button);
-        };
-    };
+    //         lock_app_log.log_button.replace(new_button);
+    //     };
+    // };
 
 
     // let lock_button = lock_log.log_button.clone();
@@ -4274,7 +4396,7 @@ fn create_settings_window(
             ];
     
             for (key, value) in updates {
-                if key == "gui_theme" {
+                if key == "gui_theme" || key == "gui_log" {
                     settings.update_value(key, value, Some(super_state.clone()));
                 } else {
                     settings.update_value(key, value, None);
@@ -4282,31 +4404,12 @@ fn create_settings_window(
             }
     
             AppSettings::save_settings(&*settings);
-            
-            // TODO: Rewrite
-            // {
-            //     let mut state_lock = super_state.lock().unwrap();
-            //     let selected_theme = VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize].to_string();
-            //     state_lock.theme = Some(selected_theme);
 
-            //     if let Some(app_messages) = &state_lock.app_messages {
-            //         let app_messages = app_messages.clone();
-            //         let app_messages = app_messages.lock().unwrap();
-            //         app_messages.queue_message(t!("UI.messages.dialog.settings-saved").to_string(), gtk::MessageType::Info);
-            //         {
-            //             let lock_log_state = state_lock.app_log.clone().unwrap();
-            //             let lock_log = lock_log_state.lock().unwrap();
-            //             let log_button = lock_log.log_button.clone();
-            //             if let Ok(mut log_lock) = app_log.lock() {
-            //                 let resources = std::sync::Arc::new(std::sync::Mutex::new(GuiResources::new()));
-        
-            //                 log_lock.initialize_app_log(log_button.clone().unwrap(), resources.clone());
-            //             }
-            //         }
-            //     } else {
-            //         eprintln!("Error: AppMessages not initialized.");
-            //     }
-            // }
+            // TODO: Rewrite
+            {
+                let mut state_lock = super_state.lock().unwrap();
+                state_lock.update_theme();
+            }
 
             settings_window.close();
         }
@@ -4347,6 +4450,7 @@ fn create_settings_window(
                                     
                                     AppSettings::load_settings();
                                     lock_new_super_state.apply_theme();
+                                    lock_new_super_state.icons = Some(lock_new_super_state.register_icons());
                                     lock_new_super_state.show_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
                                 _ => {

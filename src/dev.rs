@@ -135,14 +135,14 @@ const QRNG_MAGIC_NUMBER: usize = 1024 * QRNG_KEY_LEVEL;
 
 
 fn get_qrng() -> String {
-    use rand::{Rng, thread_rng};
+    use rand::{Rng, rng};
 
-    let mut rng = thread_rng();
-    let length = rng.gen_range(2..=QRNG_MAGIC_NUMBER);
+    let mut rng = rng();
+    let length = rng.random_range(2..=QRNG_MAGIC_NUMBER);
 
     let hex_chars: String = (0..length)
         .map(|_| {
-            let random_char = rng.gen_range(0..16);
+            let random_char = rng.random_range(0..16);
             match random_char {
                 0..=9 => (b'0' + random_char as u8) as char,
                 10..=15 => (b'A' + (random_char - 10) as u8) as char, // A-F
