@@ -4,7 +4,8 @@
 
 1. Save wallet - done
 2. Open wallet - done
-3. Proxy - next
+3. Unify GUI icons
+4. Proxy - next (maybe later)
 
 
 #### Old tasks
@@ -61,7 +62,7 @@
     - [x] local settings ($HOME)
 - [x] set theme color in settings
 - [ ] proxy support
-- [ ] verify local config before applying it, if missing get from default
+- [x] verify local config before applying it, if missing get from default
 - [ ] log directory (file chooser dialog)
 - [x] notification timeout
 

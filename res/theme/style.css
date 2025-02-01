@@ -1,0 +1,57 @@
+.info-bar {
+    border-radius: 10px;
+    margin: 0px 5px 5px 5px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.info-bar .info-message,
+.info-bar .warning-message,
+.info-bar .error-message {
+    padding: 5px 10px 5px 5px;
+}
+
+.info-bar:hover {
+    opacity: 0.9;
+}
+
+.info-message {
+    background-color: #b3d9ff;
+    color: #000000;
+    border: 1px solid #80bfff;
+}
+
+.warning-message {
+    background-color: #ffffcc;
+    color: #333333;
+    border: 1px solid #ffcc00;
+}
+
+.error-message {
+    background-color: #ffcccc;
+    color: #800000;
+    border: 1px solid #ff6666;
+}
+
+.button {
+    padding: 5px;
+
+}
+
+.green-box {
+    background-color: green;
+    border: 1px solid black;
+}
+
+.empty-box {
+    background-color: lightgray;
+    border: 1px solid black;
+}
+
+.main-buttons {
+    padding: 5px;
+}
+
+/* .main-buttons:hover {
+    padding: 3px;
+} */

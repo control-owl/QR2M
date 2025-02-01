@@ -100,6 +100,11 @@ const VALID_GUI_THEMES: &'static [&'static str] = &[
     "Light", 
     "Dark",
 ];
+const VALID_GUI_ICONS: &'static [&'static str] = &[
+    "Thin", 
+    "Bold", 
+    "Fill",
+];
 const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
     "Name", 
     "Symbol", 
@@ -112,8 +117,6 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
 ];
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
 
-
-
 lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref APPLICATION_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
@@ -123,8 +126,9 @@ lazy_static::lazy_static! {
 struct SuperState {
     language: Option<String>,
     theme: Option<String>,
+    icons: Option<String>,
     log: Option<bool>,
-    icons: Option<std::collections::HashMap<&'static str, gtk::Image>>,
+    pictures: Option<std::collections::HashMap<&'static str, gtk::Picture>>,
     buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
     app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
     app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
@@ -133,10 +137,11 @@ struct SuperState {
 impl SuperState {
     fn new() -> Self {
         Self {
-            language: Some("en".to_string()),
-            theme: Some("System".to_string()),
-            log: None,
+            language: None,
+            theme: None,
             icons: None,
+            log: None,
+            pictures: None,
             buttons: None,
             app_messages: Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(None)))),
             app_log: Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(None)))),
@@ -213,52 +218,55 @@ impl SuperState {
         }
     }
 
-    fn register_icons(&mut self) -> std::collections::HashMap<&'static str, gtk::Image> {
+    fn register_icons(&mut self) -> std::collections::HashMap<&'static str, gtk::Picture> {
         let settings = gtk::Settings::default().unwrap();
         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
             "dark"
         } else {
             "light"
         };
+    
+        let gui_icons = self.icons.clone().unwrap_or(VALID_GUI_ICONS[0].to_string());
 
-        let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
+        let theme_base_path = std::path::Path::new("theme")
+            .join("basic")
+            .join(theme_subdir)
+            .join(gui_icons);
+
         println!("\t Registering icons for theme: {:?}", theme_base_path);
-
+    
         let icon_files = [
-            ("new",         "new-wallet.png"),
-            ("open",        "open-wallet.png"),
-            ("save",        "save-wallet.png"),
-            ("about",       "about.png"),
-            ("settings",    "settings.png"),
-            ("log",         "bell.png"),
-            ("notif",       "notif.png"),
+            ("new",         "new.svg"),
+            ("open",        "open.svg"),
+            ("save",        "save.svg"),
+            ("about",       "about.svg"),
+            ("settings",    "settings.svg"),
+            ("log",         "log.svg"),
+            ("notif",       "notif.svg"),
+            ("random",      "random.svg"),
         ];
-
+    
         let mut icons = std::collections::HashMap::new();
-
+    
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
-            let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
-            let image = gtk::Image::from_pixbuf(Some(&valid_icon));
-
-            icons.insert(*name, image);
+            let picture = qr2m_lib::get_picture_from_resources(icon_path.to_str().unwrap());
+    
+            icons.insert(*name, picture);
         }
-
+    
         icons
     }
 
-    fn get_icon(&self, name: &str) -> Option<&gtk::Image> {
-        match &self.icons {
+    fn get_icon(&self, name: &str) -> Option<&gtk::Picture> {
+        match &self.pictures {
             Some(icon) => icon.get(name),
             None => None,
         }
-        
     }
 
     fn register_buttons(&mut self) {
-
-
-        if let (Some(buttons), Some(icons)) = (&self.buttons, &self.icons) {
+        if let (Some(buttons), Some(icons)) = (&self.buttons, &self.pictures) {
             for (name, button) in buttons {
                 if let Some(icon) = icons.get(name) {
                     button.set_child(Some(icon));
@@ -267,7 +275,6 @@ impl SuperState {
                 }
             }
         }
-
     }
 
     fn update_theme(&mut self) {
@@ -275,128 +282,6 @@ impl SuperState {
         self.register_buttons();
     }
 }
-
-// struct GuiResources {
-//     icons: std::collections::HashMap<&'static str, gtk::Image>
-// }
-
-// impl GuiResources {
-//     fn new() -> Self {
-//         let settings = gtk::Settings::default().unwrap();
-//         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
-//             "dark"
-//         } else {
-//             "light"
-//         };
-
-//         let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
-//         println!("\t Theme path: {:?}", theme_base_path);
-
-//         let icon_files = [
-//             ("new", "new-wallet.png"),
-//             ("open", "open-wallet.png"),
-//             ("save", "save-wallet.png"),
-//             ("about", "about.png"),
-//             ("settings", "settings.png"),
-//             ("bell", "bell.png"),
-//             ("notif", "notif.png"),
-//         ];
-
-//         let mut icons = std::collections::HashMap::new();
-
-//         for (name, file) in icon_files.iter() {
-//             let icon_path = theme_base_path.join(file);
-//             let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
-//             let image = gtk::Image::from_pixbuf(Some(&valid_icon));
-
-//             icons.insert(*name, image);
-//         }
-
-//         GuiResources { icons }
-//     }
-
-//     fn get_icon(&self, name: &str) -> Option<&gtk::Image> {
-//         self.icons.get(name)
-//     }
-// }
-
-
-// struct AppState {
-//     language: Option<String>,
-//     theme: Option<String>,
-//     app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
-//     app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
-//     // app_icons: option vector 6 icons
-
-// }
-
-// impl AppState {
-//     fn new() -> Self {
-//         Self {
-//             language: Some("en".to_string()),
-//             theme: Some("System".to_string()),
-//             app_messages: None,
-//             app_log: None,
-//         }
-//     }
-
-//     fn initialize_app_messages(&mut self, info_bar: gtk::Revealer) {
-//         self.app_messages = Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(Some(info_bar)))));
-//     }
-
-//     fn initialize_app_log(&mut self, log_button: gtk::Button) {
-//         self.app_log = Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(Some(log_button)))));
-//     }
-
-//     fn show_message(&self, message: String, message_type: gtk::MessageType) {
-//         if let Some(app_messages) = &self.app_messages {
-//             let app_messages = app_messages.lock().unwrap();
-//             app_messages.queue_message(message, message_type);
-//         }
-//     }
-
-//     fn apply_theme(&mut self) {
-//         if let Some(theme) = &self.theme {
-//             let preferred_theme = match theme.as_str() {
-//                 "System" => adw::ColorScheme::PreferLight,
-//                 "Light" => adw::ColorScheme::ForceLight,
-//                 "Dark" => adw::ColorScheme::PreferDark,
-//                 _ => {
-//                     self.show_message(
-//                         t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
-//                         gtk::MessageType::Error
-//                     );
-//                     adw::ColorScheme::PreferLight
-//                 }
-//             };
-//             // self.show_message("Theme changed.".to_string(), gtk::MessageType::Info);
-
-//             adw::StyleManager::default().set_color_scheme(preferred_theme);
-//         } else {
-//             self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
-//             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
-//         }
-//     }
-
-//     fn apply_language(&mut self) {
-//         if let Some(language) = &self.language {
-//             let language_code = match language.as_str() {
-//                 "Deutsch" => "de",
-//                 "Hrvatski" => "hr",
-//                 "English" => "en",
-//                 _ => "en",
-//             };
-        
-//             rust_i18n::set_locale(language_code);
-//             self.show_message(t!("UI.messages.change-language").to_string(), gtk::MessageType::Info);
-            
-//         } else {
-//             rust_i18n::set_locale("en");
-//             self.show_message("Language is not set. Falling back to English.".to_string(), gtk::MessageType::Warning);
-//         }
-//     }
-// }
-
 
 struct AppMessages {
     info_bar: Option<gtk::Revealer>,
@@ -611,6 +496,7 @@ struct AppSettings {
     gui_last_height: u32,
     gui_maximized: bool,
     gui_theme: String,
+    gui_icons: String,
     gui_language: String,
     gui_search: String,
     gui_notification_timeout: u32,
@@ -702,6 +588,7 @@ impl AppSettings {
         let gui_last_height = get_u32(&gui_section, "last_height", WINDOW_MAIN_DEFAULT_HEIGHT);
         let gui_maximized = get_bool(&gui_section, "maximized", true);
         let gui_theme = get_str(&gui_section, "theme", &VALID_GUI_THEMES[0]);
+        let gui_icons = get_str(&gui_section, "icons", &VALID_GUI_ICONS[0]);
         let gui_language = get_str(&gui_section, "language", &APP_LANGUAGE[0]);
         let gui_search = get_str(&gui_section, "search", &VALID_COIN_SEARCH_PARAMETER[0]);
         let gui_notification_timeout = get_u32(&gui_section, "notification_timeout", DEFAULT_NOTIFICATION_TIMEOUT);
@@ -714,6 +601,7 @@ impl AppSettings {
         println!("\t GUI height: {:?}", gui_last_height);
         println!("\t Maximized: {:?}", gui_maximized);
         println!("\t Theme: {:?}", gui_theme);
+        println!("\t Icons: {:?}", gui_icons);
         println!("\t Language: {:?}", gui_language);
         println!("\t Search: {:?}", gui_search);
         println!("\t Notification timeout: {:?}", gui_notification_timeout);
@@ -786,6 +674,7 @@ impl AppSettings {
         application_settings.gui_last_height = gui_last_height.clone();
         application_settings.gui_maximized = gui_maximized.clone();
         application_settings.gui_theme = gui_theme.clone();
+        application_settings.gui_icons = gui_icons.clone();
         application_settings.gui_language = gui_language.clone();
         application_settings.gui_search = gui_search.clone();
         application_settings.gui_notification_timeout = gui_notification_timeout.clone();
@@ -823,6 +712,7 @@ impl AppSettings {
             gui_last_height,
             gui_maximized,
             gui_theme,
+            gui_icons,
             gui_language,
             gui_search,
             gui_notification_timeout,
@@ -931,7 +821,7 @@ impl AppSettings {
 
                             println!("##################### Applying theme...");
                             state.apply_theme();
-                            state.icons = Some(state.register_icons());
+                            state.pictures = Some(state.register_icons());
                         } else {
                             println!("State in gui_theme is None");
                         }
@@ -940,6 +830,29 @@ impl AppSettings {
                     }
                 } else {
                     eprintln!("Received invalid value for gui_theme: {:?}", new_value);
+                }
+            },
+            "gui_icons" => {
+                if let Some(new_icons) = new_value.as_str() {
+                    if Some(new_icons) != Some(&self.gui_icons) {
+                        self.gui_icons = new_icons.to_string();
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        
+                        if let Some(state) = super_state {
+                            let mut state = state.lock().unwrap();
+                            state.icons = Some(self.gui_icons.clone());
+
+                            println!("##################### Applying icons...");
+                            state.apply_theme();
+                            state.pictures = Some(state.register_icons());
+                        } else {
+                            println!("State in gui_icons is None");
+                        }
+
+                        self.save_settings();
+                    }
+                } else {
+                    eprintln!("Received invalid value for gui_icons: {:?}", new_value);
                 }
             },
             "gui_language" => {
@@ -1158,6 +1071,7 @@ impl AppSettings {
                 gui_table["last_height"] = toml_edit::value(self.gui_last_height as i64);
                 gui_table["maximized"] = toml_edit::value(self.gui_maximized);
                 gui_table["theme"] = toml_edit::value(self.gui_theme.clone());
+                gui_table["icons"] = toml_edit::value(self.gui_icons.clone());
                 gui_table["language"] = toml_edit::value(self.gui_language.clone());
                 gui_table["search"] = toml_edit::value(self.gui_search.clone());
                 gui_table["notification_timeout"] = toml_edit::value(self.gui_notification_timeout as i64);
@@ -1481,6 +1395,7 @@ fn create_main_window(
     let app_settings = APPLICATION_SETTINGS.lock().unwrap();
     let gui_language = app_settings.gui_language.clone();
     let gui_theme = app_settings.gui_theme.clone();
+    let gui_icons = app_settings.gui_icons.clone();
     let window_width = app_settings.gui_last_width;
     let window_height = app_settings.gui_last_height;
     let wallet_bip = app_settings.wallet_bip;
@@ -1525,6 +1440,7 @@ fn create_main_window(
     let about_button = gtk::Button::new();
     let settings_button = gtk::Button::new();
     let log_button = gtk::Button::new();
+    let random_mnemonic_passphrase_button = gtk::Button::new();
 
     let main_buttons = [
         ("new", &new_wallet_button),
@@ -1533,17 +1449,18 @@ fn create_main_window(
         ("about", &about_button),
         ("settings", &settings_button),
         ("log", &log_button),
+        ("random", &random_mnemonic_passphrase_button),
     ];
-
-    
     
     {
         let mut lock_super_state = super_state.lock().unwrap();
-        lock_super_state.icons = Some(lock_super_state.register_icons());
+        lock_super_state.icons = Some(gui_icons);
+        lock_super_state.pictures = Some(lock_super_state.register_icons());
         
         for (name, button) in main_buttons.iter() {
             if let Some(icon) = lock_super_state.get_icon(name) {
                 button.set_child(Some(icon));
+                button.set_css_classes(&["main-buttons"]);
             } else {
                 eprintln!("Warning: No icon found for button '{}'", name);
             }
@@ -1552,6 +1469,7 @@ fn create_main_window(
         lock_super_state.language = Some(gui_language);
         lock_super_state.theme = Some(gui_theme);
         lock_super_state.log = Some(app_log_status);
+
         let button_map: std::collections::HashMap<&str, gtk::Button> = main_buttons
             .iter()
             .map(|(name, button)| (*name, (*button).clone()))
@@ -1564,8 +1482,6 @@ fn create_main_window(
     }
 
     setup_app_actions(&application, super_state.clone());
-
-
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -1715,11 +1631,11 @@ fn create_main_window(
     mnemonic_passphrase_main_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
 
-    let pixy = qr2m_lib::get_image_from_resources("theme/basic/dark/random.svg");
-    let image = gtk::Picture::for_pixbuf(&pixy);
-    let random_mnemonic_passphrase_button = gtk::Button::new();
+    // let pixy = qr2m_lib::get_image_from_resources("theme/basic/dark/random.svg");
+    // let image = gtk::Picture::for_pixbuf(&pixy);
+    // let random_mnemonic_passphrase_button = gtk::Button::new();
 
-    random_mnemonic_passphrase_button.set_child(Some(&image));
+    // random_mnemonic_passphrase_button.set_child(Some(&image));
 
     if *source == "RNG+" {
         mnemonic_passphrase_length_box.set_visible(true);
@@ -3445,6 +3361,32 @@ fn create_settings_window(
     default_gui_theme_color_box.append(&default_gui_theme_color_item_box);
     content_general_box.append(&default_gui_theme_color_box);
 
+    // GUI icons
+    let default_gui_icons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_gui_icons_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_icons_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_gui_icons_label = gtk::Label::new(Some(&t!("UI.settings.general.icons").to_string()));
+    let valid_gui_icons_as_strings: Vec<String> = VALID_GUI_ICONS.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_icons_as_str_refs: Vec<&str> = valid_gui_icons_as_strings.iter().map(|s| s.as_ref()).collect();
+    let gui_icons_dropdown = gtk::DropDown::from_strings(&valid_gui_icons_as_str_refs);
+    let default_gui_icons = valid_gui_icons_as_strings
+        .iter()
+        .position(|s| *s == settings.gui_icons) 
+        .unwrap_or(0);
+
+    gui_icons_dropdown.set_selected(default_gui_icons.try_into().unwrap());
+    gui_icons_dropdown.set_size_request(200, 10);
+    default_gui_icons_box.set_hexpand(true);
+    default_gui_icons_item_box.set_hexpand(true);
+    default_gui_icons_item_box.set_margin_end(20);
+    default_gui_icons_item_box.set_halign(gtk::Align::End);
+    
+    default_gui_icons_label_box.append(&default_gui_icons_label);
+    default_gui_icons_item_box.append(&gui_icons_dropdown);
+    default_gui_icons_box.append(&default_gui_icons_label_box);
+    default_gui_icons_box.append(&default_gui_icons_item_box);
+    content_general_box.append(&default_gui_icons_box);
+
     // GUI language
     let default_gui_language_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -4372,6 +4314,7 @@ fn create_settings_window(
                 ("wallet_hardened_address", toml_edit::value(hardened_addresses_checkbox.is_active())),
                 ("gui_save_size", toml_edit::value(save_window_size_checkbox.is_active())),
                 ("gui_theme", toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize])),
+                ("gui_icons", toml_edit::value(VALID_GUI_ICONS[gui_icons_dropdown.selected() as usize])),
                 ("gui_language", toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize])),
                 ("gui_search", toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize])),
                 ("gui_notification_timeout", toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64)),
@@ -4396,7 +4339,7 @@ fn create_settings_window(
             ];
     
             for (key, value) in updates {
-                if key == "gui_theme" || key == "gui_log" {
+                if key == "gui_theme" || key == "gui_log" || key == "gui_icons" {
                     settings.update_value(key, value, Some(super_state.clone()));
                 } else {
                     settings.update_value(key, value, None);
@@ -4450,7 +4393,7 @@ fn create_settings_window(
                                     
                                     AppSettings::load_settings();
                                     lock_new_super_state.apply_theme();
-                                    lock_new_super_state.icons = Some(lock_new_super_state.register_icons());
+                                    lock_new_super_state.pictures = Some(lock_new_super_state.register_icons());
                                     lock_new_super_state.show_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
                                 _ => {
@@ -4755,13 +4698,13 @@ fn save_wallet_to_file() {
 //     println!("\t Theme path: {:?}", theme_base_path);
 
 //     let icon_files = [
-//         "new-wallet.png",
-//         "open-wallet.png",
-//         "save-wallet.png",
-//         "about.png",
-//         "settings.png",
-//         "bell.png",
-//         "notif.png",
+//         "new-wallet.svg",
+//         "open-wallet.svg",
+//         "save-wallet.svg",
+//         "about.svg",
+//         "settings.svg",
+//         "bell.svg",
+//         "notif.svg",
 //     ];
 
 //     let mut images = Vec::new();

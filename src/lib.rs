@@ -10,6 +10,12 @@
 use sha2::{Digest, Sha256, Sha512};
 use include_dir::{include_dir, Dir};
 use gtk4 as gtk;
+use gtk::{gdk_pixbuf, glib, prelude::*};
+
+const APP_DEFAULT_BUTTON_HEIGHT: u8 = 24;
+const APP_DEFAULT_BUTTON_WIDTH: u8 = 24;
+const APP_IMAGE_BITS: u8 = 8;
+const APP_IMAGE_HAS_ALPHA: bool = true;
 
 pub static RES_DIR: Dir<'_> = include_dir!("res");
 
@@ -182,22 +188,69 @@ pub fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
     }
 }
 
+pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
+    match RES_DIR.get_file(image_name) {
+        Some(file) => {
+            let image_data = file.contents();
+            let image_bytes = glib::Bytes::from_static(image_data);
+            let loader = gdk_pixbuf::PixbufLoader::new();
+
+            if loader.write(&image_bytes).is_ok() {
+                loader.close().unwrap();
+                if let Some(pixbuf) = loader.pixbuf() {
+                    let picture = gtk::Picture::for_pixbuf(&pixbuf);
+                    picture.set_size_request(
+                        APP_DEFAULT_BUTTON_WIDTH as i32,
+                        APP_DEFAULT_BUTTON_HEIGHT as i32,
+                    );
+                    return picture;
+                }
+            }
+            generate_empty_picture()
+        }
+        None => {
+            eprintln!("Failed to get {} from embedded resources", image_name);
+            generate_empty_picture()
+        }
+    }
+}
+
 fn generate_empty_image() -> gtk::gdk_pixbuf::Pixbuf {
     let empty_image: Vec<u8> = vec![1, 64, 112].into_iter().cycle().take(300).collect();
     gtk::gdk_pixbuf::Pixbuf::from_bytes(
         &glib::Bytes::from(&empty_image),
         gtk::gdk_pixbuf::Colorspace::Rgb,
-        false,
-        8,
-        10,
-        10,
+        APP_IMAGE_HAS_ALPHA,
+        APP_IMAGE_BITS as i32,
+        APP_DEFAULT_BUTTON_WIDTH as i32,
+        APP_DEFAULT_BUTTON_HEIGHT as i32,
         30,
     )
 }
 
+fn generate_empty_picture() -> gtk::Picture {
+    let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
+        gtk::gdk_pixbuf::Colorspace::Rgb, 
+        APP_IMAGE_HAS_ALPHA,
+        APP_IMAGE_BITS as i32,
+        APP_DEFAULT_BUTTON_WIDTH as i32,
+        APP_DEFAULT_BUTTON_HEIGHT as i32,
+    ).expect("Failed to create empty pixbuf");
+
+    empty_pixbuf.fill(0x07041080);
+
+    let picture = gtk::Picture::for_pixbuf(&empty_pixbuf);
+    picture.set_size_request(
+        APP_DEFAULT_BUTTON_WIDTH as i32,
+        APP_DEFAULT_BUTTON_HEIGHT as i32,
+    );
+
+    picture
+}
+
 pub fn setup_css() {
     let provider = gtk::CssProvider::new();
-    let css_path = std::path::Path::new("theme").join("basic").join("style.css");
+    let css_path = std::path::Path::new("theme").join("style.css");
     let css_path_str = css_path.to_str().expect("Failed to convert path to string");
     let css_content = get_text_from_resources(css_path_str);
 

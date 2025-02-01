@@ -1,3 +1,6 @@
+# version 0.71.4
+- new icon themes: thin, bold, fill
+
 # version 0.71.3
 - theme change upgraded
 - cargo dependencies upgraded
