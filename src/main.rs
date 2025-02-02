@@ -124,12 +124,12 @@ lazy_static::lazy_static! {
 }
 
 struct SuperState {
-    language: Option<String>,
-    theme: Option<String>,
-    icons: Option<String>,
-    log: Option<bool>,
-    pictures: Option<std::collections::HashMap<&'static str, gtk::Picture>>,
-    buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
+    gui_language: Option<String>,
+    gui_theme: Option<String>,
+    gui_icon_theme: Option<String>,
+    gui_log_status: Option<bool>,
+    gui_main_buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
+    gui_button_images: Option<std::collections::HashMap<&'static str, gtk::Picture>>,
     app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
     app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
 }
@@ -137,12 +137,12 @@ struct SuperState {
 impl SuperState {
     fn new() -> Self {
         Self {
-            language: None,
-            theme: None,
-            icons: None,
-            log: None,
-            pictures: None,
-            buttons: None,
+            gui_language: None,
+            gui_theme: None,
+            gui_icon_theme: None,
+            gui_log_status: None,
+            gui_main_buttons: None,
+            gui_button_images: None,
             app_messages: Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(None)))),
             app_log: Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(None)))),
         }
@@ -163,7 +163,7 @@ impl SuperState {
     }
 
     fn apply_theme(&mut self) {
-        if let Some(theme) = &self.theme {
+        if let Some(theme) = &self.gui_theme {
             let preferred_theme = match theme.as_str() {
                 "System" => adw::ColorScheme::PreferLight,
                 "Light" => adw::ColorScheme::ForceLight,
@@ -191,7 +191,7 @@ impl SuperState {
             let app_messages = app_messages.lock().unwrap();
             app_messages.queue_message(message.clone(), message_type);
 
-            if let Some(status) = self.log {
+            if let Some(status) = self.gui_log_status {
                 if status == true {
                         println!("sending message to log \n{:?} - {:?}", message_type, message.clone());
 
@@ -201,7 +201,7 @@ impl SuperState {
     }
 
     fn apply_language(&mut self) {
-        if let Some(language) = &self.language {
+        if let Some(language) = &self.gui_language {
             let language_code = match language.as_str() {
                 "Deutsch" => "de",
                 "Hrvatski" => "hr",
@@ -226,7 +226,7 @@ impl SuperState {
             "light"
         };
     
-        let gui_icons = self.icons.clone().unwrap_or(VALID_GUI_ICONS[0].to_string());
+        let gui_icons = self.gui_icon_theme.clone().unwrap_or(VALID_GUI_ICONS[0].to_string());
 
         let theme_base_path = std::path::Path::new("theme")
             .join("basic")
@@ -259,14 +259,14 @@ impl SuperState {
     }
 
     fn get_icon(&self, name: &str) -> Option<&gtk::Picture> {
-        match &self.pictures {
+        match &self.gui_button_images {
             Some(icon) => icon.get(name),
             None => None,
         }
     }
 
     fn register_buttons(&mut self) {
-        if let (Some(buttons), Some(icons)) = (&self.buttons, &self.pictures) {
+        if let (Some(buttons), Some(icons)) = (&self.gui_main_buttons, &self.gui_button_images) {
             for (name, button) in buttons {
                 if let Some(icon) = icons.get(name) {
                     button.set_child(Some(icon));
@@ -817,11 +817,9 @@ impl AppSettings {
                         
                         if let Some(state) = super_state {
                             let mut state = state.lock().unwrap();
-                            state.theme = Some(self.gui_theme.clone());
-
-                            println!("##################### Applying theme...");
+                            state.gui_theme = Some(self.gui_theme.clone());
                             state.apply_theme();
-                            state.pictures = Some(state.register_icons());
+                            state.gui_button_images = Some(state.register_icons());
                         } else {
                             println!("State in gui_theme is None");
                         }
@@ -840,11 +838,9 @@ impl AppSettings {
                         
                         if let Some(state) = super_state {
                             let mut state = state.lock().unwrap();
-                            state.icons = Some(self.gui_icons.clone());
 
-                            println!("##################### Applying icons...");
-                            state.apply_theme();
-                            state.pictures = Some(state.register_icons());
+                            state.gui_icon_theme = Some(self.gui_icons.clone());
+                            state.gui_button_images = Some(state.register_icons());
                         } else {
                             println!("State in gui_icons is None");
                         }
@@ -863,7 +859,7 @@ impl AppSettings {
                         
                         if let Some(state) = super_state {
                             let mut state = state.lock().unwrap();
-                            state.language = Some(self.gui_language.clone());
+                            state.gui_language = Some(self.gui_language.clone());
                             state.apply_language();
                         } else {
                             eprintln!("State in gui_language is None");
@@ -902,9 +898,9 @@ impl AppSettings {
 
                     if let Some(state) = super_state {
                         let mut super_state_lock = state.lock().unwrap();
-                        super_state_lock.log = new_value.as_bool();
+                        super_state_lock.gui_log_status = new_value.as_bool();
 
-                        if let Some(status) = super_state_lock.log {
+                        if let Some(status) = super_state_lock.gui_log_status {
                             if status == true {
                                 println!("Log status: {:?}", status);
                             } else {
@@ -1342,16 +1338,6 @@ fn setup_app_actions(
         #[strong] super_state,
         move |_action, _parameter| {
             let settings_window = create_settings_window(super_state.clone());
-            settings_window.connect_close_request(clone!(
-                #[strong] super_state,
-                move |_| {
-                    if let Ok(mut state) = super_state.lock() {
-                        state.apply_theme();
-                        state.register_icons();
-                    }
-                    glib::Propagation::Proceed
-                }
-            ));
             settings_window.show();
         }
     ));
@@ -1454,8 +1440,8 @@ fn create_main_window(
     
     {
         let mut lock_super_state = super_state.lock().unwrap();
-        lock_super_state.icons = Some(gui_icons);
-        lock_super_state.pictures = Some(lock_super_state.register_icons());
+        lock_super_state.gui_icon_theme = Some(gui_icons);
+        lock_super_state.gui_button_images = Some(lock_super_state.register_icons());
         
         for (name, button) in main_buttons.iter() {
             if let Some(icon) = lock_super_state.get_icon(name) {
@@ -1466,17 +1452,16 @@ fn create_main_window(
             }
         }
         
-        lock_super_state.language = Some(gui_language);
-        lock_super_state.theme = Some(gui_theme);
-        lock_super_state.log = Some(app_log_status);
+        lock_super_state.gui_language = Some(gui_language);
+        lock_super_state.gui_theme = Some(gui_theme);
+        lock_super_state.gui_log_status = Some(app_log_status);
 
         let button_map: std::collections::HashMap<&str, gtk::Button> = main_buttons
             .iter()
             .map(|(name, button)| (*name, (*button).clone()))
             .collect();
 
-        lock_super_state.buttons = Some(button_map);
-
+        lock_super_state.gui_main_buttons = Some(button_map);
         lock_super_state.init_app_messages(info_bar.clone());
         lock_super_state.init_app_log(log_button.clone());
     }
@@ -4393,7 +4378,7 @@ fn create_settings_window(
                                     
                                     AppSettings::load_settings();
                                     lock_new_super_state.apply_theme();
-                                    lock_new_super_state.pictures = Some(lock_new_super_state.register_icons());
+                                    lock_new_super_state.gui_button_images = Some(lock_new_super_state.register_icons());
                                     lock_new_super_state.show_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
                                 _ => {
