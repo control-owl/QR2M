@@ -130,8 +130,7 @@ struct SuperState {
     gui_log_status: Option<bool>,
     gui_main_buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
     gui_button_images: Option<std::collections::HashMap<&'static str, gtk::Picture>>,
-    app_messages: Option<std::sync::Arc<std::sync::Mutex<AppMessages>>>,
-    app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
+
 }
 
 impl SuperState {
@@ -143,38 +142,9 @@ impl SuperState {
             gui_log_status: None,
             gui_main_buttons: None,
             gui_button_images: None,
-            app_messages: Some(std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(None)))),
-            app_log: Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(None)))),
         }
     }
 
-    fn init_app_messages(&mut self, info_bar: gtk::Revealer) {
-        if let Some(message) = &self.app_messages {
-            let mut lock_state = message.lock().unwrap();
-            lock_state.info_bar.replace(info_bar);
-        }
-    }
-
-    fn init_app_log(&mut self, log_button: gtk::Button) {
-        if let Some(bar) = &self.app_log {
-            let mut lock_state = bar.lock().unwrap();
-            lock_state.log_button.replace(log_button);
-        }
-    }
-
-    fn show_message(&self, message: String, message_type: gtk::MessageType) {
-        if let Some(app_messages) = &self.app_messages {
-            let app_messages = app_messages.lock().unwrap();
-            app_messages.queue_message(message.clone(), message_type);
-
-            if let Some(status) = self.gui_log_status {
-                if status == true {
-                        println!("sending message to log \n{:?} - {:?}", message_type, message.clone());
-
-                }
-            }
-        }
-    }
 
     fn apply_language(&mut self) {
         if let Some(language) = &self.gui_language {
@@ -186,11 +156,11 @@ impl SuperState {
             };
         
             rust_i18n::set_locale(language_code);
-            self.show_message(t!("UI.messages.change-language").to_string(), gtk::MessageType::Info);
+            // self.show_message(t!("UI.messages.change-language").to_string(), gtk::MessageType::Info);
             
         } else {
             rust_i18n::set_locale("en");
-            self.show_message("Language is not set. Falling back to English.".to_string(), gtk::MessageType::Warning);
+            // self.show_message("Language is not set. Falling back to English.".to_string(), gtk::MessageType::Warning);
         }
     }
 
@@ -201,17 +171,17 @@ impl SuperState {
                 "Light" => adw::ColorScheme::ForceLight,
                 "Dark" => adw::ColorScheme::PreferDark,
                 _ => {
-                    self.show_message(
-                        t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
-                        gtk::MessageType::Error
-                    );
+                    // self.show_message(
+                    //     t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
+                    //     gtk::MessageType::Error
+                    // );
                     adw::ColorScheme::PreferLight
                 }
             };
 
             adw::StyleManager::default().set_color_scheme(preferred_theme);
         } else {
-            self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
+            // self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
         }
     }
@@ -288,16 +258,16 @@ impl SuperState {
                 "Light" => adw::ColorScheme::ForceLight,
                 "Dark" => adw::ColorScheme::PreferDark,
                 _ => {
-                    self.show_message(
-                        t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
-                        gtk::MessageType::Error
-                    );
+                    // self.show_message(
+                    //     t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
+                    //     gtk::MessageType::Error
+                    // );
                     adw::ColorScheme::PreferLight
                 }
             };
             adw::StyleManager::default().set_color_scheme(preferred_theme);
         } else {
-            self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
+            // self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
         }
 
@@ -347,16 +317,23 @@ impl SuperState {
 
 struct AppMessages {
     info_bar: Option<gtk::Revealer>,
+    log_button: Option<gtk::Button>,
     message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     processing: std::sync::Arc<std::sync::Mutex<bool>>,
+    app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
 }
 
 impl AppMessages {
-    fn new(info_bar: Option<gtk::Revealer>) -> Self {
+    fn new(
+        info_bar: Option<gtk::Revealer>,
+        log_button: Option<gtk::Button>,
+    ) -> Self {
         Self {
             info_bar: info_bar,
+            log_button: log_button,
             message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
             processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
+            app_log: Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()))),
         }
     }
 
@@ -492,6 +469,35 @@ impl AppMessages {
         revealer.set_reveal_child(true);
 
     }
+
+    fn init_app_messages(&mut self, info_bar: gtk::Revealer) {
+        // if let Some(message) = &self.app_messages {
+            // let mut lock_state = message.lock().unwrap();
+            self.info_bar.replace(info_bar);
+        // }
+    }
+
+    fn init_app_log(&mut self, log_button: gtk::Button) {
+        if let Some(bar) = &self.app_log {
+            let mut lock_state = bar.lock().unwrap();
+            lock_state.log_button.replace(log_button);
+        }
+    }
+
+    fn show_message(&self, message: String, message_type: gtk::MessageType) {
+        // if let Some(app_messages) = &self.app_messages {
+            // let app_messages = app_messages.lock().unwrap();
+            self.queue_message(message.clone(), message_type);
+
+            // if let Some(status) = self.gui_log_status {
+            //     if status == true {
+            //             println!("sending message to log \n{:?} - {:?}", message_type, message.clone());
+
+            //     }
+            // }
+        // }
+    }
+
 }
 
 
@@ -502,10 +508,10 @@ struct AppLog {
 }
 
 impl AppLog {
-    fn new(button: Option<gtk::Button>) -> Self {
+    fn new() -> Self {
         Self {
             _status: std::sync::Arc::new(std::sync::Mutex::new(false)),
-            log_button: button,
+            log_button: None,
             _messages: None,
         }
     }
@@ -1373,11 +1379,14 @@ fn main() {
         .application_id("wtf.r_o0_t.qr2m")
         .build();
     
-    application.connect_activate(clone!(
-        move |app| {
-            let super_state =std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
+    let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
 
-            create_main_window(&app, super_state);
+    application.connect_activate(clone!(
+        #[strong] super_state,
+        move |app| {
+            // let super_state =std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
+
+            create_main_window(&app, super_state.clone());
         }
     ));
     
@@ -1387,6 +1396,7 @@ fn main() {
 fn setup_app_actions(
     application: &adw::Application, 
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) {
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
@@ -1406,9 +1416,9 @@ fn setup_app_actions(
     ));
 
     open.connect_activate(clone!(
-        #[weak] super_state,
+        #[strong] app_messages_state,
         move |_action, _parameter| {
-            open_wallet_from_file(super_state.clone());
+            open_wallet_from_file(app_messages_state.clone());
         }
     ));
 
@@ -1430,8 +1440,9 @@ fn setup_app_actions(
 
     settings.connect_activate(clone!(
         #[strong] super_state,
+        #[strong] app_messages_state,
         move |_action, _parameter| {
-            let settings_window = create_settings_window(super_state.clone());
+            let settings_window = create_settings_window(super_state.clone(), app_messages_state.clone());
             settings_window.show();
         }
     ));
@@ -1535,7 +1546,6 @@ fn create_main_window(
     {
         let mut lock_super_state = super_state.lock().unwrap();
         lock_super_state.gui_icon_theme = Some(gui_icons);
-        // lock_super_state.register_icons();
         
         for (name, button) in main_buttons.iter() {
             if let Some(icon) = lock_super_state.get_icon(name) {
@@ -1556,13 +1566,19 @@ fn create_main_window(
             .collect();
 
         lock_super_state.gui_main_buttons = Some(button_map);
-        lock_super_state.init_app_messages(info_bar.clone());
-        lock_super_state.init_app_log(log_button.clone());
+        // lock_super_state.init_app_messages(info_bar.clone());
+        // lock_super_state.init_app_log(log_button.clone());
         lock_super_state.reload_gui_buttons();
 
     }
 
-    setup_app_actions(&application, super_state.clone());
+    let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
+        Some(info_bar.clone()),
+            Some(log_button.clone())
+        )));
+
+    
+    setup_app_actions(&application, super_state.clone(), app_messages_state.clone());
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -1581,8 +1597,9 @@ fn create_main_window(
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
         #[strong] super_state,
+        #[strong] app_messages_state,
         move |_| {
-            let settings_window = create_settings_window(super_state.clone());
+            let settings_window = create_settings_window(super_state.clone(), app_messages_state.clone());
             settings_window.show();
         }
     ));
@@ -1601,8 +1618,9 @@ fn create_main_window(
 
     new_wallet_button.connect_clicked(clone!(
         #[weak] application,
+        #[strong] super_state,
         move |_| {
-            let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
+            // let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
 
             create_main_window(&application, super_state.clone());
         }
@@ -2302,9 +2320,9 @@ fn create_main_window(
         #[weak] mnemonic_passphrase_text,
         #[weak] mnemonic_words_text,
         #[weak] seed_text,
-        #[weak] super_state,
+        #[strong] app_messages_state,
         move |_| {
-            let (entropy, passphrase) = open_wallet_from_file(super_state.clone());
+            let (entropy, passphrase) = open_wallet_from_file(app_messages_state.clone());
 
             if !entropy.is_empty() {
                 println!("\t Wallet entropy: {:?}", entropy);
@@ -2404,8 +2422,8 @@ fn create_main_window(
 
             } else {
                 eprintln!("{}", &t!("error.entropy.empty"));
-                let lock_state = super_state.lock().unwrap();
-                lock_state.show_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
+                // let lock_state = super_state.lock().unwrap();
+                // lock_state.show_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
             }
         }
     ));
@@ -2451,6 +2469,7 @@ fn create_main_window(
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
         #[strong] super_state,
+        #[strong] app_messages_state,
         // #[strong] app_log,
         // #[strong] resources,
         // #[weak] log_button,
@@ -2546,9 +2565,11 @@ fn create_main_window(
                                 master_public_key_text.buffer().set_text(&xprv.1);
                             },
                             Err(err) => {
-                                
-                                let lock_state = super_state.lock().unwrap();
-                                lock_state.show_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
+                                {
+                                    let mut lock_super_state = app_messages_state.lock().unwrap();
+                                    lock_super_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
+                                    
+                                }
                                 eprintln!("{}: {}", &t!("error.master.create"), err)
                             },
                         }
@@ -2565,8 +2586,13 @@ fn create_main_window(
                     }  
                 }
             } else {
-                let lock_state = super_state.lock().unwrap();
-                lock_state.show_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
+                {
+                    let mut app_messages_state = app_messages_state.lock().unwrap();
+                    app_messages_state.queue_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
+                    
+                }
+                // let lock_state = super_state.lock().unwrap();
+                // lock_state.show_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
 
                 // {
                 //     if let Ok(mut log_lock) = app_log.lock() {
@@ -3102,6 +3128,7 @@ fn create_main_window(
         #[weak] derivation_label_text,
         #[weak] master_private_key_text,
         #[strong] super_state,
+        #[strong] app_messages_state,
         // #[strong] app_log,
         // #[strong] resources,
         // #[weak] log_button,
@@ -3114,10 +3141,11 @@ fn create_main_window(
             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
             
             if master_private_key_string == "" {
-                let lock_state = super_state.lock().unwrap();
-                lock_state.show_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
-
-
+                {
+                    let lock_app_messages = app_messages_state.lock().unwrap();
+                    lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
+                    
+                }
                 // {
                 //     if let Ok(mut log_lock) = app_log.lock() {
                 //         log_lock.initialize_app_log(log_button.clone(), resources.clone());
@@ -3315,9 +3343,13 @@ fn create_main_window(
     main_window_box.append(&main_infobar_box);
     main_window_box.set_hexpand(true);
     
-    let app_messages = AppMessages::new(Some(info_bar.clone()));
-    app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
-    
+    {
+        let Lock_app_messages = app_messages_state.lock().unwrap();
+        Lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
+        
+    }
+
+
     // IMPLEMENT: Check if log is enabled in settings
     // let log_clone = app_log.clone();
     // {
@@ -3378,6 +3410,7 @@ fn create_log_window(
 
 fn create_settings_window(
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
@@ -4431,7 +4464,7 @@ fn create_settings_window(
             // TODO: Rewrite
             {
                 let mut state_lock = super_state.lock().unwrap();
-                // state_lock.reload_gui_buttons();
+                state_lock.reload_gui();
             }
 
             settings_window.close();
@@ -4459,12 +4492,13 @@ fn create_settings_window(
 
             dialog.connect_response(clone!(
                 #[weak] settings_window,
-                // #[weak] super_state,
+                #[weak] app_messages_state,
                 move |dialog, response| {
                     match response {
                         gtk::ResponseType::Yes => {
                             let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
-                            let mut lock_new_super_state = super_state.lock().unwrap();
+                            let mut lock_super_state = super_state.lock().unwrap();
+                            let lock_app_messages_state = app_messages_state.lock().unwrap();
                             
                             match reset_user_settings().unwrap().as_str() {
                                 "OK" => {
@@ -4472,14 +4506,13 @@ fn create_settings_window(
                                     settings_window.close();
                                     
                                     AppSettings::load_settings();
-                                    lock_new_super_state.show_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
+                                    lock_app_messages_state.show_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
                                 _ => {
-                                    lock_new_super_state.show_message(t!("error.settings.reset").to_string(), gtk::MessageType::Error);
+                                    lock_app_messages_state.show_message(t!("error.settings.reset").to_string(), gtk::MessageType::Error);
                                 },
                             }
-                            lock_new_super_state.change_gui_theme_color();
-                            lock_new_super_state.reload_gui_buttons();
+                            lock_super_state.reload_gui();
                         },
                         _ => {
                             dialog.close();
@@ -4625,7 +4658,7 @@ fn create_about_window() {
 //     message_box
 // }
 
-fn open_wallet_from_file(state: std::sync::Arc<std::sync::Mutex<SuperState>>) -> (String, Option<String>) {
+fn open_wallet_from_file(app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>) -> (String, Option<String>) {
     let open_context = glib::MainContext::default();
     let open_loop = glib::MainLoop::new(Some(&open_context), false);
     let (tx, rx) = std::sync::mpsc::channel();
@@ -4652,7 +4685,7 @@ fn open_wallet_from_file(state: std::sync::Arc<std::sync::Mutex<SuperState>>) ->
 
     open_dialog.connect_response(clone!(
         #[strong] open_loop,
-        #[weak] state,
+        #[strong] app_messages_state,
         move |open_dialog, response| {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = open_dialog.file() {
@@ -4677,10 +4710,10 @@ fn open_wallet_from_file(state: std::sync::Arc<std::sync::Mutex<SuperState>>) ->
                                 }
                             },
                             Err(err) => {
-                                let lock_state = state.lock().unwrap();
+                                let lock_state = app_messages_state.lock().unwrap();
                                 let error_message = format!("{} : {}", t!("error.wallet.process"), err);
 
-                                lock_state.show_message(error_message, gtk::MessageType::Error);
+                                lock_state.queue_message(error_message, gtk::MessageType::Error);
 
                                 open_loop.quit();
                             }
@@ -4707,8 +4740,8 @@ fn open_wallet_from_file(state: std::sync::Arc<std::sync::Mutex<SuperState>>) ->
             (entropy.unwrap_or_else(|| String::new()), passphrase)
         },
         Err(_) => {
-            let lock_state = state.lock().unwrap();
-            lock_state.show_message(t!("error.wallet.open").to_string(), gtk::MessageType::Error);
+            // let lock_state = state.lock().unwrap();
+            // lock_state.show_message(t!("error.wallet.open").to_string(), gtk::MessageType::Error);
             (String::new(), None)
         }
     }
