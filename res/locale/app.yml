@@ -16,6 +16,10 @@ UI:
         en: "Theme color"
         de: "Themenfarbe"
         hr: "Boja programa"
+      icons:
+        en: "Icons"
+        de: "Symbole"
+        hr: "Ikone"
       language:
         en: "Language"
         de: "Sprache"

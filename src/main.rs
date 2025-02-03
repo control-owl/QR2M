@@ -231,6 +231,8 @@ impl SuperState {
     // }
 
     fn reload_gui(&mut self) {
+        self.apply_language();
+        
         if let Some(theme) = &self.gui_theme {
             let preferred_theme = match theme.as_str() {
                 "Light" => adw::ColorScheme::ForceLight,
