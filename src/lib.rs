@@ -194,9 +194,8 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
             let image_data = file.contents();
             let image_bytes = glib::Bytes::from_static(image_data);
             let loader = gdk_pixbuf::PixbufLoader::new();
-
+            
             if loader.write(&image_bytes).is_ok() {
-                loader.close().unwrap();
                 if let Some(pixbuf) = loader.pixbuf() {
                     let picture = gtk::Picture::for_pixbuf(&pixbuf);
                     picture.set_size_request(
@@ -205,7 +204,12 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
                     );
                     return picture;
                 }
+                // BUG: loader must be closed??? fuck me sideways, what is this shit?
+                // again, idiot, do check if SVG is loadable, and if not load png
+                // fucking windows.
+                let closed= loader.close();
             }
+            println!("ok");
             generate_empty_picture()
         }
         None => {

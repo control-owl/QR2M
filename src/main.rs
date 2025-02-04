@@ -4,7 +4,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -269,7 +269,6 @@ impl SuperState {
             ("notif", "notif.svg"),
             ("random", "random.svg"),
         ];
-
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
