@@ -230,6 +230,7 @@ impl SuperState {
     //     }
     // }
 
+    // BUG: This function panics on Windows, out of memory. WTF????
     fn reload_gui(&mut self) {
         self.apply_language();
         
@@ -1354,9 +1355,9 @@ fn main() {
     let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
 
     application.connect_activate(clone!(
-        #[weak] super_state,
+        #[strong] super_state,
         move |app| {
-            create_main_window(&app, &super_state);
+            create_main_window(&app, super_state.clone());
         }
     ));
     
@@ -1365,8 +1366,8 @@ fn main() {
 
 fn setup_app_actions(
     application: &adw::Application, 
-    super_state: &std::sync::Arc<std::sync::Mutex<SuperState>>,
-    app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) {
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
@@ -1379,9 +1380,9 @@ fn setup_app_actions(
     
     new.connect_activate(clone!(
         #[weak] application,
-        #[weak] super_state,
+        #[strong] super_state,
         move |_action, _parameter| {
-            create_main_window(&application, &super_state);
+            create_main_window(&application, super_state.clone());
         }
     ));
 
@@ -1401,18 +1402,18 @@ fn setup_app_actions(
     });
     
     log.connect_activate(clone!(
-        #[weak] super_state,
+        #[strong] super_state,
         move |_action, _parameter| {
-            let log_window = create_log_window(&super_state);
+            let log_window = create_log_window(super_state.clone());
             log_window.show()
         }
     ));
 
     settings.connect_activate(clone!(
-        #[weak] super_state,
+        #[strong] super_state,
         #[strong] app_messages_state,
         move |_action, _parameter| {
-            let settings_window = create_settings_window(&super_state, &app_messages_state);
+            let settings_window = create_settings_window(super_state.clone(), app_messages_state.clone());
             settings_window.show();
         }
     ));
@@ -1447,7 +1448,7 @@ fn setup_app_actions(
 
 fn create_main_window(
     application: &adw::Application,
-    super_state: &std::sync::Arc<std::sync::Mutex<SuperState>>,
+    super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -1527,7 +1528,7 @@ fn create_main_window(
             .collect();
 
         lock_super_state.gui_main_buttons = Some(button_map);
-        lock_super_state.reload_gui();
+        // lock_super_state.reload_gui();
     }
 
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
@@ -1535,7 +1536,7 @@ fn create_main_window(
         Some(log_button.clone())
     )));
 
-    setup_app_actions(&application, &super_state, &app_messages_state);
+    setup_app_actions(&application, super_state.clone(), app_messages_state.clone());
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -1553,10 +1554,10 @@ fn create_main_window(
     
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
-        #[weak] super_state,
+        #[strong] super_state,
         #[strong] app_messages_state,
         move |_| {
-            let settings_window = create_settings_window(&super_state, &app_messages_state);
+            let settings_window = create_settings_window(super_state.clone(), app_messages_state.clone());
             settings_window.show();
         }
     ));
@@ -1566,18 +1567,18 @@ fn create_main_window(
     });
 
     log_button.connect_clicked(clone!(
-        #[weak] super_state,
+        #[strong] super_state,
         move |_| {
-            let log_window = create_log_window(&super_state);
+            let log_window = create_log_window(super_state.clone());
             log_window.show();
         }
     ));
 
     new_wallet_button.connect_clicked(clone!(
-        #[weak] application,
-        #[weak] super_state,
+        #[strong] application,
+        #[strong] super_state,
         move |_| {
-            create_main_window(&application, &super_state);
+            create_main_window(&application, super_state.clone());
         }
     ));
 
@@ -3304,7 +3305,7 @@ fn create_main_window(
 
 
 fn create_log_window(   
-    _super_state: &std::sync::Arc<std::sync::Mutex<SuperState>>,
+    _super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
     // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
     // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) -> gtk::ApplicationWindow {
@@ -3349,8 +3350,8 @@ fn create_log_window(
 
 
 fn create_settings_window(
-    super_state: &std::sync::Arc<std::sync::Mutex<SuperState>>,
-    app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
