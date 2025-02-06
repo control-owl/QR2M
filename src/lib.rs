@@ -167,27 +167,6 @@ pub fn get_text_from_resources(file_name: &str) -> String {
     }
 }
 
-pub fn get_image_from_resources(image_name: &str) -> gtk::gdk_pixbuf::Pixbuf {
-    match RES_DIR.get_file(image_name) {
-        Some(file) => {
-            let image_data = file.contents();
-            let image_bytes = glib::Bytes::from_static(image_data);
-            let cursor = std::io::Cursor::new(image_bytes);
-
-            match gtk::gdk_pixbuf::Pixbuf::from_read(cursor) {
-                Ok(pixbuf) => pixbuf,
-                Err(_) => {
-                    generate_empty_image()
-                }
-            }
-        }
-        None => {
-            eprintln!("Failed to get {} from embedded resources", image_name);
-            generate_empty_image()
-        }
-    }
-}
-
 pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
     match RES_DIR.get_file(image_name) {
         Some(file) => {
@@ -204,12 +183,12 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
                     );
                     return picture;
                 }
-                // BUG: loader must be closed??? fuck me sideways, what is this shit?
-                // again, idiot, do check if SVG is loadable, and if not load png
-                // fucking windows.
-                let closed= loader.close();
+                
+                match loader.close() {
+                    Ok(_) => {},
+                    Err(error) => {eprintln!("Error by get_picture_from_resources: {:?}", error)},
+                };
             }
-            println!("ok");
             generate_empty_picture()
         }
         None => {
@@ -219,20 +198,7 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
     }
 }
 
-fn generate_empty_image() -> gtk::gdk_pixbuf::Pixbuf {
-    let empty_image: Vec<u8> = vec![1, 64, 112].into_iter().cycle().take(300).collect();
-    gtk::gdk_pixbuf::Pixbuf::from_bytes(
-        &glib::Bytes::from(&empty_image),
-        gtk::gdk_pixbuf::Colorspace::Rgb,
-        APP_IMAGE_HAS_ALPHA,
-        APP_IMAGE_BITS as i32,
-        APP_DEFAULT_BUTTON_WIDTH as i32,
-        APP_DEFAULT_BUTTON_HEIGHT as i32,
-        30,
-    )
-}
-
-fn generate_empty_picture() -> gtk::Picture {
+pub fn generate_empty_picture() -> gtk::Picture {
     let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
         gtk::gdk_pixbuf::Colorspace::Rgb, 
         APP_IMAGE_HAS_ALPHA,
@@ -240,8 +206,8 @@ fn generate_empty_picture() -> gtk::Picture {
         APP_DEFAULT_BUTTON_WIDTH as i32,
         APP_DEFAULT_BUTTON_HEIGHT as i32,
     ).expect("Failed to create empty pixbuf");
-
-    empty_pixbuf.fill(0x07041080);
+    
+    empty_pixbuf.fill(0x070410FF);
 
     let picture = gtk::Picture::for_pixbuf(&empty_pixbuf);
     picture.set_size_request(
@@ -249,6 +215,7 @@ fn generate_empty_picture() -> gtk::Picture {
         APP_DEFAULT_BUTTON_HEIGHT as i32,
     );
 
+    println!("empty picture ready");
     picture
 }
 

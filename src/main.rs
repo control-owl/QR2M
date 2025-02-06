@@ -13,7 +13,7 @@
 // #![allow(unused_mut)]
 
 
-// REQUIREMENTS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 // Crates
@@ -30,7 +30,6 @@ use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
 
-
 // Mods
 mod anu;
 mod coin_db;
@@ -43,6 +42,10 @@ mod keys;
 #[macro_use]
 extern crate rust_i18n;
 i18n!("res/locale", fallback = "en");
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 // Default settings
 const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
@@ -122,6 +125,10 @@ lazy_static::lazy_static! {
     static ref APPLICATION_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<std::sync::Mutex<Vec<CryptoAddresses>>> = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
 }
+
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 struct SuperState {
     gui_language: Option<String>,
@@ -269,6 +276,7 @@ impl SuperState {
             ("notif", "notif.svg"),
             ("random", "random.svg"),
         ];
+        
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
@@ -290,6 +298,7 @@ impl SuperState {
         }
     }
 }
+
 
 struct AppMessages {
     info_bar: Option<gtk::Revealer>,
@@ -1234,6 +1243,7 @@ impl WalletSettings {
     }
 }
 
+
 #[derive(Debug, Clone, Copy)]
 struct DerivationPath {
     bip: Option<u32>,
@@ -1304,38 +1314,8 @@ struct CryptoAddresses {
     private_key: Option<String>,
 }
 
-// impl CryptoAddresses {
-//     fn new() -> Self {
-//         Self {
-//             coin_name: None,
-//             derivation_path: None,
-//             address: None,
-//             public_key: None,
-//             private_key: None,
-//         }
-//     }
-// }
 
-// BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
-fn print_program_info() {
-    let current_time = SystemTime::now();
-    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-
-    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
-    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
-    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
-    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
-    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
-    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
-
-    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
-    println!("Start time (UNIX): {:?}", &timestamp.to_string());
-    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
-}
-
-// GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 fn main() {
@@ -1361,6 +1341,22 @@ fn main() {
     ));
     
     application.run();
+}
+
+fn print_program_info() {
+    let current_time = SystemTime::now();
+    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+
+    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
+    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
+    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
+    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
+    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
+    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
+
+    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
+    println!("Start time (UNIX): {:?}", &timestamp.to_string());
+    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
 }
 
 fn setup_app_actions(
@@ -1527,7 +1523,7 @@ fn create_main_window(
             .collect();
 
         lock_super_state.gui_main_buttons = Some(button_map);
-        // lock_super_state.reload_gui();
+        lock_super_state.reload_gui();
     }
 
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
@@ -3302,52 +3298,6 @@ fn create_main_window(
     window.present();
 }
 
-
-fn create_log_window(   
-    _super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
-    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
-    // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
-) -> gtk::ApplicationWindow {
-    println!("Log window started");
-
-    let log_window = gtk::ApplicationWindow::builder()
-        .title(t!("UI.main.log").to_string())
-        // .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
-        // .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
-        .resizable(true)
-        .modal(false)
-        .build();
-
-
-
-    // let lock_super_state = super_state.lock().unwrap();
-    
-    // if let Some(app_log) = &lock_super_state.app_log {
-    //     let mut lock_app_log = app_log.lock().unwrap();
-        
-    //     if let Some(resources) = &lock_super_state.app_resources {
-    //         let lock_app_resources = resources.lock().unwrap();
-    //         let new_icon = lock_app_resources.get_icon("bell");
-            
-    //         let new_button = gtk::Button::new();
-    //         new_button.set_child(new_icon);
-
-    //         lock_app_log.log_button.replace(new_button);
-    //     };
-    // };
-
-
-    // let lock_button = lock_log.log_button.clone();
-    
-    // let lock_resources = resources.lock().unwrap();
-    
-    
-    // lock_button.clone().unwrap().set_child(lock_icon);
-
-    log_window
-}
-
-
 fn create_settings_window(
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
@@ -4507,6 +4457,95 @@ fn create_settings_window(
     settings_window
 }
 
+fn create_log_window(   
+    _super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
+    // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
+) -> gtk::ApplicationWindow {
+    println!("Log window started");
+
+    let log_window = gtk::ApplicationWindow::builder()
+        .title(t!("UI.main.log").to_string())
+        // .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
+        // .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
+        .resizable(true)
+        .modal(false)
+        .build();
+
+
+
+    // let lock_super_state = super_state.lock().unwrap();
+    
+    // if let Some(app_log) = &lock_super_state.app_log {
+    //     let mut lock_app_log = app_log.lock().unwrap();
+        
+    //     if let Some(resources) = &lock_super_state.app_resources {
+    //         let lock_app_resources = resources.lock().unwrap();
+    //         let new_icon = lock_app_resources.get_icon("bell");
+            
+    //         let new_button = gtk::Button::new();
+    //         new_button.set_child(new_icon);
+
+    //         lock_app_log.log_button.replace(new_button);
+    //     };
+    // };
+
+
+    // let lock_button = lock_log.log_button.clone();
+    
+    // let lock_resources = resources.lock().unwrap();
+    
+    
+    // lock_button.clone().unwrap().set_child(lock_icon);
+
+    log_window
+}
+
+fn create_about_window() {
+    println!("[+] {}", &t!("log.create_about_window").to_string());
+
+    let logo_image = qr2m_lib::get_picture_from_resources("logo/logo.svg");
+
+    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
+    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
+    
+    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
+    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
+    
+    let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
+
+    let they_forced_me = [
+        "This application uses GTK4 for its GUI.",
+        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
+        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
+    ];
+    let comments = they_forced_me.join(" ");
+
+    let about_window = gtk::AboutDialog::builder()
+        .modal(true)
+        // .default_width(600)
+        .default_height(400)
+        .program_name(APP_DESCRIPTION.unwrap())
+        .version(APP_VERSION.unwrap())
+        .website("https://www.github.com/control-owl/qr2m")
+        .website_label("GitHub project")
+        .authors([APP_AUTHOR.unwrap()])
+        .copyright("Copyright [2023-2025] Control Owl")
+        .license(licenses)
+        .wrap_license(true)
+        .comments(&t!("UI.about.description").to_string())
+        .comments(comments)
+        .build();
+
+    match logo_image.paintable() {
+        Some(image) => about_window.set_logo(Some(&image)),
+        None => {}
+    }
+    
+    about_window.show();
+
+}
+
 fn reset_user_settings() -> Result<String, String> {
     println!("[+] {}", &t!("log.reset-config").to_string());
 
@@ -4539,83 +4578,6 @@ fn reset_user_settings() -> Result<String, String> {
         },
     }
 }
-
-fn create_about_window() {
-    println!("[+] {}", &t!("log.create_about_window").to_string());
-
-    let pixy = qr2m_lib::get_image_from_resources("logo/logo.svg");
-    let logo_picture = gtk::Picture::for_pixbuf(&pixy).paintable().unwrap();
-
-    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
-    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
-    
-    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
-    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
-    
-    let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
-
-    let they_forced_me = [
-        "This application uses GTK4 for its GUI.",
-        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
-        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
-    ];
-    let comments = they_forced_me.join(" ");
-
-    let help_window = gtk::AboutDialog::builder()
-        .modal(true)
-        // .default_width(600)
-        .default_height(400)
-        .program_name(APP_DESCRIPTION.unwrap())
-        .version(APP_VERSION.unwrap())
-        .website("https://www.github.com/control-owl/qr2m")
-        .website_label("GitHub project")
-        .authors([APP_AUTHOR.unwrap()])
-        .copyright("Copyright [2023-2024] Control Owl")
-        .license(licenses)
-        .wrap_license(true)
-        .comments(&t!("UI.about.description").to_string())
-        .logo(&logo_picture)
-        .comments(comments)
-        .build();
-
-    help_window.show();
-
-}
-
-// pub fn create_info_message(
-//     revealer: &gtk::Revealer,
-//     message: &str,
-//     message_type: gtk::MessageType,
-// ) -> gtk::Box {
-//     let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-//     let message_label = gtk::Label::new(Some(message));
-//     message_label.set_hexpand(true);
-
-//     match message_type {
-//         gtk::MessageType::Error => message_box.set_css_classes(&["error-message"]),
-//         gtk::MessageType::Warning => message_box.set_css_classes(&["warning-message"]),
-//         _ => message_box.set_css_classes(&["info-message"]),
-//     }
-
-//     let close_button = gtk::Button::with_label("Close");
-//     let gesture = gtk::GestureClick::new();
-    
-//     gesture.connect_pressed(clone!(
-//         #[weak] revealer,
-//         move |_gesture, _n_press, _x, _y| {
-//             revealer.set_reveal_child(false);
-//         }
-//     ));
-    
-//     message_box.append(&message_label);
-//     message_box.append(&close_button);
-    
-//     revealer.add_controller(gesture);
-//     revealer.set_child(Some(&message_box));
-//     revealer.set_reveal_child(true);
-
-//     message_box
-// }
 
 fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>) -> (String, Option<String>) {
     let open_context = glib::MainContext::default();
@@ -4755,44 +4717,6 @@ fn save_wallet_to_file() {
     save_dialog.show();
     save_loop.run();
 }
-
-// fn get_window_theme_icons() -> [gtk::Image; 7] {
-//     println!("[+] {}", &t!("log.get_window_theme_icons").to_string());
-
-//     let settings = gtk::Settings::default().unwrap();
-//     let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
-//         "dark"
-//     } else {
-//         "light"
-//     };
-
-//     let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
-//     println!("\t Theme path: {:?}", theme_base_path);
-
-//     let icon_files = [
-//         "new-wallet.svg",
-//         "open-wallet.svg",
-//         "save-wallet.svg",
-//         "about.svg",
-//         "settings.svg",
-//         "bell.svg",
-//         "notif.svg",
-//     ];
-
-//     let mut images = Vec::new();
-
-//     for icon_file in icon_files.iter() {
-//         let icon_path = theme_base_path.join(icon_file);
-
-//         let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
-
-//         images.push(valid_icon);
-//     }
-
-//     let final_images: [gtk::Image; 7] = core::array::from_fn(|i| gtk::Image::from_pixbuf(Some(&images[i])));
-
-//     final_images
-// }
 
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     println!("[+] {}", &t!("log.update_derivation_label").to_string());

@@ -1,3 +1,6 @@
+# version 0.71.5
+- repaired logic when icons are not loadable
+
 # version 0.71.4
 - new icon themes: thin, bold, fill
 
