@@ -237,7 +237,6 @@ impl SuperState {
     //     }
     // }
 
-    // BUG: This function panics on Windows, out of memory. WTF????
     fn reload_gui(&mut self) {
         self.apply_language();
         
@@ -297,6 +296,24 @@ impl SuperState {
             }
         }
     }
+
+    fn get_icon(&self, name: &str) -> Option<gtk::Picture> {
+        self.gui_button_images
+            .as_ref()
+            .and_then(|icons| icons.get(name))
+            .map(|existing_picture| {
+                if let Some(paintable) = existing_picture.paintable() {
+                    eprintln!("copy old image++++++++++++++++++++++++++++++++++++");
+                    let new_picture = gtk::Picture::new();
+                    new_picture.set_paintable(Some(&paintable));
+                    new_picture
+                } else {
+                    eprintln!("fallback to empty image");
+                    gtk::Picture::new()
+                }
+            })
+    }
+    
 }
 
 
@@ -858,80 +875,79 @@ impl AppSettings {
                     self.save_settings();
                 }
             },
-            // "gui_theme" => {
-            //     if let Some(new_theme) = new_value.as_str() {
-            //         if Some(new_theme) != Some(&self.gui_theme) {
-            //             self.gui_theme = new_theme.to_string();
-            //             println!("Updating key {:?} = {:?}", key, new_value);
-                        
-            //             if let Some(state) = super_state {
-            //                 let mut state = state.lock().unwrap();
-            //                 state.gui_theme = Some(self.gui_theme.clone());
-            //                 state.change_gui_theme_color();
-            //                 state.reload_gui_buttons();
-            //             } else {
-            //                 println!("State in gui_theme is None");
-            //             }
-
-            //             self.save_settings();
-            //         }
-            //     } else {
-            //         eprintln!("Received invalid value for gui_theme: {:?}", new_value);
-            //     }
-            // },
-            // "gui_icons" => {
-            //     if let Some(new_icons) = new_value.as_str() {
-            //         if Some(new_icons) != Some(&self.gui_icons) {
-            //             self.gui_icons = new_icons.to_string();
-            //             println!("Updating key {:?} = {:?}", key, new_value);
-                        
-            //             if let Some(state) = super_state {
-            //                 let mut state = state.lock().unwrap();
-
-            //                 state.gui_icon_theme = Some(self.gui_icons.clone());
-            //                 state.reload_gui_buttons();
-            //             } else {
-            //                 println!("State in gui_icons is None");
-            //             }
-
-            //             self.save_settings();
-            //         }
-            //     } else {
-            //         eprintln!("Received invalid value for gui_icons: {:?}", new_value);
-            //     }
-            // },
-            "gui_theme" | "gui_icons" => {
-                if let Some(new_value_str) = new_value.as_str() {
-                    if (key == "gui_theme" && Some(new_value_str) != Some(&self.gui_theme))
-                        || (key == "gui_icons" && Some(new_value_str) != Some(&self.gui_icons))
-                    {
-                        match key {
-                            "gui_theme" => self.gui_theme = new_value_str.to_string(),
-                            "gui_icons" => self.gui_icons = new_value_str.to_string(),
-                            _ => {}
-                        }
-    
+            "gui_theme" => {
+                if let Some(new_theme) = new_value.as_str() {
+                    if Some(new_theme) != Some(&self.gui_theme) {
+                        self.gui_theme = new_theme.to_string();
                         println!("Updating key {:?} = {:?}", key, new_value);
-    
+                        
                         if let Some(state) = super_state {
                             let mut state = state.lock().unwrap();
-                            if key == "gui_theme" {
-                                state.gui_theme = Some(self.gui_theme.clone());
-                            }
-                            if key == "gui_icons" {
-                                state.gui_icon_theme = Some(self.gui_icons.clone());
-                            }
+                            state.gui_theme = Some(self.gui_theme.clone());
                             state.reload_gui();
                         } else {
-                            println!("State is None for {:?}", key);
+                            println!("State in gui_theme is None");
                         }
-    
+
                         self.save_settings();
                     }
                 } else {
-                    eprintln!("Received invalid value for {:?}: {:?}", key, new_value);
+                    eprintln!("Received invalid value for gui_theme: {:?}", new_value);
                 }
-            }
+            },
+            "gui_icons" => {
+                if let Some(new_icons) = new_value.as_str() {
+                    if Some(new_icons) != Some(&self.gui_icons) {
+                        self.gui_icons = new_icons.to_string();
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        
+                        if let Some(state) = super_state {
+                            let mut state = state.lock().unwrap();
+
+                            state.gui_icon_theme = Some(self.gui_icons.clone());
+                            state.reload_gui();
+                        } else {
+                            println!("State in gui_icons is None");
+                        }
+
+                        self.save_settings();
+                    }
+                } else {
+                    eprintln!("Received invalid value for gui_icons: {:?}", new_value);
+                }
+            },
+            // "gui_theme" | "gui_icons" => {
+            //     if let Some(new_value_str) = new_value.as_str() {
+            //         if (key == "gui_theme" && Some(new_value_str) != Some(&self.gui_theme))
+            //             || (key == "gui_icons" && Some(new_value_str) != Some(&self.gui_icons))
+            //         {
+            //             match key {
+            //                 "gui_theme" => self.gui_theme = new_value_str.to_string(),
+            //                 "gui_icons" => self.gui_icons = new_value_str.to_string(),
+            //                 _ => {}
+            //             }
+    
+            //             println!("Updating key {:?} = {:?}", key, new_value);
+    
+            //             if let Some(state) = super_state {
+            //                 let mut state = state.lock().unwrap();
+            //                 if key == "gui_theme" {
+            //                     state.gui_theme = Some(self.gui_theme.clone());
+            //                 }
+            //                 if key == "gui_icons" {
+            //                     state.gui_icon_theme = Some(self.gui_icons.clone());
+            //                 }
+            //                 state.reload_gui();
+            //             } else {
+            //                 println!("State is None for {:?}", key);
+            //             }
+    
+            //             self.save_settings();
+            //         }
+            //     } else {
+            //         eprintln!("Received invalid value for {:?}: {:?}", key, new_value);
+            //     }
+            // }
             "gui_language" => {
                 if let Some(new_language) = new_value.as_str() {
                     if Some(new_language) != Some(&self.gui_language) {
@@ -1508,7 +1524,7 @@ fn create_main_window(
         ("log", &log_button),
         ("random", &random_mnemonic_passphrase_button),
     ];
-    
+
     {
         let mut lock_super_state = super_state.lock().unwrap();
 
@@ -1522,8 +1538,26 @@ fn create_main_window(
             .map(|(name, button)| (*name, (*button).clone()))
             .collect();
 
-        lock_super_state.gui_main_buttons = Some(button_map);
-        lock_super_state.reload_gui();
+        
+        // Ensure icons are loaded
+        if lock_super_state.gui_button_images.is_none() {
+            println!("Icons not found in state, loading new icons...");
+            lock_super_state.gui_main_buttons = Some(button_map);
+            lock_super_state.reload_gui();
+        } else {
+            println!("Icons already loaded, applying existing icons...");
+            // Apply icons to buttons
+            if let Some(buttons) = &lock_super_state.gui_main_buttons {
+                for (name, button) in buttons {
+                    if let Some(icon) = lock_super_state.get_icon(name) {
+                        println!("setting existing image");
+                        button.set_child(Some(&icon));
+                    } else {
+                        eprintln!("⚠ Warning: No icon found for button '{}'", name);
+                    }
+                }
+            }
+        }
     }
 
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
