@@ -792,7 +792,7 @@ impl AppSettings {
         &mut self,
         key: &str,
         new_value: toml_edit::Item,
-        super_state: Option<&std::sync::Arc<std::sync::Mutex<SuperState>>>,
+        super_state: Option<std::sync::Arc<std::sync::Mutex<SuperState>>>,
     ) {
         match key {
             "wallet_entropy_source" => {
@@ -1336,7 +1336,7 @@ fn main() {
     application.connect_activate(clone!(
         #[strong] super_state,
         move |app| {
-            create_main_window(&app, super_state.clone());
+            create_main_window(app.clone(), super_state.clone());
         }
     ));
     
@@ -1360,7 +1360,7 @@ fn print_program_info() {
 }
 
 fn setup_app_actions(
-    application: &adw::Application, 
+    application: adw::Application, 
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) {
@@ -1374,10 +1374,10 @@ fn setup_app_actions(
     let test = gio::SimpleAction::new("test", None);
     
     new.connect_activate(clone!(
-        #[weak] application,
+        #[strong] application,
         #[strong] super_state,
         move |_action, _parameter| {
-            create_main_window(&application, super_state.clone());
+            create_main_window(application.clone(), super_state.clone());
         }
     ));
 
@@ -1442,7 +1442,7 @@ fn setup_app_actions(
 }
 
 fn create_main_window(
-    application: &adw::Application,
+    application: adw::Application,
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
@@ -1474,7 +1474,7 @@ fn create_main_window(
     application.style_manager().set_color_scheme(preferred_theme);
 
     let window = gtk::ApplicationWindow::builder()
-        .application(application)
+        .application(&application)
         .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
         .default_width(window_width as i32)
         .default_height(window_height as i32)
@@ -1531,7 +1531,7 @@ fn create_main_window(
         Some(log_button.clone())
     )));
 
-    setup_app_actions(&application, super_state.clone(), app_messages_state.clone());
+    setup_app_actions(application.clone(), super_state.clone(), app_messages_state.clone());
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -1573,7 +1573,7 @@ fn create_main_window(
         #[strong] application,
         #[strong] super_state,
         move |_| {
-            create_main_window(&application, super_state.clone());
+            create_main_window(application.clone(), super_state.clone());
         }
     ));
 
@@ -2382,7 +2382,6 @@ fn create_main_window(
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
         #[weak] address_store,
-        // #[weak] save_wallet_button,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
@@ -2413,11 +2412,7 @@ fn create_main_window(
         #[weak] seed_text,
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
-        // #[weak] super_state,
         #[strong] app_messages_state,
-        // #[strong] app_log,
-        // #[strong] resources,
-        // #[weak] log_button,
         move |_| {
 
             let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
@@ -2592,11 +2587,9 @@ fn create_main_window(
     }));
     
     mnemonic_passphrase_text.connect_changed(clone!(
-        // #[weak] generate_entropy_button,
         #[weak] entropy_text,
         #[weak] mnemonic_words_text,
         #[weak] seed_text,
-        // #[weak] mnemonic_passphrase_length_info,
         move |mnemonic_passphrase_text| {
             let entropy_buffer = entropy_text.buffer();
             let start_iter = entropy_buffer.start_iter();
@@ -3935,7 +3928,6 @@ fn create_settings_window(
 
     anu_data_format_dropdown.connect_selected_notify(clone!(
         #[weak] default_anu_hex_length_box,
-        // #[weak] anu_data_format_dropdown,
         move |dd| {
             if dd.selected() as usize == 2 {
                 default_anu_hex_length_box.set_visible(true);
@@ -4304,9 +4296,9 @@ fn create_settings_window(
 
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
-        #[weak] settings_window,
-        #[weak] super_state,
-        #[weak] app_messages_state,
+        #[strong] settings_window,
+        #[strong] super_state,
+        #[strong] app_messages_state,
         move |_| {
             let mut settings = APPLICATION_SETTINGS.lock().unwrap();
     
@@ -4344,7 +4336,7 @@ fn create_settings_window(
     
             for (key, value) in updates {
                 if key == "gui_theme" || key == "gui_log" || key == "gui_icons" {
-                    settings.update_value(key, value, Some(&super_state));
+                    settings.update_value(key, value, Some(super_state.clone()));
                 } else {
                     settings.update_value(key, value, None);
                 };
@@ -4367,16 +4359,16 @@ fn create_settings_window(
     ));
     
     cancel_button.connect_clicked(clone!(
-        #[weak] settings_window,
+        #[strong] settings_window,
         move |_| {
             settings_window.close()
         }
     ));
     
     default_button.connect_clicked(clone!(
-        #[weak] settings_window,
-        #[weak] app_messages_state,
-        #[weak] super_state,
+        #[strong] settings_window,
+        #[strong] app_messages_state,
+        #[strong] super_state,
         move |_| {
 
             let dialog = gtk::MessageDialog::builder()
@@ -4388,9 +4380,9 @@ fn create_settings_window(
             dialog.add_button("No", gtk::ResponseType::No);
             
             dialog.connect_response(clone!(
-                #[weak] settings_window,
-                #[weak] app_messages_state,
-                #[weak] super_state,
+                #[strong] settings_window,
+                #[strong] app_messages_state,
+                #[strong] super_state,
                 move |dialog, response| {
                     match response {
                         gtk::ResponseType::Yes => {
