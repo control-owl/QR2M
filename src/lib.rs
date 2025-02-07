@@ -175,15 +175,6 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
             let loader = gdk_pixbuf::PixbufLoader::new();
             
             if loader.write(&image_bytes).is_ok() {
-                match loader.close() {
-                    Ok(_) => {
-                        // TODO: Why loader does not want to be closed?
-                        // eprintln!("error which I will see");
-
-                    },
-                    Err(error) => {eprintln!("Error by get_picture_from_resources: {:?}", error)},
-                };
-
                 if let Some(pixbuf) = loader.pixbuf() {
                     let picture = gtk::Picture::for_pixbuf(&pixbuf);
                     picture.set_size_request(
@@ -193,6 +184,10 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
                     return picture;
                 }
                 
+                match loader.close() {
+                    Ok(_) => {},
+                    Err(error) => {eprintln!("Error by get_picture_from_resources: {:?}", error)},
+                };
             }
             generate_empty_picture()
         }

@@ -136,7 +136,7 @@ struct SuperState {
     gui_icon_theme: Option<String>,
     gui_log_status: Option<bool>,
     gui_main_buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
-    gui_button_images: Option<std::collections::HashMap<&'static str, gtk::Picture>>,
+    gui_button_images: Option<std::collections::HashMap<&'static str, gtk::gdk::Texture>>,
 
 }
 
@@ -279,40 +279,35 @@ impl SuperState {
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
-            let picture = qr2m_lib::get_picture_from_resources(icon_path.to_str().unwrap());
-            icons.insert(*name, picture);
+            let texture = qr2m_lib::get_picture_from_resources(icon_path.to_str().unwrap());
+
+            // Handle the case where the texture is None (if loading fails)
+            if let Some(texture) = texture {
+                icons.insert(*name, texture);
+            } else {
+                eprintln!("Failed to load icon: {}", file);
+                // Create an empty texture (using a 1x1 transparent Pixbuf)
+                let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(gtk::gdk_pixbuf::Colorspace::Rgb, true, 8, 1, 1);
+                let empty_texture = gtk::gdk::Texture::for_pixbuf(&empty_pixbuf.unwrap());
+                icons.insert(*name, empty_texture);
+            }
         }
         self.gui_button_images = Some(icons.clone());
         
-        
-        if let (Some(buttons), Some(icons)) = (&self.gui_main_buttons, &self.gui_button_images) {
-            for (name, button) in buttons {
-                if let Some(icon) = icons.get(name) {
-                    button.set_child(Some(icon));
-                    button.set_css_classes(&["main-buttons"]);
-                } else {
-                    eprintln!("Warning: No icon found for button '{}'", name);
-                }
-            }
-        }
     }
 
     fn get_icon(&self, name: &str) -> Option<gtk::Picture> {
         self.gui_button_images
             .as_ref()
             .and_then(|icons| icons.get(name))
-            .map(|existing_picture| {
-                if let Some(paintable) = existing_picture.paintable() {
-                    eprintln!("copy old image++++++++++++++++++++++++++++++++++++");
-                    let new_picture = gtk::Picture::new();
-                    new_picture.set_paintable(Some(&paintable));
-                    new_picture
-                } else {
-                    eprintln!("fallback to empty image");
-                    gtk::Picture::new()
-                }
+            .map(|texture| {
+                eprintln!("copy old image++++++++++++++++++++++++++++++++++++");
+                let picture = gtk::Picture::new(); // Create a new Picture
+                picture.set_paintable(Some(texture)); // Directly use the texture
+                picture
             })
     }
+    
     
 }
 
@@ -4563,10 +4558,11 @@ fn create_about_window() {
         .comments(comments)
         .build();
 
-    match logo_image.paintable() {
-        Some(image) => about_window.set_logo(Some(&image)),
-        None => {}
-    }
+
+        // let picture = gtk::Picture::new(); // Create a new Picture
+        // picture.set_paintable(&logo_image); // Directly use the texture
+
+        // about_window.set_logo(Some(&picture));
     
     about_window.show();
 
