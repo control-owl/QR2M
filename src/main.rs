@@ -129,7 +129,8 @@ struct SuperState {
     gui_theme: Option<String>,
     gui_icon_theme: Option<String>,
     gui_log_status: Option<bool>,
-    gui_main_buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
+    // gui_main_buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
+    gui_main_buttons: std::collections::HashMap<&'static str, Vec<std::rc::Rc<gtk::Button>>>,
     gui_button_images: Option<std::collections::HashMap<&'static str, gtk::gdk::Texture>>,
 
 }
@@ -141,7 +142,8 @@ impl SuperState {
             gui_theme: None,
             gui_icon_theme: None,
             gui_log_status: None,
-            gui_main_buttons: None,
+            // gui_main_buttons: None,
+            gui_main_buttons: std::collections::HashMap::new(),
             gui_button_images: None,
         }
     }
@@ -205,24 +207,22 @@ impl SuperState {
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
-            println!("Icon full path: {:?}", icon_path);
             let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
-
             icons.insert(*name, texture);
-            // if let Some(texture) = texture {
-            // } else {
-            //     eprintln!("Failed to load texture for: {}", file);
-            // }
         }
 
         self.gui_button_images = Some(icons);
 
-        if let Some(buttons) = &self.gui_main_buttons {
-            for (name, button) in buttons {
-                if let Some(texture) = self.get_texture(name) {
-                    let picture = gtk::Picture::new();
-                    picture.set_paintable(Some(texture));
-                    button.set_child(Some(&picture));
+        if let Some(texture_map) = &self.gui_button_images {
+            for (name, weak_buttons) in &mut self.gui_main_buttons {
+                if let Some(texture) = texture_map.get(name) {
+                    // Iterate over each button in the vector and set the child for each button
+                    for button in weak_buttons.iter() {
+                        // Since `button` is `Rc<Button>`, you can directly use it
+                        let picture = gtk::Picture::new();
+                        picture.set_paintable(Some(texture));
+                        button.set_child(Some(&picture));
+                    }
                 }
             }
         }
@@ -230,6 +230,13 @@ impl SuperState {
 
     fn get_texture(&self, name: &str) -> Option<&gtk::gdk::Texture> {
         self.gui_button_images.as_ref()?.get(name)
+    }
+
+    fn register_button(&mut self, name: &'static str, button: std::rc::Rc<gtk::Button>) {
+        self.gui_main_buttons
+            .entry(name)
+            .or_insert_with(Vec::new)
+            .push(button.clone());
     }
 }
 
@@ -1420,22 +1427,24 @@ fn create_main_window(
     info_bar.add_css_class("info-bar");
     window.set_titlebar(Some(&header_bar));
 
-    let new_wallet_button = gtk::Button::new();
-    let open_wallet_button = gtk::Button::new();
-    let save_wallet_button = gtk::Button::new();
-    let about_button = gtk::Button::new();
-    let settings_button = gtk::Button::new();
-    let log_button = gtk::Button::new();
-    let random_mnemonic_passphrase_button = gtk::Button::new();
+    let new_wallet_button = std::rc::Rc::new(gtk::Button::new());
+    let open_wallet_button = std::rc::Rc::new(gtk::Button::new());
+    let save_wallet_button = std::rc::Rc::new(gtk::Button::new());
+    let about_button = std::rc::Rc::new(gtk::Button::new());
+    let settings_button = std::rc::Rc::new(gtk::Button::new());
+    let log_button = std::rc::Rc::new(gtk::Button::new());
+    let random_mnemonic_passphrase_button = std::rc::Rc::new(gtk::Button::new());
+
+    
 
     let main_buttons = [
-        ("new", &new_wallet_button),
-        ("open", &open_wallet_button),
-        ("save", &save_wallet_button),
-        ("about", &about_button),
-        ("settings", &settings_button),
-        ("log", &log_button),
-        ("random", &random_mnemonic_passphrase_button),
+        ("new", std::rc::Rc::new(new_wallet_button.clone())),
+        ("open", std::rc::Rc::new(open_wallet_button.clone())),
+        ("save", std::rc::Rc::new(save_wallet_button.clone())),
+        ("about", std::rc::Rc::new(about_button.clone())),
+        ("settings", std::rc::Rc::new(settings_button.clone())),
+        ("log", std::rc::Rc::new(log_button.clone())),
+        ("random", std::rc::Rc::new(random_mnemonic_passphrase_button.clone())),
     ];
     
     {
@@ -1446,30 +1455,15 @@ fn create_main_window(
         lock_super_state.gui_icon_theme = Some(gui_icons);
         lock_super_state.gui_log_status = Some(app_log_status);
 
-        let button_map: std::collections::HashMap<&str, gtk::Button> = main_buttons
-            .iter()
-            .map(|(name, button)| (*name, (*button).clone()))
-            .collect();
-
-        lock_super_state.gui_main_buttons = Some(button_map);
-        
-        lock_super_state.reload_gui();
-
-        // Apply textures to buttons
-        if let Some(buttons) = &lock_super_state.gui_main_buttons {
-            for (name, button) in buttons {
-                if let Some(texture) = lock_super_state.get_texture(name) {
-                    let picture = gtk::Picture::new();
-                    picture.set_paintable(Some(texture));
-                    button.set_child(Some(&picture));
-                }
-            }
+        for (name, button) in &main_buttons {
+            lock_super_state.register_button(name, button.clone().as_ref().clone());
         }
+        lock_super_state.reload_gui();
     }
 
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),
-        Some(log_button.clone())
+        Some((*log_button).clone())
     )));
 
     setup_app_actions(application.clone(), super_state.clone(), app_messages_state.clone());
@@ -1481,12 +1475,12 @@ fn create_main_window(
     settings_button.set_tooltip_text(Some(&t!("UI.main.headerbar.settings", value = "F5").to_string()));
     log_button.set_tooltip_text(Some(&t!("UI.main.headerbar.log", value = "F11").to_string()));
 
-    header_bar.pack_start(&new_wallet_button);
-    header_bar.pack_start(&open_wallet_button);
-    header_bar.pack_start(&save_wallet_button);
-    header_bar.pack_end(&settings_button);
-    header_bar.pack_end(&about_button);
-    header_bar.pack_end(&log_button);
+    header_bar.pack_start(&*new_wallet_button);
+    header_bar.pack_start(&*open_wallet_button);
+    header_bar.pack_start(&*save_wallet_button);
+    header_bar.pack_end(&*settings_button);
+    header_bar.pack_end(&*about_button);
+    header_bar.pack_end(&*log_button);
     
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
@@ -1718,7 +1712,7 @@ fn create_main_window(
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
     mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
-    mnemonic_passphrase_content_box.append(&random_mnemonic_passphrase_button);
+    mnemonic_passphrase_content_box.append(&*random_mnemonic_passphrase_button);
     seed_frame.set_child(Some(&seed_text));
     mnemonic_words_box.append(&mnemonic_words_frame);
     mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
