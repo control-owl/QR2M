@@ -13,7 +13,7 @@
 // #![allow(unused_mut)]
 
 
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// REQUIREMENTS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 // Crates
@@ -30,6 +30,7 @@ use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
 
+
 // Mods
 mod anu;
 mod coin_db;
@@ -42,10 +43,6 @@ mod keys;
 #[macro_use]
 extern crate rust_i18n;
 i18n!("res/locale", fallback = "en");
-
-
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 // Default settings
 const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
@@ -126,10 +123,7 @@ lazy_static::lazy_static! {
     static ref CRYPTO_ADDRESS: std::sync::Arc<std::sync::Mutex<Vec<CryptoAddresses>>> = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
 }
 
-
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
+// #[derive(Clone)]
 struct SuperState {
     gui_language: Option<String>,
     gui_theme: Option<String>,
@@ -168,76 +162,8 @@ impl SuperState {
         }
     }
 
-    // fn change_gui_theme_color(&mut self) {
-    //     if let Some(theme) = &self.gui_theme {
-    //         let preferred_theme = match theme.as_str() {
-    //             "System" => adw::ColorScheme::PreferLight,
-    //             "Light" => adw::ColorScheme::ForceLight,
-    //             "Dark" => adw::ColorScheme::PreferDark,
-    //             _ => {
-    //                 // self.show_message(
-    //                 //     t!("error.settings.parse", element = "gui_theme", value = theme).to_string(),
-    //                 //     gtk::MessageType::Error
-    //                 // );
-    //                 adw::ColorScheme::PreferLight
-    //             }
-    //         };
-    //         adw::StyleManager::default().set_color_scheme(preferred_theme);
-    //     } else {
-    //         // self.show_message("Theme is not set. Using default color scheme.".to_string(), gtk::MessageType::Warning);
-    //         adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
-    //     }
-    // }
-    // fn register_icons(&mut self) {
-    //     let settings = gtk::Settings::default().unwrap();
-    //     let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
-    //         "dark"
-    //     } else {
-    //         "light"
-    //     };
-    //     let gui_icons = self.gui_icon_theme.clone().unwrap_or(VALID_GUI_ICONS[2].to_string());
-    //     let theme_base_path = std::path::Path::new("theme")
-    //         .join("basic")
-    //         .join(theme_subdir)
-    //         .join(gui_icons);
-    //     // println!("\t Registering icons for theme: {:?}", theme_base_path);
-    //     let icon_files = [
-    //         ("new",         "new.svg"),
-    //         ("open",        "open.svg"),
-    //         ("save",        "save.svg"),
-    //         ("about",       "about.svg"),
-    //         ("settings",    "settings.svg"),
-    //         ("log",         "log.svg"),
-    //         ("notif",       "notif.svg"),
-    //         ("random",      "random.svg"),
-    //     ];
-    //     let mut icons = std::collections::HashMap::new();
-    //     for (name, file) in icon_files.iter() {
-    //         let icon_path = theme_base_path.join(file);
-    //         let picture = qr2m_lib::get_picture_from_resources(icon_path.to_str().unwrap());
-    //         icons.insert(*name, picture);
-    //     }
-    //     self.gui_button_images = Some(icons.clone());
-    // }
-    // fn get_icon(&self, name: &str) -> Option<&gtk::Picture> {
-    //     match &self.gui_button_images {
-    //         Some(icon) => icon.get(name),
-    //         None => None,
-    //     }
-    // }
-    // fn register_buttons(&mut self) {
-    //     if let (Some(buttons), Some(icons)) = (&self.gui_main_buttons, &self.gui_button_images) {
-    //         for (name, button) in buttons {
-    //             if let Some(icon) = icons.get(name) {
-    //                 button.set_child(Some(icon));
-    //             } else {
-    //                 eprintln!("Warning: No icon found for button '{}'", name);
-    //             }
-    //         }
-    //     }
-    // }
-
     fn reload_gui(&mut self) {
+        println!("reloading gui++++++++++++++++++++++++++++++++++++++++++");
         self.apply_language();
         
         if let Some(theme) = &self.gui_theme {
@@ -279,38 +205,33 @@ impl SuperState {
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
-            let texture = qr2m_lib::get_picture_from_resources(icon_path.to_str().unwrap());
+            println!("Icon full path: {:?}", icon_path);
+            let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
 
-            // Handle the case where the texture is None (if loading fails)
-            if let Some(texture) = texture {
-                icons.insert(*name, texture);
-            } else {
-                eprintln!("Failed to load icon: {}", file);
-                // Create an empty texture (using a 1x1 transparent Pixbuf)
-                let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(gtk::gdk_pixbuf::Colorspace::Rgb, true, 8, 1, 1);
-                let empty_texture = gtk::gdk::Texture::for_pixbuf(&empty_pixbuf.unwrap());
-                icons.insert(*name, empty_texture);
+            icons.insert(*name, texture);
+            // if let Some(texture) = texture {
+            // } else {
+            //     eprintln!("Failed to load texture for: {}", file);
+            // }
+        }
+
+        self.gui_button_images = Some(icons);
+
+        if let Some(buttons) = &self.gui_main_buttons {
+            for (name, button) in buttons {
+                if let Some(texture) = self.get_texture(name) {
+                    let picture = gtk::Picture::new();
+                    picture.set_paintable(Some(texture));
+                    button.set_child(Some(&picture));
+                }
             }
         }
-        self.gui_button_images = Some(icons.clone());
-        
     }
 
-    fn get_icon(&self, name: &str) -> Option<gtk::Picture> {
-        self.gui_button_images
-            .as_ref()
-            .and_then(|icons| icons.get(name))
-            .map(|texture| {
-                eprintln!("copy old image++++++++++++++++++++++++++++++++++++");
-                let picture = gtk::Picture::new(); // Create a new Picture
-                picture.set_paintable(Some(texture)); // Directly use the texture
-                picture
-            })
+    fn get_texture(&self, name: &str) -> Option<&gtk::gdk::Texture> {
+        self.gui_button_images.as_ref()?.get(name)
     }
-    
-    
 }
-
 
 struct AppMessages {
     info_bar: Option<gtk::Revealer>,
@@ -870,79 +791,75 @@ impl AppSettings {
                     self.save_settings();
                 }
             },
-            "gui_theme" => {
-                if let Some(new_theme) = new_value.as_str() {
-                    if Some(new_theme) != Some(&self.gui_theme) {
-                        self.gui_theme = new_theme.to_string();
-                        println!("Updating key {:?} = {:?}", key, new_value);
-                        
-                        if let Some(state) = super_state {
-                            let mut state = state.lock().unwrap();
-                            state.gui_theme = Some(self.gui_theme.clone());
-                            state.reload_gui();
-                        } else {
-                            println!("State in gui_theme is None");
-                        }
-
-                        self.save_settings();
-                    }
-                } else {
-                    eprintln!("Received invalid value for gui_theme: {:?}", new_value);
-                }
-            },
-            "gui_icons" => {
-                if let Some(new_icons) = new_value.as_str() {
-                    if Some(new_icons) != Some(&self.gui_icons) {
-                        self.gui_icons = new_icons.to_string();
-                        println!("Updating key {:?} = {:?}", key, new_value);
-                        
-                        if let Some(state) = super_state {
-                            let mut state = state.lock().unwrap();
-
-                            state.gui_icon_theme = Some(self.gui_icons.clone());
-                            state.reload_gui();
-                        } else {
-                            println!("State in gui_icons is None");
-                        }
-
-                        self.save_settings();
-                    }
-                } else {
-                    eprintln!("Received invalid value for gui_icons: {:?}", new_value);
-                }
-            },
-            // "gui_theme" | "gui_icons" => {
-            //     if let Some(new_value_str) = new_value.as_str() {
-            //         if (key == "gui_theme" && Some(new_value_str) != Some(&self.gui_theme))
-            //             || (key == "gui_icons" && Some(new_value_str) != Some(&self.gui_icons))
-            //         {
-            //             match key {
-            //                 "gui_theme" => self.gui_theme = new_value_str.to_string(),
-            //                 "gui_icons" => self.gui_icons = new_value_str.to_string(),
-            //                 _ => {}
-            //             }
-    
+            // "gui_theme" => {
+            //     if let Some(new_theme) = new_value.as_str() {
+            //         if Some(new_theme) != Some(&self.gui_theme) {
+            //             self.gui_theme = new_theme.to_string();
             //             println!("Updating key {:?} = {:?}", key, new_value);
-    
             //             if let Some(state) = super_state {
             //                 let mut state = state.lock().unwrap();
-            //                 if key == "gui_theme" {
-            //                     state.gui_theme = Some(self.gui_theme.clone());
-            //                 }
-            //                 if key == "gui_icons" {
-            //                     state.gui_icon_theme = Some(self.gui_icons.clone());
-            //                 }
-            //                 state.reload_gui();
+            //                 state.gui_theme = Some(self.gui_theme.clone());
+            //                 state.change_gui_theme_color();
+            //                 state.reload_gui_buttons();
             //             } else {
-            //                 println!("State is None for {:?}", key);
+            //                 println!("State in gui_theme is None");
             //             }
-    
             //             self.save_settings();
             //         }
             //     } else {
-            //         eprintln!("Received invalid value for {:?}: {:?}", key, new_value);
+            //         eprintln!("Received invalid value for gui_theme: {:?}", new_value);
             //     }
-            // }
+            // },
+            // "gui_icons" => {
+            //     if let Some(new_icons) = new_value.as_str() {
+            //         if Some(new_icons) != Some(&self.gui_icons) {
+            //             self.gui_icons = new_icons.to_string();
+            //             println!("Updating key {:?} = {:?}", key, new_value);
+            //             if let Some(state) = super_state {
+            //                 let mut state = state.lock().unwrap();
+            //                 state.gui_icon_theme = Some(self.gui_icons.clone());
+            //                 state.reload_gui_buttons();
+            //             } else {
+            //                 println!("State in gui_icons is None");
+            //             }
+            //             self.save_settings();
+            //         }
+            //     } else {
+            //         eprintln!("Received invalid value for gui_icons: {:?}", new_value);
+            //     }
+            // },
+            "gui_theme" | "gui_icons" => {
+                if let Some(new_value_str) = new_value.as_str() {
+                    if (key == "gui_theme" && Some(new_value_str) != Some(&self.gui_theme))
+                        || (key == "gui_icons" && Some(new_value_str) != Some(&self.gui_icons))
+                    {
+                        match key {
+                            "gui_theme" => self.gui_theme = new_value_str.to_string(),
+                            "gui_icons" => self.gui_icons = new_value_str.to_string(),
+                            _ => {}
+                        }
+    
+                        println!("Updating key {:?} = {:?}", key, new_value);
+    
+                        if let Some(state) = super_state {
+                            let mut state = state.lock().unwrap();
+                            if key == "gui_theme" {
+                                state.gui_theme = Some(self.gui_theme.clone());
+                            }
+                            if key == "gui_icons" {
+                                state.gui_icon_theme = Some(self.gui_icons.clone());
+                            }
+                            state.reload_gui();
+                        } else {
+                            println!("State is None for {:?}", key);
+                        }
+                        
+                        self.save_settings();
+                    }
+                } else {
+                    eprintln!("Received invalid value for {:?}: {:?}", key, new_value);
+                }
+            }
             "gui_language" => {
                 if let Some(new_language) = new_value.as_str() {
                     if Some(new_language) != Some(&self.gui_language) {
@@ -1254,7 +1171,6 @@ impl WalletSettings {
     }
 }
 
-
 #[derive(Debug, Clone, Copy)]
 struct DerivationPath {
     bip: Option<u32>,
@@ -1325,8 +1241,38 @@ struct CryptoAddresses {
     private_key: Option<String>,
 }
 
+// impl CryptoAddresses {
+//     fn new() -> Self {
+//         Self {
+//             coin_name: None,
+//             derivation_path: None,
+//             address: None,
+//             public_key: None,
+//             private_key: None,
+//         }
+//     }
+// }
 
-// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+fn print_program_info() {
+    let current_time = SystemTime::now();
+    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+
+    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
+    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
+    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
+    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
+    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
+    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
+
+    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
+    println!("Start time (UNIX): {:?}", &timestamp.to_string());
+    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
+}
+
+// GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 fn main() {
@@ -1343,7 +1289,7 @@ fn main() {
         .build();
     
     let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
-
+    
     application.connect_activate(clone!(
         #[strong] super_state,
         move |app| {
@@ -1352,22 +1298,6 @@ fn main() {
     ));
     
     application.run();
-}
-
-fn print_program_info() {
-    let current_time = SystemTime::now();
-    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-
-    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
-    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
-    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
-    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
-    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
-    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
-
-    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
-    println!("Start time (UNIX): {:?}", &timestamp.to_string());
-    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
 }
 
 fn setup_app_actions(
@@ -1393,7 +1323,7 @@ fn setup_app_actions(
     ));
 
     open.connect_activate(clone!(
-        #[strong] app_messages_state,
+        #[weak] app_messages_state,
         move |_action, _parameter| {
             open_wallet_from_file(&app_messages_state);
         }
@@ -1417,9 +1347,9 @@ fn setup_app_actions(
 
     settings.connect_activate(clone!(
         #[strong] super_state,
-        #[strong] app_messages_state,
+        #[weak] app_messages_state,
         move |_action, _parameter| {
-            let settings_window = create_settings_window(super_state.clone(), app_messages_state.clone());
+            let settings_window = create_settings_window(super_state.clone(), app_messages_state);
             settings_window.show();
         }
     ));
@@ -1470,20 +1400,8 @@ fn create_main_window(
     let default_mnemonic_length = app_settings.gui_mnemonic_length;
     let app_log_status = app_settings.gui_log;
 
-    os::switch_locale(&gui_language);
+    // os::switch_locale(&gui_language);
     
-    let preferred_theme = match String::from(&gui_theme).as_str() {
-        "System" => adw::ColorScheme::PreferLight,
-        "Light" => adw::ColorScheme::ForceLight,
-        "Dark" => adw::ColorScheme::PreferDark,
-        _ => {
-            eprintln!("{}", &t!("error.settings.parse", element = "gui_theme", value = gui_theme));
-            adw::ColorScheme::PreferLight
-        },
-    };
-    
-    application.style_manager().set_color_scheme(preferred_theme);
-
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
         .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
@@ -1519,13 +1437,13 @@ fn create_main_window(
         ("log", &log_button),
         ("random", &random_mnemonic_passphrase_button),
     ];
-
+    
     {
         let mut lock_super_state = super_state.lock().unwrap();
 
-        lock_super_state.gui_icon_theme = Some(gui_icons);
         lock_super_state.gui_language = Some(gui_language);
         lock_super_state.gui_theme = Some(gui_theme);
+        lock_super_state.gui_icon_theme = Some(gui_icons);
         lock_super_state.gui_log_status = Some(app_log_status);
 
         let button_map: std::collections::HashMap<&str, gtk::Button> = main_buttons
@@ -1533,23 +1451,17 @@ fn create_main_window(
             .map(|(name, button)| (*name, (*button).clone()))
             .collect();
 
+        lock_super_state.gui_main_buttons = Some(button_map);
         
-        // Ensure icons are loaded
-        if lock_super_state.gui_button_images.is_none() {
-            println!("Icons not found in state, loading new icons...");
-            lock_super_state.gui_main_buttons = Some(button_map);
-            lock_super_state.reload_gui();
-        } else {
-            println!("Icons already loaded, applying existing icons...");
-            // Apply icons to buttons
-            if let Some(buttons) = &lock_super_state.gui_main_buttons {
-                for (name, button) in buttons {
-                    if let Some(icon) = lock_super_state.get_icon(name) {
-                        println!("setting existing image");
-                        button.set_child(Some(&icon));
-                    } else {
-                        eprintln!("⚠ Warning: No icon found for button '{}'", name);
-                    }
+        lock_super_state.reload_gui();
+
+        // Apply textures to buttons
+        if let Some(buttons) = &lock_super_state.gui_main_buttons {
+            for (name, button) in buttons {
+                if let Some(texture) = lock_super_state.get_texture(name) {
+                    let picture = gtk::Picture::new();
+                    picture.set_paintable(Some(texture));
+                    button.set_child(Some(&picture));
                 }
             }
         }
@@ -1579,9 +1491,9 @@ fn create_main_window(
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
         #[strong] super_state,
-        #[strong] app_messages_state,
+        #[weak] app_messages_state,
         move |_| {
-            let settings_window = create_settings_window(super_state.clone(), app_messages_state.clone());
+            let settings_window = create_settings_window(super_state.clone(), app_messages_state);
             settings_window.show();
         }
     ));
@@ -2411,6 +2323,7 @@ fn create_main_window(
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
         #[weak] address_store,
+        // #[weak] save_wallet_button,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
@@ -2441,7 +2354,11 @@ fn create_main_window(
         #[weak] seed_text,
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
+        // #[strong] super_state,
         #[strong] app_messages_state,
+        // #[strong] app_log,
+        // #[strong] resources,
+        // #[weak] log_button,
         move |_| {
 
             let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
@@ -2616,9 +2533,11 @@ fn create_main_window(
     }));
     
     mnemonic_passphrase_text.connect_changed(clone!(
+        // #[weak] generate_entropy_button,
         #[weak] entropy_text,
         #[weak] mnemonic_words_text,
         #[weak] seed_text,
+        // #[weak] mnemonic_passphrase_length_info,
         move |mnemonic_passphrase_text| {
             let entropy_buffer = entropy_text.buffer();
             let start_iter = entropy_buffer.start_iter();
@@ -3320,6 +3239,52 @@ fn create_main_window(
     window.present();
 }
 
+
+fn create_log_window(   
+    _super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
+    // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
+) -> gtk::ApplicationWindow {
+    println!("Log window started");
+
+    let log_window = gtk::ApplicationWindow::builder()
+        .title(t!("UI.main.log").to_string())
+        // .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
+        // .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
+        .resizable(true)
+        .modal(false)
+        .build();
+
+
+
+    // let lock_super_state = super_state.lock().unwrap();
+    
+    // if let Some(app_log) = &lock_super_state.app_log {
+    //     let mut lock_app_log = app_log.lock().unwrap();
+        
+    //     if let Some(resources) = &lock_super_state.app_resources {
+    //         let lock_app_resources = resources.lock().unwrap();
+    //         let new_icon = lock_app_resources.get_icon("bell");
+            
+    //         let new_button = gtk::Button::new();
+    //         new_button.set_child(new_icon);
+
+    //         lock_app_log.log_button.replace(new_button);
+    //     };
+    // };
+
+
+    // let lock_button = lock_log.log_button.clone();
+    
+    // let lock_resources = resources.lock().unwrap();
+    
+    
+    // lock_button.clone().unwrap().set_child(lock_icon);
+
+    log_window
+}
+
+
 fn create_settings_window(
     super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
@@ -3957,6 +3922,7 @@ fn create_settings_window(
 
     anu_data_format_dropdown.connect_selected_notify(clone!(
         #[weak] default_anu_hex_length_box,
+        // #[weak] anu_data_format_dropdown,
         move |dd| {
             if dd.selected() as usize == 2 {
                 default_anu_hex_length_box.set_visible(true);
@@ -4325,9 +4291,9 @@ fn create_settings_window(
 
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
-        #[strong] settings_window,
+        #[weak] settings_window,
         #[strong] super_state,
-        #[strong] app_messages_state,
+        #[weak] app_messages_state,
         move |_| {
             let mut settings = APPLICATION_SETTINGS.lock().unwrap();
     
@@ -4373,10 +4339,10 @@ fn create_settings_window(
     
             AppSettings::save_settings(&*settings);
 
-            {
-                let mut state_lock = super_state.lock().unwrap();
-                state_lock.reload_gui();
-            }
+            // {
+            //     let mut state_lock = super_state.lock().unwrap();
+            //     state_lock.reload_gui();
+            // }
 
             {
                 let lock_app_messages = app_messages_state.lock().unwrap();
@@ -4388,15 +4354,15 @@ fn create_settings_window(
     ));
     
     cancel_button.connect_clicked(clone!(
-        #[strong] settings_window,
+        #[weak] settings_window,
         move |_| {
             settings_window.close()
         }
     ));
     
     default_button.connect_clicked(clone!(
-        #[strong] settings_window,
-        #[strong] app_messages_state,
+        #[weak] settings_window,
+        #[weak] app_messages_state,
         #[strong] super_state,
         move |_| {
 
@@ -4409,8 +4375,8 @@ fn create_settings_window(
             dialog.add_button("No", gtk::ResponseType::No);
             
             dialog.connect_response(clone!(
-                #[strong] settings_window,
-                #[strong] app_messages_state,
+                #[weak] settings_window,
+                #[weak] app_messages_state,
                 #[strong] super_state,
                 move |dialog, response| {
                     match response {
@@ -4425,16 +4391,16 @@ fn create_settings_window(
                                     AppSettings::load_settings();
 
                                     
-                                    let new_super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
-                                    let mut lock_new_super_state = new_super_state.lock().unwrap();
+                                    // let new_super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
+                                    // // let mut lock_new_super_state = new_super_state.lock().unwrap();
                                     
-                                    let mut lock_super_state = super_state.lock().unwrap();
-                                    lock_super_state.reload_gui();
-                                    let old_buttons = lock_super_state.gui_main_buttons.clone();
+                                    // // let mut lock_super_state = super_state.lock().unwrap();
+                                    // // // lock_super_state.reload_gui();
+                                    // // let old_buttons = lock_super_state.gui_main_buttons.clone();
                                     
                                     
-                                    lock_new_super_state.gui_main_buttons = old_buttons;
-                                    lock_new_super_state.reload_gui();
+                                    // // lock_new_super_state.gui_main_buttons = old_buttons;
+                                    // new_super_state.reload_gui();
                                     
 
                                     lock_app_messages.queue_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
@@ -4478,96 +4444,6 @@ fn create_settings_window(
     settings_window
 }
 
-fn create_log_window(   
-    _super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
-    // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
-    // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
-) -> gtk::ApplicationWindow {
-    println!("Log window started");
-
-    let log_window = gtk::ApplicationWindow::builder()
-        .title(t!("UI.main.log").to_string())
-        // .default_width(WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
-        // .default_height(WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
-        .resizable(true)
-        .modal(false)
-        .build();
-
-
-
-    // let lock_super_state = super_state.lock().unwrap();
-    
-    // if let Some(app_log) = &lock_super_state.app_log {
-    //     let mut lock_app_log = app_log.lock().unwrap();
-        
-    //     if let Some(resources) = &lock_super_state.app_resources {
-    //         let lock_app_resources = resources.lock().unwrap();
-    //         let new_icon = lock_app_resources.get_icon("bell");
-            
-    //         let new_button = gtk::Button::new();
-    //         new_button.set_child(new_icon);
-
-    //         lock_app_log.log_button.replace(new_button);
-    //     };
-    // };
-
-
-    // let lock_button = lock_log.log_button.clone();
-    
-    // let lock_resources = resources.lock().unwrap();
-    
-    
-    // lock_button.clone().unwrap().set_child(lock_icon);
-
-    log_window
-}
-
-fn create_about_window() {
-    println!("[+] {}", &t!("log.create_about_window").to_string());
-
-    let logo_image = qr2m_lib::get_picture_from_resources("logo/logo.svg");
-
-    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
-    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
-    
-    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
-    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
-    
-    let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
-
-    let they_forced_me = [
-        "This application uses GTK4 for its GUI.",
-        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
-        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
-    ];
-    let comments = they_forced_me.join(" ");
-
-    let about_window = gtk::AboutDialog::builder()
-        .modal(true)
-        // .default_width(600)
-        .default_height(400)
-        .program_name(APP_DESCRIPTION.unwrap())
-        .version(APP_VERSION.unwrap())
-        .website("https://www.github.com/control-owl/qr2m")
-        .website_label("GitHub project")
-        .authors([APP_AUTHOR.unwrap()])
-        .copyright("Copyright [2023-2025] Control Owl")
-        .license(licenses)
-        .wrap_license(true)
-        .comments(&t!("UI.about.description").to_string())
-        .comments(comments)
-        .build();
-
-
-        // let picture = gtk::Picture::new(); // Create a new Picture
-        // picture.set_paintable(&logo_image); // Directly use the texture
-
-        // about_window.set_logo(Some(&picture));
-    
-    about_window.show();
-
-}
-
 fn reset_user_settings() -> Result<String, String> {
     println!("[+] {}", &t!("log.reset-config").to_string());
 
@@ -4600,6 +4476,83 @@ fn reset_user_settings() -> Result<String, String> {
         },
     }
 }
+
+fn create_about_window() {
+    println!("[+] {}", &t!("log.create_about_window").to_string());
+
+    let pixy = qr2m_lib::get_texture_from_resource("logo/logo.svg");
+    // let logo_picture = gtk::Picture::(&pixy).paintable().unwrap();
+
+    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
+    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
+    
+    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
+    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
+    
+    let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
+
+    let they_forced_me = [
+        "This application uses GTK4 for its GUI.",
+        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
+        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
+    ];
+    let comments = they_forced_me.join(" ");
+
+    let help_window = gtk::AboutDialog::builder()
+        .modal(true)
+        // .default_width(600)
+        .default_height(400)
+        .program_name(APP_DESCRIPTION.unwrap())
+        .version(APP_VERSION.unwrap())
+        .website("https://www.github.com/control-owl/qr2m")
+        .website_label("GitHub project")
+        .authors([APP_AUTHOR.unwrap()])
+        .copyright("Copyright [2023-2024] Control Owl")
+        .license(licenses)
+        .wrap_license(true)
+        .comments(&t!("UI.about.description").to_string())
+        // .logo(&logo_picture)
+        .comments(comments)
+        .build();
+
+    help_window.show();
+
+}
+
+// pub fn create_info_message(
+//     revealer: &gtk::Revealer,
+//     message: &str,
+//     message_type: gtk::MessageType,
+// ) -> gtk::Box {
+//     let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+//     let message_label = gtk::Label::new(Some(message));
+//     message_label.set_hexpand(true);
+
+//     match message_type {
+//         gtk::MessageType::Error => message_box.set_css_classes(&["error-message"]),
+//         gtk::MessageType::Warning => message_box.set_css_classes(&["warning-message"]),
+//         _ => message_box.set_css_classes(&["info-message"]),
+//     }
+
+//     let close_button = gtk::Button::with_label("Close");
+//     let gesture = gtk::GestureClick::new();
+    
+//     gesture.connect_pressed(clone!(
+//         #[weak] revealer,
+//         move |_gesture, _n_press, _x, _y| {
+//             revealer.set_reveal_child(false);
+//         }
+//     ));
+    
+//     message_box.append(&message_label);
+//     message_box.append(&close_button);
+    
+//     revealer.add_controller(gesture);
+//     revealer.set_child(Some(&message_box));
+//     revealer.set_reveal_child(true);
+
+//     message_box
+// }
 
 fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>) -> (String, Option<String>) {
     let open_context = glib::MainContext::default();
@@ -4739,6 +4692,44 @@ fn save_wallet_to_file() {
     save_dialog.show();
     save_loop.run();
 }
+
+// fn get_window_theme_icons() -> [gtk::Image; 7] {
+//     println!("[+] {}", &t!("log.get_window_theme_icons").to_string());
+
+//     let settings = gtk::Settings::default().unwrap();
+//     let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
+//         "dark"
+//     } else {
+//         "light"
+//     };
+
+//     let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
+//     println!("\t Theme path: {:?}", theme_base_path);
+
+//     let icon_files = [
+//         "new-wallet.svg",
+//         "open-wallet.svg",
+//         "save-wallet.svg",
+//         "about.svg",
+//         "settings.svg",
+//         "bell.svg",
+//         "notif.svg",
+//     ];
+
+//     let mut images = Vec::new();
+
+//     for icon_file in icon_files.iter() {
+//         let icon_path = theme_base_path.join(icon_file);
+
+//         let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
+
+//         images.push(valid_icon);
+//     }
+
+//     let final_images: [gtk::Image; 7] = core::array::from_fn(|i| gtk::Image::from_pixbuf(Some(&images[i])));
+
+//     final_images
+// }
 
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     println!("[+] {}", &t!("log.update_derivation_label").to_string());

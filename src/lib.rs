@@ -198,6 +198,35 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
     }
 }
 
+
+pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
+    match RES_DIR.get_file(image_name) {
+        Some(file) => {
+            let image_data = file.contents();
+            let image_bytes = glib::Bytes::from_static(image_data);
+            let loader = gdk_pixbuf::PixbufLoader::new();
+            
+            if loader.write(&image_bytes).is_ok() {
+                match loader.close() {
+                    Ok(_) => {},
+                    Err(error) => {eprintln!("get_texture_from_resource loader error: {:?}", error)},
+                };
+
+                if let Some(pixbuf) = loader.pixbuf() {
+                    return gtk::gdk::Texture::for_pixbuf(&pixbuf);
+                }
+                
+            }
+            generate_empty_texture()
+        }
+        None => {
+            eprintln!("Failed to get {} from embedded resources", image_name);
+            generate_empty_texture()
+        }
+    }
+}
+
+
 pub fn generate_empty_picture() -> gtk::Picture {
     let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
         gtk::gdk_pixbuf::Colorspace::Rgb, 
@@ -217,6 +246,27 @@ pub fn generate_empty_picture() -> gtk::Picture {
 
     println!("empty picture ready");
     picture
+}
+
+pub fn generate_empty_texture() -> gtk::gdk::Texture {
+    let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
+        gtk::gdk_pixbuf::Colorspace::Rgb, 
+        APP_IMAGE_HAS_ALPHA,
+        APP_IMAGE_BITS as i32,
+        APP_DEFAULT_BUTTON_WIDTH as i32,
+        APP_DEFAULT_BUTTON_HEIGHT as i32,
+    ).expect("Failed to create empty pixbuf");
+    
+    empty_pixbuf.fill(0x070410FF);
+
+    let texture = gtk::gdk::Texture::for_pixbuf(&empty_pixbuf);
+    // picture.set_size_request(
+    //     APP_DEFAULT_BUTTON_WIDTH as i32,
+    //     APP_DEFAULT_BUTTON_HEIGHT as i32,
+    // );
+
+    println!("empty texture ready");
+    texture
 }
 
 pub fn setup_css() {
