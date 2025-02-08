@@ -129,8 +129,12 @@ struct SuperState {
     gui_theme: Option<String>,
     gui_icon_theme: Option<String>,
     gui_log_status: Option<bool>,
-    // gui_main_buttons: Option<std::collections::HashMap<&'static str, gtk::Button>>,
-    gui_main_buttons: std::collections::HashMap<&'static str, Vec<std::rc::Rc<gtk::Button>>>,
+    // Original
+    // gui_main_buttons: std::collections::HashMap<&'static str, Vec<std::rc::Rc<gtk::Button>>>,
+    
+    // New
+    // gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<&'static str, Vec<std::rc::Rc<gtk::Button>>>>>,
+    gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<&'static str, Vec<std::sync::Arc<gtk::Button>>>>>,
     gui_button_images: Option<std::collections::HashMap<&'static str, gtk::gdk::Texture>>,
 
 }
@@ -142,8 +146,11 @@ impl SuperState {
             gui_theme: None,
             gui_icon_theme: None,
             gui_log_status: None,
-            // gui_main_buttons: None,
-            gui_main_buttons: std::collections::HashMap::new(),
+            // Original
+            // gui_main_buttons: std::collections::HashMap::new(),
+
+            // New
+            gui_main_buttons: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             gui_button_images: None,
         }
     }
@@ -213,12 +220,12 @@ impl SuperState {
 
         self.gui_button_images = Some(icons);
 
+        // Problem now
+        let button_map = self.gui_main_buttons.lock().unwrap();
         if let Some(texture_map) = &self.gui_button_images {
-            for (name, weak_buttons) in &mut self.gui_main_buttons {
+            for (name, buttons) in button_map.iter() {
                 if let Some(texture) = texture_map.get(name) {
-                    // Iterate over each button in the vector and set the child for each button
-                    for button in weak_buttons.iter() {
-                        // Since `button` is `Rc<Button>`, you can directly use it
+                    for button in buttons.iter() {
                         let picture = gtk::Picture::new();
                         picture.set_paintable(Some(texture));
                         button.set_child(Some(&picture));
@@ -228,15 +235,13 @@ impl SuperState {
         }
     }
 
-    fn get_texture(&self, name: &str) -> Option<&gtk::gdk::Texture> {
-        self.gui_button_images.as_ref()?.get(name)
-    }
+    // fn get_texture(&self, name: &str) -> Option<&gtk::gdk::Texture> {
+    //     self.gui_button_images.as_ref()?.get(name)
+    // }
 
-    fn register_button(&mut self, name: &'static str, button: std::rc::Rc<gtk::Button>) {
-        self.gui_main_buttons
-            .entry(name)
-            .or_insert_with(Vec::new)
-            .push(button.clone());
+    fn register_button(&self, name: &'static str, button: std::sync::Arc<gtk::Button>) {
+        let mut button_map = self.gui_main_buttons.lock().unwrap();
+        button_map.entry(name).or_insert_with(Vec::new).push(button);
     }
 }
 
@@ -1297,6 +1302,8 @@ fn main() {
     
     let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
     
+
+    
     application.connect_activate(clone!(
         #[strong] super_state,
         move |app| {
@@ -1407,7 +1414,7 @@ fn create_main_window(
     let default_mnemonic_length = app_settings.gui_mnemonic_length;
     let app_log_status = app_settings.gui_log;
 
-    // os::switch_locale(&gui_language);
+    os::switch_locale(&gui_language);
     
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
@@ -1427,24 +1434,23 @@ fn create_main_window(
     info_bar.add_css_class("info-bar");
     window.set_titlebar(Some(&header_bar));
 
-    let new_wallet_button = std::rc::Rc::new(gtk::Button::new());
-    let open_wallet_button = std::rc::Rc::new(gtk::Button::new());
-    let save_wallet_button = std::rc::Rc::new(gtk::Button::new());
-    let about_button = std::rc::Rc::new(gtk::Button::new());
-    let settings_button = std::rc::Rc::new(gtk::Button::new());
-    let log_button = std::rc::Rc::new(gtk::Button::new());
-    let random_mnemonic_passphrase_button = std::rc::Rc::new(gtk::Button::new());
-
-    
+    // Main buttons
+    let new_wallet_button = std::sync::Arc::new(gtk::Button::new());
+    let open_wallet_button = std::sync::Arc::new(gtk::Button::new());
+    let save_wallet_button = std::sync::Arc::new(gtk::Button::new());
+    let about_button = std::sync::Arc::new(gtk::Button::new());
+    let settings_button = std::sync::Arc::new(gtk::Button::new());
+    let log_button = std::sync::Arc::new(gtk::Button::new());
+    let random_mnemonic_passphrase_button = std::sync::Arc::new(gtk::Button::new());
 
     let main_buttons = [
-        ("new", std::rc::Rc::new(new_wallet_button.clone())),
-        ("open", std::rc::Rc::new(open_wallet_button.clone())),
-        ("save", std::rc::Rc::new(save_wallet_button.clone())),
-        ("about", std::rc::Rc::new(about_button.clone())),
-        ("settings", std::rc::Rc::new(settings_button.clone())),
-        ("log", std::rc::Rc::new(log_button.clone())),
-        ("random", std::rc::Rc::new(random_mnemonic_passphrase_button.clone())),
+        ("new", std::sync::Arc::clone(&new_wallet_button)),
+        ("open", std::sync::Arc::clone(&open_wallet_button)),
+        ("save", std::sync::Arc::clone(&save_wallet_button)),
+        ("about", std::sync::Arc::clone(&about_button)),
+        ("settings", std::sync::Arc::clone(&settings_button)),
+        ("log", std::sync::Arc::clone(&log_button)),
+        ("random", std::sync::Arc::clone(&random_mnemonic_passphrase_button)),
     ];
     
     {
@@ -1456,10 +1462,14 @@ fn create_main_window(
         lock_super_state.gui_log_status = Some(app_log_status);
 
         for (name, button) in &main_buttons {
-            lock_super_state.register_button(name, button.clone().as_ref().clone());
+            lock_super_state.register_button(name, std::sync::Arc::clone(button));
         }
+
         lock_super_state.reload_gui();
     }
+
+
+
 
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),
@@ -1467,6 +1477,11 @@ fn create_main_window(
     )));
 
     setup_app_actions(application.clone(), super_state.clone(), app_messages_state.clone());
+
+
+    
+
+
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -4385,16 +4400,16 @@ fn create_settings_window(
                                     AppSettings::load_settings();
 
                                     
-                                    // let new_super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
-                                    // // let mut lock_new_super_state = new_super_state.lock().unwrap();
+                                    let new_super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
+                                    let mut lock_new_super_state = new_super_state.lock().unwrap();
                                     
-                                    // // let mut lock_super_state = super_state.lock().unwrap();
-                                    // // // lock_super_state.reload_gui();
-                                    // // let old_buttons = lock_super_state.gui_main_buttons.clone();
+                                    let mut lock_super_state = super_state.lock().unwrap();
+                                    lock_super_state.reload_gui();
+                                    let old_buttons = lock_super_state.gui_main_buttons.clone();
                                     
                                     
-                                    // // lock_new_super_state.gui_main_buttons = old_buttons;
-                                    // new_super_state.reload_gui();
+                                    lock_new_super_state.gui_main_buttons = old_buttons;
+                                    lock_new_super_state.reload_gui();
                                     
 
                                     lock_app_messages.queue_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
@@ -4474,8 +4489,9 @@ fn reset_user_settings() -> Result<String, String> {
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let pixy = qr2m_lib::get_texture_from_resource("logo/logo.svg");
-    // let logo_picture = gtk::Picture::(&pixy).paintable().unwrap();
+    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource("logo/logo.s7vg");
+    let logo_picture = gtk::Picture::new();
+    logo_picture.set_paintable(Some(&pixy));
 
     let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
     let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
@@ -4505,7 +4521,9 @@ fn create_about_window() {
         .license(licenses)
         .wrap_license(true)
         .comments(&t!("UI.about.description").to_string())
-        // .logo(&logo_picture)
+        .logo(&logo_picture.paintable().unwrap_or(
+            gtk::gdk::Paintable::new_empty(32, 32))
+        )
         .comments(comments)
         .build();
 
