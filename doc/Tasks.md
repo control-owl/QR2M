@@ -4,7 +4,7 @@
 
 1. Save wallet - done
 2. Open wallet - done
-3. Unify GUI icons
+3. Unify GUI icons - done
 4. Proxy - next (maybe later)
 
 

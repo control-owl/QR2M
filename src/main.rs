@@ -3030,6 +3030,7 @@ fn create_main_window(
         #[weak] derivation_label_text,
         #[weak] master_private_key_text,
         #[strong] app_messages_state,
+        #[weak] address_start_spinbutton,
         move |_| {
             // IMPLEMENT: Generating info_bar message
 
@@ -3064,6 +3065,8 @@ fn create_main_window(
                 let DP = derivation_label_text.text();
                 let path = DP.to_string();
                 let address_count = address_options_spinbutton.text();
+                let address_start_point = address_start_spinbutton.text();
+                let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0 as usize);
                 let address_count_str = address_count.as_str();
                 let address_count_int = address_count_str.parse::<usize>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT as usize);
                 let hardened = address_options_hardened_address_checkbox.is_active();
@@ -3101,7 +3104,9 @@ fn create_main_window(
                         last_value = current_len + address_count_int;
                     }
 
-                    for i in current_len..last_value {
+                    for mut i in current_len..last_value {
+                        i=i+address_start_point_int;
+                        
                         let full_path = if hardened {
                             format!("{}/{}'", path, i)
                         } else {
