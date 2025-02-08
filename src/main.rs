@@ -123,7 +123,7 @@ lazy_static::lazy_static! {
     static ref CRYPTO_ADDRESS: std::sync::Arc<std::sync::Mutex<Vec<CryptoAddresses>>> = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
 }
 
-// #[derive(Clone)]
+// #[derive(Copy)]
 struct SuperState {
     gui_language: Option<String>,
     gui_theme: Option<String>,
@@ -134,7 +134,7 @@ struct SuperState {
     
     // New
     // gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<&'static str, Vec<std::rc::Rc<gtk::Button>>>>>,
-    gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<&'static str, Vec<std::sync::Arc<gtk::Button>>>>>,
+    gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<std::sync::Arc<gtk::Button>>>>>,
     gui_button_images: Option<std::collections::HashMap<&'static str, gtk::gdk::Texture>>,
 
 }
@@ -224,7 +224,7 @@ impl SuperState {
         let button_map = self.gui_main_buttons.lock().unwrap();
         if let Some(texture_map) = &self.gui_button_images {
             for (name, buttons) in button_map.iter() {
-                if let Some(texture) = texture_map.get(name) {
+                if let Some(texture) = texture_map.get(name.as_str()) {
                     for button in buttons.iter() {
                         let picture = gtk::Picture::new();
                         picture.set_paintable(Some(texture));
@@ -241,7 +241,7 @@ impl SuperState {
 
     fn register_button(&self, name: &'static str, button: std::sync::Arc<gtk::Button>) {
         let mut button_map = self.gui_main_buttons.lock().unwrap();
-        button_map.entry(name).or_insert_with(Vec::new).push(button);
+        button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
     }
 }
 
@@ -1468,8 +1468,15 @@ fn create_main_window(
         lock_super_state.reload_gui();
     }
 
-
-
+    let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
+    settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
+        #[strong] super_state,
+        move |_| {
+            if let Ok(mut lock_super_state) = super_state.lock() {
+                lock_super_state.reload_gui();
+            }
+        }
+    ));
 
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),

@@ -1,3 +1,7 @@
+# version 0.72.0
+- theme: detect OS theme change
+- all buttons and images in one state
+
 # version 0.71.5
 - repaired logic when icons are not loadable
 
