@@ -2137,10 +2137,10 @@ fn create_main_window(
         10.0,
         0.0,
     );
-    let address_options_spinbutton = gtk::SpinButton::new(Some(&address_options_adjustment), 1.0, 0);
+    let address_count_spinbutton = gtk::SpinButton::new(Some(&address_options_adjustment), 1.0, 0);
     
     address_options_frame.set_child(Some(&address_options_address_count_box));
-    address_options_address_count_box.append(&address_options_spinbutton);
+    address_options_address_count_box.append(&address_count_spinbutton);
 
     // Address start
     let address_start_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.start").to_string()));
@@ -3024,6 +3024,33 @@ fn create_main_window(
         }
     ));
 
+    address_count_spinbutton.connect_changed(clone!(
+        #[weak] address_start_spinbutton,
+        move |address_count_spinbutton| {           
+            let address_count = address_count_spinbutton.text();
+            let address_count_str = address_count.as_str();
+            let address_count_int = address_count_str.parse::<u32>().unwrap_or(0);
+            let maximum = WALLET_MAX_ADDRESSES - address_count_int;
+            let new_adjustment = gtk::Adjustment::new(
+                0.0,
+                0.0,
+                maximum as f64,
+                1.0,
+                10.0,
+                0.0,
+            );
+
+            let old_status = address_start_spinbutton.text();
+            let old_status_str = old_status.as_str();
+            let old_status_int = old_status_str.parse::<u32>().unwrap_or(0);
+            
+            address_start_spinbutton.set_adjustment(&new_adjustment);
+            if old_status_int <= maximum {
+                address_start_spinbutton.set_text(old_status.as_str());
+            }
+        }
+    ));
+
     // JUMP: Generate Addresses button
     generate_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
@@ -3031,6 +3058,7 @@ fn create_main_window(
         #[weak] master_private_key_text,
         #[strong] app_messages_state,
         #[weak] address_start_spinbutton,
+        #[weak] address_count_spinbutton,
         move |_| {
             // IMPLEMENT: Generating info_bar message
 
@@ -3039,6 +3067,9 @@ fn create_main_window(
             let end_iter = buffer.end_iter();
             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
             
+            // IMPLEMENT: Check if next address is greater as WALLET_MAX_ADDRESSES
+
+
             if master_private_key_string == "" {
                 {
                     let lock_app_messages = app_messages_state.lock().unwrap();
@@ -3064,9 +3095,9 @@ fn create_main_window(
                 let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
                 let DP = derivation_label_text.text();
                 let path = DP.to_string();
-                let address_count = address_options_spinbutton.text();
                 let address_start_point = address_start_spinbutton.text();
                 let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0 as usize);
+                let address_count = address_count_spinbutton.text();
                 let address_count_str = address_count.as_str();
                 let address_count_int = address_count_str.parse::<usize>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT as usize);
                 let hardened = address_options_hardened_address_checkbox.is_active();
