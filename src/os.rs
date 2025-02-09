@@ -125,7 +125,6 @@ pub fn switch_locale(lang: &str) {
 }
 
 pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
-    
     let local_settings = LOCAL_SETTINGS.lock().unwrap();
     let local_config_file = local_settings.local_config_file.clone().unwrap();
     let local_config_dir = local_settings.local_config_dir.clone().unwrap();

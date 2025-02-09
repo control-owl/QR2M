@@ -129,13 +129,8 @@ struct SuperState {
     gui_theme: Option<String>,
     gui_icon_theme: Option<String>,
     gui_log_status: Option<bool>,
-    // Original
-    // gui_main_buttons: std::collections::HashMap<&'static str, Vec<std::rc::Rc<gtk::Button>>>,
-    
-    // New
-    // gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<&'static str, Vec<std::rc::Rc<gtk::Button>>>>>,
     gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<std::sync::Arc<gtk::Button>>>>>,
-    gui_button_images: Option<std::collections::HashMap<&'static str, gtk::gdk::Texture>>,
+    gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
 
 }
 
@@ -146,10 +141,6 @@ impl SuperState {
             gui_theme: None,
             gui_icon_theme: None,
             gui_log_status: None,
-            // Original
-            // gui_main_buttons: std::collections::HashMap::new(),
-
-            // New
             gui_main_buttons: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             gui_button_images: None,
         }
@@ -172,7 +163,6 @@ impl SuperState {
     }
 
     fn reload_gui(&mut self) {
-        println!("reloading gui++++++++++++++++++++++++++++++++++++++++++");
         self.apply_language();
         
         if let Some(theme) = &self.gui_theme {
@@ -215,12 +205,11 @@ impl SuperState {
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
             let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
-            icons.insert(*name, texture);
+            icons.insert((*name).to_string(), texture);
         }
 
         self.gui_button_images = Some(icons);
 
-        // Problem now
         let button_map = self.gui_main_buttons.lock().unwrap();
         if let Some(texture_map) = &self.gui_button_images {
             for (name, buttons) in button_map.iter() {
@@ -239,7 +228,7 @@ impl SuperState {
     //     self.gui_button_images.as_ref()?.get(name)
     // }
 
-    fn register_button(&self, name: &'static str, button: std::sync::Arc<gtk::Button>) {
+    fn register_button(&self, name: String, button: std::sync::Arc<gtk::Button>) {
         let mut button_map = self.gui_main_buttons.lock().unwrap();
         button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
     }
@@ -1302,8 +1291,6 @@ fn main() {
     
     let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
     
-
-    
     application.connect_activate(clone!(
         #[strong] super_state,
         move |app| {
@@ -1462,22 +1449,30 @@ fn create_main_window(
         lock_super_state.gui_log_status = Some(app_log_status);
 
         for (name, button) in &main_buttons {
-            lock_super_state.register_button(name, std::sync::Arc::clone(button));
+            lock_super_state.register_button(name.to_string(), std::sync::Arc::clone(button));
         }
 
         lock_super_state.reload_gui();
     }
 
-    let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
-    settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
-        #[strong] super_state,
-        move |_| {
-            if let Ok(mut lock_super_state) = super_state.lock() {
+    {
+        let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
+        settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
+            #[strong] super_state,
+            move |_| {
+                eprintln!("problem with reloading theme--------------------------------------");
+                let mut lock_super_state = super_state.lock().unwrap();
                 lock_super_state.reload_gui();
-            }
-        }
-    ));
 
+                
+                // if let Ok(mut lock_super_state) = super_state.lock() {
+                //     lock_super_state.reload_gui();
+                // } else {
+                //     eprintln!("problem with reloading theme--------------------------------------");
+                // }
+            }
+        ));
+    }
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),
         Some((*log_button).clone())
@@ -3024,33 +3019,33 @@ fn create_main_window(
         }
     ));
 
-    address_count_spinbutton.connect_changed(clone!(
-        #[weak] address_start_spinbutton,
-        move |address_count_spinbutton| {           
-            let address_count = address_count_spinbutton.text();
-            let address_count_str = address_count.as_str();
-            let address_count_int = address_count_str.parse::<u32>().unwrap_or(0);
-            let maximum = WALLET_MAX_ADDRESSES - address_count_int;
-            let new_adjustment = gtk::Adjustment::new(
-                0.0,
-                0.0,
-                maximum as f64,
-                1.0,
-                10.0,
-                0.0,
-            );
+    // address_count_spinbutton.connect_changed(clone!(
+    //     #[weak] address_start_spinbutton,
+    //     move |_| {           
+    //         // let address_count = address_count_spinbutton.text();
+    //         // let address_count_str = address_count.as_str();
+    //         // let address_count_int = address_count_str.parse::<u32>().unwrap_or(0);
+    //         // let maximum = WALLET_MAX_ADDRESSES - address_count_int;
+    //         let new_adjustment = gtk::Adjustment::new(
+    //             0.0,
+    //             0.0,
+    //             WALLET_MAX_ADDRESSES as f64,
+    //             1.0,
+    //             10.0,
+    //             0.0,
+    //         );
 
-            let old_status = address_start_spinbutton.text();
-            let old_status_str = old_status.as_str();
-            let old_status_int = old_status_str.parse::<u32>().unwrap_or(0);
+    //         let old_status = address_start_spinbutton.text();
+    //         let old_status_str = old_status.as_str();
+    //         let old_status_int = old_status_str.parse::<u32>().unwrap_or(0);
             
-            address_start_spinbutton.set_adjustment(&new_adjustment);
-            if old_status_int <= maximum {
-                address_start_spinbutton.set_text(old_status.as_str());
-            }
-        }
-    ));
-
+    //         address_start_spinbutton.set_adjustment(&new_adjustment);
+    //         if old_status_int <= WALLET_MAX_ADDRESSES {
+    //             address_start_spinbutton.set_text(old_status.as_str());
+    //         }
+    //     }
+    // ));
+    
     // JUMP: Generate Addresses button
     generate_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
@@ -3059,201 +3054,165 @@ fn create_main_window(
         #[strong] app_messages_state,
         #[weak] address_start_spinbutton,
         #[weak] address_count_spinbutton,
+        #[weak] address_options_hardened_address_checkbox,
         move |_| {
-            // IMPLEMENT: Generating info_bar message
-
             let buffer = master_private_key_text.buffer();
             let start_iter = buffer.start_iter();
             let end_iter = buffer.end_iter();
             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
             
-            // IMPLEMENT: Check if next address is greater as WALLET_MAX_ADDRESSES
-
-
             if master_private_key_string == "" {
                 {
                     let lock_app_messages = app_messages_state.lock().unwrap();
                     lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
-                    
+                    return;
                 }
-                // {
-                //     if let Ok(mut log_lock) = app_log.lock() {
-                //         log_lock.initialize_app_log(log_button.clone(), resources.clone());
-                //     }
-                // }
-            } else {
-                println!("\n#### Generating addresses button ####");
-    
-                let wallet_settings = WALLET_SETTINGS.lock().unwrap();
-                let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-                let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-                let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-                let hash = wallet_settings.hash.clone().unwrap_or_default();
-                let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-                let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-                let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
-                let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
-                let DP = derivation_label_text.text();
-                let path = DP.to_string();
-                let address_start_point = address_start_spinbutton.text();
-                let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0 as usize);
-                let address_count = address_count_spinbutton.text();
-                let address_count_str = address_count.as_str();
-                let address_count_int = address_count_str.parse::<usize>().unwrap_or(WALLET_DEFAULT_ADDRESS_COUNT as usize);
-                let hardened = address_options_hardened_address_checkbox.is_active();
-                let secp = secp256k1::Secp256k1::new();
+            }
+
+            let wallet_settings = WALLET_SETTINGS.lock().unwrap();
+            let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+            let derivation_path = derivation_label_text.text();
+            let hardened_address = address_options_hardened_address_checkbox.is_active();
+            let address_start_point = address_start_spinbutton.text();
+            let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0 as usize);
+            let address_coint = address_count_spinbutton.text();
+            let address_count_int = address_coint.parse::<usize>().unwrap_or(1 as usize);
             
-                let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
-                    &public_key_hash[2..]
+            let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+            
+            println!("address_start_point_int: {}",address_start_point_int);
+            let last_address = address_start_point_int + address_count_int;
+            println!("last_address: {}",last_address);
+            
+            for mut i in address_start_point_int..last_address {
+                let full_address_derivation_path = if hardened_address {
+                    format!("{}/{}'", derivation_path, i)
                 } else {
-                    &public_key_hash
+                    format!("{}/{}", derivation_path, i)
                 };
-            
-                let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
-                    Ok(vec) => vec,
-                    Err(e) => {
-                        println!("Failed to convert: {}", e);
-                        return;
-                    },
-                };
-    
-                // TODO: Move to new function
-                {
-                    let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
-                    let current_len = addr_lock.len();
-                    println!("+++++++++++++++++++++current_len: {:?}",current_len);
 
-                    // IMPLEMENT: Upper limit 2147483647
+                address_start_spinbutton.set_text(&format!("{}", i));
 
-                    let current_count = address_count_int;  // 10
-                    let last_value;
 
-                        // 0       + 10                > 20
-                    if (current_len + address_count_int) >= WALLET_MAX_ADDRESSES as usize {
-                        last_value = current_count as usize;
-                    } else {
-                        last_value = current_len + address_count_int;
-                    }
+                if !addr_lock.iter().any(|addr| 
+                    addr.coin_name == Some(coin_name.clone()) &&
+                    addr.derivation_path == Some(full_address_derivation_path.clone())
+                ) {
+                    let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+                    let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+                    let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+                    let hash = wallet_settings.hash.clone().unwrap_or_default();
+                    let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+                    let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+                    let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+        
+                    let Ok((address, public_key, private_key)) = generate_address(
+                        // address_store.clone(),
+                        &coin_name,
+                        coin_index,
+                        &full_address_derivation_path,
+                        master_private_key_bytes, 
+                        master_chain_code_bytes,
+                        &public_key_hash,
+                        &key_derivation, 
+                        &wallet_import_format,
+                        &hash,
+                        // hardened,
+                    ) else { 
+                        eprintln!("problem with generating address");
+                        todo!() 
+                    };
 
-                    for mut i in current_len..last_value {
-                        i=i+address_start_point_int;
-                        
-                        let full_path = if hardened {
-                            format!("{}/{}'", path, i)
-                        } else {
-                            format!("{}/{}", path, i)
-                        };
-                
-                        let derived_child_keys = match key_derivation.as_str() {
-                            "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                            "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &full_path),
-                            "N/A" | _ => {
-                                println!("Unsupported key derivation method: {:?}", key_derivation);
-                                return
-                            }
-                        }.expect("Failed to derive key from path");
-        
-                        let public_key = match key_derivation.as_str() {
-                            "secp256k1" => {
-                                let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-                                    &secp,
-                                    &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-                                );
-                                keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-                            },
-                            "ed25519" => {
-                                let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-                                let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-                                keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-                            },
-                            "N/A" | _ => {
-                                println!("Unsupported key derivation method: {:?}", key_derivation);
-                                return;
-                            }
-                        };
-        
-                        let public_key_encoded = match hash.as_str() {
-                            "sha256" | "sha256+ripemd160" => match &public_key {
-                                keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-                                keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-                            },
-                            "keccak256" => match &public_key {
-                                keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-                                keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-                            },
-                            "N/A" | _ => {
-                                println!("Unsupported hash method: {:?}", hash);
-                                return;
-                            }
-                        };
-                        
-                        let address = match hash.as_str() {
-                            "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-                            "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-                            "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-                                coin_index, 
-                                &public_key, 
-                                &public_key_hash_vec
-                            ) {
-                                Ok(addr) => addr,
-                                Err(e) => {
-                                    println!("Error generating address: {}", e);
-                                    return;
-                                }
-                            },
-                            "ed25519" => dev::generate_ed25519_address(&public_key),
-                            "N/A" | _ => {
-                                println!("Unsupported hash method: {:?}", hash);
-                                return;
-                            }
-                        };
-        
-                        println!("Crypto address: {:?}", address);
-        
-                        // IMPROVEMENT: remove hard-coding, add this option to UI
-                        let compressed = true;
-                        
-                        let priv_key_wif = keys::create_private_key_for_address(
-                            Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
-                            Some(compressed),
-                            Some(&wallet_import_format),
-                            &hash,
-                        ).expect("Failed to convert private key to WIF");
-                        
-                        addr_lock.push(CryptoAddresses {
-                            coin_name: Some(coin_name.clone()),
-                            derivation_path: Some(full_path.clone()),
-                            address: Some(address.clone()),
-                            public_key: Some(public_key_encoded.clone()),
-                            private_key: Some(priv_key_wif.clone()),
-                        });
-                        
-                        let iter = address_store.append();
-                        address_store.set(
-                            &iter,
-                            &[
-                                (0, &coin_name),
-                                (1, &full_path),
-                                (2, &address),
-                                (3, &public_key_encoded),
-                                (4, &priv_key_wif),
-                            ],
-                        );
-                    }
-                    
-                    println!("Number of addresses: {:?}", addr_lock.len());
+                    let new_entry = CryptoAddresses {
+                        coin_name: Some(coin_name.clone()),
+                        derivation_path: Some(full_address_derivation_path.clone()),
+                        address: Some(address.clone()),
+                        public_key: Some(public_key.clone()),
+                        private_key: Some(private_key.clone()),
+                    };
+                    addr_lock.push(new_entry);
+
+                    let iter = address_store.append();
+                    address_store.set(
+                        &iter,
+                        &[
+                            (0, &coin_name),
+                            (1, &full_address_derivation_path),
+                            (2, &address),
+                            (3, &public_key),
+                            (4, &private_key),
+                        ],
+                    );
+                    println!("New address added.");
+                } else {
+                    println!("Duplicate coin_name and derivation_path found, not adding.");
                 }
-            
             }
         }
     ));
+    // let address_start_point = address_start_spinbutton.text();
+    // let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0 as usize);
+    // if address_start_point_int == 0 {
+    //     // Check last address in struct
+    //     let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+    //     if let Some(last_value) = addr_lock.last() {
+    //         let address = last_value.derivation_path.clone().unwrap();
+    //         println!("last derivated address {:?}", address);
+    //         let last_address = address.split('/')
+    //             .last()
+    //             .unwrap();
+    //         println!("last address {:?}", last_address);
+    //     }
+    //         // If none: start from null
+    //         // if set: Start from there
+    // } else {
+    //     // check if address_start_point_int is grater than last address in struct
+    //         // if yes start from last address in struct
+    //         // if not, start form address_start_point
+    // }
+    // let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+    // if let Some(last_value) = addr_lock.last() {
+    //     let address = last_value.derivation_path.clone().unwrap();
+    //     println!("last derivated address {:?}", address);
+    //     let last_address = address.split('/')
+    //         .last()
+    //         .unwrap();
+    //     println!("last address {:?}", last_address);
+    //     let mut hard = "";
+    //     if address_options_hardened_address_checkbox.is_active() {
+    //         hard = "'";
+    //     };
+    //     let next_address = format!("{}{}",address_start_spinbutton.text(), hard);
+    //     println!("next address {:?}", next_address);
+    //     if next_address == last_address {
+    //         {
+    //             let lock_app_messages = app_messages_state.lock().unwrap();
+    //             lock_app_messages.queue_message(t!("error.address.maximum").to_string(), gtk::MessageType::Error);
+    //         }
+    //         return;
+    //     } 
+    //     // else {
+    //     //     if let Some(last_address_number) = last_address.split('\'').last() {
+    //     //         let last_address_number = last_address_number.parse::<u32>().unwrap();
+    //     //         if last_address_number >= WALLET_MAX_ADDRESSES {
+    //     //             return;
+    //     //         }
+    //     //     }
+    //     // }
+    // }
+    
+
+    
+    // println!("\n#### Generating addresses button ####");
     
     address_options_clear_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
+        #[weak] address_start_spinbutton,
         move |_| {
             address_store.clear();
             let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
             addr_lock.clear();
+            address_start_spinbutton.set_text("0");
         }
     ));
 
@@ -4441,7 +4400,6 @@ fn create_settings_window(
                                     settings_window.close();
                                     
                                     AppSettings::load_settings();
-
                                     
                                     let new_super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
                                     let mut lock_new_super_state = new_super_state.lock().unwrap();
@@ -4450,11 +4408,9 @@ fn create_settings_window(
                                     lock_super_state.reload_gui();
                                     let old_buttons = lock_super_state.gui_main_buttons.clone();
                                     
-                                    
                                     lock_new_super_state.gui_main_buttons = old_buttons;
                                     lock_new_super_state.reload_gui();
                                     
-
                                     lock_app_messages.queue_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
                                 _ => {
@@ -4874,3 +4830,242 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
     }
 }
 
+fn generate_address(
+    // address_store: gtk::ListStore,
+    coin_name: &str,
+    coin_index: u32,
+    derivation_path: &str,
+    master_private_key_bytes: Vec<u8>,
+    master_chain_code_bytes: Vec<u8>,
+    public_key_hash: &str,
+    key_derivation: &str,
+    wallet_import_format: &str,
+    hash: &str,
+    // hardened: bool,
+    
+ ) -> Result<(String, String, String), String> {
+
+    let secp = secp256k1::Secp256k1::new();
+
+
+    let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
+        &public_key_hash[2..]
+    } else {
+        &public_key_hash
+    };
+
+    let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
+        Ok(vec) => vec,
+        Err(e) => {
+            return Err("Problem with decoding public_key_hash_vec".to_string());
+        },
+    };
+
+
+    let derived_child_keys = match key_derivation {
+        "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
+        "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
+        "N/A" | _ => {
+            return Err(format!("Unsupported key derivation method: {:?}", key_derivation))
+        }
+    }.expect("Can not derive child key");
+
+    let public_key = match key_derivation {
+        "secp256k1" => {
+            let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+                &secp,
+                &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+            );
+            keys::CryptoPublicKey::Secp256k1(secp_pub_key)
+        },
+        "ed25519" => {
+            let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+            let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+            keys::CryptoPublicKey::Ed25519(pub_key_bytes)
+        },
+        "N/A" | _ => {
+            return Err(format!("Unsupported key derivation method: {:?}", key_derivation));
+        }
+    };
+
+    let public_key_encoded = match hash {
+        "sha256" | "sha256+ripemd160" => match &public_key {
+            keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+            keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+        },
+        "keccak256" => match &public_key {
+            keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+            keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+        },
+        "N/A" | _ => {
+            return Err(format!("Unsupported hash method: {:?}", hash));
+        }
+    };
+
+    let address = match hash {
+        "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
+        "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
+        "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
+            coin_index, 
+            &public_key, 
+            &public_key_hash_vec
+        ) {
+            Ok(addr) => addr,
+            Err(e) => {
+                return Err(format!("Error generating address: {}", e));
+            }
+        },
+        "ed25519" => dev::generate_ed25519_address(&public_key),
+        "N/A" | _ => {
+            return Err(format!("Unsupported hash method: {:?}", hash));
+        }
+    };
+
+    // IMPROVEMENT: remove hard-coding, add this option to UI
+    let compressed = true;
+
+    let priv_key_wif = keys::create_private_key_for_address(
+        Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
+        Some(compressed),
+        Some(&wallet_import_format),
+        &hash,
+    ).expect("Failed to convert private key to WIF");
+
+    Ok((address.clone(), public_key_encoded.clone(), priv_key_wif.clone()))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // // let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+    // // let current_len = addr_lock.len();
+    // // let current_count = address_count_int;
+    // // let last_value;
+
+    // // if (current_len + address_count_int) >= WALLET_MAX_ADDRESSES as usize {
+    // //     last_value = current_count as usize;
+    // // } else {
+    // //     last_value = current_len + address_count_int;
+    // // }
+
+    // // for mut i in current_len..last_value {
+    //     // i=i+address_start_point_int;
+        
+    //     let full_path = if hardened {
+    //         format!("{}/{}'", derivation_path, i)
+    //     } else {
+    //         format!("{}/{}", derivation_path, i)
+    //     };
+
+    //     
+
+    //     let public_key = match key_derivation {
+    //         "secp256k1" => {
+    //             let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+    //                 &secp,
+    //                 &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+    //             );
+    //             keys::CryptoPublicKey::Secp256k1(secp_pub_key)
+    //         },
+    //         "ed25519" => {
+    //             let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+    //             let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+    //             keys::CryptoPublicKey::Ed25519(pub_key_bytes)
+    //         },
+    //         "N/A" | _ => {
+    //             println!("Unsupported key derivation method: {:?}", key_derivation);
+    //             return;
+    //         }
+    //     };
+
+    //     let public_key_encoded = match hash {
+    //         "sha256" | "sha256+ripemd160" => match &public_key {
+    //             keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+    //             keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+    //         },
+    //         "keccak256" => match &public_key {
+    //             keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+    //             keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+    //         },
+    //         "N/A" | _ => {
+    //             println!("Unsupported hash method: {:?}", hash);
+    //             return;
+    //         }
+    //     };
+        
+    //     let address = match hash {
+    //         "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
+    //         "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
+    //         "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
+    //             coin_index, 
+    //             &public_key, 
+    //             &public_key_hash_vec
+    //         ) {
+    //             Ok(addr) => addr,
+    //             Err(e) => {
+    //                 println!("Error generating address: {}", e);
+    //                 return;
+    //             }
+    //         },
+    //         "ed25519" => dev::generate_ed25519_address(&public_key),
+    //         "N/A" | _ => {
+    //             println!("Unsupported hash method: {:?}", hash);
+    //             return;
+    //         }
+    //     };
+
+    //     println!("Crypto address: {:?}", address);
+
+        
+        
+    //     
+        
+
+        
+        
+        // let new_entry = CryptoAddresses {
+        //     coin_name: Some(coin_name.clone().to_string()),
+        //     derivation_path: Some(full_path.clone()),
+        //     address: Some(address.clone()),
+        //     public_key: Some(public_key_encoded.clone()),
+        //     private_key: Some(priv_key_wif.clone()),
+        // }; 
+
+        // if !addr_lock.iter().any(|addr| 
+        //     addr.coin_name == new_entry.coin_name &&
+        //     addr.derivation_path == new_entry.derivation_path &&
+        //     addr.address == new_entry.address &&
+        //     addr.public_key == new_entry.public_key &&
+        //     addr.private_key == new_entry.private_key
+        // ) {
+        //     addr_lock.push(new_entry);
+        //     let iter = address_store.append();
+        //     address_store.set(
+        //         &iter,
+        //         &[
+        //             (0, &coin_name),
+        //             (1, &full_path),
+        //             (2, &address),
+        //             (3, &public_key_encoded),
+        //             (4, &priv_key_wif),
+        //         ],
+        //     );
+        //     println!("New address added.");
+        // } else {
+        //     println!("Duplicate address found, not adding.");
+        // }
+        
+    // }
+}

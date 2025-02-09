@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "QRNG Library"
 // copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2024-11-24"
+// version = "2025-02-08"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -244,7 +244,6 @@ pub fn generate_empty_picture() -> gtk::Picture {
         APP_DEFAULT_BUTTON_HEIGHT as i32,
     );
 
-    println!("empty picture ready");
     picture
 }
 
@@ -260,12 +259,7 @@ pub fn generate_empty_texture() -> gtk::gdk::Texture {
     empty_pixbuf.fill(0x070410FF);
 
     let texture = gtk::gdk::Texture::for_pixbuf(&empty_pixbuf);
-    // picture.set_size_request(
-    //     APP_DEFAULT_BUTTON_WIDTH as i32,
-    //     APP_DEFAULT_BUTTON_HEIGHT as i32,
-    // );
 
-    println!("empty texture ready");
     texture
 }
 

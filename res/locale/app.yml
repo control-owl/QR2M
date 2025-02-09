@@ -587,6 +587,10 @@ error:
       en: "Before creating an address, please create master keys"
       de: "Bitte generieren Sie die Masterkeys, bevor Sie die Adress generieren "
       hr: "Adresa može biti generiran tek kada napravite master ključeve"
+    maximum:
+      en: "There are no more addresses"
+      de: "Es sind keine Adressen mehr vorhanden"
+      hr: "Nema više adresa"
   wallet:
     open:
       en: "Failed to read wallet file"
