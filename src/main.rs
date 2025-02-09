@@ -2093,7 +2093,14 @@ fn create_main_window(
         gtk4::glib::Type::STRING, // Private Key
     ]);
 
+    let sorted_model = gtk::TreeModelSort::with_model(&address_store);
+    sorted_model.set_sort_column_id(gtk4::SortColumn::Index(0), gtk::SortType::Ascending);
+    sorted_model.set_sort_column_id(gtk4::SortColumn::Index(1), gtk::SortType::Ascending);
+
     let address_treeview = gtk::TreeView::new();
+    address_treeview.set_model(Some(&sorted_model));
+
+
     address_treeview.set_headers_visible(true);
     let columns = [
         &t!("UI.main.address.table.coin").to_string(), 
@@ -2112,8 +2119,9 @@ fn create_main_window(
         address_treeview.append_column(&column);
     }
 
-    address_treeview.set_model(Some(&address_store));
+    // address_treeview.set_model(Some(&address_store));
 
+    
     // Address options main box
     let address_options_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_content = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -3045,7 +3053,6 @@ fn create_main_window(
     //         }
     //     }
     // ));
-    
     // JUMP: Generate Addresses button
     generate_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
@@ -3084,20 +3091,23 @@ fn create_main_window(
             let last_address = address_start_point_int + address_count_int;
             println!("last_address: {}",last_address);
             
-            for mut i in address_start_point_int..last_address {
+            let existing_addresses: std::collections::HashSet<String> = addr_lock
+                .iter()
+                .filter_map(|addr| addr.derivation_path.clone())
+                .collect();
+
+            let mut generated_count = 0;
+            let mut current_index = address_start_point_int;
+
+            while generated_count < address_count_int {
                 let full_address_derivation_path = if hardened_address {
-                    format!("{}/{}'", derivation_path, i)
+                    format!("{}/{}'", derivation_path, current_index)
                 } else {
-                    format!("{}/{}", derivation_path, i)
+                    format!("{}/{}", derivation_path, current_index)
                 };
 
-                address_start_spinbutton.set_text(&format!("{}", i));
-
-
-                if !addr_lock.iter().any(|addr| 
-                    addr.coin_name == Some(coin_name.clone()) &&
-                    addr.derivation_path == Some(full_address_derivation_path.clone())
-                ) {
+                // Check if address already exists
+                if !existing_addresses.contains(&full_address_derivation_path) {
                     let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
                     let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
                     let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
@@ -3105,9 +3115,8 @@ fn create_main_window(
                     let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
                     let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
                     let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
-        
+
                     let Ok((address, public_key, private_key)) = generate_address(
-                        // address_store.clone(),
                         &coin_name,
                         coin_index,
                         &full_address_derivation_path,
@@ -3117,10 +3126,9 @@ fn create_main_window(
                         &key_derivation, 
                         &wallet_import_format,
                         &hash,
-                        // hardened,
                     ) else { 
-                        eprintln!("problem with generating address");
-                        todo!() 
+                        eprintln!("Problem generating address");
+                        continue; 
                     };
 
                     let new_entry = CryptoAddresses {
@@ -3130,6 +3138,7 @@ fn create_main_window(
                         public_key: Some(public_key.clone()),
                         private_key: Some(private_key.clone()),
                     };
+
                     addr_lock.push(new_entry);
 
                     let iter = address_store.append();
@@ -3143,10 +3152,24 @@ fn create_main_window(
                             (4, &private_key),
                         ],
                     );
-                    println!("New address added.");
+
+                    println!("New address added: {}", full_address_derivation_path);
+
+                    
+
+                    
+
+
+
+
+
+
+                    generated_count += 1;
                 } else {
-                    println!("Duplicate coin_name and derivation_path found, not adding.");
+                    println!("Skipping existing address: {}", full_address_derivation_path);
                 }
+
+                current_index += 1; // Move to the next index
             }
         }
     ));
@@ -4857,7 +4880,7 @@ fn generate_address(
     let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
         Ok(vec) => vec,
         Err(e) => {
-            return Err("Problem with decoding public_key_hash_vec".to_string());
+            return Err(format!("Problem with decoding public_key_hash_vec: {:?}", e).to_string());
         },
     };
 
