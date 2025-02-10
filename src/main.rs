@@ -1455,24 +1455,29 @@ fn create_main_window(
         lock_super_state.reload_gui();
     }
 
-    {
-        let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
-        settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
-            #[strong] super_state,
-            move |_| {
-                eprintln!("problem with reloading theme--------------------------------------");
-                let mut lock_super_state = super_state.lock().unwrap();
-                lock_super_state.reload_gui();
+    // BUG: infinite loop by OS theme switch.
+    // Why the fuck it is not working? I know it is fucking state and this stupid rust safety mechanismus
+    // I hate rust ! I can not read. I see shit. but I can panic 100000 per day. 
+    // I hate so much rust that I will be god in rust in few years
+    // I hate rust.clone().unwrap()
+    // {
+    //     let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
+    //     settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
+    //         #[strong] super_state,
+    //         move |_| {
+    //             eprintln!("problem with reloading theme--------------------------------------");
+    //             let mut lock_super_state = super_state.lock().unwrap();
+    //             lock_super_state.reload_gui();
 
                 
-                // if let Ok(mut lock_super_state) = super_state.lock() {
-                //     lock_super_state.reload_gui();
-                // } else {
-                //     eprintln!("problem with reloading theme--------------------------------------");
-                // }
-            }
-        ));
-    }
+    //             // if let Ok(mut lock_super_state) = super_state.lock() {
+    //             //     lock_super_state.reload_gui();
+    //             // } else {
+    //             //     eprintln!("problem with reloading theme--------------------------------------");
+    //             // }
+    //         }
+    //     ));
+    // }
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),
         Some((*log_button).clone())
