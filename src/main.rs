@@ -3122,7 +3122,6 @@ fn create_main_window(
                     format!("{}/{}", derivation_path, current_index)
                 };
 
-                // Check if address already exists
                 if !existing_addresses.contains(&full_address_derivation_path) {
                     let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
                     let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
@@ -3132,60 +3131,77 @@ fn create_main_window(
                     let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
                     let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
 
-                    let Ok((address, public_key, private_key)) = generate_address(
-                        &coin_name,
-                        coin_index,
-                        &full_address_derivation_path,
-                        master_private_key_bytes, 
-                        master_chain_code_bytes,
-                        &public_key_hash,
-                        &key_derivation, 
-                        &wallet_import_format,
-                        &hash,
-                    ) else { 
-                        eprintln!("Problem generating address");
-                        continue; 
-                    };
+                    if let Some(full_address_path) = full_address_derivation_path.split('/').last() {
+                        println!("------------------------------------ full_address_path: {}", full_address_path);
+                        let address_path = full_address_path.split("\'").filter_map(|x| x.parse::<u32>().ok()).next();
+                        println!("------------------------------------ address_path: {:?}", address_path.unwrap());
+                        // BUG: Infinite loop
+                        match address_path {
+                            Some(value) => {
+                                if value > WALLET_MAX_ADDRESSES {
+                                    eprintln!("eeeeeeeeeeeee");
+                                } else {
+                                    let Ok((address, public_key, private_key)) = generate_address(
+                                        coin_index,
+                                        &full_address_derivation_path,
+                                        master_private_key_bytes, 
+                                        master_chain_code_bytes,
+                                        &public_key_hash,
+                                        &key_derivation, 
+                                        &wallet_import_format,
+                                        &hash,
+                                    ) else { 
+                                        eprintln!("Problem generating address");
+                                        continue; 
+                                    };
+                
+                                    let new_entry = CryptoAddresses {
+                                        coin_name: Some(coin_name.clone()),
+                                        derivation_path: Some(full_address_derivation_path.clone()),
+                                        address: Some(address.clone()),
+                                        public_key: Some(public_key.clone()),
+                                        private_key: Some(private_key.clone()),
+                                    };
+                
+                                    addr_lock.push(new_entry);
+                
+                                    let iter = address_store.append();
+                                    address_store.set(
+                                        &iter,
+                                        &[
+                                            (0, &coin_name),
+                                            (1, &full_address_derivation_path),
+                                            (2, &address),
+                                            (3, &public_key),
+                                            (4, &private_key),
+                                        ],
+                                    );
+                
+                                    println!("New address added: {}", full_address_derivation_path);
+    
+                                    generated_count += 1;
+                                };
+                            },
+                            None => {
+                                eprintln!("parsing problemeeeeeeeeeeeeessssssssssssssssssss");
 
-                    let new_entry = CryptoAddresses {
-                        coin_name: Some(coin_name.clone()),
-                        derivation_path: Some(full_address_derivation_path.clone()),
-                        address: Some(address.clone()),
-                        public_key: Some(public_key.clone()),
-                        private_key: Some(private_key.clone()),
-                    };
+                            }
+                        
 
-                    addr_lock.push(new_entry);
+                        }
 
-                    let iter = address_store.append();
-                    address_store.set(
-                        &iter,
-                        &[
-                            (0, &coin_name),
-                            (1, &full_address_derivation_path),
-                            (2, &address),
-                            (3, &public_key),
-                            (4, &private_key),
-                        ],
-                    );
+                        
+                    } else {
+                        eprintln!("Derivation path is empty");
+                    }
 
-                    println!("New address added: {}", full_address_derivation_path);
 
                     
-
-                    
-
-
-
-
-
-
-                    generated_count += 1;
                 } else {
                     println!("Skipping existing address: {}", full_address_derivation_path);
                 }
 
-                current_index += 1; // Move to the next index
+                current_index += 1;
             }
         }
     ));
@@ -4871,7 +4887,7 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 
 fn generate_address(
     // address_store: gtk::ListStore,
-    coin_name: &str,
+    // coin_name: &str,
     coin_index: u32,
     derivation_path: &str,
     master_private_key_bytes: Vec<u8>,
@@ -4884,8 +4900,10 @@ fn generate_address(
     
  ) -> Result<(String, String, String), String> {
 
-    let secp = secp256k1::Secp256k1::new();
+    println!("Generating addresses.................................................................");
+    println!("derivation_path: {:?}", derivation_path);
 
+    let secp = secp256k1::Secp256k1::new();
 
     let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
         &public_key_hash[2..]
@@ -4899,7 +4917,6 @@ fn generate_address(
             return Err(format!("Problem with decoding public_key_hash_vec: {:?}", e).to_string());
         },
     };
-
 
     let derived_child_keys = match key_derivation {
         "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
