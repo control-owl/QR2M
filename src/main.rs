@@ -156,27 +156,12 @@ impl SuperState {
             };
         
             rust_i18n::set_locale(language_code);
-            
         } else {
             rust_i18n::set_locale("en");
         }
     }
 
-    fn reload_gui(&mut self) {
-        self.apply_language();
-        
-        if let Some(theme) = &self.gui_theme {
-            let preferred_theme = match theme.as_str() {
-                "Light" => adw::ColorScheme::ForceLight,
-                "Dark" => adw::ColorScheme::PreferDark,
-                "System" => adw::ColorScheme::PreferLight,
-                _ => adw::ColorScheme::PreferLight,
-            };
-            adw::StyleManager::default().set_color_scheme(preferred_theme);
-        } else {
-            adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
-        }
-
+    fn reload_gui_icons(&mut self) {
         let settings = gtk::Settings::default().unwrap();
         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
             "dark"
@@ -223,6 +208,31 @@ impl SuperState {
             }
         }
     }
+
+
+    fn reload_gui_theme(&mut self) {
+        println!("reloading theme function ..."); 
+        
+        if let Some(theme) = &self.gui_theme {
+            let preferred_theme = match theme.as_str() {
+                "Light" => adw::ColorScheme::ForceLight,
+                "Dark" => adw::ColorScheme::ForceDark,
+                // "System" => adw::ColorScheme::PreferLight,
+                _ => adw::ColorScheme::PreferLight,
+            };
+            adw::StyleManager::default().set_color_scheme(preferred_theme);
+        } else {
+            adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
+        }
+    }
+
+
+
+    // fn reload_gui(&mut self) {
+    //     self.apply_language();
+    //     self.reload_gui_theme(None);
+    //     self.reload_gui_icons();
+    // }
 
     // fn get_texture(&self, name: &str) -> Option<&gtk::gdk::Texture> {
     //     self.gui_button_images.as_ref()?.get(name)
@@ -792,75 +802,86 @@ impl AppSettings {
                     self.save_settings();
                 }
             },
-            // "gui_theme" => {
-            //     if let Some(new_theme) = new_value.as_str() {
-            //         if Some(new_theme) != Some(&self.gui_theme) {
-            //             self.gui_theme = new_theme.to_string();
-            //             println!("Updating key {:?} = {:?}", key, new_value);
-            //             if let Some(state) = super_state {
-            //                 let mut state = state.lock().unwrap();
-            //                 state.gui_theme = Some(self.gui_theme.clone());
-            //                 state.change_gui_theme_color();
-            //                 state.reload_gui_buttons();
-            //             } else {
-            //                 println!("State in gui_theme is None");
-            //             }
-            //             self.save_settings();
-            //         }
-            //     } else {
-            //         eprintln!("Received invalid value for gui_theme: {:?}", new_value);
-            //     }
-            // },
-            // "gui_icons" => {
-            //     if let Some(new_icons) = new_value.as_str() {
-            //         if Some(new_icons) != Some(&self.gui_icons) {
-            //             self.gui_icons = new_icons.to_string();
-            //             println!("Updating key {:?} = {:?}", key, new_value);
-            //             if let Some(state) = super_state {
-            //                 let mut state = state.lock().unwrap();
-            //                 state.gui_icon_theme = Some(self.gui_icons.clone());
-            //                 state.reload_gui_buttons();
-            //             } else {
-            //                 println!("State in gui_icons is None");
-            //             }
-            //             self.save_settings();
-            //         }
-            //     } else {
-            //         eprintln!("Received invalid value for gui_icons: {:?}", new_value);
-            //     }
-            // },
-            "gui_theme" | "gui_icons" => {
-                if let Some(new_value_str) = new_value.as_str() {
-                    if (key == "gui_theme" && Some(new_value_str) != Some(&self.gui_theme))
-                        || (key == "gui_icons" && Some(new_value_str) != Some(&self.gui_icons))
-                    {
-                        match key {
-                            "gui_theme" => self.gui_theme = new_value_str.to_string(),
-                            "gui_icons" => self.gui_icons = new_value_str.to_string(),
-                            _ => {}
-                        }
-    
+            "gui_theme" => {
+                if let Some(new_theme) = new_value.as_str() {
+                    if Some(new_theme) != Some(&self.gui_theme) {
+                        self.gui_theme = new_theme.to_string();
                         println!("Updating key {:?} = {:?}", key, new_value);
-    
+                        self.save_settings();
+
+                        let preferred_theme = match new_theme {
+                            "Light" => adw::ColorScheme::ForceLight,
+                            "Dark" => adw::ColorScheme::ForceDark,
+                            // "System" => adw::ColorScheme::PreferLight,
+                            _ => adw::ColorScheme::PreferLight,
+                        };
+                
+                        adw::StyleManager::default().set_color_scheme(preferred_theme);
+
                         if let Some(state) = super_state {
                             let mut state = state.lock().unwrap();
-                            if key == "gui_theme" {
-                                state.gui_theme = Some(self.gui_theme.clone());
-                            }
-                            if key == "gui_icons" {
-                                state.gui_icon_theme = Some(self.gui_icons.clone());
-                            }
-                            state.reload_gui();
+                            state.gui_theme = Some(new_theme.to_string());
+                            // state.reload_gui_theme(Some(new_theme));
+                            // state.reload_gui_icons();
+
                         } else {
-                            println!("State is None for {:?}", key);
+                            println!("State in gui_theme is None");
                         }
-                        
+                    }
+                } else {
+                    eprintln!("Received invalid value for gui_theme: {:?}", new_value);
+                }
+            },
+            "gui_icons" => {
+                if let Some(new_icons) = new_value.as_str() {
+                    if Some(new_icons) != Some(&self.gui_icons) {
+                        self.gui_icons = new_icons.to_string();
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        if let Some(state) = super_state {
+                            let mut state = state.lock().unwrap();
+                            state.gui_icon_theme = Some(self.gui_icons.clone());
+                            state.reload_gui_icons();
+                        } else {
+                            println!("State in gui_icons is None");
+                        }
                         self.save_settings();
                     }
                 } else {
-                    eprintln!("Received invalid value for {:?}: {:?}", key, new_value);
+                    eprintln!("Received invalid value for gui_icons: {:?}", new_value);
                 }
-            }
+            },
+            // "gui_theme" | "gui_icons" => {
+            //     if let Some(new_value_str) = new_value.as_str() {
+            //         if (key == "gui_theme" && Some(new_value_str) != Some(&self.gui_theme))
+            //             || (key == "gui_icons" && Some(new_value_str) != Some(&self.gui_icons))
+            //         {
+            //             match key {
+            //                 "gui_theme" => self.gui_theme = new_value_str.to_string(),
+            //                 "gui_icons" => self.gui_icons = new_value_str.to_string(),
+            //                 _ => {}
+            //             }
+    
+            //             println!("Updating key {:?} = {:?}", key, new_value);
+    
+            //             if let Some(state) = super_state {
+            //                 let mut state = state.lock().unwrap();
+            //                 if key == "gui_theme" {
+            //                     state.gui_theme = Some(self.gui_theme.clone());
+            //                 }
+            //                 if key == "gui_icons" {
+            //                     state.gui_icon_theme = Some(self.gui_icons.clone());
+            //                 }
+            //                 state.reload_gui();
+            //             } else {
+            //                 println!("State is None for {:?}", key);
+            //             }
+                        
+            //             self.save_settings();
+            //         }
+            //     } else {
+            //         eprintln!("Received invalid value for {:?}: {:?}", key, new_value);
+            //     }
+            // },
             "gui_language" => {
                 if let Some(new_language) = new_value.as_str() {
                     if Some(new_language) != Some(&self.gui_language) {
@@ -1452,32 +1473,22 @@ fn create_main_window(
             lock_super_state.register_button(name.to_string(), std::sync::Arc::clone(button));
         }
 
-        lock_super_state.reload_gui();
+        lock_super_state.reload_gui_theme();
+        lock_super_state.reload_gui_icons();
     }
 
-    // BUG: infinite loop by OS theme switch.
-    // Why the fuck it is not working? I know it is fucking state and this stupid rust safety mechanismus
-    // I hate rust ! I can not read. I see shit. but I can panic 100000 per day. 
-    // I hate so much rust that I will be god in rust in few years
-    // I hate rust.clone().unwrap()
-    // {
-    //     let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
-    //     settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
-    //         #[strong] super_state,
-    //         move |_| {
-    //             eprintln!("problem with reloading theme--------------------------------------");
-    //             let mut lock_super_state = super_state.lock().unwrap();
-    //             lock_super_state.reload_gui();
+    {
+        let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
+        settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
+            #[strong] super_state,
+            move |_| {
+                if let Ok(mut lock_super_state) = super_state.lock() {
+                    lock_super_state.reload_gui_icons();
+                };
+            }
+        ));
+    }
 
-                
-    //             // if let Ok(mut lock_super_state) = super_state.lock() {
-    //             //     lock_super_state.reload_gui();
-    //             // } else {
-    //             //     eprintln!("problem with reloading theme--------------------------------------");
-    //             // }
-    //         }
-    //     ));
-    // }
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),
         Some((*log_button).clone())
@@ -4433,11 +4444,11 @@ fn create_settings_window(
                                     let mut lock_new_super_state = new_super_state.lock().unwrap();
                                     
                                     let mut lock_super_state = super_state.lock().unwrap();
-                                    lock_super_state.reload_gui();
+                                    lock_super_state.reload_gui_icons();
                                     let old_buttons = lock_super_state.gui_main_buttons.clone();
                                     
                                     lock_new_super_state.gui_main_buttons = old_buttons;
-                                    lock_new_super_state.reload_gui();
+                                    lock_new_super_state.reload_gui_icons();
                                     
                                     lock_app_messages.queue_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
