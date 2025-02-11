@@ -2,6 +2,9 @@
 - theme: detect OS theme change
 - all buttons and images in one state
 - added limit for address generation
+- no duplicate addresses in a table
+- trying to multi-thread address generation
+    - I am generating 1000 addresses in 3.5 seconds
 
 # version 0.71.5
 - repaired logic when icons are not loadable
