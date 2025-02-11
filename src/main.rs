@@ -4439,16 +4439,16 @@ fn create_settings_window(
                                     settings_window.close();
                                     
                                     AppSettings::load_settings();
+                                    adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
                                     
                                     let new_super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
                                     let mut lock_new_super_state = new_super_state.lock().unwrap();
-                                    
                                     let mut lock_super_state = super_state.lock().unwrap();
-                                    lock_super_state.reload_gui_icons();
-                                    let old_buttons = lock_super_state.gui_main_buttons.clone();
                                     
-                                    lock_new_super_state.gui_main_buttons = old_buttons;
+                                    lock_super_state.reload_gui_icons();
+                                    lock_new_super_state.gui_main_buttons = lock_super_state.gui_main_buttons.clone();
                                     lock_new_super_state.reload_gui_icons();
+                                    lock_new_super_state.apply_language();
                                     
                                     lock_app_messages.queue_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
