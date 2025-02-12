@@ -372,12 +372,21 @@ pub fn generate_entropy(
             //     );
             // }
 
-            let (anu_format, array_length, hex_block_size) = {
-                let app_settings = crate::APPLICATION_SETTINGS.lock().unwrap();
+            let (
+                anu_data_format, 
+                array_length, 
+                hex_block_size, 
+                anu_log,
+                entropy_length,
+            ) = {
+                let app_settings_state = std::sync::Arc::new(std::sync::Mutex::new(crate::AppSettings::load_settings()));
+                let lock_app_settings = app_settings_state.lock().unwrap();                     
                 (
-                    app_settings.anu_data_format.clone(),
-                    app_settings.anu_array_length,
-                    app_settings.anu_hex_block_size,
+                    lock_app_settings.anu_data_format.clone().unwrap(),
+                    lock_app_settings.anu_array_length.unwrap(),
+                    lock_app_settings.anu_hex_block_size.unwrap(),
+                    lock_app_settings.anu_log.unwrap(),
+                    lock_app_settings.wallet_entropy_length.unwrap(),
                 )
             };
 
@@ -388,11 +397,18 @@ pub fn generate_entropy(
             std::thread::spawn(clone!(
                 #[strong] open_loop,
                 move || {
+
+                    // data_format: &str, 
+                    // array_length: u32, 
+                    // hex_block_size: Option<u32>,
+                    // log: Option<bool>,
+
                     let qrng_entropy_string = crate::anu::get_entropy_from_anu(
-                        entropy_length.try_into().unwrap(),
-                        &anu_format,
+                        entropy_length as usize,
+                        &anu_data_format,
                         array_length,
-                        Some(hex_block_size),
+                        hex_block_size,
+                        anu_log,
                     );
 
                     if let Err(err) = tx.send(qrng_entropy_string) {

@@ -17,7 +17,7 @@ use std::{
 use rand::Rng;
 
 use crate::os::LOCAL_SETTINGS;
-use crate::APPLICATION_SETTINGS;
+// use crate::APPLICATION_SETTINGS;
 
 const ANU_TIMESTAMP_FILE: &str = "anu.timestamp";
 const ANU_RESPONSE_FILE: &str = "anu.api";
@@ -29,14 +29,20 @@ const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_length: u32,hex_block_size: Option<u32>) -> String {
+pub fn get_entropy_from_anu(
+    entropy_length: usize, 
+    data_format: &str, 
+    array_length: u32, 
+    hex_block_size: u32,
+    log: bool,
+) -> String {
     let start_time = SystemTime::now();
     let (sender, receiver) = std::sync::mpsc::channel();
 
     fetch_anu_qrng_data(
         data_format, 
         array_length, 
-        hex_block_size.unwrap(),
+        hex_block_size,
         sender
     );
 
@@ -44,12 +50,12 @@ pub fn get_entropy_from_anu(entropy_length: usize, data_format: &str, array_leng
 
     if let Some(anu_data) = anu_data.as_ref() {
         if !anu_data.is_empty() {
-            let log_enabled = {
-                let app_settings = APPLICATION_SETTINGS.lock().unwrap();
-                app_settings.anu_enabled
-            };
+            // let log_enabled = match log {
+            //     Some(value) => value,
+            //     None => false,
+            // };
 
-            if log_enabled {
+            if log == true {
                 create_anu_timestamp(start_time);
                 write_api_response_to_log(&Some(anu_data.to_string()));
             }
