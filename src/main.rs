@@ -123,8 +123,18 @@ lazy_static::lazy_static! {
     static ref CRYPTO_ADDRESS: std::sync::Arc<std::sync::Mutex<Vec<CryptoAddresses>>> = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
 }
 
-// #[derive(Copy)]
-struct SuperState {
+
+
+
+
+
+
+
+
+
+
+
+struct GuiState {
     gui_language: Option<String>,
     gui_theme: Option<String>,
     gui_icon_theme: Option<String>,
@@ -134,13 +144,13 @@ struct SuperState {
 
 }
 
-impl SuperState {
-    fn new() -> Self {
+impl GuiState {
+    fn default_config() -> Self {
         Self {
-            gui_language: None,
-            gui_theme: None,
-            gui_icon_theme: None,
-            gui_log_status: None,
+            gui_language: APP_LANGUAGE.get(0).map(|&s| s.to_string()),
+            gui_theme: VALID_GUI_THEMES.get(0).map(|&s| s.to_string()),
+            gui_icon_theme: VALID_GUI_ICONS.get(0).map(|&s| s.to_string()),
+            gui_log_status: Some(true),
             gui_main_buttons: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             gui_button_images: None,
         }
@@ -151,7 +161,7 @@ impl SuperState {
             let language_code = match language.as_str() {
                 "Deutsch" => "de",
                 "Hrvatski" => "hr",
-                "English" => "en",
+                // "English" => "en",
                 _ => "en",
             };
         
@@ -736,7 +746,7 @@ impl AppSettings {
         &mut self,
         key: &str,
         new_value: toml_edit::Item,
-        super_state: Option<std::sync::Arc<std::sync::Mutex<SuperState>>>,
+        gui_state: Option<std::sync::Arc<std::sync::Mutex<GuiState>>>,
     ) {
         match key {
             "wallet_entropy_source" => {
@@ -818,7 +828,7 @@ impl AppSettings {
                 
                         adw::StyleManager::default().set_color_scheme(preferred_theme);
 
-                        if let Some(state) = super_state {
+                        if let Some(state) = gui_state {
                             let mut state = state.lock().unwrap();
                             state.gui_theme = Some(new_theme.to_string());
                             // state.reload_gui_theme(Some(new_theme));
@@ -837,7 +847,7 @@ impl AppSettings {
                     if Some(new_icons) != Some(&self.gui_icons) {
                         self.gui_icons = new_icons.to_string();
                         println!("Updating key {:?} = {:?}", key, new_value);
-                        if let Some(state) = super_state {
+                        if let Some(state) = gui_state {
                             let mut state = state.lock().unwrap();
                             state.gui_icon_theme = Some(self.gui_icons.clone());
                             state.reload_gui_icons();
@@ -863,7 +873,7 @@ impl AppSettings {
     
             //             println!("Updating key {:?} = {:?}", key, new_value);
     
-            //             if let Some(state) = super_state {
+            //             if let Some(state) = gui_state {
             //                 let mut state = state.lock().unwrap();
             //                 if key == "gui_theme" {
             //                     state.gui_theme = Some(self.gui_theme.clone());
@@ -888,7 +898,7 @@ impl AppSettings {
                         self.gui_language = new_language.to_string();
                         println!("Updating key {:?} = {:?}", key, new_value);
                         
-                        if let Some(state) = super_state {
+                        if let Some(state) = gui_state {
                             let mut state = state.lock().unwrap();
                             state.gui_language = Some(self.gui_language.clone());
                             state.apply_language();
@@ -927,11 +937,11 @@ impl AppSettings {
                 if new_value.as_bool().map(|v| v != self.gui_log).unwrap_or(false) {
                     self.gui_log = new_value.as_bool().unwrap();
 
-                    if let Some(state) = super_state {
-                        let mut super_state_lock = state.lock().unwrap();
-                        super_state_lock.gui_log_status = new_value.as_bool();
+                    if let Some(state) = gui_state {
+                        let mut gui_state_lock = state.lock().unwrap();
+                        gui_state_lock.gui_log_status = new_value.as_bool();
 
-                        if let Some(status) = super_state_lock.gui_log_status {
+                        if let Some(status) = gui_state_lock.gui_log_status {
                             if status == true {
                                 println!("Log status: {:?}", status);
                             } else {
@@ -1310,12 +1320,12 @@ fn main() {
         .application_id("wtf.r_o0_t.qr2m")
         .build();
     
-    let super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
+    let gui_state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
     
     application.connect_activate(clone!(
-        #[strong] super_state,
+        #[strong] gui_state,
         move |app| {
-            create_main_window(app.clone(), super_state.clone());
+            create_main_window(app.clone(), gui_state.clone());
         }
     ));
     
@@ -1324,7 +1334,7 @@ fn main() {
 
 fn setup_app_actions(
     application: adw::Application, 
-    super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) {
     let new = gio::SimpleAction::new("new", None);
@@ -1338,9 +1348,9 @@ fn setup_app_actions(
     
     new.connect_activate(clone!(
         #[strong] application,
-        #[strong] super_state,
+        #[strong] gui_state,
         move |_action, _parameter| {
-            create_main_window(application.clone(), super_state.clone());
+            create_main_window(application.clone(), gui_state.clone());
         }
     ));
 
@@ -1360,18 +1370,18 @@ fn setup_app_actions(
     });
     
     log.connect_activate(clone!(
-        #[strong] super_state,
+        #[strong] gui_state,
         move |_action, _parameter| {
-            let log_window = create_log_window(super_state.clone());
+            let log_window = create_log_window(gui_state.clone());
             log_window.show()
         }
     ));
 
     settings.connect_activate(clone!(
-        #[strong] super_state,
+        #[strong] gui_state,
         #[weak] app_messages_state,
         move |_action, _parameter| {
-            let settings_window = create_settings_window(super_state.clone(), app_messages_state);
+            let settings_window = create_settings_window(gui_state.clone(), app_messages_state);
             settings_window.show();
         }
     ));
@@ -1406,7 +1416,7 @@ fn setup_app_actions(
 
 fn create_main_window(
     application: adw::Application,
-    super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -1462,28 +1472,28 @@ fn create_main_window(
     ];
     
     {
-        let mut lock_super_state = super_state.lock().unwrap();
+        let mut lock_gui_state = gui_state.lock().unwrap();
 
-        lock_super_state.gui_language = Some(gui_language);
-        lock_super_state.gui_theme = Some(gui_theme);
-        lock_super_state.gui_icon_theme = Some(gui_icons);
-        lock_super_state.gui_log_status = Some(app_log_status);
+        lock_gui_state.gui_language = Some(gui_language);
+        lock_gui_state.gui_theme = Some(gui_theme);
+        lock_gui_state.gui_icon_theme = Some(gui_icons);
+        lock_gui_state.gui_log_status = Some(app_log_status);
 
         for (name, button) in &main_buttons {
-            lock_super_state.register_button(name.to_string(), std::sync::Arc::clone(button));
+            lock_gui_state.register_button(name.to_string(), std::sync::Arc::clone(button));
         }
 
-        lock_super_state.reload_gui_theme();
-        lock_super_state.reload_gui_icons();
+        lock_gui_state.reload_gui_theme();
+        lock_gui_state.reload_gui_icons();
     }
 
     {
         let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
         settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
-            #[strong] super_state,
+            #[strong] gui_state,
             move |_| {
-                if let Ok(mut lock_super_state) = super_state.lock() {
-                    lock_super_state.reload_gui_icons();
+                if let Ok(mut lock_gui_state) = gui_state.lock() {
+                    lock_gui_state.reload_gui_icons();
                 };
             }
         ));
@@ -1494,7 +1504,7 @@ fn create_main_window(
         Some((*log_button).clone())
     )));
 
-    setup_app_actions(application.clone(), super_state.clone(), app_messages_state.clone());
+    setup_app_actions(application.clone(), gui_state.clone(), app_messages_state.clone());
 
 
     
@@ -1517,10 +1527,10 @@ fn create_main_window(
     
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
-        #[strong] super_state,
+        #[strong] gui_state,
         #[weak] app_messages_state,
         move |_| {
-            let settings_window = create_settings_window(super_state.clone(), app_messages_state);
+            let settings_window = create_settings_window(gui_state.clone(), app_messages_state);
             settings_window.show();
         }
     ));
@@ -1530,18 +1540,18 @@ fn create_main_window(
     });
 
     log_button.connect_clicked(clone!(
-        #[strong] super_state,
+        #[strong] gui_state,
         move |_| {
-            let log_window = create_log_window(super_state.clone());
+            let log_window = create_log_window(gui_state.clone());
             log_window.show();
         }
     ));
 
     new_wallet_button.connect_clicked(clone!(
         #[strong] application,
-        #[strong] super_state,
+        #[strong] gui_state,
         move |_| {
-            create_main_window(application.clone(), super_state.clone());
+            create_main_window(application.clone(), gui_state.clone());
         }
     ));
 
@@ -2394,7 +2404,7 @@ fn create_main_window(
         #[weak] seed_text,
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
-        // #[strong] super_state,
+        // #[strong] gui_state,
         #[strong] app_messages_state,
         // #[strong] app_log,
         // #[strong] resources,
@@ -2492,8 +2502,8 @@ fn create_main_window(
                             },
                             Err(err) => {
                                 {
-                                    let lock_super_state = app_messages_state.lock().unwrap();
-                                    lock_super_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
+                                    let lock_gui_state = app_messages_state.lock().unwrap();
+                                    lock_gui_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
                                     
                                 }
                                 eprintln!("{}: {}", &t!("error.master.create"), err)
@@ -2517,7 +2527,7 @@ fn create_main_window(
                     app_messages_state.queue_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
                     
                 }
-                // let lock_state = super_state.lock().unwrap();
+                // let lock_state = gui_state.lock().unwrap();
                 // lock_state.show_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
 
                 // {
@@ -3393,7 +3403,7 @@ generate_addresses_button.connect_clicked(clone!(
 
 
 fn create_log_window(   
-    _super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    _gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
     // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) -> gtk::ApplicationWindow {
@@ -3409,12 +3419,12 @@ fn create_log_window(
 
 
 
-    // let lock_super_state = super_state.lock().unwrap();
+    // let lock_gui_state = gui_state.lock().unwrap();
     
-    // if let Some(app_log) = &lock_super_state.app_log {
+    // if let Some(app_log) = &lock_gui_state.app_log {
     //     let mut lock_app_log = app_log.lock().unwrap();
         
-    //     if let Some(resources) = &lock_super_state.app_resources {
+    //     if let Some(resources) = &lock_gui_state.app_resources {
     //         let lock_app_resources = resources.lock().unwrap();
     //         let new_icon = lock_app_resources.get_icon("bell");
             
@@ -3438,7 +3448,7 @@ fn create_log_window(
 
 
 fn create_settings_window(
-    super_state: std::sync::Arc<std::sync::Mutex<SuperState>>,
+    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
@@ -4444,7 +4454,7 @@ fn create_settings_window(
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
         #[weak] settings_window,
-        #[strong] super_state,
+        #[strong] gui_state,
         #[weak] app_messages_state,
         move |_| {
             let mut settings = APPLICATION_SETTINGS.lock().unwrap();
@@ -4483,7 +4493,7 @@ fn create_settings_window(
     
             for (key, value) in updates {
                 if key == "gui_theme" || key == "gui_log" || key == "gui_icons" {
-                    settings.update_value(key, value, Some(super_state.clone()));
+                    settings.update_value(key, value, Some(gui_state.clone()));
                 } else {
                     settings.update_value(key, value, None);
                 };
@@ -4492,7 +4502,7 @@ fn create_settings_window(
             AppSettings::save_settings(&*settings);
 
             // {
-            //     let mut state_lock = super_state.lock().unwrap();
+            //     let mut state_lock = gui_state.lock().unwrap();
             //     state_lock.reload_gui();
             // }
 
@@ -4515,7 +4525,7 @@ fn create_settings_window(
     default_button.connect_clicked(clone!(
         #[weak] settings_window,
         #[weak] app_messages_state,
-        #[strong] super_state,
+        #[strong] gui_state,
         move |_| {
 
             let dialog = gtk::MessageDialog::builder()
@@ -4529,7 +4539,7 @@ fn create_settings_window(
             dialog.connect_response(clone!(
                 #[weak] settings_window,
                 #[weak] app_messages_state,
-                #[strong] super_state,
+                #[strong] gui_state,
                 move |dialog, response| {
                     match response {
                         gtk::ResponseType::Yes => {
@@ -4543,14 +4553,14 @@ fn create_settings_window(
                                     AppSettings::load_settings();
                                     adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
                                     
-                                    let new_super_state = std::sync::Arc::new(std::sync::Mutex::new(SuperState::new()));
-                                    let mut lock_new_super_state = new_super_state.lock().unwrap();
-                                    let mut lock_super_state = super_state.lock().unwrap();
+                                    let new_gui_state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
+                                    let mut lock_new_gui_state = new_gui_state.lock().unwrap();
+                                    let mut lock_gui_state = gui_state.lock().unwrap();
                                     
-                                    lock_super_state.reload_gui_icons();
-                                    lock_new_super_state.gui_main_buttons = lock_super_state.gui_main_buttons.clone();
-                                    lock_new_super_state.reload_gui_icons();
-                                    lock_new_super_state.apply_language();
+                                    lock_gui_state.reload_gui_icons();
+                                    lock_new_gui_state.gui_main_buttons = lock_gui_state.gui_main_buttons.clone();
+                                    lock_new_gui_state.reload_gui_icons();
+                                    lock_new_gui_state.apply_language();
                                     
                                     lock_app_messages.queue_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
                                 },
