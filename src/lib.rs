@@ -209,7 +209,7 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
             if loader.write(&image_bytes).is_ok() {
                 match loader.close() {
                     Ok(_) => {},
-                    Err(error) => {eprintln!("get_texture_from_resource loader error: {:?}", error)},
+                    Err(error) => eprintln!("\t\t\t [!] ERROR problem with loading SVG icons:\n\t\t\t\t{:?}", error),
                 };
 
                 if let Some(pixbuf) = loader.pixbuf() {
@@ -248,6 +248,7 @@ pub fn generate_empty_picture() -> gtk::Picture {
 }
 
 pub fn generate_empty_texture() -> gtk::gdk::Texture {
+    
     let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
         gtk::gdk_pixbuf::Colorspace::Rgb, 
         APP_IMAGE_HAS_ALPHA,

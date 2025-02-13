@@ -37,7 +37,7 @@ pub struct LocalSettings {
 
 
 pub fn detect_os_and_user_dir() {
-    println!("[+] {}", &t!("log.detecting-local-os").to_string());
+    println!("[+] {}", &t!("log.detecting_local_os").to_string());
 
     let os = match std::env::consts::OS {
         "windows" => "windows",
@@ -82,19 +82,19 @@ pub fn detect_os_and_user_dir() {
             Ok(target) => {
                 if target.is_dir() {
                     if fs::metadata(&target).map(|m| m.permissions().readonly()).unwrap_or(true) {
-                        println!("[!] Symlink target is not writable: {:?}", &target);
+                        println!("\t [!] Symlink target is not writable: {:?}", &target);
                         (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
                     } else {
-                        println!("[+] Using writable symlink target: {:?}", &target);
+                        println!("\t [+] Using writable symlink target: {:?}", &target);
                         (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
                     }
                 } else {
-                    println!("[!] Symlink does not point to a directory: {:?}", &target);
+                    println!("\t [!] Symlink does not point to a directory: {:?}", &target);
                     (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
                 }
             },
             Err(e) => {
-                println!("[!] Failed to read symlink target: {:?}, Error: {}", &local_config_dir, e);
+                println!("\t [!] Failed to read symlink target: {:?}, Error: {}", &local_config_dir, e);
                 (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
             }
         }
@@ -117,14 +117,20 @@ pub fn detect_os_and_user_dir() {
 }
 
 pub fn switch_locale(lang: &str) {
+    println!("\t [+] {}", &t!("log.switch_locale").to_string());
+
     match lang {
         "Deutsch" => rust_i18n::set_locale("de"),
         "Hrvatski" => rust_i18n::set_locale("hr"),
         "English"| _ => rust_i18n::set_locale("en"),
     }
+
+    println!("\t\t Language: {:?}", lang);
 }
 
 pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
+    println!("[+] {}", &t!("log.create_local_files").to_string());
+
     let local_settings = LOCAL_SETTINGS.lock().unwrap();
     let local_config_file = local_settings.local_config_file.clone().unwrap();
     let local_config_dir = local_settings.local_config_dir.clone().unwrap();

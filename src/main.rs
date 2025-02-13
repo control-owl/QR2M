@@ -157,6 +157,8 @@ impl GuiState {
     }
 
     fn apply_language(&mut self) {
+        println!("[+] {}", &t!("log.process_wallet_file_from_path").to_string());
+
         if let Some(language) = &self.gui_language {
             let language_code = match language.as_str() {
                 "Deutsch" => "de",
@@ -172,6 +174,8 @@ impl GuiState {
     }
 
     fn reload_gui_icons(&mut self) {
+        println!("\t [+] {}", &t!("log.reload_gui_icons").to_string());
+
         let settings = gtk::Settings::default().unwrap();
         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
             "dark"
@@ -199,6 +203,7 @@ impl GuiState {
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
+            println!("\t\t Icon: {:?}", icon_path);
             let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
             icons.insert((*name).to_string(), texture);
         }
@@ -220,7 +225,7 @@ impl GuiState {
     }
 
     fn reload_gui_theme(&mut self) {
-        println!("reloading theme function ..."); 
+        println!("\t [+] {}", &t!("log.reload_gui_theme").to_string());
         
         if let Some(theme) = &self.gui_theme {
             let preferred_theme = match theme.as_str() {
@@ -230,14 +235,21 @@ impl GuiState {
                 _ => adw::ColorScheme::PreferLight,
             };
             adw::StyleManager::default().set_color_scheme(preferred_theme);
+            println!("\t\t GUI theme: {:?}", preferred_theme);
         } else {
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
+            eprintln!("\t\t Problem with GUI theme, revert to default theme");
         }
+
     }
 
     fn register_button(&self, name: String, button: std::sync::Arc<gtk::Button>) {
+        println!("\t [+] {}", &t!("log.register_button").to_string());
+
         let mut button_map = self.gui_main_buttons.lock().unwrap();
         button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
+
+        println!("\t\t Button: {:?}", name)
     }
 }
 
@@ -321,7 +333,7 @@ impl AppSettings {
     }
 
     fn load_settings() -> Self {
-        println!("[+] {}", &t!("log.load-settings").to_string());
+        println!("[+] {}", &t!("log.load_settings").to_string());
         
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
@@ -351,18 +363,6 @@ impl AppSettings {
             println!("{}", &t!("error.settings.config", error = err));
             toml::Value::Table(toml::value::Table::new())
         });
-// 
-//         fn get_str<'a>(section: &'a toml::Value, key: &str, default: &str) -> String {
-//             section.get(key).and_then(|v| v.as_str()).unwrap_or(default).to_string()
-//         }
-// 
-//         fn get_u32<'a>(section: &'a toml::Value, key: &str, default: u32) -> u32 {
-//             section.get(key).and_then(|v| v.as_integer()).map(|v| v as u32).unwrap_or(default)
-//         }
-// 
-//         fn get_bool<'a>(section: &'a toml::Value, key: &str, default: bool) -> bool {
-//             section.get(key).and_then(|v| v.as_bool()).unwrap_or(default)
-//         }
 
         let default_config = AppSettings::default_config();
 
@@ -375,22 +375,6 @@ impl AppSettings {
                 .and_then(|value| value.as_str().and_then(|v| v.parse().ok()))
                 .or(default)
         }
-
-
-        // fn load_section(config: &toml::Value, section_name: &str, default_config: &toml::Value) -> toml::Value {
-        //     config.get(section_name)
-        //         .cloned()
-        //         .unwrap_or_else(|| default_config.get(section_name).cloned().unwrap_or(toml::Value::Table(toml::value::Table::new())))
-        // }
-        
-        // let default_config_str = qr2m_lib::get_text_from_resources(APP_DEFAULT_CONFIG_FILE);
-        // let default_config: toml::Value = default_config_str.parse().unwrap_or_else(|_| toml::Value::Table(toml::value::Table::new()));
-        // 
-        // Sections
-        // let gui_section = config.get("gui").unwrap_or(&toml::Value::Table(toml::value::Table::new()));
-        // let wallet_section = config.get("wallet").unwrap_or(&toml::Value::Table(toml::value::Table::new()));
-        // let anu_section = config.get("anu").unwrap_or(&toml::Value::Table(toml::value::Table::new()));
-        // let proxy_section = config.get("proxy").unwrap_or(&toml::Value::Table(toml::value::Table::new()));
 
         // GUI settings
         let gui_save_size = get_value_from_config(&config, "gui", "save_size", default_config.gui_save_size.clone());
@@ -516,6 +500,8 @@ impl AppSettings {
         new_value: toml_edit::Item,
         gui_state: Option<std::sync::Arc<std::sync::Mutex<GuiState>>>,
     ) {
+        println!("[+] {}", &t!("log.app_settings.update_value").to_string());
+
         let mut updated = false;
 
         let mut update_field = |field: &mut dyn std::any::Any, new_value: &toml_edit::Item| {
@@ -634,6 +620,8 @@ impl AppSettings {
     }
 
     fn save_settings(&self) {
+        println!("[+] {}", &t!("log.app_settings.save_settings").to_string());
+
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
@@ -810,6 +798,8 @@ impl AppMessages {
     }
 
     fn queue_message(&self, new_message: String, message_type: gtk::MessageType) {
+        println!("[+] {}", &t!("log.app_messages.queue_message").to_string());
+
         let mut queue = self.message_queue.lock().unwrap();
         let last_message_in_queue = queue.get(queue.len().wrapping_sub(1));
 
@@ -831,6 +821,8 @@ impl AppMessages {
     }
 
     fn start_message_processor(&self) {
+        println!("[+] {}", &t!("log.app_messages.start_message_processor").to_string());
+
         let info_bar = match &self.info_bar {
             Some(info_bar) => info_bar.clone(),
             None => {
@@ -888,6 +880,8 @@ impl AppMessages {
         info_bar: &gtk::Revealer,
         processing: &std::sync::Arc<std::sync::Mutex<bool>>,
     ) {
+        println!("[+] {}", &t!("log.app_messages.start_next_message").to_string());
+
         let mut queue_lock = queue.lock().unwrap();
         if let Some((message, message_type)) = queue_lock.pop_front() {
             AppMessages::create_info_message(info_bar, &message, message_type);
@@ -913,6 +907,8 @@ impl AppMessages {
         message: &str,
         message_type: gtk::MessageType,
     ) {
+        println!("[+] {}", &t!("log.app_messages.create_info_message").to_string());
+
         let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
         let message_label = gtk::Label::new(Some(message));
         message_label.set_hexpand(true);
@@ -1115,6 +1111,8 @@ fn main() {
 
     if let Err(err) = os::create_local_files() {
         eprintln!("Error creating local config files: {}", err);
+    } else {
+        println!("\tLocal files created");  
     }
 
     let application = adw::Application::builder()
@@ -1122,11 +1120,16 @@ fn main() {
         .build();
     
     let gui_state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
-    
+    let app_settings_state = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::load_settings()));
+
     application.connect_activate(clone!(
         #[strong] gui_state,
         move |app| {
-            create_main_window(app.clone(), gui_state.clone());
+            create_main_window(
+                app.clone(),
+                gui_state.clone(),
+                app_settings_state.clone()
+            );
         }
     ));
     
@@ -1137,7 +1140,10 @@ fn setup_app_actions(
     application: adw::Application, 
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    app_settings_state: std::sync::Arc<std::sync::Mutex<AppSettings>>,
 ) {
+    println!("[+] {}", &t!("log.setup_app_actions").to_string());
+    
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
     let save = gio::SimpleAction::new("save", None);
@@ -1150,8 +1156,13 @@ fn setup_app_actions(
     new.connect_activate(clone!(
         #[strong] application,
         #[strong] gui_state,
+        #[strong] app_settings_state,
         move |_action, _parameter| {
-            create_main_window(application.clone(), gui_state.clone());
+            create_main_window(
+                application.clone(),
+                gui_state.clone(),
+                app_settings_state.clone(),
+            );
         }
     ));
 
@@ -1218,10 +1229,10 @@ fn setup_app_actions(
 fn create_main_window(
     application: adw::Application,
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    app_settings_state: std::sync::Arc<std::sync::Mutex<AppSettings>>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
-    let app_settings_state = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::load_settings()));
     let lock_app_settings = app_settings_state.lock().unwrap();
 
     let gui_language = lock_app_settings.gui_language.clone().unwrap();
@@ -1232,6 +1243,12 @@ fn create_main_window(
     let wallet_bip = lock_app_settings.wallet_bip.unwrap();
     let default_mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap();
     let app_log_status = lock_app_settings.gui_log.unwrap();
+    let anu_enabled = lock_app_settings.anu_enabled;
+    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone().unwrap();
+    let wallet_entropy_length = lock_app_settings.wallet_entropy_length.unwrap();
+    let gui_search = lock_app_settings.gui_search.clone().unwrap();
+    let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
+    let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
 
     os::switch_locale(&gui_language);
     
@@ -1305,12 +1322,12 @@ fn create_main_window(
         Some((*log_button).clone())
     )));
 
-    setup_app_actions(application.clone(), gui_state.clone(), app_messages_state.clone());
-
-
-    
-
-
+    setup_app_actions(
+        application.clone(),
+        gui_state.clone(),
+        app_messages_state.clone(),
+        app_settings_state.clone(),
+    );
 
     new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
     open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
@@ -1326,12 +1343,13 @@ fn create_main_window(
     header_bar.pack_end(&*about_button);
     header_bar.pack_end(&*log_button);
     
+
     // JUMP: Main: Settings button action
     settings_button.connect_clicked(clone!(
         #[strong] gui_state,
-        #[weak] app_messages_state,
+        #[strong] app_messages_state,
         move |_| {
-            let settings_window = create_settings_window(gui_state.clone(), app_messages_state);
+            let settings_window = create_settings_window(gui_state.clone(), app_messages_state.clone());
             settings_window.show();
         }
     ));
@@ -1351,8 +1369,13 @@ fn create_main_window(
     new_wallet_button.connect_clicked(clone!(
         #[strong] application,
         #[strong] gui_state,
+        #[strong] app_settings_state,
         move |_| {
-            create_main_window(application.clone(), gui_state.clone());
+            create_main_window(
+                application.clone(),
+                gui_state.clone(),
+                app_settings_state.clone(),
+            );
         }
     ));
 
@@ -1383,7 +1406,7 @@ fn create_main_window(
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-    let anu_enabled = lock_app_settings.anu_enabled;
+    
 
     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
@@ -1394,12 +1417,12 @@ fn create_main_window(
     let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
-    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone().unwrap();
+    
     let default_entropy_source = valid_entropy_source_as_strings
         .iter()
         .position(|s| *s == wallet_entropy_source) 
         .unwrap_or(0);
-
+    
     entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
     entropy_source_box.set_hexpand(true);
     entropy_source_frame.set_hexpand(true);
@@ -1410,13 +1433,14 @@ fn create_main_window(
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
-    let wallet_entropy_length = lock_app_settings.wallet_entropy_length.unwrap();
+    
+
     let default_entropy_length = valid_entropy_lengths_as_strings
         .iter()
         .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length)
         .unwrap_or(0);
 
-    entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
+    entropy_length_dropdown.set_selected(default_entropy_length as u32);
     entropy_length_box.set_hexpand(true);
     entropy_length_frame.set_hexpand(true);
 
@@ -1436,7 +1460,6 @@ fn create_main_window(
     );
     let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
     let mnemonic_passphrase_length_info = gtk::Entry::new();
-        
     mnemonic_passphrase_items_box.set_hexpand(true);
     mnemonic_passphrase_scale_box.set_hexpand(true);
     mnemonic_passphrase_length_box.set_hexpand(true);
@@ -1621,7 +1644,7 @@ fn create_main_window(
     filter_verified_coins_button_box.set_hexpand(true);
     
     let filter_not_verified_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_not_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-verified", value = coin_db::COIN_STATUS_NOT_VERIFIED).to_string());
+    let filter_not_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not_verified", value = coin_db::COIN_STATUS_NOT_VERIFIED).to_string());
     filter_not_verified_coins_button_box.append(&filter_not_verified_coins_button);
     coin_filter_content_box.append(&filter_not_verified_coins_button_box);
     filter_not_verified_coins_button_box.set_hexpand(true);
@@ -1633,7 +1656,7 @@ fn create_main_window(
     filter_in_plan_coins_button_box.set_hexpand(true);
     
     let filter_not_supported_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_not_supported_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not-supported", value = coin_db::COIN_STATUS_NOT_SUPPORTED).to_string());
+    let filter_not_supported_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not_supported", value = coin_db::COIN_STATUS_NOT_SUPPORTED).to_string());
     filter_not_supported_coins_button_box.append(&filter_not_supported_coins_button);
     coin_filter_content_box.append(&filter_not_supported_coins_button_box);
     filter_not_supported_coins_button_box.set_hexpand(true);
@@ -1663,7 +1686,7 @@ fn create_main_window(
     let valid_coin_search_filter_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
     let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings.iter().map(|s| s.as_ref()).collect();
     let coin_search_filter_dropdown = gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
-    let gui_search = lock_app_settings.gui_search.clone().unwrap();
+    
     let default_coin_search_filter = valid_coin_search_filter_as_strings
         .iter()
         .position(|s| *s == gui_search) 
@@ -1956,7 +1979,7 @@ fn create_main_window(
     
 
     // Address count
-    let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
+    
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_adjustment = gtk::Adjustment::new(
@@ -1994,7 +2017,7 @@ fn create_main_window(
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
-    let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
+    
 
     address_options_hardened_address_checkbox.set_active(wallet_hardened_address.unwrap());
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
@@ -3202,13 +3225,12 @@ generate_addresses_button.connect_clicked(clone!(
     window.present();
 }
 
-
 fn create_log_window(   
     _gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
     // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) -> gtk::ApplicationWindow {
-    println!("Log window started");
+    println!("[+] {}", &t!("log.create_log_window").to_string());
 
     let log_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.main.log").to_string())
@@ -3246,7 +3268,6 @@ fn create_log_window(
 
     log_window
 }
-
 
 fn create_settings_window(
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
@@ -3416,7 +3437,7 @@ fn create_settings_window(
     let notification_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let notification_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let notification_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let notification_timeout_label = gtk::Label::new(Some(&t!("UI.settings.wallet.notification-timeout").to_string()));
+    let notification_timeout_label = gtk::Label::new(Some(&t!("UI.settings.wallet.notification_timeout").to_string()));
     let notification_timeout = lock_app_settings.gui_notification_timeout.unwrap() as f64;
     let notification_timeout_adjustment = gtk::Adjustment::new(
         notification_timeout,
@@ -3444,7 +3465,7 @@ fn create_settings_window(
     let mnemonic_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let mnemonic_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let mnemonic_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let mnemonic_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic-length").to_string()));
+    let mnemonic_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic_length").to_string()));
     let mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap() as f64;
     let mnemonic_length_adjustment = gtk::Adjustment::new(
         mnemonic_length,
@@ -3492,7 +3513,7 @@ fn create_settings_window(
     let default_gui_log_level_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_log_level_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_log_level_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_log_level_label = gtk::Label::new(Some(&t!("UI.settings.general.log-level").to_string()));
+    let default_gui_log_level_label = gtk::Label::new(Some(&t!("UI.settings.general.log_level").to_string()));
     let valid_gui_log_level_as_strings: Vec<String> = APP_LOG_LEVEL.iter().map(|&x| x.to_string()).collect();
     let valid_gui_log_level_as_str_refs: Vec<&str> = valid_gui_log_level_as_strings.iter().map(|s| s.as_ref()).collect();
     let default_gui_log_level_dropdown = gtk::DropDown::from_strings(&valid_gui_log_level_as_str_refs);
@@ -3641,7 +3662,7 @@ fn create_settings_window(
     let default_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_address_count_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_address_count_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_address_count_label = gtk::Label::new(Some(&t!("UI.settings.wallet.address-count").to_string()));
+    let default_address_count_label = gtk::Label::new(Some(&t!("UI.settings.wallet.address_count").to_string()));
     let default_address_count = lock_app_settings.wallet_address_count.unwrap() as f64;
     let address_count_adjustment = gtk::Adjustment::new(
         default_address_count,
@@ -4399,7 +4420,7 @@ fn create_settings_window(
 }
 
 fn reset_user_settings() -> Result<String, String> {
-    println!("[+] {}", &t!("log.reset-config").to_string());
+    println!("[+] {}", &t!("log.reset_user_settings").to_string());
 
     {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
@@ -4476,42 +4497,9 @@ fn create_about_window() {
 
 }
 
-// pub fn create_info_message(
-//     revealer: &gtk::Revealer,
-//     message: &str,
-//     message_type: gtk::MessageType,
-// ) -> gtk::Box {
-//     let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-//     let message_label = gtk::Label::new(Some(message));
-//     message_label.set_hexpand(true);
-
-//     match message_type {
-//         gtk::MessageType::Error => message_box.set_css_classes(&["error-message"]),
-//         gtk::MessageType::Warning => message_box.set_css_classes(&["warning-message"]),
-//         _ => message_box.set_css_classes(&["info-message"]),
-//     }
-
-//     let close_button = gtk::Button::with_label("Close");
-//     let gesture = gtk::GestureClick::new();
-    
-//     gesture.connect_pressed(clone!(
-//         #[weak] revealer,
-//         move |_gesture, _n_press, _x, _y| {
-//             revealer.set_reveal_child(false);
-//         }
-//     ));
-    
-//     message_box.append(&message_label);
-//     message_box.append(&close_button);
-    
-//     revealer.add_controller(gesture);
-//     revealer.set_child(Some(&message_box));
-//     revealer.set_reveal_child(true);
-
-//     message_box
-// }
-
 fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>) -> (String, Option<String>) {
+    println!("[+] {}", &t!("log.open_wallet_from_file").to_string());
+
     let open_context = glib::MainContext::default();
     let open_loop = glib::MainLoop::new(Some(&open_context), false);
     let (tx, rx) = std::sync::mpsc::channel();
@@ -4601,6 +4589,8 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
 }
 
 fn save_wallet_to_file() {
+    println!("[+] {}", &t!("log.save_wallet_to_file").to_string());
+
     // TODO: Check if wallet is created before proceeding
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
@@ -4650,46 +4640,9 @@ fn save_wallet_to_file() {
     save_loop.run();
 }
 
-// fn get_window_theme_icons() -> [gtk::Image; 7] {
-//     println!("[+] {}", &t!("log.get_window_theme_icons").to_string());
-
-//     let settings = gtk::Settings::default().unwrap();
-//     let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
-//         "dark"
-//     } else {
-//         "light"
-//     };
-
-//     let theme_base_path = std::path::Path::new("theme").join("basic").join(theme_subdir);
-//     println!("\t Theme path: {:?}", theme_base_path);
-
-//     let icon_files = [
-//         "new-wallet.svg",
-//         "open-wallet.svg",
-//         "save-wallet.svg",
-//         "about.svg",
-//         "settings.svg",
-//         "bell.svg",
-//         "notif.svg",
-//     ];
-
-//     let mut images = Vec::new();
-
-//     for icon_file in icon_files.iter() {
-//         let icon_path = theme_base_path.join(icon_file);
-
-//         let valid_icon = qr2m_lib::get_image_from_resources(icon_path.to_str().unwrap());
-
-//         images.push(valid_icon);
-//     }
-
-//     let final_images: [gtk::Image; 7] = core::array::from_fn(|i| gtk::Image::from_pixbuf(Some(&images[i])));
-
-//     final_images
-// }
-
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     println!("[+] {}", &t!("log.update_derivation_label").to_string());
+
     println!("\t Derivation Path: {:?}", DP);
 
     let mut path = String::new();
@@ -4730,6 +4683,8 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
 }
 
 fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<String>), String> {
+    println!("[+] {}", &t!("log.process_wallet_file_from_path").to_string());
+
     let file = File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
     let mut lines = std::io::BufReader::new(file).lines();
 
@@ -4766,6 +4721,8 @@ fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<
 }
 
 fn parse_wallet_version(line: &str) -> Result<u8, String> {
+    println!("[+] {}", &t!("log.parse_wallet_version").to_string());
+
     if line.starts_with("version = ") {
         match line["version = ".len()..].parse::<u8>() {
             Ok(version) => Ok(version),
@@ -4790,6 +4747,7 @@ fn generate_address(
     // hardened: bool,
     
  ) -> Result<(String, String, String), String> {
+    println!("[+] {}", &t!("log.generate_address").to_string());
 
     println!("Generating addresses.................................................................");
     println!("derivation_path: {:?}", derivation_path);

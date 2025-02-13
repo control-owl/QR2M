@@ -10,7 +10,7 @@ UI:
     hr: "Postavke"
     general:
       en: "App settings"
-      de: "App-Einstellungen"
+      de: "App_Einstellungen"
       hr: "Postavke programa"
       theme:
         en: "Theme color"
@@ -32,7 +32,7 @@ UI:
         en: "Search for a coin by"
         de: "Suche nach einer Coin anhand"
         hr: "Traži coin po"
-      log-level:
+      log_level:
         en: "Log level"
         de: "Protokollebene"
         hr: "Razina dnevnika"
@@ -51,7 +51,7 @@ UI:
           hr: "Dužina entropije"
       bip:
         en: "BIP"
-      address-count:
+      address_count:
         en: "How many addresses to generate"
         de: "Wie viele Adressen generiert werden sollen"
         hr: "Koliko puno adresa generirati"
@@ -59,11 +59,11 @@ UI:
         en: "Generate hardened addresses"
         de: "Gehärtete Adressen generieren"
         hr: "Generirati tvrde adrese"
-      notification-timeout:
+      notification_timeout:
         en: "Timeout for all notifications (in seconds)"
         de: "Timeout für alle Benachrichtigungen (in Sekunden)"
         hr: "Istek vremena za sve obavijesti (u sekundama)"
-      mnemonic-length:
+      mnemonic_length:
         en: "Default mnemonic passphrase length"
         de: "Standardlänge der mnemonischen Passphrase"
         hr: "Zadana duljina mnemoničke lozinke"
@@ -78,11 +78,11 @@ UI:
       data:
         type:
           en: "API data type"
-          de: "API-Datentyp"
+          de: "API Datentyp"
           hr: "API tip podataka"
         array:
           en: "API array length"
-          de: "API-Array-Länge"
+          de: "API Array Länge"
           hr: "Dužina API niza"
         hex:
           en: "Hex block size"
@@ -282,7 +282,7 @@ UI:
             en: "Verified (%{value})"
             de: "Verifizierte (%{value})"
             hr: "Verificirani (%{value})"
-          not-verified:
+          not_verified:
             en: "Not verified (%{value})"
             de: "Unverifizierte (%{value})"
             hr: "Ne verificirani (%{value})"
@@ -290,7 +290,7 @@ UI:
             en: "In plan (%{value})"
             de: "Im Plan (%{value})"
             hr: "U planu (%{value})"
-          not-supported:
+          not_supported:
             en: "Not supported (%{value})"
             de: "Nicht unterstützte (%{value})"
             hr: "Ne podržani (%{value})"
@@ -417,7 +417,7 @@ UI:
       en: "Log"
   messages:
     dialog:
-      do-not-show:
+      do_not_show:
         en: "Do not show any more"
         de: "Nicht mehr anzeigen"
         hr: "Nemoj više pokazati"
@@ -425,15 +425,15 @@ UI:
         en: "Close"
         de: "Schließen"
         hr: "Zatvori"
-      settings-saved:
+      settings_saved:
         en: "Settings saved"
         de: "Einstellungen gespeichert"
         hr: "Postavke spremljene"
-      settings-reset:
+      settings_reset:
         en: "Default configuration loaded successfully"
         de: "Standardkonfiguration erfolgreich geladen"
         hr: "Standardna konfiguracija uspješno učitana"
-    change-language:
+    change_language:
         en: "Please re-open app, or create new window to apply new language"
         de: "Bitte öffnen Sie die App oder neue Fenster erneut, um die neue Sprache anzuwenden"
         hr: "Ponovno otvorite aplikaciju ili otvorite novi prozor da bi primjeni novi jezik"
@@ -505,14 +505,14 @@ error:
       de: "Fehler beim Lesen aus der Wortlistendatei: '%{value}'"
       hr: "Pogreška pri čitanju iz datoteke popisa riječi: '%{value}'"
     word:
-      en: "INVALID_WORD"
-      de: "INVALID_WORT"
-      hr: "NEVAŽEĆA_RIJEČ"
+      en: "INVALID-WORD"
+      de: "INVALID-WORT"
+      hr: "NEVAŽEĆA-RIJEČ"
   master:
     parse:
       header:
         en: "Can not parse '%{value}' header"
-        de: "Kann '%{value}'-Header nicht parsen"
+        de: "Kann '%{value}'Header nicht parsen"
         hr: "Ne mogu analizirati zaglavlja '%{value}'"
     create:
       en: "Error creating master private key"
@@ -614,7 +614,7 @@ log:
   derive_master_keys:
     en: "Generating master keys"
   hmac_sha512:
-    en: "Generating hmac_sha512 hash"
+    en: "Generating hmac-sha512 hash"
   sha256_hash:
     en: "Generating sha256 hash"
   calculate_checksum:
@@ -637,8 +637,8 @@ log:
     en: "Updating derivation label"
   create_main_window:
     en: "Creating main window"
-  create_message_window:
-    en: "Creating message window"
+  create_log_window:
+    en: "Creating log window"
   get_entropy_from_anu:
     en: "Connecting to ANU API"
   fetch_anu_qrng_data:
@@ -663,12 +663,52 @@ log:
     en: "Generating sha256 and ripemd160 hash"
   double_sha256:
     en: "Generating double sha256 hash"
-  detecting-local-os:
+  detecting_local_os:
     en: "Local system"
-  load-settings:
+  load_settings:
     en: "Loading user settings"
-  reset-config:
-    en: "Reset user config"
+  reset_user_settings:
+    en: "Resetting user config"
+  open_wallet_from_file:
+    en: "Opening wallet from a file"
+  save_wallet_to_file:
+    en: "Saving wallet to a file"
+  process_wallet_file_from_path:
+    en: "Processing wallet from a file"
+  parse_wallet_version:
+    en: "Parsing wallet version"  
+  generate_address:
+    en: "Generating crypto addresses"
+  apply_language:
+    en: "Applying new language"
+  reload_gui_icons:
+    en: "Reloading GUI icons"
+  reload_gui_theme:
+    en: "Reloading GUI theme"
+  register_button:
+    en: "Registering GUI button"
+  app_settings:
+    update_value:
+      en: "Updating app settings"
+    save_settings:
+      en: "Saving app settings"
+  app_messages:
+    queue_message:
+      en: "Queuing message"
+    start_message_processor:
+      en: "Starting app message processor"
+    start_next_message:
+      en: "Starting next message"
+    create_info_message:
+      en: "Creating info message"
+  switch_locale:
+    en: "Changing app language"
+  create_local_files:
+    en: "Creating local files"
+  setup_app_actions:
+    en: "Creating app actions"
+
+
 
 # &t!("UI.settings.element.frame.select").to_string()
 # Some(&t!("log.settings").to_string())
