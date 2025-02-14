@@ -174,7 +174,7 @@ impl GuiState {
     }
 
     fn reload_gui_icons(&mut self) {
-        println!("\t [+] {}", &t!("log.reload_gui_icons").to_string());
+        println!("[+] {}", &t!("log.reload_gui_icons").to_string());
 
         let settings = gtk::Settings::default().unwrap();
         let theme_subdir = if settings.is_gtk_application_prefer_dark_theme() {
@@ -190,20 +190,20 @@ impl GuiState {
             .join(gui_icons);
 
         let icon_files = [
-            ("new", "new.svg"),
-            ("open", "open.svg"),
-            ("save", "save.svg"),
-            ("about", "about.svg"),
-            ("settings", "settings.svg"),
-            ("log", "log.svg"),
-            ("notif", "notif.svg"),
-            ("random", "random.svg"),
+            ("new", "new.png"),
+            ("open", "open.png"),
+            ("save", "save.png"),
+            ("about", "about.png"),
+            ("settings", "settings.png"),
+            ("log", "log.png"),
+            ("notif", "notif.png"),
+            ("random", "random.png"),
         ];
         
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
-            println!("\t\t Icon: {:?}", icon_path);
+            println!(" - Icon: {:?}", icon_path);
             let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
             icons.insert((*name).to_string(), texture);
         }
@@ -225,7 +225,7 @@ impl GuiState {
     }
 
     fn reload_gui_theme(&mut self) {
-        println!("\t [+] {}", &t!("log.reload_gui_theme").to_string());
+        println!(" - [+] {}", &t!("log.reload_gui_theme").to_string());
         
         if let Some(theme) = &self.gui_theme {
             let preferred_theme = match theme.as_str() {
@@ -235,22 +235,23 @@ impl GuiState {
                 _ => adw::ColorScheme::PreferLight,
             };
             adw::StyleManager::default().set_color_scheme(preferred_theme);
-            println!("\t\t GUI theme: {:?}", preferred_theme);
+            println!(" - GUI theme: {:?}", preferred_theme);
         } else {
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
-            eprintln!("\t\t Problem with GUI theme, revert to default theme");
+            eprintln!(" - Problem with GUI theme, revert to default theme");
         }
 
     }
 
     fn register_button(&self, name: String, button: std::sync::Arc<gtk::Button>) {
-        println!("\t [+] {}", &t!("log.register_button").to_string());
+        println!(" - [+] {}", &t!("log.register_button").to_string());
 
         let mut button_map = self.gui_main_buttons.lock().unwrap();
         button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
 
-        println!("\t\t Button: {:?}", name)
+        println!(" - Button: {:?}", name)
     }
+
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -338,7 +339,7 @@ impl AppSettings {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
         
-        println!("\t Settings file: {:?}", local_config_file);
+        println!(" - Settings file: {:?}", local_config_file);
 
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
@@ -390,18 +391,18 @@ impl AppSettings {
         let gui_log = get_value_from_config(&config, "gui", "log", default_config.gui_log.clone());
         let gui_log_level = get_value_from_config(&config, "gui", "log_level", default_config.gui_log_level.clone());
 
-        println!("\t Save last window size: {:?}", gui_save_size);
-        println!("\t GUI width: {:?}", gui_last_width);
-        println!("\t GUI height: {:?}", gui_last_height);
-        println!("\t Maximized: {:?}", gui_maximized);
-        println!("\t Theme: {:?}", gui_theme);
-        println!("\t Icons: {:?}", gui_icons);
-        println!("\t Language: {:?}", gui_language);
-        println!("\t Search: {:?}", gui_search);
-        println!("\t Notification timeout: {:?}", gui_notification_timeout);
-        println!("\t Mnemonic passphrase length: {:?}", gui_mnemonic_length);
-        println!("\t Log enabled: {:?}", gui_log);
-        println!("\t Log level: {:?}", gui_log_level);
+        println!(" - Save last window size: {:?}", gui_save_size);
+        println!(" - GUI width: {:?}", gui_last_width);
+        println!(" - GUI height: {:?}", gui_last_height);
+        println!(" - Maximized: {:?}", gui_maximized);
+        println!(" - Theme: {:?}", gui_theme);
+        println!(" - Icons: {:?}", gui_icons);
+        println!(" - Language: {:?}", gui_language);
+        println!(" - Search: {:?}", gui_search);
+        println!(" - Notification timeout: {:?}", gui_notification_timeout);
+        println!(" - Mnemonic passphrase length: {:?}", gui_mnemonic_length);
+        println!(" - Log enabled: {:?}", gui_log);
+        println!(" - Log level: {:?}", gui_log_level);
 
         // Wallet settings
         let wallet_entropy_source = get_value_from_config(&config, "wallet", "entropy_source", default_config.wallet_entropy_source.clone());
@@ -410,11 +411,11 @@ impl AppSettings {
         let wallet_address_count = get_value_from_config(&config, "wallet", "address_count", default_config.wallet_address_count.clone());
         let wallet_hardened_address = get_value_from_config(&config, "wallet", "hardened_address", default_config.wallet_hardened_address.clone());
 
-        println!("\t Entropy source: {:?}", wallet_entropy_source);
-        println!("\t Entropy length: {:?}", wallet_entropy_length);
-        println!("\t BIP: {:?}", wallet_bip);
-        println!("\t Address count: {:?}", wallet_address_count);
-        println!("\t Hard address: {:?}", wallet_hardened_address);
+        println!(" - Entropy source: {:?}", wallet_entropy_source);
+        println!(" - Entropy length: {:?}", wallet_entropy_length);
+        println!(" - BIP: {:?}", wallet_bip);
+        println!(" - Address count: {:?}", wallet_address_count);
+        println!(" - Hard address: {:?}", wallet_hardened_address);
 
         // ANU settings
         let anu_enabled = get_value_from_config(&config, "anu", "enabled", default_config.anu_enabled.clone());
@@ -423,11 +424,11 @@ impl AppSettings {
         let anu_hex_block_size = get_value_from_config(&config, "anu", "hex_block_size", default_config.anu_hex_block_size.clone());
         let anu_log = get_value_from_config(&config, "anu", "log", default_config.anu_log.clone());
 
-        println!("\t Use ANU: {:?}", anu_enabled);
-        println!("\t ANU data format: {:?}", anu_data_format);
-        println!("\t ANU array length: {:?}", anu_array_length);
-        println!("\t ANU hex block size: {:?}", anu_hex_block_size);
-        println!("\t ANU log: {:?}", anu_log);
+        println!(" - Use ANU: {:?}", anu_enabled);
+        println!(" - ANU data format: {:?}", anu_data_format);
+        println!(" - ANU array length: {:?}", anu_array_length);
+        println!(" - ANU hex block size: {:?}", anu_hex_block_size);
+        println!(" - ANU log: {:?}", anu_log);
 
         // Proxy settings
         let proxy_status = get_value_from_config(&config, "proxy", "status", default_config.proxy_status.clone());
@@ -443,18 +444,18 @@ impl AppSettings {
         let proxy_retry_attempts = get_value_from_config(&config, "proxy", "retry_attempts", default_config.proxy_retry_attempts.clone());
         let proxy_timeout = get_value_from_config(&config, "proxy", "timeout", default_config.proxy_timeout.clone());
         
-        println!("\t Use proxy: {:?}", proxy_status);
-        println!("\t Proxy server address: {:?}", proxy_server_address);
-        println!("\t Proxy server port: {:?}", proxy_server_port);
-        println!("\t Use proxy PAC: {:?}", proxy_use_pac);
-        println!("\t Proxy script address: {:?}", proxy_script_address);
-        println!("\t Use proxy login credentials: {:?}", proxy_login_credentials);
-        println!("\t Proxy username: {:?}", proxy_login_username);
-        println!("\t Proxy password: {:?}", proxy_login_password);
-        println!("\t Use proxy SSL: {:?}", proxy_use_ssl);
-        println!("\t Proxy SSL certificate: {:?}", proxy_ssl_certificate);
-        println!("\t Proxy retry attempts: {:?}", proxy_retry_attempts);
-        println!("\t Proxy timeout: {:?}", proxy_timeout);
+        println!(" - Use proxy: {:?}", proxy_status);
+        println!(" - Proxy server address: {:?}", proxy_server_address);
+        println!(" - Proxy server port: {:?}", proxy_server_port);
+        println!(" - Use proxy PAC: {:?}", proxy_use_pac);
+        println!(" - Proxy script address: {:?}", proxy_script_address);
+        println!(" - Use proxy login credentials: {:?}", proxy_login_credentials);
+        println!(" - Proxy username: {:?}", proxy_login_username);
+        println!(" - Proxy password: {:?}", proxy_login_password);
+        println!(" - Use proxy SSL: {:?}", proxy_use_ssl);
+        println!(" - Proxy SSL certificate: {:?}", proxy_ssl_certificate);
+        println!(" - Proxy retry attempts: {:?}", proxy_retry_attempts);
+        println!(" - Proxy timeout: {:?}", proxy_timeout);
 
         AppSettings {
             wallet_entropy_source,
@@ -777,23 +778,18 @@ impl WalletSettings {
 
 struct AppMessages {
     info_bar: Option<gtk::Revealer>,
-    _log_button: Option<gtk::Button>,
     message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     processing: std::sync::Arc<std::sync::Mutex<bool>>,
-    _app_log: Option<std::sync::Arc<std::sync::Mutex<AppLog>>>,
 }
 
 impl AppMessages {
     fn new(
         info_bar: Option<gtk::Revealer>,
-        log_button: Option<gtk::Button>,
     ) -> Self {
         Self {
             info_bar: info_bar,
-            _log_button: log_button.clone(),
             message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
             processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
-            _app_log: Some(std::sync::Arc::new(std::sync::Mutex::new(AppLog::new(log_button.unwrap())))),
         }
     }
 
@@ -947,53 +943,66 @@ impl AppMessages {
 
 
 struct AppLog {
-    _status: std::sync::Arc<std::sync::Mutex<bool>>,
-    _log_button: Option<gtk::Button>,
+    status: std::sync::Arc<std::sync::Mutex<bool>>,
+    // log_button: Option<gtk::Button>,
     _messages: Option<std::collections::VecDeque<(String, gtk::MessageType)>>,
 }
 
 impl AppLog {
-    fn new(log_button: gtk::Button) -> Self {
+    fn new() -> Self {
         Self {
-            _status: std::sync::Arc::new(std::sync::Mutex::new(false)),
-            _log_button: Some(log_button),
+            status: std::sync::Arc::new(std::sync::Mutex::new(false)),
+            // log_button: Some(log_button),
             _messages: None,
         }
     }
 
-    // fn initialize_app_log(
-    //     &mut self, 
-    //     log_button: gtk::Button,
-    //     resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
-    // ) {
-    //     println!("-----------------------------------------------ACTIVATING APP LOG...");
+    fn initialize_app_log(
+        &mut self, 
+        // log_button: gtk::Button,
+        gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    ) {
+        println!("-----------------------------------------------ACTIVATING APP LOG...");
 
-    //     let status = self.status.clone();
-    //     let mut is_active = status.lock().unwrap();
-    //     println!("AppLog status: {}", is_active);
+        let status = self.status.clone();
+        let mut is_active = status.lock().unwrap();
+        println!("AppLog status: {}", is_active);
         
-    //     if *is_active {
-    //         println!("AppLog is active....");
-    //     } else {
-    //         println!("AppLog is inactive. trying to activate...");
-    //         *is_active = true;
+        if *is_active {
+            println!("AppLog is active....");
+        } else {
+            println!("AppLog is inactive. trying to activate...");
+            *is_active = true;
             
-    //     }
+        }
         
-    //     println!("AppLog status: {}", is_active);
-    //     let notification_button = log_button.clone();
-    
-    //     let lock_resources = resources.lock().unwrap();
-
-    //     if let Some(icon) = lock_resources.get_icon("notif") {
-    //         notification_button.set_child(Some(icon));
-    //     };
+        println!("AppLog status: {}", is_active);
         
-    //     self.log_button.replace(log_button);
-    //     println!("Icon changed. Logging starts...");
+        let texture = qr2m_lib::get_texture_from_resource("notif");
+        let new_button = gtk::Button::new();
 
-    //     // IMPLEMENT: Show log messages
-    // }
+        let picture = gtk::Picture::new();
+        picture.set_paintable(Some(&texture));
+        new_button.set_child(Some(&picture));
+
+
+        let lock_gui_state = gui_state.lock().unwrap();
+        let mut lock_buttons = lock_gui_state.gui_main_buttons.lock().unwrap();
+
+        let log_button = lock_buttons.entry("log".to_string()).and_modify(|e| { e = new_button });
+        // let butty = log_button.or_insert(default);
+
+
+
+        // let mut button_map = self.gui_main_buttons.lock().unwrap();
+        // button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
+
+        // println!(" - Button: {:?}", name);
+
+        println!("Icon changed. Logging starts...");
+
+        // IMPLEMENT: Show log messages
+    }
 }
 
 
@@ -1112,7 +1121,7 @@ fn main() {
     if let Err(err) = os::create_local_files() {
         eprintln!("Error creating local config files: {}", err);
     } else {
-        println!("\tLocal files created");  
+        println!(" - Local files created");  
     }
 
     let application = adw::Application::builder()
@@ -1317,9 +1326,17 @@ fn create_main_window(
         ));
     }
 
+    {
+        let app_log_state = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
+        let mut lock_app_log = app_log_state.lock().unwrap();
+
+        lock_app_log.initialize_app_log(gui_state.clone());
+    }
+
+
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),
-        Some((*log_button).clone())
+        // Some((*log_button).clone())
     )));
 
     setup_app_actions(
@@ -2080,16 +2097,16 @@ fn create_main_window(
             let (entropy, passphrase) = open_wallet_from_file(&app_messages_state);
 
             if !entropy.is_empty() {
-                println!("\t Wallet entropy: {:?}", entropy);
+                println!(" ↳ Wallet entropy: {:?}", entropy);
                 entropy_text.buffer().set_text(&entropy);
                 
                 match passphrase {
                     Some(pass) => {
-                        println!("\t Mnemonic passphrase: {:?}", pass);
+                        println!(" - Mnemonic passphrase: {:?}", pass);
                         mnemonic_passphrase_text.buffer().set_text(&pass);
                     },
                     None => {
-                        println!("\t No Mnemonic passphrase available");
+                        println!(" - No Mnemonic passphrase available");
                     },
                 }
 
@@ -2117,7 +2134,7 @@ fn create_main_window(
                     let seed_hex = hex::encode(&seed[..]);
                     seed_text.buffer().set_text(&seed_hex.to_string());
                     
-                    println!("\t Seed (hex): {:?}", seed_hex);
+                    println!(" - Seed (hex): {:?}", seed_hex);
                 }
 
 
@@ -2152,11 +2169,11 @@ fn create_main_window(
                 
             if !pre_entropy.is_empty() {
                 let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
-                println!("\t Entropy checksum: {:?}", checksum);
+                println!(" - Entropy checksum: {:?}", checksum);
 
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
-                println!("\t Final entropy: {:?}", full_entropy);
+                println!(" - Final entropy: {:?}", full_entropy);
                 entropy_text.buffer().set_text(&full_entropy);
                 
                 let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
@@ -2168,7 +2185,7 @@ fn create_main_window(
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
                 
-                println!("\t Seed (hex): {:?}", seed_hex);
+                println!(" - Seed (hex): {:?}", seed_hex);
 
                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                 wallet_settings.entropy_checksum = Some(checksum.clone());
@@ -2217,7 +2234,7 @@ fn create_main_window(
             let mnemonic_rng_string: String = (0..scale_value)
                         .map(|_| char::from(rand::rng().random_range(32..127)))
                         .collect();
-            println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
+            println!(" - RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
             mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
         }
     ));
@@ -2478,7 +2495,7 @@ fn create_main_window(
     //             let seed = keys::generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
     //             let seed_hex = hex::encode(&seed[..]);
     //             seed_text.buffer().set_text(&seed_hex.to_string());
-    //             println!("\t Seed (hex): {:?}", seed_hex);
+    //             println!(" - Seed (hex): {:?}", seed_hex);
     //         }
     //     }
     // ));
@@ -4426,27 +4443,27 @@ fn reset_user_settings() -> Result<String, String> {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
         
-        println!("\t Local config file: {:?}", local_config_file);
+        println!(" - Local config file: {:?}", local_config_file);
         
         match std::fs::remove_file(local_config_file) {
             Ok(_) => {
-                println!("\t Local config file deleted");
+                println!(" - Local config file deleted");
             },
             Err(err) => {
                 // TODO: AppMessages
-                eprintln!("\t Local config file NOT deleted \n Error: {}", err);
+                eprintln!(" - Local config file NOT deleted \n Error: {}", err);
             },
         };
     }
     
     match os::create_local_files() {
         Ok(_) => {
-            println!("\t New config file created");
+            println!(" - New config file created");
             Ok("OK".to_string())
         },
         Err(err) => {
             // TODO: AppMessages
-            eprintln!("\t New config file NOT created \n {}", err);
+            eprintln!(" - New config file NOT created \n {}", err);
             Err(err.to_string())
         },
     }
@@ -4532,9 +4549,10 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
                 if let Some(file) = open_dialog.file() {
                     if let Some(path) = file.path() {
                         let file_path = path.to_string_lossy().to_string();
-                        println!("\t Wallet file chosen: {:?}", file_path);
+                        println!(" - Wallet file chosen: {:?}", file_path);
 
                         let result = process_wallet_file_from_path(&file_path);
+                        let lock_state = app_messages_state.lock().unwrap();
 
                         match result {
                             Ok((version, entropy, password)) => {
@@ -4544,17 +4562,16 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
                                 };
 
                                 let file_entropy_string = format!("{}\n{}\n{}", version, entropy, passphrase);
+
                                 if let Err(err) = tx.send(file_entropy_string) {
-                                    println!("Error sending data: {}", err);
+                                    lock_state.queue_message(format!("{} : {}", t!("error.wallet.send"), err), gtk::MessageType::Error);
                                 } else {
+                                    lock_state.queue_message(t!("UI.messages.wallet.open").to_string(), gtk::MessageType::Info);
                                     open_loop.quit();
                                 }
                             },
                             Err(err) => {
-                                let lock_state = app_messages_state.lock().unwrap();
-                                let error_message = format!("{} : {}", t!("error.wallet.process"), err);
-
-                                lock_state.queue_message(error_message, gtk::MessageType::Error);
+                                lock_state.queue_message(format!("{} : {}", t!("error.wallet.process"), err), gtk::MessageType::Error);
 
                                 open_loop.quit();
                             }
@@ -4643,7 +4660,7 @@ fn save_wallet_to_file() {
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     println!("[+] {}", &t!("log.update_derivation_label").to_string());
 
-    println!("\t Derivation Path: {:?}", DP);
+    println!(" - Derivation Path: {:?}", DP);
 
     let mut path = String::new();
     path.push_str("m");
@@ -4677,7 +4694,7 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
         path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
     }
     
-    println!("\t Derivation path: {:?}", &path);
+    println!(" - Derivation path: {:?}", &path);
 
     label.set_text(&path);
 }
@@ -4974,3 +4991,14 @@ fn generate_address(
         
     // }
 }
+
+// fn create_log(
+//     log_state: std::sync::Arc<std::sync::Mutex<AppLog>>,
+//     message: String,
+//     message_type: gtk::MessageType,
+// ) {
+
+
+
+
+// }

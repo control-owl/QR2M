@@ -437,6 +437,15 @@ UI:
         en: "Please re-open app, or create new window to apply new language"
         de: "Bitte öffnen Sie die App oder neue Fenster erneut, um die neue Sprache anzuwenden"
         hr: "Ponovno otvorite aplikaciju ili otvorite novi prozor da bi primjeni novi jezik"
+    wallet:
+      open:
+        en: ""
+        de: ""
+        hr: ""
+      save:
+        en: ""
+        de: ""
+        hr: ""
   dialog:
     open:
       en: "Please select a file"
@@ -600,6 +609,10 @@ error:
       en: "Error processing wallet file"
       de: "Fehler bei der Verarbeitung der Wallet-Datei"
       hr: "Pogreška pri obradi datoteke novčanika"
+    send:
+      en: "Problem with sending wallet to an app"
+      de: "Problem beim Senden der Wallet in der App"
+      hr: "Problem sa slanjem novčanika u aplikaciji"
 log:
   generate_entropy:
     en: "Generating entropy:"

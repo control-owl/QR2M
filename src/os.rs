@@ -82,19 +82,19 @@ pub fn detect_os_and_user_dir() {
             Ok(target) => {
                 if target.is_dir() {
                     if fs::metadata(&target).map(|m| m.permissions().readonly()).unwrap_or(true) {
-                        println!("\t [!] Symlink target is not writable: {:?}", &target);
+                        println!("[!] Symlink target is not writable: {:?}", &target);
                         (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
                     } else {
-                        println!("\t [+] Using writable symlink target: {:?}", &target);
+                        println!(" - Using writable symlink target: {:?}", &target);
                         (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
                     }
                 } else {
-                    println!("\t [!] Symlink does not point to a directory: {:?}", &target);
+                    println!("[!] Symlink does not point to a directory: {:?}", &target);
                     (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
                 }
             },
             Err(e) => {
-                println!("\t [!] Failed to read symlink target: {:?}, Error: {}", &local_config_dir, e);
+                println!("[!] Failed to read symlink target: {:?}, Error: {}", &local_config_dir, e);
                 (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
             }
         }
@@ -109,15 +109,15 @@ pub fn detect_os_and_user_dir() {
     local_settings.local_config_file = Some(config_file.clone());
     local_settings.local_temp_file = Some(local_temp_file.clone());
 
-    println!("\t OS: {:?}", &os);
-    println!("\t Config directory: {:?}", &config_dir);
-    println!("\t Configuration file: {:?}", &config_file);
-    println!("\t Temp directory: {:?}", &local_temp_dir);
-    println!("\t Temp file: {:?}", &local_temp_file);
+    println!(" - OS: {:?}", &os);
+    println!(" - Config directory: {:?}", &config_dir);
+    println!(" - Configuration file: {:?}", &config_file);
+    println!(" - Temp directory: {:?}", &local_temp_dir);
+    println!(" - Temp file: {:?}", &local_temp_file);
 }
 
 pub fn switch_locale(lang: &str) {
-    println!("\t [+] {}", &t!("log.switch_locale").to_string());
+    println!(" - {}", &t!("log.switch_locale").to_string());
 
     match lang {
         "Deutsch" => rust_i18n::set_locale("de"),
@@ -125,7 +125,7 @@ pub fn switch_locale(lang: &str) {
         "English"| _ => rust_i18n::set_locale("en"),
     }
 
-    println!("\t\t Language: {:?}", lang);
+    println!(" - Language: {:?}", lang);
 }
 
 pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {

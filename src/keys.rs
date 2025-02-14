@@ -342,8 +342,8 @@ pub fn generate_entropy(
 ) -> String {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
 
-    println!("\t Entropy source: {:?}", source);
-    println!("\t Entropy length: {:?}", entropy_length);
+    println!(" - Entropy source: {:?}", source);
+    println!(" - Entropy length: {:?}", entropy_length);
 
     match source {
         "RNG" | "RNG+" => {
@@ -353,7 +353,7 @@ pub fn generate_entropy(
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 
-            println!("\t RNG Entropy: {:?}", rng_entropy_string);
+            println!(" - RNG Entropy: {:?}", rng_entropy_string);
 
             let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap(); // This locks the Mutex
             wallet_settings.entropy_string = Some(rng_entropy_string.clone());
@@ -462,7 +462,7 @@ pub fn generate_entropy(
                         if let Some(file) = open_dialog.file() {
                             if let Some(path) = file.path() {
                                 let file_path = path.to_string_lossy().to_string();
-                                println!("\t Entropy file name: {:?}", file_path);
+                                println!(" - Entropy file name: {:?}", file_path);
                                 
                                 let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
                                 
@@ -504,7 +504,7 @@ pub fn generate_entropy(
 
 pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     println!("[+] {}", &t!("log.generate_mnemonic_words").to_string());
-    println!("\t Final entropy: {:?}", final_entropy_binary);
+    println!(" - Final entropy: {:?}", final_entropy_binary);
     
     let chunks: Vec<String> = final_entropy_binary.chars()
         .collect::<Vec<char>>()
@@ -531,9 +531,9 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 
     let mnemonic_words_as_string = mnemonic_words_vector.join(" ");
     
-    println!("\t Entropy chunks: {:?}", chunks);
-    println!("\t Decimal mnemonic: {:?}", mnemonic_decimal);
-    println!("\t Mnemonic words: {:?}", mnemonic_words_vector);
+    println!(" - Entropy chunks: {:?}", chunks);
+    println!(" - Decimal mnemonic: {:?}", mnemonic_decimal);
+    println!(" - Mnemonic words: {:?}", mnemonic_words_vector);
 
     let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
     wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
@@ -543,8 +543,8 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 
 pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     println!("[+] {}", &t!("log.generate_bip39_seed").to_string());
-    println!("\t Entropy: {:?}", entropy);
-    println!("\t Passphrase: {:?}", passphrase);
+    println!(" - Entropy: {:?}", entropy);
+    println!(" - Passphrase: {:?}", passphrase);
 
     let entropy_vector = qr2m_lib::convert_string_to_binary(&entropy);
     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
@@ -556,15 +556,15 @@ pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     };
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
 
-    println!("\t Seed: {:?}", seed);
+    println!(" - Seed: {:?}", seed);
     
     seed
 }
 
 pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
     println!("[+] {}", &t!("log.generate_entropy_from_file").to_string());
-    println!("\t File: {:?}", file_path);
-    println!("\t Entropy length: {:?}", entropy_length);
+    println!(" - File: {:?}", file_path);
+    println!(" - Entropy length: {:?}", entropy_length);
 
     let mut file = match File::open(file_path) {
         Ok(file) => file,
@@ -592,16 +592,16 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
 
     entropy = entropy.chars().take(entropy_length as usize).collect();
     
-    println!("\t File entropy hash: {:?}", hash);
-    println!("\t File entropy: {:?}", entropy);
+    println!(" - File entropy hash: {:?}", hash);
+    println!(" - File entropy: {:?}", entropy);
 
     entropy
 }
 
 pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
     println!("[+] {}", &t!("log.derive_master_keys").to_string());
-    println!("\t Private header: {:?}", private_header);
-    println!("\t Public header: {:?}", public_header);
+    println!(" - Private header: {:?}", private_header);
+    println!(" - Public header: {:?}", public_header);
 
     if private_header.is_empty() {
         private_header = "0x0488ADE4";
@@ -653,16 +653,16 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
     
     let master_xpub = bs58::encode(&master_public_key).into_string();
     
-    println!("\t Parsed private header {:?}", private_header);
-    println!("\t Parsed public header {:?}", public_header);
-    println!("\t Seed: {:?}", seed_bytes);
-    println!("\t Hmac sha512 hash: {:?}", hmac_result);
-    println!("\t Master key private bytes: {:?}", master_private_key_bytes);
-    println!("\t Master key chain code: {:?}", master_chain_code_bytes);
-    println!("\t Master private key (xprv): {:?}", master_xprv);
-    println!("\t Master secret key {:?}", master_secret_key);
-    println!("\t Master public key {:?}", master_public_key_bytes);
-    println!("\t Master public key (xpub): {:?}", master_xpub);
+    println!(" - Parsed private header {:?}", private_header);
+    println!(" - Parsed public header {:?}", public_header);
+    println!(" - Seed: {:?}", seed_bytes);
+    println!(" - Hmac sha512 hash: {:?}", hmac_result);
+    println!(" - Master key private bytes: {:?}", master_private_key_bytes);
+    println!(" - Master key chain code: {:?}", master_chain_code_bytes);
+    println!(" - Master private key (xprv): {:?}", master_xprv);
+    println!(" - Master secret key {:?}", master_secret_key);
+    println!(" - Master public key {:?}", master_public_key_bytes);
+    println!(" - Master public key (xpub): {:?}", master_xpub);
 
     let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
     wallet_settings.master_xprv = Some(master_xprv.clone());

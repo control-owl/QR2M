@@ -1,6 +1,5 @@
 {
     "recommendations": [
-        "rust-lang.rust-analyzer",
         "streetsidesoftware.code-spell-checker",
         "vadimcn.vscode-lldb",
         "fill-labs.dependi",
@@ -8,10 +7,10 @@
         "tamasfe.even-better-toml",
         "mhutchie.git-graph",
         "github.vscode-github-actions",
-        "polymeilex.rust-targets",
         "gruntfuggly.todo-tree",
         "streetsidesoftware.code-spell-checker-croatian",
         "streetsidesoftware.code-spell-checker-german",
-        "jscearcy.rust-doc-viewer"
+        "cargo-inspect-vscode.cargo-inspect",
+        "mechatroner.rainbow-csv"
     ]
 }
