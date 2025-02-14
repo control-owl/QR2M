@@ -495,6 +495,7 @@ impl AppSettings {
         }
     }
 
+    // BUG: Not all is working. again degress 
     fn update_value(
         &mut self,
         key: &str,
@@ -972,32 +973,34 @@ impl AppLog {
             println!("AppLog is active....");
         } else {
             println!("AppLog is inactive. trying to activate...");
-            *is_active = true;
+            return;
+            // *is_active = true;
             
         }
         
         println!("AppLog status: {}", is_active);
         
-        let texture = qr2m_lib::get_texture_from_resource("notif");
-        let new_button = gtk::Button::new();
+        let mut lock_gui_state = gui_state.lock().unwrap();
+    
+    
+        if let Some(texture_map) = &lock_gui_state.gui_button_images {
+            if let Some(new_texture) = texture_map.get("notif") {
+                
+                let mut lock_buttons = lock_gui_state.gui_main_buttons.lock().unwrap();
 
-        let picture = gtk::Picture::new();
-        picture.set_paintable(Some(&texture));
-        new_button.set_child(Some(&picture));
-
-
-        let lock_gui_state = gui_state.lock().unwrap();
-        let mut lock_buttons = lock_gui_state.gui_main_buttons.lock().unwrap();
-
-        let log_button = lock_buttons.entry("log".to_string()).and_modify(|e| { e = new_button });
-        // let butty = log_button.or_insert(default);
-
-
-
-        // let mut button_map = self.gui_main_buttons.lock().unwrap();
-        // button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
-
-        // println!(" - Button: {:?}", name);
+                if let Some(log_buttons) = lock_buttons.get_mut("log") {
+                    for button in log_buttons.iter() {
+                        let picture = gtk::Picture::new();
+                        picture.set_paintable(Some(new_texture));
+                        button.set_child(Some(&picture));
+                    }
+                }
+            } else {
+                eprintln!("Error: 'notif' texture not found in gui_button_images");
+            }
+        } else {
+            eprintln!("Error: gui_button_images is None");
+        }
 
         println!("Icon changed. Logging starts...");
 
@@ -1329,7 +1332,8 @@ fn create_main_window(
     {
         let app_log_state = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
         let mut lock_app_log = app_log_state.lock().unwrap();
-
+        lock_app_log.status = std::sync::Arc::new(std::sync::Mutex::new(app_log_status));
+        
         lock_app_log.initialize_app_log(gui_state.clone());
     }
 
