@@ -1721,13 +1721,13 @@ fn create_main_window(
     mnemonic_passphrase_main_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
 
-    if *source == "RNG+" {
-        mnemonic_passphrase_length_box.set_visible(true);
-        random_mnemonic_passphrase_button.set_visible(true);
-    } else {
-        mnemonic_passphrase_length_box.set_visible(false);
-        random_mnemonic_passphrase_button.set_visible(false);
-    }
+    // if *source == "RNG+" {
+    //     mnemonic_passphrase_length_box.set_visible(true);
+    //     random_mnemonic_passphrase_button.set_visible(true);
+    // } else {
+    //     mnemonic_passphrase_length_box.set_visible(false);
+    //     random_mnemonic_passphrase_button.set_visible(false);
+    // }
 
     let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
 
@@ -2603,19 +2603,19 @@ fn create_main_window(
 
     entropy_source_dropdown.connect_selected_notify(clone!(
         #[weak] generate_entropy_button,
-        #[weak] random_mnemonic_passphrase_button,
+        // #[weak] random_mnemonic_passphrase_button,
         move |entropy_source_dropdown| {
             let value = entropy_source_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
             let source = selected_entropy_source_value.unwrap();
     
-            if *source == "RNG+" {
-                mnemonic_passphrase_length_box.set_visible(true);
-                random_mnemonic_passphrase_button.set_visible(true);
-            } else {
-                mnemonic_passphrase_length_box.set_visible(false);
-                random_mnemonic_passphrase_button.set_visible(false);
-            }
+            // if *source == "RNG+" {
+            //     mnemonic_passphrase_length_box.set_visible(true);
+            //     random_mnemonic_passphrase_button.set_visible(true);
+            // } else {
+            //     mnemonic_passphrase_length_box.set_visible(false);
+            //     random_mnemonic_passphrase_button.set_visible(false);
+            // }
 
             if *source == "File" {
                 generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
