@@ -293,8 +293,8 @@ struct AppSettings {
     proxy_timeout: Option<u32>,
 }
 
-impl AppSettings {
-    fn default_config() -> Self {
+impl Default for AppSettings {
+    fn default() -> Self {
         AppSettings {
             wallet_entropy_source: Some("RNG+".to_string()),
             wallet_entropy_length: Some(256),
@@ -332,9 +332,14 @@ impl AppSettings {
             proxy_timeout: Some(3000),
         }
     }
+}
 
+
+impl AppSettings {
     fn load_settings() -> Self {
         println!("[+] {}", &t!("log.load_settings").to_string());
+        
+        let mut settings = AppSettings::default();
         
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
@@ -365,134 +370,119 @@ impl AppSettings {
             toml::Value::Table(toml::value::Table::new())
         });
 
-        let default_config = AppSettings::default_config();
 
-        fn get_value_from_config<Wtf>(config: &toml::Value, section: &str, key: &str, default: Option<Wtf>) -> Option<Wtf>
-        where
-        Wtf: std::str::FromStr,
-        {
-            config.get(section)
-                .and_then(|section_value| section_value.get(key))
-                .and_then(|value| value.as_str().and_then(|v| v.parse().ok()))
-                .or(default)
+        fn get_str(section: &toml::Value, key: &str, default: Option<String>) -> Option<String> {
+            section.get(key).and_then(|v| v.as_str()).map(|s| s.to_string()).or(default)
         }
+
+        fn get_u32(section: &toml::Value, key: &str, default: Option<u32>) -> Option<u32> {
+            section.get(key).and_then(|v| v.as_integer()).map(|v| v as u32).or(default)
+        }
+
+        fn get_bool(section: &toml::Value, key: &str, default: Option<bool>) -> Option<bool> {
+            section.get(key).and_then(|v| v.as_bool()).or(default)
+        }
+
+        fn load_section(
+            config: &toml::Value, 
+            section_name: &str, 
+            // default_config: &toml::Value
+        ) -> toml::Value {
+            config.get(section_name)
+                .cloned()
+                // .unwrap_or_else(|| default_config.get(section_name).cloned().unwrap_or(toml::Value::Table(toml::value::Table::new())))
+                .unwrap_or_else(|| toml::Value::Table(toml::value::Table::new()))
+        }
+
+        let gui_section = load_section(&config, "gui");
+        let wallet_section = load_section(&config, "wallet");
+        let anu_section = load_section(&config, "anu");
+        let proxy_section = load_section(&config, "proxy");
+        
 
         // GUI settings
-        let gui_save_size = get_value_from_config(&config, "gui", "save_size", default_config.gui_save_size.clone());
-        let gui_last_width = get_value_from_config(&config, "gui", "last_width", default_config.gui_last_width.clone());
-        let gui_last_height = get_value_from_config(&config, "gui", "last_height", default_config.gui_last_height.clone());
-        let gui_maximized = get_value_from_config(&config, "gui", "maximized", default_config.gui_maximized.clone());
-        let gui_theme = get_value_from_config(&config, "gui", "theme", default_config.gui_theme.clone());
-        let gui_icons = get_value_from_config(&config, "gui", "icons", default_config.gui_icons.clone());
-        let gui_language = get_value_from_config(&config, "gui", "language", default_config.gui_language.clone());
-        let gui_search = get_value_from_config(&config, "gui", "search", default_config.gui_search.clone());
-        let gui_notification_timeout = get_value_from_config(&config, "gui", "notification_timeout", default_config.gui_notification_timeout.clone());
-        let gui_mnemonic_length = get_value_from_config(&config, "gui", "mnemonic_length", default_config.gui_mnemonic_length.clone());
-        let gui_log = get_value_from_config(&config, "gui", "log", default_config.gui_log.clone());
-        let gui_log_level = get_value_from_config(&config, "gui", "log_level", default_config.gui_log_level.clone());
+        settings.gui_save_size = get_bool(&gui_section, "save_size", settings.gui_save_size);
+        settings.gui_last_width = get_u32(&gui_section, "last_width", settings.gui_last_width);
+        settings.gui_last_height = get_u32(&gui_section, "last_height", settings.gui_last_height);
+        settings.gui_maximized = get_bool(&gui_section, "maximized", settings.gui_maximized);
+        settings.gui_theme = get_str(&gui_section, "theme", settings.gui_theme);
+        settings.gui_icons = get_str(&gui_section, "icons", settings.gui_icons);
+        settings.gui_language = get_str(&gui_section, "language", settings.gui_language);
+        settings.gui_search = get_str(&gui_section, "search", settings.gui_search);
+        settings.gui_notification_timeout = get_u32(&gui_section, "notification_timeout", settings.gui_notification_timeout);
+        settings.gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", settings.gui_mnemonic_length);
+        settings.gui_log = get_bool(&gui_section, "save_size", settings.gui_log);
+        settings.gui_log_level = get_str(&gui_section, "log_level", settings.gui_log_level);
 
-        println!(" - Save last window size: {:?}", gui_save_size);
-        println!(" - GUI width: {:?}", gui_last_width);
-        println!(" - GUI height: {:?}", gui_last_height);
-        println!(" - Maximized: {:?}", gui_maximized);
-        println!(" - Theme: {:?}", gui_theme);
-        println!(" - Icons: {:?}", gui_icons);
-        println!(" - Language: {:?}", gui_language);
-        println!(" - Search: {:?}", gui_search);
-        println!(" - Notification timeout: {:?}", gui_notification_timeout);
-        println!(" - Mnemonic passphrase length: {:?}", gui_mnemonic_length);
-        println!(" - Log enabled: {:?}", gui_log);
-        println!(" - Log level: {:?}", gui_log_level);
+        println!(" - Save last window size: {:?}", settings.gui_save_size);
+        println!(" - GUI width: {:?}", settings.gui_last_width);
+        println!(" - GUI height: {:?}", settings.gui_last_height);
+        println!(" - Maximized: {:?}", settings.gui_maximized);
+        println!(" - Theme: {:?}", settings.gui_theme);
+        println!(" - Icons: {:?}", settings.gui_icons);
+        println!(" - Language: {:?}", settings.gui_language);
+        println!(" - Search: {:?}", settings.gui_search);
+        println!(" - Notification timeout: {:?}", settings.gui_notification_timeout);
+        println!(" - Mnemonic passphrase length: {:?}", settings.gui_mnemonic_length);
+        println!(" - Log enabled: {:?}", settings.gui_log);
+        println!(" - Log level: {:?}", settings.gui_log_level);
 
         // Wallet settings
-        let wallet_entropy_source = get_value_from_config(&config, "wallet", "entropy_source", default_config.wallet_entropy_source.clone());
-        let wallet_entropy_length = get_value_from_config(&config, "wallet", "entropy_length", default_config.wallet_entropy_length.clone());
-        let wallet_bip = get_value_from_config(&config, "wallet", "bip", default_config.wallet_bip.clone());
-        let wallet_address_count = get_value_from_config(&config, "wallet", "address_count", default_config.wallet_address_count.clone());
-        let wallet_hardened_address = get_value_from_config(&config, "wallet", "hardened_address", default_config.wallet_hardened_address.clone());
+        settings.wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
+        settings.wallet_entropy_length = get_u32(&wallet_section, "entropy_length", settings.wallet_entropy_length);
+        settings.wallet_bip = get_u32(&wallet_section, "bip", settings.wallet_bip);
+        settings.wallet_address_count = get_u32(&wallet_section, "address_count", settings.wallet_address_count);
+        settings.wallet_hardened_address = get_bool(&wallet_section, "hardened_address", settings.wallet_hardened_address);
 
-        println!(" - Entropy source: {:?}", wallet_entropy_source);
-        println!(" - Entropy length: {:?}", wallet_entropy_length);
-        println!(" - BIP: {:?}", wallet_bip);
-        println!(" - Address count: {:?}", wallet_address_count);
-        println!(" - Hard address: {:?}", wallet_hardened_address);
+        println!(" - Entropy source: {:?}", settings.wallet_entropy_source);
+        println!(" - Entropy length: {:?}", settings.wallet_entropy_length);
+        println!(" - BIP: {:?}", settings.wallet_bip);
+        println!(" - Address count: {:?}", settings.wallet_address_count);
+        println!(" - Hard address: {:?}", settings.wallet_hardened_address);
 
         // ANU settings
-        let anu_enabled = get_value_from_config(&config, "anu", "enabled", default_config.anu_enabled.clone());
-        let anu_data_format = get_value_from_config(&config, "anu", "data_format", default_config.anu_data_format.clone());
-        let anu_array_length = get_value_from_config(&config, "anu", "array_length", default_config.anu_array_length.clone());
-        let anu_hex_block_size = get_value_from_config(&config, "anu", "hex_block_size", default_config.anu_hex_block_size.clone());
-        let anu_log = get_value_from_config(&config, "anu", "log", default_config.anu_log.clone());
+        settings.anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
+        settings.anu_data_format = get_str(&anu_section, "data_format", settings.anu_data_format);
+        settings.anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
+        settings.anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
+        settings.anu_log = get_bool(&anu_section, "log", settings.anu_log);
 
-        println!(" - Use ANU: {:?}", anu_enabled);
-        println!(" - ANU data format: {:?}", anu_data_format);
-        println!(" - ANU array length: {:?}", anu_array_length);
-        println!(" - ANU hex block size: {:?}", anu_hex_block_size);
-        println!(" - ANU log: {:?}", anu_log);
+        println!(" - Use ANU: {:?}", settings.anu_enabled);
+        println!(" - ANU data format: {:?}", settings.anu_data_format);
+        println!(" - ANU array length: {:?}", settings.anu_array_length);
+        println!(" - ANU hex block size: {:?}", settings.anu_hex_block_size);
+        println!(" - ANU log: {:?}", settings.anu_log);
 
         // Proxy settings
-        let proxy_status = get_value_from_config(&config, "proxy", "status", default_config.proxy_status.clone());
-        let proxy_server_address = get_value_from_config(&config, "proxy", "server_address", default_config.proxy_server_address.clone());
-        let proxy_server_port = get_value_from_config(&config, "proxy", "server_port", default_config.proxy_server_port.clone());
-        let proxy_use_pac = get_value_from_config(&config, "proxy", "use_pac", default_config.proxy_use_pac.clone());
-        let proxy_script_address = get_value_from_config(&config, "proxy", "script_address", default_config.proxy_script_address.clone());
-        let proxy_login_credentials = get_value_from_config(&config, "proxy", "login_credentials", default_config.proxy_login_credentials.clone());
-        let proxy_login_username = get_value_from_config(&config, "proxy", "login_username", default_config.proxy_login_username.clone());
-        let proxy_login_password = get_value_from_config(&config, "proxy", "login_password", default_config.proxy_login_password.clone());
-        let proxy_use_ssl = get_value_from_config(&config, "proxy", "use_ssl", default_config.proxy_use_ssl.clone());
-        let proxy_ssl_certificate = get_value_from_config(&config, "proxy", "ssl_certificate", default_config.proxy_ssl_certificate.clone());
-        let proxy_retry_attempts = get_value_from_config(&config, "proxy", "retry_attempts", default_config.proxy_retry_attempts.clone());
-        let proxy_timeout = get_value_from_config(&config, "proxy", "timeout", default_config.proxy_timeout.clone());
-        
-        println!(" - Use proxy: {:?}", proxy_status);
-        println!(" - Proxy server address: {:?}", proxy_server_address);
-        println!(" - Proxy server port: {:?}", proxy_server_port);
-        println!(" - Use proxy PAC: {:?}", proxy_use_pac);
-        println!(" - Proxy script address: {:?}", proxy_script_address);
-        println!(" - Use proxy login credentials: {:?}", proxy_login_credentials);
-        println!(" - Proxy username: {:?}", proxy_login_username);
-        println!(" - Proxy password: {:?}", proxy_login_password);
-        println!(" - Use proxy SSL: {:?}", proxy_use_ssl);
-        println!(" - Proxy SSL certificate: {:?}", proxy_ssl_certificate);
-        println!(" - Proxy retry attempts: {:?}", proxy_retry_attempts);
-        println!(" - Proxy timeout: {:?}", proxy_timeout);
+        settings.proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
+        settings.proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
+        settings.proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
+        settings.proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
+        settings.proxy_script_address = get_str(&proxy_section, "script_address", settings.proxy_script_address);
+        settings.proxy_login_credentials = get_bool(&proxy_section, "login_credentials", settings.proxy_login_credentials);
+        settings.proxy_login_username = get_str(&proxy_section, "login_username", settings.proxy_login_username);
+        settings.proxy_login_password = get_str(&proxy_section, "login_password", settings.proxy_login_password);
+        settings.proxy_use_ssl = get_bool(&proxy_section, "use_ssl", settings.proxy_use_ssl);
+        settings.proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", settings.proxy_ssl_certificate);
+        settings.proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", settings.proxy_retry_attempts);
+        settings.proxy_timeout = get_u32(&proxy_section, "timeout", settings.proxy_timeout);
 
-        AppSettings {
-            wallet_entropy_source,
-            wallet_entropy_length,
-            wallet_bip,
-            wallet_address_count,
-            wallet_hardened_address,
-            gui_save_size,
-            gui_last_width,
-            gui_last_height,
-            gui_maximized,
-            gui_theme,
-            gui_icons,
-            gui_language,
-            gui_search,
-            gui_notification_timeout,
-            gui_mnemonic_length,
-            gui_log,
-            gui_log_level,
-            anu_enabled,
-            anu_data_format,
-            anu_array_length,
-            anu_hex_block_size,
-            anu_log,
-            proxy_status,
-            proxy_server_address,
-            proxy_server_port,
-            proxy_use_pac,
-            proxy_script_address,
-            proxy_login_credentials,
-            proxy_login_username,
-            proxy_login_password,
-            proxy_use_ssl,
-            proxy_ssl_certificate,
-            proxy_retry_attempts,
-            proxy_timeout,
-        }
+
+        
+        println!(" - Use proxy: {:?}", settings.proxy_status);
+        println!(" - Proxy server address: {:?}", settings.proxy_server_address);
+        println!(" - Proxy server port: {:?}", settings.proxy_server_port);
+        println!(" - Use proxy PAC: {:?}", settings.proxy_use_pac);
+        println!(" - Proxy script address: {:?}", settings.proxy_script_address);
+        println!(" - Use proxy login credentials: {:?}", settings.proxy_login_credentials);
+        println!(" - Proxy username: {:?}", settings.proxy_login_username);
+        println!(" - Proxy password: {:?}", settings.proxy_login_password);
+        println!(" - Use proxy SSL: {:?}", settings.proxy_use_ssl);
+        println!(" - Proxy SSL certificate: {:?}", settings.proxy_ssl_certificate);
+        println!(" - Proxy retry attempts: {:?}", settings.proxy_retry_attempts);
+        println!(" - Proxy timeout: {:?}", settings.proxy_timeout);
+
+        settings
     }
 
     // BUG: Not all is working. again degress 
@@ -502,122 +492,349 @@ impl AppSettings {
         new_value: toml_edit::Item,
         gui_state: Option<std::sync::Arc<std::sync::Mutex<GuiState>>>,
     ) {
-        println!("[+] {}", &t!("log.app_settings.update_value").to_string());
-
-        let mut updated = false;
-
-        let mut update_field = |field: &mut dyn std::any::Any, new_value: &toml_edit::Item| {
-            if let Some(f) = field.downcast_mut::<Option<String>>() {
-                if let Some(val) = new_value.as_str() {
-                    if Some(val.to_string()) != *f {
-                        *f = Some(val.to_string());
-                        updated = true;
-                    }
-                }
-            } else if let Some(f) = field.downcast_mut::<Option<u32>>() {
-                if let Some(val) = new_value.as_integer() {
-                    if Some(val as u32) != *f {
-                        *f = Some(val as u32);
-                        updated = true;
-                    }
-                }
-            } else if let Some(f) = field.downcast_mut::<Option<bool>>() {
-                if let Some(val) = new_value.as_bool() {
-                    if Some(val) != *f {
-                        *f = Some(val);
-                        updated = true;
-                    }
-                }
-            }
-        };
+        // println!("[+] {}", &t!("log.app_settings.update_value").to_string());
 
         match key {
-            "wallet_entropy_source" => update_field(&mut self.wallet_entropy_source, &new_value),
-            "wallet_entropy_length" => update_field(&mut self.wallet_entropy_length, &new_value),
-            "wallet_bip" => update_field(&mut self.wallet_bip, &new_value),
-            "wallet_address_count" => update_field(&mut self.wallet_address_count, &new_value),
-            "wallet_hardened_address" => update_field(&mut self.wallet_hardened_address, &new_value),
-            "gui_save_size" => update_field(&mut self.gui_save_size, &new_value),
-            "gui_last_width" => update_field(&mut self.gui_last_width, &new_value),
-            "gui_last_height" => update_field(&mut self.gui_last_height, &new_value),
-            "gui_maximized" => update_field(&mut self.gui_maximized, &new_value),
+            "wallet_entropy_source" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.wallet_entropy_source {
+                        self.wallet_entropy_source = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "wallet_entropy_length" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.wallet_entropy_length {
+                        self.wallet_entropy_length = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "wallet_bip" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.wallet_bip {
+                        self.wallet_bip = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "wallet_address_count" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.wallet_address_count {
+                        self.wallet_address_count = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "wallet_hardened_address" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.wallet_hardened_address {
+                        self.wallet_hardened_address = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "gui_save_size" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.gui_save_size {
+                        self.gui_save_size = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "gui_last_width" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.gui_last_width {
+                        self.gui_last_width = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "gui_last_height" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.gui_last_height {
+                        self.gui_last_height = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "gui_maximized" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.gui_maximized {
+                        self.gui_maximized = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
             "gui_theme" => {
-                update_field(&mut self.gui_theme, &new_value);
-                if updated {
-                    if let Some(theme) = self.gui_theme.as_deref() {
-                        let preferred_theme = match theme {
+                if let Some(new_theme) = new_value.as_str() {
+                    if Some(new_theme.to_string()) != self.gui_theme {
+                        self.gui_theme = Some(new_theme.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+
+                        let preferred_theme = match new_theme {
                             "Light" => adw::ColorScheme::ForceLight,
                             "Dark" => adw::ColorScheme::ForceDark,
                             _ => adw::ColorScheme::PreferLight,
                         };
+                
                         adw::StyleManager::default().set_color_scheme(preferred_theme);
 
                         if let Some(state) = gui_state {
                             let mut state = state.lock().unwrap();
-                            state.gui_theme = self.gui_theme.clone();
+                            state.gui_theme = Some(new_theme.to_string());
+
+                        } else {
+                            println!("State in gui_theme is None");
                         }
                     }
+                } else {
+                    eprintln!("Received invalid value for gui_theme: {:?}", new_value);
                 }
             },
             "gui_icons" => {
-                update_field(&mut self.gui_icons, &new_value);
-                if updated {
-                    if let Some(state) = gui_state {
-                        let mut state = state.lock().unwrap();
-                        state.gui_icon_theme = self.gui_icons.clone();
-                        state.reload_gui_icons();
+                if let Some(new_icons) = new_value.as_str() {
+                    if Some(new_icons.to_string()) != self.gui_icons {
+                        self.gui_icons = Some(new_icons.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        if let Some(state) = gui_state {
+                            let mut state = state.lock().unwrap();
+                            state.gui_icon_theme = self.gui_icons.clone();
+                            state.reload_gui_icons();
+                        } else {
+                            println!("State in gui_icons is None");
+                        }
+                        self.save_settings();
                     }
+                } else {
+                    eprintln!("Received invalid value for gui_icons: {:?}", new_value);
                 }
             },
             "gui_language" => {
-                update_field(&mut self.gui_language, &new_value);
-                if updated {
-                    if let Some(state) = gui_state {
-                        let mut state = state.lock().unwrap();
-                        state.gui_language = self.gui_language.clone();
-                        state.apply_language();
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.gui_language {
+                        self.gui_language = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
                     }
                 }
             },
-            "gui_search" => update_field(&mut self.gui_search, &new_value),
-            "gui_notification_timeout" => update_field(&mut self.gui_notification_timeout, &new_value),
-            "gui_mnemonic_length" => update_field(&mut self.gui_mnemonic_length, &new_value),
+            "gui_search" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.gui_search {
+                        self.gui_search = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "gui_notification_timeout" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.gui_notification_timeout {
+                        self.gui_notification_timeout = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "gui_mnemonic_length" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.gui_mnemonic_length {
+                        self.gui_mnemonic_length = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
             "gui_log" => {
-                update_field(&mut self.gui_log, &new_value);
-                if updated {
-                    if let Some(state) = gui_state {
-                        let mut state = state.lock().unwrap();
-                        state.gui_log_status = self.gui_log;
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.gui_log {
+                        self.gui_log = Some(value);
+
+                        if let Some(state) = gui_state {
+                            let mut gui_state_lock = state.lock().unwrap();
+                            gui_state_lock.gui_log_status = Some(value);
+
+                            if value {
+                                println!("Log status: {:?}", value);
+                            } else {
+                                println!("Log is disabled");
+                            }
+                        } else {
+                            println!("State in gui_theme is None");
+                        }
+
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
                     }
                 }
             },
-            "gui_log_level" => update_field(&mut self.gui_log_level, &new_value),
-            "anu_enabled" => update_field(&mut self.anu_enabled, &new_value),
-            "anu_data_format" => update_field(&mut self.anu_data_format, &new_value),
-            "anu_array_length" => update_field(&mut self.anu_array_length, &new_value),
-            "anu_hex_block_size" => update_field(&mut self.anu_hex_block_size, &new_value),
-            "anu_log" => update_field(&mut self.anu_log, &new_value),
-            "proxy_status" => update_field(&mut self.proxy_status, &new_value),
-            "proxy_server_address" => update_field(&mut self.proxy_server_address, &new_value),
-            "proxy_server_port" => update_field(&mut self.proxy_server_port, &new_value),
-            "proxy_use_pac" => update_field(&mut self.proxy_use_pac, &new_value),
-            "proxy_script_address" => update_field(&mut self.proxy_script_address, &new_value),
-            "proxy_login_credentials" => update_field(&mut self.proxy_login_credentials, &new_value),
-            "proxy_login_username" => update_field(&mut self.proxy_login_username, &new_value),
-            "proxy_login_password" => update_field(&mut self.proxy_login_password, &new_value),
-            "proxy_use_ssl" => update_field(&mut self.proxy_use_ssl, &new_value),
-            "proxy_ssl_certificate" => update_field(&mut self.proxy_ssl_certificate, &new_value),
-            "proxy_retry_attempts" => update_field(&mut self.proxy_retry_attempts, &new_value),
-            "proxy_timeout" => update_field(&mut self.proxy_timeout, &new_value),
-            _ => {
-                eprintln!("Unknown key: {}", key);
-                return;
-            }
-        }
-
-        if updated {
-            println!("Updating key {:?} = {:?}", key, new_value);
-            self.save_settings();
+            "gui_log_level" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.gui_log_level {
+                        self.gui_log_level = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "anu_enabled" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.anu_enabled {
+                        self.anu_enabled = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "anu_data_format" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.anu_data_format {
+                        self.anu_data_format = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "anu_array_length" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.anu_array_length {
+                        self.anu_array_length = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "anu_hex_block_size" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.anu_hex_block_size {
+                        self.anu_hex_block_size = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "anu_log" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.anu_log {
+                        self.anu_log = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_status" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.proxy_status {
+                        self.proxy_status = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_server_address" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.proxy_server_address {
+                        self.proxy_server_address = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_server_port" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.proxy_server_port {
+                        self.proxy_server_port = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_use_pac" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.proxy_use_pac {
+                        self.proxy_use_pac = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_script_address" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.proxy_script_address {
+                        self.proxy_script_address = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_login_credentials" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.proxy_login_credentials {
+                        self.proxy_login_credentials = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_login_username" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.proxy_login_username {
+                        self.proxy_login_username = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_login_password" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.proxy_login_password {
+                        self.proxy_login_password = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_use_ssl" => {
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.proxy_use_ssl {
+                        self.proxy_use_ssl = Some(value);
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            "proxy_ssl_certificate" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.proxy_ssl_certificate {
+                        self.proxy_ssl_certificate = Some(value.to_string());
+                        println!("Updating key {:?} = {:?}", key, new_value);
+                        self.save_settings();
+                    }
+                }
+            },
+            _ => {}
         }
     }
 
@@ -4343,7 +4560,7 @@ fn create_settings_window(
             {
                 let lock_app_messages = app_messages_state.lock().unwrap();
                 lock_app_messages.queue_message(
-                    t!("UI.messages.dialog.settings-saved").to_string(), 
+                    t!("UI.messages.dialog.settings_saved").to_string(), 
                     gtk::MessageType::Info
                 );
             }
