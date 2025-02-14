@@ -2,10 +2,9 @@
 
 #### New priorities
 
-1. Save wallet - done
-2. Open wallet - done
-3. Unify GUI icons - done
-4. Proxy - next (maybe later)
+1. Plan for new versioning
+2. Unify states
+3. Log
 
 
 #### Old tasks
