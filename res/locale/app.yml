@@ -178,19 +178,18 @@ UI:
       hr: "(Q)RNG generator kripto ključeva"
   main:
     headerbar:
-      wallet:
-        new:
-          en: "New wallet %{value}"
-          de: "Neue Wallet %{value}"
-          hr: "Novi novčanik %{value}"
-        open:
-          en: "Open wallet %{value}"
-          de: "Wallet öffnen %{value}"
-          hr: "Otvori novčanik %{value}"
-        save:
-          en: "Save wallet %{value}"
-          de: "Wallet speichern %{value}"
-          hr: "Spremi novčanik %{value}"
+      new:
+        en: "New wallet %{value}"
+        de: "Neue Wallet %{value}"
+        hr: "Novi novčanik %{value}"
+      open:
+        en: "Open wallet %{value}"
+        de: "Wallet öffnen %{value}"
+        hr: "Otvori novčanik %{value}"
+      save:
+        en: "Save wallet %{value}"
+        de: "Wallet speichern %{value}"
+        hr: "Spremi novčanik %{value}"
       settings:
         en: "Settings %{value}"
         de: "Einstellungen %{value}"

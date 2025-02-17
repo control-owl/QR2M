@@ -1323,6 +1323,8 @@ fn print_program_info() {
 
 
 fn main() {
+    let start_time = std::time::Instant::now();
+
     print_program_info();
 
     os::detect_os_and_user_dir();
@@ -1345,10 +1347,13 @@ fn main() {
             create_main_window(
                 app.clone(),
                 gui_state.clone(),
+                Some(start_time),
             );
         }
     ));
     
+    
+
     application.run();
 }
 
@@ -1377,7 +1382,7 @@ fn setup_app_actions(
             create_main_window(
                 application.clone(),
                 gui_state.clone(),
-                // app_settings_state.clone(),
+                None,
             );
         }
     ));
@@ -1445,6 +1450,8 @@ fn setup_app_actions(
 fn create_main_window(
     application: adw::Application,
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    start_time: Option<std::time::Instant>,
+
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -1487,34 +1494,37 @@ fn create_main_window(
     window.set_titlebar(Some(&header_bar));
 
     // Main buttons
-    let new_wallet_button = std::sync::Arc::new(gtk::Button::new());
-    let open_wallet_button = std::sync::Arc::new(gtk::Button::new());
-    let save_wallet_button = std::sync::Arc::new(gtk::Button::new());
-    let about_button = std::sync::Arc::new(gtk::Button::new());
-    let settings_button = std::sync::Arc::new(gtk::Button::new());
-    let log_button = std::sync::Arc::new(gtk::Button::new());
-    let random_mnemonic_passphrase_button = std::sync::Arc::new(gtk::Button::new());
+    let button_names = ["new", "open", "save", "about", "settings", "log", "random"];
+    let mut buttons = std::collections::HashMap::new();
 
-    let main_buttons = [
-        ("new", std::sync::Arc::clone(&new_wallet_button)),
-        ("open", std::sync::Arc::clone(&open_wallet_button)),
-        ("save", std::sync::Arc::clone(&save_wallet_button)),
-        ("about", std::sync::Arc::clone(&about_button)),
-        ("settings", std::sync::Arc::clone(&settings_button)),
-        ("log", std::sync::Arc::clone(&log_button)),
-        ("random", std::sync::Arc::clone(&random_mnemonic_passphrase_button)),
+    for &name in &button_names {
+        let button = gtk::Button::new();
+        buttons.insert(name.to_string(), std::sync::Arc::new(button));
+    }
+
+    let headerbar_tooltips = [
+        ("new", "Ctrl+N"),
+        ("open", "Ctrl+O"),
+        ("save", "Ctrl+S"),
+        ("about", "F1"),
+        ("settings", "F5"),
+        ("log", "F11"),
     ];
-    
-    {
-        let mut lock_gui_state = gui_state.lock().unwrap();
 
+    for (name, shortcut) in headerbar_tooltips {
+        if let Some(button) = buttons.get(name) {
+            button.set_tooltip_text(Some(&t!(format!("UI.main.headerbar.{}", name), value = shortcut).to_string()));
+        }
+    }
+
+    if let Ok(mut lock_gui_state) = gui_state.lock() {
         lock_gui_state.gui_language = Some(gui_language);
         lock_gui_state.gui_theme = Some(gui_theme);
         lock_gui_state.gui_icon_theme = Some(gui_icons);
         lock_gui_state.gui_log_status = Some(app_log_status);
 
-        for (name, button) in &main_buttons {
-            lock_gui_state.register_button(name.to_string(), std::sync::Arc::clone(button));
+        for (name, button) in &buttons {
+            lock_gui_state.register_button(name.clone(), button.clone());
         }
 
         lock_gui_state.reload_gui_theme();
@@ -1554,23 +1564,16 @@ fn create_main_window(
         // app_settings_state.clone(),
     );
 
-    new_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.new", value = "Ctrl+N").to_string()));
-    open_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.open", value = "Ctrl+O").to_string()));
-    save_wallet_button.set_tooltip_text(Some(&t!("UI.main.headerbar.wallet.save", value = "Ctrl+S").to_string()));
-    about_button.set_tooltip_text(Some(&t!("UI.main.headerbar.about", value = "F1").to_string()));
-    settings_button.set_tooltip_text(Some(&t!("UI.main.headerbar.settings", value = "F5").to_string()));
-    log_button.set_tooltip_text(Some(&t!("UI.main.headerbar.log", value = "F11").to_string()));
-
-    header_bar.pack_start(&*new_wallet_button);
-    header_bar.pack_start(&*open_wallet_button);
-    header_bar.pack_start(&*save_wallet_button);
-    header_bar.pack_end(&*settings_button);
-    header_bar.pack_end(&*about_button);
-    header_bar.pack_end(&*log_button);
+    header_bar.pack_start(&*buttons["new"]);
+    header_bar.pack_start(&*buttons["open"]);
+    header_bar.pack_start(&*buttons["save"]);
+    header_bar.pack_end(&*buttons["settings"]);
+    header_bar.pack_end(&*buttons["about"]);
+    header_bar.pack_end(&*buttons["log"]);
     
 
     // JUMP: Main: Settings button action
-    settings_button.connect_clicked(clone!(
+    buttons["settings"].connect_clicked(clone!(
         #[strong] gui_state,
         #[strong] app_messages_state,
         move |_| {
@@ -1579,11 +1582,11 @@ fn create_main_window(
         }
     ));
     
-    about_button.connect_clicked(move |_| {
+    buttons["about"].connect_clicked(move |_| {
         create_about_window();
     });
 
-    log_button.connect_clicked(clone!(
+    buttons["log"].connect_clicked(clone!(
         #[strong] gui_state,
         move |_| {
             let log_window = create_log_window(gui_state.clone());
@@ -1591,7 +1594,7 @@ fn create_main_window(
         }
     ));
 
-    new_wallet_button.connect_clicked(clone!(
+    buttons["new"].connect_clicked(clone!(
         #[strong] application,
         #[strong] gui_state,
         // #[strong] app_settings_state,
@@ -1599,12 +1602,12 @@ fn create_main_window(
             create_main_window(
                 application.clone(),
                 gui_state.clone(),
-                // app_settings_state.clone(),
+                None,
             );
         }
     ));
 
-    save_wallet_button.connect_clicked(move |_| {
+    buttons["save"].connect_clicked(move |_| {
         save_wallet_to_file();
     });
     
@@ -1804,7 +1807,7 @@ fn create_main_window(
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
     mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
-    mnemonic_passphrase_content_box.append(&*random_mnemonic_passphrase_button);
+    mnemonic_passphrase_content_box.append(&*buttons["random"]);
     seed_frame.set_child(Some(&seed_text));
     mnemonic_words_box.append(&mnemonic_words_frame);
     mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
@@ -2295,7 +2298,7 @@ fn create_main_window(
     );
 
     // JUMP: Main: Open Wallet
-    open_wallet_button.connect_clicked(clone!(
+    buttons["open"].connect_clicked(clone!(
         #[weak] entropy_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] mnemonic_words_text,
@@ -2433,7 +2436,7 @@ fn create_main_window(
             address_store.clear();
     }));
     
-    random_mnemonic_passphrase_button.connect_clicked(clone!(
+    buttons["random"].connect_clicked(clone!(
         #[weak] mnemonic_passphrase_text,
         #[weak] mnemonic_passphrase_scale,
         move |_| {
@@ -2665,43 +2668,13 @@ fn create_main_window(
     
     mnemonic_passphrase_scale.connect_value_changed(clone!(
         #[weak] mnemonic_passphrase_length_info,
-        #[weak] random_mnemonic_passphrase_button,
+        #[weak(rename_to = random_mnemonic_passphrase_button)] buttons["random"],
         move |mnemonic_passphrase_scale| {
             let scale_value = mnemonic_passphrase_scale.value() as u32;
             mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
             random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
         }
     ));
-
-    // JUMP: Main: Entropy change by import
-    // let buffer = entropy_text.buffer();
-    // buffer.connect_changed(clone!(
-    //     #[weak] entropy_text,
-    //     #[weak] mnemonic_passphrase_text,
-    //     move |_| {
-    //         let buffer = entropy_text.buffer();
-    //         let start_iter = buffer.start_iter();
-    //         let end_iter = buffer.end_iter();
-    //         let full_entropy = buffer.text(&start_iter, &end_iter, false);
-    //         if full_entropy != "" {
-    //             let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
-    //             mnemonic_words_text.buffer().set_text(&mnemonic_words);
-    //             let (entropy_len, _checksum_len) = match full_entropy.len() {
-    //                 132 => (128, 4),
-    //                 165 => (160, 5),
-    //                 198 => (192, 6),
-    //                 231 => (224, 7),
-    //                 264 => (256, 8),
-    //                 _ => (0, 0),
-    //             };     
-    //             let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
-    //             let seed = keys::generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
-    //             let seed_hex = hex::encode(&seed[..]);
-    //             seed_text.buffer().set_text(&seed_hex.to_string());
-    //             println!("\t- Seed (hex): {:?}", seed_hex);
-    //         }
-    //     }
-    // ));
 
     coin_search.connect_search_changed({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
@@ -3142,9 +3115,6 @@ fn create_main_window(
         }
     ));
 
-
-
-
     // JUMP: Generate Addresses button
     generate_addresses_button.connect_clicked(clone!(
         #[strong] address_store,
@@ -3290,9 +3260,6 @@ fn create_main_window(
         }
     ));
 
-
-
-
     address_options_clear_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] address_start_spinbutton,
@@ -3324,17 +3291,18 @@ fn create_main_window(
         
     }
 
-
-    // IMPLEMENT: Check if log is enabled in settings
-    // let log_clone = app_log.clone();
-    // {
-    //     if let Ok(mut log_lock) = log_clone.lock() {
-    //         log_lock.initialize_app_log(log_button.clone(), resources.clone());
-    //     }
-    // }
-
     window.set_child(Some(&main_window_box));
     window.present();
+
+    match start_time {
+        Some(value) => {
+            let elapsed = value.elapsed();
+            println!("Application startup time: {:.2?}", elapsed);
+
+        },
+        None => {}
+    };
+
 }
 
 fn create_log_window(   
