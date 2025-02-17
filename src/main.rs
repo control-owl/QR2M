@@ -1256,7 +1256,7 @@ fn main() {
     if let Err(err) = os::create_local_files() {
         eprintln!("\t- Error creating local config files: {}", err);
     } else {
-        println!("\t- Local files created");  
+        println!("\t- Config file loaded");  
     }
 
     let application = adw::Application::builder()
@@ -1386,9 +1386,625 @@ fn setup_app_actions(
     application.add_action(&test);
 }
 
-fn create_tab_seed() -> gtk::Box {
 
+fn create_gui_tab_seed(
+    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    anu_enabled: Option<bool>,
+    wallet_entropy_source: Option<String>,
+    wallet_entropy_length: Option<u32>,
+    default_mnemonic_length: Option<u32>,
+) -> (
+    gtk::Box,           // entropy_main_box
+    gtk::TextView,      // entropy_text
+    gtk::Entry,         // mnemonic_passphrase_text
+    gtk::TextView,      // mnemonic_words_text
+    gtk::TextView,      // seed_text
+) {
+    let lock_super_state = gui_state.lock().unwrap();
+    let random_mnemonic_passphrase_button = lock_super_state
+        .gui_main_buttons
+            .lock()
+                .expect("Failed to lock gui_main_buttons")
+                .get("random")
+                .expect("Button 'Random' not found")
+                .first()
+                .expect("No buttons in 'Random' entry")
+                .clone();
+    
+    gui_state.clear_poison();
+    
+    let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    entropy_main_box.set_margin_top(10);
+    entropy_main_box.set_margin_start(10);
+    entropy_main_box.set_margin_end(10);
+    entropy_main_box.set_margin_bottom(10);
+
+    // Header
+    let entropy_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let entropy_header_first_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+
+    // Entropy source
+    let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
+
+    let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
+        VALID_ENTROPY_SOURCES.iter().cloned().collect()
+    } else {
+        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
+    };
+
+    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+    let default_entropy_source = valid_entropy_source_as_strings
+        .iter()
+        .position(|s| *s == wallet_entropy_source.clone().unwrap()) 
+        .unwrap_or(0);
+
+    entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
+    entropy_source_box.set_hexpand(true);
+    entropy_source_frame.set_hexpand(true);
+
+    // Entropy length
+    let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    let entropy_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.length").to_string()));
+    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
+    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
+    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    // let wallet_entropy_length = lock_app_settings.wallet_entropy_length;
+    let default_entropy_length = valid_entropy_lengths_as_strings
+        .iter()
+        .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length.unwrap())
+        .unwrap_or(0);
+
+    entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
+    entropy_length_box.set_hexpand(true);
+    entropy_length_frame.set_hexpand(true);
+
+    // RNG mnemonic passphrase length
+    let mnemonic_passphrase_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let mnemonic_passphrase_items_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
+    // TODO: get value from settings
+    let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
+        default_mnemonic_length.unwrap_or(256) as f64,
+        8.0 * 2.0,
+        8.0 * 128.0,
+        1.0,
+        100.0,
+        0.0,
+    );
+    let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
+    let mnemonic_passphrase_length_info = gtk::Entry::new();
+        
+    mnemonic_passphrase_items_box.set_hexpand(true);
+    mnemonic_passphrase_scale_box.set_hexpand(true);
+    mnemonic_passphrase_length_box.set_hexpand(true);
+    mnemonic_passphrase_length_frame.set_hexpand(true);
+
+    let value = entropy_source_dropdown.selected() as usize;
+    let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+    let source = selected_entropy_source_value.unwrap();
+
+    mnemonic_passphrase_length_info.set_editable(false);
+    mnemonic_passphrase_length_info.set_width_request(50);
+    mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
+    mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.unwrap().to_string());
+
+    // Mnemonic passphrase
+    let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
+    let mnemonic_passphrase_text = gtk::Entry::new();
+
+    mnemonic_passphrase_main_box.set_hexpand(true);
+    mnemonic_passphrase_text.set_hexpand(true);
+    
+    let random_clone = random_mnemonic_passphrase_button.clone();
+    if *source == "RNG+" {
+        mnemonic_passphrase_length_box.set_visible(true);
+        random_clone.set_visible(true);
+    } else {
+        mnemonic_passphrase_length_box.set_visible(false);
+        random_clone.set_visible(false);
+    }
+
+    let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+
+    seed_buttons_box.set_halign(gtk::Align::Center);
+
+    // Generate entropy button
+    let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let generate_entropy_button = gtk::Button::new();
+
+    generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+    generate_entropy_box.set_halign(gtk::Align::Center);
+    generate_entropy_box.set_margin_top(10);
+
+    // Delete entropy button
+    let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let delete_entropy_button = gtk::Button::new();
+
+    delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
+    delete_entropy_box.set_halign(gtk::Align::Center);
+    delete_entropy_box.set_margin_top(10);
+
+    // Body
+    let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+
+    // Entropy string
+    let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy").to_string()));
+    let entropy_text = gtk::TextView::new();
+
+    entropy_text.set_vexpand(true);
+    entropy_text.set_hexpand(true);
+    entropy_text.set_wrap_mode(gtk::WrapMode::Char);
+    entropy_frame.set_child(Some(&entropy_text));
+    entropy_box.append(&entropy_frame);
+    entropy_text.set_editable(false);
+    entropy_text.set_left_margin(5);
+    entropy_text.set_top_margin(5);
+
+    // Mnemonic words
+    let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words").to_string()));
+    let mnemonic_words_text = gtk::TextView::new();
+
+    mnemonic_words_box.set_hexpand(true);
+    mnemonic_words_text.set_vexpand(true);
+    mnemonic_words_text.set_hexpand(true);
+    mnemonic_words_text.set_editable(false);
+    mnemonic_words_text.set_left_margin(5);
+    mnemonic_words_text.set_top_margin(5);
+    mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
+
+    // Seed
+    let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed").to_string()));
+    let seed_text = gtk::TextView::new();
+
+    seed_box.set_hexpand(true);
+    seed_text.set_editable(false);
+    seed_text.set_vexpand(true);
+    seed_text.set_hexpand(true);
+    seed_text.set_left_margin(5);
+    seed_text.set_top_margin(5);
+    seed_text.set_wrap_mode(gtk::WrapMode::Char);
+
+    // Connections
+    entropy_source_frame.set_child(Some(&entropy_source_dropdown));
+    entropy_length_frame.set_child(Some(&entropy_length_dropdown));
+    mnemonic_passphrase_length_frame.set_child(Some(&mnemonic_passphrase_items_box));
+    mnemonic_passphrase_length_box.append(&mnemonic_passphrase_length_frame);
+    mnemonic_passphrase_items_box.append(&mnemonic_passphrase_scale_box);
+    mnemonic_passphrase_items_box.append(&mnemonic_passphrase_info_box);
+    mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
+    mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
+    generate_entropy_box.append(&generate_entropy_button);
+    delete_entropy_box.append(&delete_entropy_button);
+    entropy_source_box.append(&entropy_source_frame);
+    entropy_length_box.append(&entropy_length_frame);
+    entropy_header_first_box.append(&entropy_source_box);
+    entropy_header_first_box.append(&entropy_length_box);
+    entropy_header_second_box.append(&mnemonic_passphrase_main_box);
+    entropy_header_second_box.append(&mnemonic_passphrase_length_box);
+    entropy_header_box.append(&entropy_header_first_box);
+    entropy_header_box.append(&entropy_header_second_box);  
+    seed_buttons_box.append(&generate_entropy_box);
+    seed_buttons_box.append(&delete_entropy_box);
+    entropy_header_box.append(&seed_buttons_box);
+    mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
+    mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
+    mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
+    mnemonic_passphrase_content_box.append(&*random_mnemonic_passphrase_button.clone());
+    seed_frame.set_child(Some(&seed_text));
+    mnemonic_words_box.append(&mnemonic_words_frame);
+    mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
+    seed_box.append(&seed_frame);
+    body_box.append(&entropy_box);
+    body_box.append(&mnemonic_words_box);
+    body_box.append(&seed_box);
+    entropy_main_box.append(&entropy_header_box);
+    entropy_main_box.append(&body_box);
+
+    generate_entropy_button.connect_clicked(clone!(
+        #[weak] entropy_source_dropdown,
+        #[weak] entropy_text,
+        #[weak] entropy_length_dropdown,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        // #[weak] master_private_key_text,
+        // #[weak] master_public_key_text,
+        #[weak] seed_text,
+        #[strong] app_messages_state,
+        move |_| {
+            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
+            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
+            let source = selected_entropy_source_value.unwrap().to_string();
+            let entropy_length = selected_entropy_length_value.unwrap(); 
+
+            let pre_entropy = keys::generate_entropy(
+                &source,
+                *entropy_length as u64,
+            );
+                
+            if !pre_entropy.is_empty() {
+                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
+                println!("\t Entropy checksum: {:?}", checksum);
+
+                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+
+                println!("\t Final entropy: {:?}", full_entropy);
+                entropy_text.buffer().set_text(&full_entropy);
+                
+                let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                
+                let passphrase_text = mnemonic_passphrase_text.text().to_string();
+
+                let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+                
+                println!("\t Seed (hex): {:?}", seed_hex);
+
+                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                wallet_settings.entropy_checksum = Some(checksum.clone());
+                wallet_settings.entropy_string = Some(full_entropy.clone());
+                wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
+                wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
+                wallet_settings.seed = Some(seed_hex.clone());
+
+                // master_private_key_text.buffer().set_text("");
+                // master_public_key_text.buffer().set_text("");
+
+            } else {
+                eprintln!("{}", &t!("error.entropy.empty"));
+                let lock_app_messages = app_messages_state.lock().unwrap();
+                lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
+            }
+        }
+    ));
+
+
+    delete_entropy_button.connect_clicked(clone!(
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] seed_text,
+        // #[weak] master_private_key_text,
+        // #[weak] master_public_key_text,
+        // #[weak] address_store,
+        // #[weak] save_wallet_button,
+        move |_| {
+            mnemonic_passphrase_text.buffer().set_text("");
+            entropy_text.buffer().set_text("");
+            mnemonic_words_text.buffer().set_text("");
+            seed_text.buffer().set_text("");
+            // master_private_key_text.buffer().set_text("");
+            // master_public_key_text.buffer().set_text("");
+            // address_store.clear();
+    }));
+
+    entropy_source_dropdown.connect_selected_notify(clone!(
+        #[weak] generate_entropy_button,
+        #[strong] random_mnemonic_passphrase_button,
+        move |entropy_source_dropdown| {
+            let value = entropy_source_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+            let source = selected_entropy_source_value.unwrap();
+    
+            if *source == "RNG+" {
+                mnemonic_passphrase_length_box.set_visible(true);
+                random_mnemonic_passphrase_button.set_visible(true);
+            } else {
+                mnemonic_passphrase_length_box.set_visible(false);
+                random_mnemonic_passphrase_button.set_visible(false);
+            }
+
+            if *source == "File" {
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
+            } else {
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+            }
+        }
+    ));
+
+    
+    mnemonic_passphrase_text.connect_changed(clone!(
+        // #[weak] generate_entropy_button,
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
+        // #[weak] mnemonic_passphrase_length_info,
+        move |mnemonic_passphrase_text| {
+            let entropy_buffer = entropy_text.buffer();
+            let start_iter = entropy_buffer.start_iter();
+            let end_iter = entropy_buffer.end_iter();
+            let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
+
+            if entropy_text != "" {
+                let entropy_length = entropy_text.len();
+                let cut_entropy = entropy_length / 32;
+                let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
+
+                let seed = keys::generate_bip39_seed(&new_pre_entropy, &mnemonic_passphrase_text.buffer().text());
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+
+                let final_entropy = entropy_text.clone().to_string();
+                let mnemonic_words_buffer = mnemonic_words_text.buffer();
+                let start_iter = mnemonic_words_buffer.start_iter();
+                let end_iter = mnemonic_words_buffer.end_iter();
+                let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
+                let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
+
+                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                wallet_settings.entropy_string = Some(final_entropy);
+                wallet_settings.mnemonic_words = Some(final_mnemonic_words);
+                wallet_settings.mnemonic_passphrase = Some(final_mnemonic_passphrase);
+                wallet_settings.seed = Some(seed_hex.clone());
+            }
+        }
+    ));
+    
+    mnemonic_passphrase_scale.connect_value_changed(clone!(
+        #[weak] mnemonic_passphrase_length_info,
+        #[strong] random_mnemonic_passphrase_button,
+        move |mnemonic_passphrase_scale| {
+            let scale_value = mnemonic_passphrase_scale.value() as u32;
+            mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
+            random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
+        }
+    ));
+
+
+    random_mnemonic_passphrase_button.connect_clicked(clone!(
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_passphrase_scale,
+        move |_| {
+            let scale_value = mnemonic_passphrase_scale.value() as u32;
+
+            let mnemonic_rng_string: String = (0..scale_value)
+                        .map(|_| char::from(rand::rng().random_range(32..127)))
+                        .collect();
+            println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
+            mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
+        }
+    ));
+
+
+
+
+
+
+
+    // return ----------------------------------------------------
+    // gtk::Box,           // entropy_main_box
+    // gtk::TextView,      // entropy_text
+    // gtk::Entry,         // mnemonic_passphrase_text
+    // gtk::TextView,      // mnemonic_words_text
+    // gtk::TextView,      // seed_text
+
+
+    (entropy_main_box, entropy_text, mnemonic_passphrase_text, mnemonic_words_text, seed_text)
 }
+
+
+// fn create_tab_seed(
+//     anu_enabled: Option<bool>,
+//     wallet_entropy_source: Option<String>,
+//     wallet_entropy_length: Option<u32>,
+//     default_mnemonic_length: Option<u32>,
+// 
+// ) -> gtk::Box {
+//     // JUMP: Sidebar 1: Seed
+//     let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+//     entropy_main_box.set_margin_top(10);
+//     entropy_main_box.set_margin_start(10);
+//     entropy_main_box.set_margin_end(10);
+//     entropy_main_box.set_margin_bottom(10);
+// 
+//     // Header
+//     let entropy_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+//     let entropy_header_first_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+//     let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+// 
+//     // Entropy source
+//     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+//     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
+// 
+//     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
+//         VALID_ENTROPY_SOURCES.iter().cloned().collect()
+//     } else {
+//         VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
+//     };
+// 
+//     let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
+//     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
+//     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+//     
+//     let default_entropy_source = valid_entropy_source_as_strings
+//         .iter()
+//         .position(|s| *s == wallet_entropy_source.unwrap()) 
+//         .unwrap_or(0);
+//     
+//     entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
+//     entropy_source_box.set_hexpand(true);
+//     entropy_source_frame.set_hexpand(true);
+//     
+//     // Entropy length
+//     let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+//     let entropy_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.length").to_string()));
+//     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
+//     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
+//     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+//     
+// 
+//     let default_entropy_length = valid_entropy_lengths_as_strings
+//         .iter()
+//         .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length.unwrap())
+//         .unwrap_or(0);
+// 
+//     entropy_length_dropdown.set_selected(default_entropy_length as u32);
+//     entropy_length_box.set_hexpand(true);
+//     entropy_length_frame.set_hexpand(true);
+// 
+//     // RNG mnemonic passphrase length
+//     let mnemonic_passphrase_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+//     let mnemonic_passphrase_items_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+//     let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+//     let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+//     let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
+//     let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
+//         8.0 * 32.0,
+//         8.0 * 2.0,
+//         8.0 * 128.0,
+//         1.0,
+//         100.0,
+//         0.0,
+//     );
+//     let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
+//     let mnemonic_passphrase_length_info = gtk::Entry::new();
+//     mnemonic_passphrase_items_box.set_hexpand(true);
+//     mnemonic_passphrase_scale_box.set_hexpand(true);
+//     mnemonic_passphrase_length_box.set_hexpand(true);
+//     mnemonic_passphrase_length_frame.set_hexpand(true);
+// 
+//     // let value = entropy_source_dropdown.selected() as usize;
+//     // let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+//     // let source = selected_entropy_source_value.unwrap();
+// 
+//     mnemonic_passphrase_length_info.set_editable(false);
+//     mnemonic_passphrase_length_info.set_width_request(50);
+//     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
+//     mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.unwrap().to_string());
+//     
+//     // Mnemonic passphrase
+//     let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+//     let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+//     let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
+//     let mnemonic_passphrase_text = gtk::Entry::new();
+//     
+//     mnemonic_passphrase_main_box.set_hexpand(true);
+//     mnemonic_passphrase_text.set_hexpand(true);
+// 
+//     // if *source == "RNG+" {
+//     //     mnemonic_passphrase_length_box.set_visible(true);
+//     //     random_mnemonic_passphrase_button.set_visible(true);
+//     // } else {
+//     //     mnemonic_passphrase_length_box.set_visible(false);
+//     //     random_mnemonic_passphrase_button.set_visible(false);
+//     // }
+// 
+//     let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+// 
+//     seed_buttons_box.set_halign(gtk::Align::Center);
+// 
+//     // Generate entropy button
+//     let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+//     let generate_entropy_button = gtk::Button::new();
+//     
+//     generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+//     generate_entropy_box.set_halign(gtk::Align::Center);
+//     generate_entropy_box.set_margin_top(10);
+// 
+//     // Delete entropy button
+//     let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+//     let delete_entropy_button = gtk::Button::new();
+//     
+//     delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
+//     delete_entropy_box.set_halign(gtk::Align::Center);
+//     delete_entropy_box.set_margin_top(10);
+// 
+//     // Body
+//     let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+//     
+//     // Entropy string
+//     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+//     let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy").to_string()));
+//     let entropy_text = gtk::TextView::new();
+//     
+//     entropy_text.set_vexpand(true);
+//     entropy_text.set_hexpand(true);
+//     entropy_text.set_wrap_mode(gtk::WrapMode::Char);
+//     entropy_frame.set_child(Some(&entropy_text));
+//     entropy_box.append(&entropy_frame);
+//     entropy_text.set_editable(false);
+//     entropy_text.set_left_margin(5);
+//     entropy_text.set_top_margin(5);
+// 
+//     // Mnemonic words
+//     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+//     let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words").to_string()));
+//     let mnemonic_words_text = gtk::TextView::new();
+//     
+//     mnemonic_words_box.set_hexpand(true);
+//     mnemonic_words_text.set_vexpand(true);
+//     mnemonic_words_text.set_hexpand(true);
+//     mnemonic_words_text.set_editable(false);
+//     mnemonic_words_text.set_left_margin(5);
+//     mnemonic_words_text.set_top_margin(5);
+//     mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
+//     
+//     // Seed
+//     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+//     let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed").to_string()));
+//     let seed_text = gtk::TextView::new();
+//     
+//     seed_box.set_hexpand(true);
+//     seed_text.set_editable(false);
+//     seed_text.set_vexpand(true);
+//     seed_text.set_hexpand(true);
+//     seed_text.set_left_margin(5);
+//     seed_text.set_top_margin(5);
+//     seed_text.set_wrap_mode(gtk::WrapMode::Char);
+// 
+//     // Connections
+//     entropy_source_frame.set_child(Some(&entropy_source_dropdown));
+//     entropy_length_frame.set_child(Some(&entropy_length_dropdown));
+//     mnemonic_passphrase_length_frame.set_child(Some(&mnemonic_passphrase_items_box));
+//     mnemonic_passphrase_length_box.append(&mnemonic_passphrase_length_frame);
+//     mnemonic_passphrase_items_box.append(&mnemonic_passphrase_scale_box);
+//     mnemonic_passphrase_items_box.append(&mnemonic_passphrase_info_box);
+//     mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
+//     mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
+//     generate_entropy_box.append(&generate_entropy_button);
+//     delete_entropy_box.append(&delete_entropy_button);
+//     entropy_source_box.append(&entropy_source_frame);
+//     entropy_length_box.append(&entropy_length_frame);
+//     entropy_header_first_box.append(&entropy_source_box);
+//     entropy_header_first_box.append(&entropy_length_box);
+//     entropy_header_second_box.append(&mnemonic_passphrase_main_box);
+//     entropy_header_second_box.append(&mnemonic_passphrase_length_box);
+//     entropy_header_box.append(&entropy_header_first_box);
+//     entropy_header_box.append(&entropy_header_second_box);  
+//     seed_buttons_box.append(&generate_entropy_box);
+//     seed_buttons_box.append(&delete_entropy_box);
+//     entropy_header_box.append(&seed_buttons_box);
+//     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
+//     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
+//     mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
+//     mnemonic_passphrase_content_box.append(&*buttons["random"]);
+//     seed_frame.set_child(Some(&seed_text));
+//     mnemonic_words_box.append(&mnemonic_words_frame);
+//     mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
+//     seed_box.append(&seed_frame);
+//     body_box.append(&entropy_box);
+//     body_box.append(&mnemonic_words_box);
+//     body_box.append(&seed_box);
+//     entropy_main_box.append(&entropy_header_box);
+//     entropy_main_box.append(&body_box);
+// 
+//     entropy_main_box
+// }
 
 
 fn create_main_window(
@@ -1408,11 +2024,11 @@ fn create_main_window(
     let window_width = lock_app_settings.gui_last_width.unwrap();
     let window_height = lock_app_settings.gui_last_height.unwrap();
     let wallet_bip = lock_app_settings.wallet_bip.unwrap();
-    let default_mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap();
+    let default_mnemonic_length = lock_app_settings.gui_mnemonic_length;
     let app_log_status = lock_app_settings.gui_log.unwrap();
     let anu_enabled = lock_app_settings.anu_enabled;
-    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone().unwrap();
-    let wallet_entropy_length = lock_app_settings.wallet_entropy_length.unwrap();
+    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone();
+    let wallet_entropy_length = lock_app_settings.wallet_entropy_length;
     let gui_search = lock_app_settings.gui_search.clone().unwrap();
     let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
     let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
@@ -1556,207 +2172,19 @@ fn create_main_window(
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
 
-    // JUMP: Sidebar 1: Seed
-    let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    entropy_main_box.set_margin_top(10);
-    entropy_main_box.set_margin_start(10);
-    entropy_main_box.set_margin_end(10);
-    entropy_main_box.set_margin_bottom(10);
-
-    // Header
-    let entropy_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let entropy_header_first_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-
-    // Entropy source
-    let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-
-    let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
-        VALID_ENTROPY_SOURCES.iter().cloned().collect()
-    } else {
-        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
-    };
-
-    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
-    let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
-    
-    let default_entropy_source = valid_entropy_source_as_strings
-        .iter()
-        .position(|s| *s == wallet_entropy_source) 
-        .unwrap_or(0);
-    
-    entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
-    entropy_source_box.set_hexpand(true);
-    entropy_source_frame.set_hexpand(true);
-    
-    // Entropy length
-    let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let entropy_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.length").to_string()));
-    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
-    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
-    
-
-    let default_entropy_length = valid_entropy_lengths_as_strings
-        .iter()
-        .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length)
-        .unwrap_or(0);
-
-    entropy_length_dropdown.set_selected(default_entropy_length as u32);
-    entropy_length_box.set_hexpand(true);
-    entropy_length_frame.set_hexpand(true);
-
-    // RNG mnemonic passphrase length
-    let mnemonic_passphrase_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let mnemonic_passphrase_items_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
-    let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
-        8.0 * 32.0,
-        8.0 * 2.0,
-        8.0 * 128.0,
-        1.0,
-        100.0,
-        0.0,
+    let seed_tab = create_gui_tab_seed(
+        gui_state, 
+        app_messages_state.clone(), 
+        anu_enabled, 
+        wallet_entropy_source, 
+        wallet_entropy_length, 
+        default_mnemonic_length,
     );
-    let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
-    let mnemonic_passphrase_length_info = gtk::Entry::new();
-    mnemonic_passphrase_items_box.set_hexpand(true);
-    mnemonic_passphrase_scale_box.set_hexpand(true);
-    mnemonic_passphrase_length_box.set_hexpand(true);
-    mnemonic_passphrase_length_frame.set_hexpand(true);
 
-    // let value = entropy_source_dropdown.selected() as usize;
-    // let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
-    // let source = selected_entropy_source_value.unwrap();
 
-    mnemonic_passphrase_length_info.set_editable(false);
-    mnemonic_passphrase_length_info.set_width_request(50);
-    mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
-    mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.to_string());
-    
-    // Mnemonic passphrase
-    let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
-    let mnemonic_passphrase_text = gtk::Entry::new();
-    
-    mnemonic_passphrase_main_box.set_hexpand(true);
-    mnemonic_passphrase_text.set_hexpand(true);
-
-    // if *source == "RNG+" {
-    //     mnemonic_passphrase_length_box.set_visible(true);
-    //     random_mnemonic_passphrase_button.set_visible(true);
-    // } else {
-    //     mnemonic_passphrase_length_box.set_visible(false);
-    //     random_mnemonic_passphrase_button.set_visible(false);
-    // }
-
-    let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-
-    seed_buttons_box.set_halign(gtk::Align::Center);
-
-    // Generate entropy button
-    let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let generate_entropy_button = gtk::Button::new();
-    
-    generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
-    generate_entropy_box.set_halign(gtk::Align::Center);
-    generate_entropy_box.set_margin_top(10);
-
-    // Delete entropy button
-    let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let delete_entropy_button = gtk::Button::new();
-    
-    delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
-    delete_entropy_box.set_halign(gtk::Align::Center);
-    delete_entropy_box.set_margin_top(10);
-
-    // Body
-    let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    
-    // Entropy string
-    let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy").to_string()));
-    let entropy_text = gtk::TextView::new();
-    
-    entropy_text.set_vexpand(true);
-    entropy_text.set_hexpand(true);
-    entropy_text.set_wrap_mode(gtk::WrapMode::Char);
-    entropy_frame.set_child(Some(&entropy_text));
-    entropy_box.append(&entropy_frame);
-    entropy_text.set_editable(false);
-    entropy_text.set_left_margin(5);
-    entropy_text.set_top_margin(5);
-
-    // Mnemonic words
-    let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words").to_string()));
-    let mnemonic_words_text = gtk::TextView::new();
-    
-    mnemonic_words_box.set_hexpand(true);
-    mnemonic_words_text.set_vexpand(true);
-    mnemonic_words_text.set_hexpand(true);
-    mnemonic_words_text.set_editable(false);
-    mnemonic_words_text.set_left_margin(5);
-    mnemonic_words_text.set_top_margin(5);
-    mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
-    
-    // Seed
-    let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed").to_string()));
-    let seed_text = gtk::TextView::new();
-    
-    seed_box.set_hexpand(true);
-    seed_text.set_editable(false);
-    seed_text.set_vexpand(true);
-    seed_text.set_hexpand(true);
-    seed_text.set_left_margin(5);
-    seed_text.set_top_margin(5);
-    seed_text.set_wrap_mode(gtk::WrapMode::Char);
-
-    // Connections
-    entropy_source_frame.set_child(Some(&entropy_source_dropdown));
-    entropy_length_frame.set_child(Some(&entropy_length_dropdown));
-    mnemonic_passphrase_length_frame.set_child(Some(&mnemonic_passphrase_items_box));
-    mnemonic_passphrase_length_box.append(&mnemonic_passphrase_length_frame);
-    mnemonic_passphrase_items_box.append(&mnemonic_passphrase_scale_box);
-    mnemonic_passphrase_items_box.append(&mnemonic_passphrase_info_box);
-    mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
-    mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
-    generate_entropy_box.append(&generate_entropy_button);
-    delete_entropy_box.append(&delete_entropy_button);
-    entropy_source_box.append(&entropy_source_frame);
-    entropy_length_box.append(&entropy_length_frame);
-    entropy_header_first_box.append(&entropy_source_box);
-    entropy_header_first_box.append(&entropy_length_box);
-    entropy_header_second_box.append(&mnemonic_passphrase_main_box);
-    entropy_header_second_box.append(&mnemonic_passphrase_length_box);
-    entropy_header_box.append(&entropy_header_first_box);
-    entropy_header_box.append(&entropy_header_second_box);  
-    seed_buttons_box.append(&generate_entropy_box);
-    seed_buttons_box.append(&delete_entropy_box);
-    entropy_header_box.append(&seed_buttons_box);
-    mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
-    mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
-    mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
-    mnemonic_passphrase_content_box.append(&*buttons["random"]);
-    seed_frame.set_child(Some(&seed_text));
-    mnemonic_words_box.append(&mnemonic_words_frame);
-    mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
-    seed_box.append(&seed_frame);
-    body_box.append(&entropy_box);
-    body_box.append(&mnemonic_words_box);
-    body_box.append(&seed_box);
-    entropy_main_box.append(&entropy_header_box);
-    entropy_main_box.append(&body_box);
-    
     // Start Seed sidebar
     stack.add_titled(
-        &entropy_main_box,
+        &seed_tab.0,
         Some("sidebar-seed"), 
         &t!("UI.main.seed").to_string());
 
@@ -2219,12 +2647,12 @@ fn create_main_window(
         &t!("UI.main.address").to_string()
     );
 
-    // JUMP: Action: Open Wallet
+//     // JUMP: Action: Open Wallet
     buttons["open"].connect_clicked(clone!(
-        #[weak] entropy_text,
-        #[weak] mnemonic_passphrase_text,
-        #[weak] mnemonic_words_text,
-        #[weak] seed_text,
+        #[weak(rename_to = entropy_text)] seed_tab.1,
+        #[weak(rename_to = mnemonic_passphrase_text)] seed_tab.2,
+        #[weak(rename_to = mnemonic_words_text)] seed_tab.3,
+        #[weak(rename_to = seed_text)] seed_tab.4,
         #[strong] app_messages_state,
         move |_| {
             let (entropy, passphrase) = open_wallet_from_file(&app_messages_state);
@@ -2275,113 +2703,110 @@ fn create_main_window(
 
         }
     ));
-
-    // JUMP: Action: Generate Seed button
-    generate_entropy_button.connect_clicked(clone!(
-        #[weak] entropy_source_dropdown,
-        #[weak] entropy_text,
-        #[weak] entropy_length_dropdown,
-        #[weak] mnemonic_words_text,
-        #[weak] mnemonic_passphrase_text,
-        #[weak] master_private_key_text,
-        #[weak] master_public_key_text,
-        #[weak] seed_text,
-        #[strong] app_messages_state,
-        move |_| {
-            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
-            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
-            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
-            let source = selected_entropy_source_value.unwrap().to_string();
-            let entropy_length = selected_entropy_length_value.unwrap(); 
-
-            let pre_entropy = keys::generate_entropy(
-                &source,
-                *entropy_length as u64,
-            );
-                
-            if !pre_entropy.is_empty() {
-                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
-                println!("\t- Entropy checksum: {:?}", checksum);
-
-                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-
-                println!("\t- Final entropy: {:?}", full_entropy);
-                entropy_text.buffer().set_text(&full_entropy);
-                
-                let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
-                mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                
-                let passphrase_text = mnemonic_passphrase_text.text().to_string();
-
-                let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
-                
-                println!("\t- Seed (hex): {:?}", seed_hex);
-
-                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-                wallet_settings.entropy_checksum = Some(checksum.clone());
-                wallet_settings.entropy_string = Some(full_entropy.clone());
-                wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
-                wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
-                wallet_settings.seed = Some(seed_hex.clone());
-
-                master_private_key_text.buffer().set_text("");
-                master_public_key_text.buffer().set_text("");
-
-            } else {
-                eprintln!("\t- {}", &t!("error.entropy.empty"));
-                let lock_app_messages = app_messages_state.lock().unwrap();
-                lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
-            }
-        }
-    ));
-
-    delete_entropy_button.connect_clicked(clone!(
-        #[weak] entropy_text,
-        #[weak] mnemonic_words_text,
-        #[weak] mnemonic_passphrase_text,
-        #[weak] seed_text,
-        #[weak] master_private_key_text,
-        #[weak] master_public_key_text,
-        #[weak] address_store,
-        // #[weak] save_wallet_button,
-        move |_| {
-            mnemonic_passphrase_text.buffer().set_text("");
-            entropy_text.buffer().set_text("");
-            mnemonic_words_text.buffer().set_text("");
-            seed_text.buffer().set_text("");
-            master_private_key_text.buffer().set_text("");
-            master_public_key_text.buffer().set_text("");
-            address_store.clear();
-    }));
+// 
+//     // JUMP: Action: Generate Seed button
+//     generate_entropy_button.connect_clicked(clone!(
+//         #[weak] entropy_source_dropdown,
+//         #[weak] entropy_text,
+//         #[weak] entropy_length_dropdown,
+//         #[weak] mnemonic_words_text,
+//         #[weak] mnemonic_passphrase_text,
+//         #[weak] master_private_key_text,
+//         #[weak] master_public_key_text,
+//         #[weak] seed_text,
+//         #[strong] app_messages_state,
+//         move |_| {
+//             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
+//             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
+//             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+//             let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
+//             let source = selected_entropy_source_value.unwrap().to_string();
+//             let entropy_length = selected_entropy_length_value.unwrap(); 
+// 
+//             let pre_entropy = keys::generate_entropy(
+//                 &source,
+//                 *entropy_length as u64,
+//             );
+//                 
+//             if !pre_entropy.is_empty() {
+//                 let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
+//                 println!("\t- Entropy checksum: {:?}", checksum);
+// 
+//                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+// 
+//                 println!("\t- Final entropy: {:?}", full_entropy);
+//                 entropy_text.buffer().set_text(&full_entropy);
+//                 
+//                 let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+//                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
+//                 
+//                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
+// 
+//                 let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
+//                 let seed_hex = hex::encode(&seed[..]);
+//                 seed_text.buffer().set_text(&seed_hex.to_string());
+//                 
+//                 println!("\t- Seed (hex): {:?}", seed_hex);
+// 
+//                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+//                 wallet_settings.entropy_checksum = Some(checksum.clone());
+//                 wallet_settings.entropy_string = Some(full_entropy.clone());
+//                 wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
+//                 wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
+//                 wallet_settings.seed = Some(seed_hex.clone());
+// 
+//                 master_private_key_text.buffer().set_text("");
+//                 master_public_key_text.buffer().set_text("");
+// 
+//             } else {
+//                 eprintln!("\t- {}", &t!("error.entropy.empty"));
+//                 let lock_app_messages = app_messages_state.lock().unwrap();
+//                 lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
+//             }
+//         }
+//     ));
+// 
+//     delete_entropy_button.connect_clicked(clone!(
+//         #[weak] entropy_text,
+//         #[weak] mnemonic_words_text,
+//         #[weak] mnemonic_passphrase_text,
+//         #[weak] seed_text,
+//         #[weak] master_private_key_text,
+//         #[weak] master_public_key_text,
+//         #[weak] address_store,
+//         // #[weak] save_wallet_button,
+//         move |_| {
+//             mnemonic_passphrase_text.buffer().set_text("");
+//             entropy_text.buffer().set_text("");
+//             mnemonic_words_text.buffer().set_text("");
+//             seed_text.buffer().set_text("");
+//             master_private_key_text.buffer().set_text("");
+//             master_public_key_text.buffer().set_text("");
+//             address_store.clear();
+//     }));
     
-    buttons["random"].connect_clicked(clone!(
-        #[weak] mnemonic_passphrase_text,
-        #[weak] mnemonic_passphrase_scale,
-        move |_| {
-            let scale_value = mnemonic_passphrase_scale.value() as u32;
-
-            let mnemonic_rng_string: String = (0..scale_value)
-                        .map(|_| char::from(rand::rng().random_range(32..127)))
-                        .collect();
-            println!("\t- RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
-            mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
-        }
-    ));
+//     buttons["random"].connect_clicked(clone!(
+//         #[weak] mnemonic_passphrase_text,
+//         #[weak] mnemonic_passphrase_scale,
+//         move |_| {
+//             let scale_value = mnemonic_passphrase_scale.value() as u32;
+// 
+//             let mnemonic_rng_string: String = (0..scale_value)
+//                         .map(|_| char::from(rand::rng().random_range(32..127)))
+//                         .collect();
+//             println!("\t- RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
+//             mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
+//         }
+//     ));
 
     // JUMP: Action: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
         #[strong] coin_entry,
-        #[weak] seed_text,
+        #[weak(rename_to = seed_text)] seed_tab.4,
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
         #[strong] app_messages_state,
         move |_| {
-
-            CRYPTO_ADDRESS.clear();
-
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
             let end_iter = buffer.end_iter();
@@ -2507,29 +2932,29 @@ fn create_main_window(
         }
     ));
 
-    entropy_source_dropdown.connect_selected_notify(clone!(
-        #[weak] generate_entropy_button,
-        // #[weak] random_mnemonic_passphrase_button,
-        move |entropy_source_dropdown| {
-            let value = entropy_source_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
-            let source = selected_entropy_source_value.unwrap();
-    
-            // if *source == "RNG+" {
-            //     mnemonic_passphrase_length_box.set_visible(true);
-            //     random_mnemonic_passphrase_button.set_visible(true);
-            // } else {
-            //     mnemonic_passphrase_length_box.set_visible(false);
-            //     random_mnemonic_passphrase_button.set_visible(false);
-            // }
-
-            if *source == "File" {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
-            } else {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
-            }
-        }
-    ));
+//     entropy_source_dropdown.connect_selected_notify(clone!(
+//         #[weak] generate_entropy_button,
+//         // #[weak] random_mnemonic_passphrase_button,
+//         move |entropy_source_dropdown| {
+//             let value = entropy_source_dropdown.selected() as usize;
+//             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+//             let source = selected_entropy_source_value.unwrap();
+//     
+//             // if *source == "RNG+" {
+//             //     mnemonic_passphrase_length_box.set_visible(true);
+//             //     random_mnemonic_passphrase_button.set_visible(true);
+//             // } else {
+//             //     mnemonic_passphrase_length_box.set_visible(false);
+//             //     random_mnemonic_passphrase_button.set_visible(false);
+//             // }
+// 
+//             if *source == "File" {
+//                 generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
+//             } else {
+//                 generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+//             }
+//         }
+//     ));
     
     advance_search_checkbox.connect_active_notify(clone!(
         // #[weak] advance_search_checkbox,
@@ -2550,52 +2975,52 @@ fn create_main_window(
             coin_search.set_text("");
     }));
     
-    mnemonic_passphrase_text.connect_changed(clone!(
-        // #[weak] generate_entropy_button,
-        #[weak] entropy_text,
-        #[weak] mnemonic_words_text,
-        #[weak] seed_text,
-        // #[weak] mnemonic_passphrase_length_info,
-        move |mnemonic_passphrase_text| {
-            let entropy_buffer = entropy_text.buffer();
-            let start_iter = entropy_buffer.start_iter();
-            let end_iter = entropy_buffer.end_iter();
-            let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
-
-            if entropy_text != "" {
-                let entropy_length = entropy_text.len();
-                let cut_entropy = entropy_length / 32;
-                let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
-
-                let seed = keys::generate_bip39_seed(&new_pre_entropy, &mnemonic_passphrase_text.buffer().text());
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
-
-                let final_entropy = entropy_text.clone().to_string();
-                let mnemonic_words_buffer = mnemonic_words_text.buffer();
-                let start_iter = mnemonic_words_buffer.start_iter();
-                let end_iter = mnemonic_words_buffer.end_iter();
-                let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
-                let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
-
-                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-                wallet_settings.entropy_string = Some(final_entropy);
-                wallet_settings.mnemonic_words = Some(final_mnemonic_words);
-                wallet_settings.mnemonic_passphrase = Some(final_mnemonic_passphrase);
-                wallet_settings.seed = Some(seed_hex.clone());
-            }
-        }
-    ));
-    
-    mnemonic_passphrase_scale.connect_value_changed(clone!(
-        #[weak] mnemonic_passphrase_length_info,
-        #[weak(rename_to = random_mnemonic_passphrase_button)] buttons["random"],
-        move |mnemonic_passphrase_scale| {
-            let scale_value = mnemonic_passphrase_scale.value() as u32;
-            mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
-            random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
-        }
-    ));
+//     mnemonic_passphrase_text.connect_changed(clone!(
+//         // #[weak] generate_entropy_button,
+//         #[weak] entropy_text,
+//         #[weak] mnemonic_words_text,
+//         #[weak] seed_text,
+//         // #[weak] mnemonic_passphrase_length_info,
+//         move |mnemonic_passphrase_text| {
+//             let entropy_buffer = entropy_text.buffer();
+//             let start_iter = entropy_buffer.start_iter();
+//             let end_iter = entropy_buffer.end_iter();
+//             let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
+// 
+//             if entropy_text != "" {
+//                 let entropy_length = entropy_text.len();
+//                 let cut_entropy = entropy_length / 32;
+//                 let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
+// 
+//                 let seed = keys::generate_bip39_seed(&new_pre_entropy, &mnemonic_passphrase_text.buffer().text());
+//                 let seed_hex = hex::encode(&seed[..]);
+//                 seed_text.buffer().set_text(&seed_hex.to_string());
+// 
+//                 let final_entropy = entropy_text.clone().to_string();
+//                 let mnemonic_words_buffer = mnemonic_words_text.buffer();
+//                 let start_iter = mnemonic_words_buffer.start_iter();
+//                 let end_iter = mnemonic_words_buffer.end_iter();
+//                 let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
+//                 let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
+// 
+//                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+//                 wallet_settings.entropy_string = Some(final_entropy);
+//                 wallet_settings.mnemonic_words = Some(final_mnemonic_words);
+//                 wallet_settings.mnemonic_passphrase = Some(final_mnemonic_passphrase);
+//                 wallet_settings.seed = Some(seed_hex.clone());
+//             }
+//         }
+//     ));
+//     
+//     mnemonic_passphrase_scale.connect_value_changed(clone!(
+//         #[weak] mnemonic_passphrase_length_info,
+//         #[weak(rename_to = random_mnemonic_passphrase_button)] buttons["random"],
+//         move |mnemonic_passphrase_scale| {
+//             let scale_value = mnemonic_passphrase_scale.value() as u32;
+//             mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
+//             random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
+//         }
+//     ));
 
     coin_search.connect_search_changed({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
