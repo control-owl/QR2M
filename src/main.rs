@@ -1323,7 +1323,8 @@ fn print_program_info() {
 // GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     print_program_info();
 
     os::detect_os_and_user_dir();
@@ -3180,18 +3181,18 @@ fn create_main_window(
             let address_count = address_count_spinbutton.text();
             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
             
-            
-            // let (tx, rx) = std::sync::mpsc::channel();
-            
-            // let open_loop = glib::MainLoop::new(Some(&main_context), false);
-            let main_context = glib::MainContext::default();
+
+            // #######################################
+
+            // let open_context = glib::MainContext::default();
+            // let open_loop = glib::MainLoop::new(Some(&open_context), false);
             let (tx, rx) = std::sync::mpsc::channel();
             let start_time = std::time::Instant::now();
 
-            main_context.spawn_local(clone!(
-                // #[strong] address_store,
-                // #[strong] tx,
-                async move {
+            std::thread::spawn(clone!(
+                // #[strong] open_loop,
+                move || {
+
                     let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
                         .iter()
                         .filter_map(|addr| addr.derivation_path.clone())
@@ -3230,7 +3231,7 @@ fn create_main_window(
                                 &key_derivation, 
                                 &wallet_import_format,
                                 &hash,
-                            ).await {
+                            ) {
                                 let new_entry = CryptoAddresses {
                                     coin_name: Some(coin_name.clone()),
                                     derivation_path: Some(full_address_derivation_path.clone()),
@@ -3241,7 +3242,10 @@ fn create_main_window(
 
                                 CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
 
-                                tx.send(new_entry).expect("Failed to send address");
+                                // tx.send(new_entry).expect("Failed to send address");
+                                if tx.send(new_entry).is_err() {
+                                    break;
+                                }
 
                                 generated_count += 1;
                             }
@@ -3252,27 +3256,39 @@ fn create_main_window(
                     
                     let duration = start_time.elapsed();
                     println!("Address generation completed in {:.2?} seconds", duration);
+
+                    // open_loop.quit();
                 }
             ));
-            
-            main_context.spawn_local(clone!(
+
+            // open_loop.run();
+
+            glib::timeout_add_local(std::time::Duration::from_millis(50), clone!(
                 #[strong] address_store,
-                // #[strong] rx,
-                async move {
-                    while let Ok(new_entry) = rx.recv() {
+                move || {
+                    while let Ok(new_entry) = rx.try_recv() {
                         let iter = address_store.append();
                         address_store.set(
                             &iter,
                             &[
-                                (0, &new_entry.coin_name.unwrap_or_default()),
-                                (1, &new_entry.derivation_path.unwrap_or_default()),
-                                (2, &new_entry.address.unwrap_or_default()),
-                                (3, &new_entry.public_key.unwrap_or_default()),
-                                (4, &new_entry.private_key.unwrap_or_default()),
+                                (0, &new_entry.coin_name.clone().unwrap_or_default()),
+                                (1, &new_entry.derivation_path.clone().unwrap_or_default()),
+                                (2, &new_entry.address.clone().unwrap_or_default()),
+                                (3, &new_entry.public_key.clone().unwrap_or_default()),
+                                (4, &new_entry.private_key.clone().unwrap_or_default()),
                             ],
                         );
                     }
-            }));
+                    glib::ControlFlow::Continue
+                }
+            ));
+
+
+
+
+
+
+
         }
     ));
 
@@ -4830,9 +4846,7 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
     }
 }
 
-async fn generate_address(
-    // address_store: gtk::ListStore,
-    // coin_name: &str,
+fn generate_address(
     coin_index: u32,
     derivation_path: &str,
     master_private_key_bytes: Vec<u8>,
@@ -4841,8 +4855,6 @@ async fn generate_address(
     key_derivation: &str,
     wallet_import_format: &str,
     hash: &str,
-    // hardened: bool,
-    
  ) -> Result<(String, String, String), String> {
     println!("[+] {}", &t!("log.generate_address").to_string());
 
