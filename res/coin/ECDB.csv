@@ -1,4 +1,4 @@
-status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,public_header,public_key_hash,script_hash,wallet_import_format,evm,UCID,cmc_top
+status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,public_header,public_key_hash,script_hash,wallet_import_format,evm,ucid,cmc_top
 1,0,BTC,Bitcoin,secp256k1,sha256,0x0488ADE4,0x0488B21E,0x00,0x05,0x80,,1,10
 0,1,TEST,Testnet (all coins),,,,,,,,,,
 1,2,LTC,Litecoin,secp256k1,sha256,0x019D9CFE,0x019DA462,0x30,0x32,0xb0,,2,100

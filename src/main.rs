@@ -4,8 +4,9 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+
 // #![windows_subsystem = "windows"]
-#![allow(non_snake_case)]
+// #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
 // #![allow(unused_assignments)]
@@ -13,10 +14,9 @@
 // #![allow(unused_mut)]
 
 
-// REQUIREMENTS -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-// Crates
 use std::{
     fs::{self, File}, 
     io::{self, BufRead, Write}, 
@@ -29,8 +29,6 @@ use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
 
-
-// Mods
 mod anu;
 mod coin_db;
 mod dev;
@@ -38,12 +36,10 @@ mod os;
 mod test_vectors;
 mod keys;
 
-// Multi-language support
 #[macro_use]
 extern crate rust_i18n;
 i18n!("res/locale", fallback = "en");
 
-// Default settings
 const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
@@ -53,10 +49,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
     "Deutsch",
     "Hrvatski",
 ];
-// const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 5;
-// const DEFAULT_MNEMONIC_LENGTH: u32 = 256;
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
-// const APP_DEFAULT_CONFIG_FILE: &str = "default.conf";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
@@ -74,18 +67,11 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
     "uint16", 
     "hex16",
 ];
-// const WALLET_DEFAULT_ADDRESS_COUNT: u32 = 10;
-// const WALLET_DEFAULT_HARDENED_ADDRESS: bool = false;
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
-// const ANU_DEFAULT_ARRAY_LENGTH: u32 = 1024;
+const WALLET_MAX_ADDRESSES: u32 = 2147483647;
 const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
-// const ANU_DEFAULT_HEX_BLOCK_SIZE: u32 = 16;
-// const PROXY_DEFAULT_RETRY_ATTEMPTS: u32 = 3;
-// const PROXY_DEFAULT_TIMEOUT: u32 = 5000;
-// const WINDOW_MAIN_DEFAULT_WIDTH: u32 = 1000;
-// const WINDOW_MAIN_DEFAULT_HEIGHT: u32 = 800;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
 const VALID_PROXY_STATUS: &'static [&'static str] = &[
@@ -113,16 +99,19 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
     "Verbose",
     "Ultimate",
 ];
-const WALLET_MAX_ADDRESSES: u32 = 2147483647;
+
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
 }
 
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 struct GuiState {
     gui_language: Option<String>,
@@ -153,7 +142,6 @@ impl GuiState {
             let language_code = match language.as_str() {
                 "Deutsch" => "de",
                 "Hrvatski" => "hr",
-                // "English" => "en",
                 _ => "en",
             };
         
@@ -221,7 +209,6 @@ impl GuiState {
             let preferred_theme = match theme.as_str() {
                 "Light" => adw::ColorScheme::ForceLight,
                 "Dark" => adw::ColorScheme::ForceDark,
-                // "System" => adw::ColorScheme::PreferLight,
                 _ => adw::ColorScheme::PreferLight,
             };
             adw::StyleManager::default().set_color_scheme(preferred_theme);
@@ -244,11 +231,11 @@ impl GuiState {
 
 }
 
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct AppSettings {
     wallet_entropy_source: Option<String>,
     wallet_entropy_length: Option<u32>,
@@ -342,7 +329,7 @@ impl AppSettings {
             Ok(contents) => contents,
             Err(err) => {
                 if err.kind() == std::io::ErrorKind::NotFound {
-                    println!("Config file not found, using default settings.");
+                    println!("\t- Config file not found, using default settings.");
                     match os::create_local_files() {
                         Ok(_) => {
                             println!("\t- New config file created");
@@ -352,14 +339,14 @@ impl AppSettings {
                         },
                     }
                 } else {
-                    eprintln!("Failed to read local config file: {:?} \n Error: {:?}", local_config_file, err);
+                    eprintln!("\t- Failed to read local config file: {:?} \n Error: {:?}", local_config_file, err);
                 }
                 String::new()
             }
         };
 
         let config: toml::Value = config_str.parse().unwrap_or_else(|err| {
-            println!("{}", &t!("error.settings.config", error = err));
+            println!("\t- {}", &t!("error.settings.config", error = err));
             toml::Value::Table(toml::value::Table::new())
         });
 
@@ -389,9 +376,7 @@ impl AppSettings {
         let wallet_section = load_section(&config, "wallet");
         let anu_section = load_section(&config, "anu");
         let proxy_section = load_section(&config, "proxy");
-        
 
-        // GUI settings
         settings.gui_save_size = get_bool(&gui_section, "save_size", settings.gui_save_size);
         settings.gui_last_width = get_u32(&gui_section, "last_width", settings.gui_last_width);
         settings.gui_last_height = get_u32(&gui_section, "last_height", settings.gui_last_height);
@@ -418,7 +403,6 @@ impl AppSettings {
         println!("\t- Log enabled: {:?}", settings.gui_log);
         println!("\t- Log level: {:?}", settings.gui_log_level);
 
-        // Wallet settings
         settings.wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
         settings.wallet_entropy_length = get_u32(&wallet_section, "entropy_length", settings.wallet_entropy_length);
         settings.wallet_bip = get_u32(&wallet_section, "bip", settings.wallet_bip);
@@ -431,7 +415,6 @@ impl AppSettings {
         println!("\t- Address count: {:?}", settings.wallet_address_count);
         println!("\t- Hard address: {:?}", settings.wallet_hardened_address);
 
-        // ANU settings
         settings.anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
         settings.anu_data_format = get_str(&anu_section, "data_format", settings.anu_data_format);
         settings.anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
@@ -444,7 +427,6 @@ impl AppSettings {
         println!("\t- ANU hex block size: {:?}", settings.anu_hex_block_size);
         println!("\t- ANU log: {:?}", settings.anu_log);
 
-        // Proxy settings
         settings.proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
         settings.proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
         settings.proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
@@ -457,8 +439,6 @@ impl AppSettings {
         settings.proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", settings.proxy_ssl_certificate);
         settings.proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", settings.proxy_retry_attempts);
         settings.proxy_timeout = get_u32(&proxy_section, "timeout", settings.proxy_timeout);
-
-
         
         println!("\t- Use proxy: {:?}", settings.proxy_status);
         println!("\t- Proxy server address: {:?}", settings.proxy_server_address);
@@ -489,7 +469,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.wallet_entropy_source {
                         self.wallet_entropy_source = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -499,7 +479,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.wallet_entropy_length {
                         self.wallet_entropy_length = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -509,7 +489,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.wallet_bip {
                         self.wallet_bip = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -519,7 +499,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.wallet_address_count {
                         self.wallet_address_count = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -528,7 +508,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.wallet_hardened_address {
                         self.wallet_hardened_address = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -537,7 +517,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.gui_save_size {
                         self.gui_save_size = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -547,7 +527,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.gui_last_width {
                         self.gui_last_width = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -557,7 +537,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.gui_last_height {
                         self.gui_last_height = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -566,7 +546,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.gui_maximized {
                         self.gui_maximized = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -575,7 +555,7 @@ impl AppSettings {
                 if let Some(new_theme) = new_value.as_str() {
                     if Some(new_theme.to_string()) != self.gui_theme {
                         self.gui_theme = Some(new_theme.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
 
                         let preferred_theme = match new_theme {
@@ -602,7 +582,7 @@ impl AppSettings {
                 if let Some(new_icons) = new_value.as_str() {
                     if Some(new_icons.to_string()) != self.gui_icons {
                         self.gui_icons = Some(new_icons.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         if let Some(state) = gui_state {
                             let mut state = state.lock().unwrap();
                             state.gui_icon_theme = self.gui_icons.clone();
@@ -620,7 +600,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.gui_language {
                         self.gui_language = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -629,7 +609,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.gui_search {
                         self.gui_search = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -639,7 +619,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.gui_notification_timeout {
                         self.gui_notification_timeout = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -649,7 +629,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.gui_mnemonic_length {
                         self.gui_mnemonic_length = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -672,7 +652,7 @@ impl AppSettings {
                             println!("State in gui_theme is None");
                         }
 
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -681,7 +661,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.gui_log_level {
                         self.gui_log_level = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -690,7 +670,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.anu_enabled {
                         self.anu_enabled = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -699,7 +679,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.anu_data_format {
                         self.anu_data_format = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -709,7 +689,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.anu_array_length {
                         self.anu_array_length = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -719,7 +699,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.anu_hex_block_size {
                         self.anu_hex_block_size = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -728,7 +708,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.anu_log {
                         self.anu_log = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -737,7 +717,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_status {
                         self.proxy_status = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -746,7 +726,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_server_address {
                         self.proxy_server_address = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -756,7 +736,7 @@ impl AppSettings {
                     let value = value as u32;
                     if Some(value) != self.proxy_server_port {
                         self.proxy_server_port = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -765,7 +745,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_use_pac {
                         self.proxy_use_pac = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -774,7 +754,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_script_address {
                         self.proxy_script_address = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -783,7 +763,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_login_credentials {
                         self.proxy_login_credentials = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -792,7 +772,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_login_username {
                         self.proxy_login_username = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -801,7 +781,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_login_password {
                         self.proxy_login_password = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -810,7 +790,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_use_ssl {
                         self.proxy_use_ssl = Some(value);
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -819,7 +799,7 @@ impl AppSettings {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_ssl_certificate {
                         self.proxy_ssl_certificate = Some(value.to_string());
-                        println!("Updating key {:?} = {:?}", key, new_value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         self.save_settings();
                     }
                 }
@@ -835,12 +815,12 @@ impl AppSettings {
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
         let config_str = fs::read_to_string(&local_config_file)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to read config file: {}", e)))
-            .expect("Problem with local config file");
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to read config file: {}", e)))
+            .expect("\t- Problem with local config file");
         
         let mut doc = config_str.parse::<toml_edit::DocumentMut>()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to parse config string: {}", e)))
-            .expect("Problem with mut doc");
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to parse config string: {}", e)))
+            .expect("\t- Problem with mut doc");
     
         {
             let wallet_section = doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
@@ -901,17 +881,19 @@ impl AppSettings {
         let toml_str = doc.to_string();
     
         let mut file = fs::File::create(&local_config_file)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to create config file: {}", e)))
-            .expect("Problem with local config file");
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to create config file: {}", e)))
+            .expect("\t- Problem with local config file");
         
         file.write_all(toml_str.as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to write to config file: {}", e)))
-            .expect("can not write to local config file");
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to write to config file: {}", e)))
+            .expect("\t- Can not write to local config file");
         
     }
 }
 
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 #[derive(Clone)]
 struct WalletSettings {
@@ -956,7 +938,9 @@ impl WalletSettings {
     }
 }
 
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 #[derive(Clone)]
 struct CryptoAddresses {
@@ -968,29 +952,7 @@ struct CryptoAddresses {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 struct AppMessages {
@@ -1027,7 +989,6 @@ impl AppMessages {
             queue.push_back((new_message, message_type));
             
             if !*self.processing.lock().unwrap() {
-                
                 self.start_message_processor();
             }
         }
@@ -1039,7 +1000,7 @@ impl AppMessages {
         let info_bar = match &self.info_bar {
             Some(info_bar) => info_bar.clone(),
             None => {
-                eprintln!("Error: info_bar is not initialized.");
+                eprintln!("\t- Error: info_bar is not initialized.");
                 return;
             }
         };
@@ -1103,6 +1064,7 @@ impl AppMessages {
             let info_bar = info_bar.clone();
             let processing = processing.clone();
     
+            // TODO: Get value from settings
             glib::timeout_add_local(std::time::Duration::from_secs(3), move || {
                 info_bar.set_reveal_child(false);
     
@@ -1153,10 +1115,7 @@ impl AppMessages {
 }
 
 
-
-
-
-
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 struct AppLog {
@@ -1179,20 +1138,18 @@ impl AppLog {
         // log_button: gtk::Button,
         gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     ) {
-        println!("-----------------------------------------------ACTIVATING APP LOG...");
-
         let status = self.status.clone();
         let is_active = status.lock().unwrap();
-        println!("AppLog status: {}", is_active);
+        println!("\t- AppLog status: {}", is_active);
         
-        if *is_active {
-            println!("AppLog is active....");
-        } else {
-            println!("AppLog is inactive. trying to activate...");
-            return;
-            // *is_active = true;
-            
-        }
+        // if *is_active {
+        //     println!("AppLog is active....");
+        // } else {
+        //     println!("AppLog is inactive. trying to activate...");
+        //     return;
+        //     // *is_active = true;
+        //     
+        // }
         
         let lock_gui_state = gui_state.lock().unwrap();
     
@@ -1209,20 +1166,20 @@ impl AppLog {
                     }
                 }
             } else {
-                eprintln!("Error: 'notif' texture not found in gui_button_images");
+                eprintln!("\t- Error: 'notif' texture not found in gui_button_images");
             }
         } else {
-            eprintln!("Error: gui_button_images is None");
+            eprintln!("\t- Error: gui_button_images is None");
         }
 
-        println!("Icon changed. Logging starts...");
+        println!("\t- Icon changed. Logging starts...");
 
         // IMPLEMENT: Show log messages
     }
 }
 
 
-
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 #[derive(Debug, Clone, Copy)]
@@ -1258,11 +1215,10 @@ impl DerivationPath {
             "address" => self.address = value.and_then(|v| v.into_u32()),
             "hardened_address" => self.hardened_address = value.and_then(|v| v.into_bool()),
             "purpose" => self.purpose = value.and_then(|v| v.into_u32()),
-            _ => eprintln!("{}", &t!("error.DP.read")),
+            _ => eprintln!("{}", &t!("\t- error.DP.read")),
         }
     }
 }
-
 
 #[derive(Debug)]
 enum FieldValue {
@@ -1287,39 +1243,7 @@ impl FieldValue {
 }
 
 
-
-// impl CryptoAddresses {
-//     fn new() -> Self {
-//         Self {
-//             coin_name: None,
-//             derivation_path: None,
-//             address: None,
-//             public_key: None,
-//             private_key: None,
-//         }
-//     }
-// }
-
-// BASIC -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
-fn print_program_info() {
-    let current_time = SystemTime::now();
-    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-
-    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
-    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
-    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
-    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
-    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
-    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
-
-    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
-    println!("Start time (UNIX): {:?}", &timestamp.to_string());
-    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
-}
-
-// GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 fn main() {
@@ -1330,7 +1254,7 @@ fn main() {
     os::detect_os_and_user_dir();
 
     if let Err(err) = os::create_local_files() {
-        eprintln!("Error creating local config files: {}", err);
+        eprintln!("\t- Error creating local config files: {}", err);
     } else {
         println!("\t- Local files created");  
     }
@@ -1357,6 +1281,22 @@ fn main() {
     application.run();
 }
 
+fn print_program_info() {
+    let current_time = SystemTime::now();
+    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+
+    println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
+    println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
+    println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
+    println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
+    println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
+    println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
+
+    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
+    println!("Start time (UNIX): {:?}", &timestamp.to_string());
+    println!("-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.");
+}
+
 fn setup_app_actions(
     application: adw::Application, 
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
@@ -1377,7 +1317,6 @@ fn setup_app_actions(
     new.connect_activate(clone!(
         #[strong] application,
         #[strong] gui_state,
-        // #[strong] app_settings_state,
         move |_action, _parameter| {
             create_main_window(
                 application.clone(),
@@ -1447,6 +1386,11 @@ fn setup_app_actions(
     application.add_action(&test);
 }
 
+fn create_tab_seed() -> gtk::Box {
+
+}
+
+
 fn create_main_window(
     application: adw::Application,
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
@@ -1493,7 +1437,6 @@ fn create_main_window(
     info_bar.add_css_class("info-bar");
     window.set_titlebar(Some(&header_bar));
 
-    // Main buttons
     let button_names = ["new", "open", "save", "about", "settings", "log", "random"];
     let mut buttons = std::collections::HashMap::new();
 
@@ -1554,14 +1497,12 @@ fn create_main_window(
 
     let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
         Some(info_bar.clone()),
-        // Some((*log_button).clone())
     )));
 
     setup_app_actions(
         application.clone(),
         gui_state.clone(),
         app_messages_state.clone(),
-        // app_settings_state.clone(),
     );
 
     header_bar.pack_start(&*buttons["new"]);
@@ -1572,7 +1513,7 @@ fn create_main_window(
     header_bar.pack_end(&*buttons["log"]);
     
 
-    // JUMP: Main: Settings button action
+    // JUMP: Action: Settings button action
     buttons["settings"].connect_clicked(clone!(
         #[strong] gui_state,
         #[strong] app_messages_state,
@@ -1597,7 +1538,6 @@ fn create_main_window(
     buttons["new"].connect_clicked(clone!(
         #[strong] application,
         #[strong] gui_state,
-        // #[strong] app_settings_state,
         move |_| {
             create_main_window(
                 application.clone(),
@@ -1616,10 +1556,7 @@ fn create_main_window(
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
 
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // Sidebar 1: Seed
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // JUMP: Main: Sidebar 1: Seed
+    // JUMP: Sidebar 1: Seed
     let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     entropy_main_box.set_margin_top(10);
     entropy_main_box.set_margin_start(10);
@@ -1634,7 +1571,6 @@ fn create_main_window(
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-    
 
     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
@@ -1825,10 +1761,7 @@ fn create_main_window(
         &t!("UI.main.seed").to_string());
 
 
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // Sidebar 2: Coin
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // JUMP: Main: Sidebar 2: Coin
+    // JUMP: Sidebar 2: Coin
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
@@ -1923,7 +1856,7 @@ fn create_main_window(
     if let Ok(index) = default_coin_search_filter.try_into() {
         coin_search_filter_dropdown.set_selected(index);
     } else {
-        eprintln!("Invalid index for coin_search_filter_dropdown");
+        eprintln!("\t- Invalid index for coin_search_filter_dropdown");
         coin_search_filter_dropdown.set_selected(0);
     }
 
@@ -1998,7 +1931,7 @@ fn create_main_window(
                 (9, &found_coin.script_hash),
                 (10, &found_coin.wallet_import_format),
                 (11, &found_coin.evm),
-                (12, &found_coin.UCID),
+                (12, &found_coin.ucid),
                 (13, &found_coin.cmc_top),
             ]);
         }
@@ -2048,10 +1981,7 @@ fn create_main_window(
     );
 
 
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // Sidebar 3: Address
-    // -.-. --- .--. -.-- .-. .. --. .... -
-    // JUMP: Main: Sidebar 3: Address
+    // JUMP: Sidebar 3: Address
     let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     main_address_box.set_hexpand(true);
     main_address_box.set_vexpand(true);
@@ -2085,8 +2015,8 @@ fn create_main_window(
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
     
     let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == wallet_bip).unwrap_or_else(|| {
-        eprintln!("{}", &t!("error.bip.value", value = wallet_bip));
-        1 // BIP44
+        eprintln!("\t- {}", &t!("error.bip.value", value = wallet_bip));
+        1
     });
 
     bip_dropdown.set_selected(default_index.try_into().unwrap());
@@ -2123,7 +2053,7 @@ fn create_main_window(
     let valid_wallet_purpose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
     let valid_wallet_purpose_as_ref: Vec<&str> = valid_wallet_purpose_as_strings.iter().map(|s| s.as_ref()).collect();
     let purpose_dropdown = gtk::DropDown::from_strings(&valid_wallet_purpose_as_ref);
-    purpose_dropdown.set_selected(0); // Internal
+    purpose_dropdown.set_selected(0);
     purpose_dropdown.set_hexpand(true);
 
     bip_hardened_frame.set_child(Some(&bip_hardened_checkbox));
@@ -2153,8 +2083,6 @@ fn create_main_window(
     // Generate address button
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
-
-    
 
     // Address tree
     let address_scrolled_window = gtk::ScrolledWindow::new();
@@ -2197,9 +2125,6 @@ fn create_main_window(
         address_treeview.append_column(&column);
     }
 
-    // address_treeview.set_model(Some(&address_store));
-
-    
     // Address options main box
     let address_options_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_content = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -2207,7 +2132,6 @@ fn create_main_window(
     
 
     // Address count
-    
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_adjustment = gtk::Adjustment::new(
@@ -2280,14 +2204,12 @@ fn create_main_window(
     address_options_content.append(&address_options_frame);
     address_options_content.append(&address_start_frame);
     address_options_content.append(&address_options_hardened_address_frame);
-    // address_options_content.append(&address_options_clear_addresses_button);
     generate_addresses_button_box.append(&generate_addresses_button);
     generate_addresses_button_box.append(&address_options_clear_addresses_button);
     generate_addresses_button_box.set_halign(gtk::Align::Center);
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
     main_address_box.append(&generate_addresses_button_box);
-    // main_address_box.append(&address_options_clear_addresses_button);
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
     
@@ -2297,7 +2219,7 @@ fn create_main_window(
         &t!("UI.main.address").to_string()
     );
 
-    // JUMP: Main: Open Wallet
+    // JUMP: Action: Open Wallet
     buttons["open"].connect_clicked(clone!(
         #[weak] entropy_text,
         #[weak] mnemonic_passphrase_text,
@@ -2354,7 +2276,7 @@ fn create_main_window(
         }
     ));
 
-    // JUMP: Generate Seed button
+    // JUMP: Action: Generate Seed button
     generate_entropy_button.connect_clicked(clone!(
         #[weak] entropy_source_dropdown,
         #[weak] entropy_text,
@@ -2409,13 +2331,12 @@ fn create_main_window(
                 master_public_key_text.buffer().set_text("");
 
             } else {
-                eprintln!("{}", &t!("error.entropy.empty"));
+                eprintln!("\t- {}", &t!("error.entropy.empty"));
                 let lock_app_messages = app_messages_state.lock().unwrap();
                 lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
             }
         }
     ));
-
 
     delete_entropy_button.connect_clicked(clone!(
         #[weak] entropy_text,
@@ -2450,7 +2371,7 @@ fn create_main_window(
         }
     ));
 
-    // JUMP: Generate Master Keys button
+    // JUMP: Action: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
         #[strong] coin_entry,
         #[weak] seed_text,
@@ -2480,7 +2401,7 @@ fn create_main_window(
                     let script_hash = model.get_value(&iter, 9);
                     let wallet_import_format = model.get_value(&iter, 10);
                     let evm = model.get_value(&iter, 11);
-                    let UCID = model.get_value(&iter, 12);
+                    let ucid = model.get_value(&iter, 12);
                     let cmc_top = model.get_value(&iter, 13);
     
                     if let (
@@ -2496,7 +2417,7 @@ fn create_main_window(
                         Ok(script_hash),
                         Ok(wallet_import_format),
                         Ok(evm),
-                        Ok(UCID),
+                        Ok(ucid),
                         Ok(cmc_top),
                     ) = (
                         status.get::<String>(),
@@ -2511,27 +2432,27 @@ fn create_main_window(
                         script_hash.get::<String>(),
                         wallet_import_format.get::<String>(),
                         evm.get::<String>(),
-                        UCID.get::<String>(),
+                        ucid.get::<String>(),
                         cmc_top.get::<String>(),
                     ) {
                         master_private_key_text.buffer().set_text("");
                         master_public_key_text.buffer().set_text("");
     
                         println!("\n#### Coin info ####");
-                        println!("status: {}", status);
-                        println!("index: {}", coin_index);
-                        println!("coin_symbol: {}", coin_symbol);
-                        println!("coin_name: {}", coin_name);
-                        println!("key_derivation: {}", key_derivation);
-                        println!("hash: {}", hash);
-                        println!("private_header: {}", private_header);
-                        println!("public_header: {}", public_header);
-                        println!("public_key_hash: {}", public_key_hash);
-                        println!("script_hash: {}", script_hash);
-                        println!("wallet_import_format: {}", wallet_import_format);
-                        println!("EVM: {}", evm);
-                        println!("UCID: {}", UCID);
-                        println!("cmc_top: {}", cmc_top);
+                        println!("\t- status: {}", status);
+                        println!("\t- index: {}", coin_index);
+                        println!("\t- coin_symbol: {}", coin_symbol);
+                        println!("\t- coin_name: {}", coin_name);
+                        println!("\t- key_derivation: {}", key_derivation);
+                        println!("\t- hash: {}", hash);
+                        println!("\t- private_header: {}", private_header);
+                        println!("\t- public_header: {}", public_header);
+                        println!("\t- public_key_hash: {}", public_key_hash);
+                        println!("\t- script_hash: {}", script_hash);
+                        println!("\t- wallet_import_format: {}", wallet_import_format);
+                        println!("\t- EVM: {}", evm);
+                        println!("\t- UCID: {}", ucid);
+                        println!("\t- cmc_top: {}", cmc_top);
 
                         let buffer = seed_text.buffer();
                         let start_iter = buffer.start_iter();
@@ -2553,7 +2474,7 @@ fn create_main_window(
                                     lock_gui_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
                                     
                                 }
-                                eprintln!("{}: {}", &t!("error.master.create"), err)
+                                eprintln!("\t- {}: {}", &t!("error.master.create"), err)
                             },
                         }
     
@@ -2712,7 +2633,7 @@ fn create_main_window(
                             (9, &found_coin.script_hash),
                             (10, &found_coin.wallet_import_format),
                             (11, &found_coin.evm),
-                            (12, &found_coin.UCID),
+                            (12, &found_coin.ucid),
                             (13, &found_coin.cmc_top),
                         ]);
                     }
@@ -2756,7 +2677,7 @@ fn create_main_window(
                         (9, &found_coin.script_hash),
                         (10, &found_coin.wallet_import_format),
                         (11, &found_coin.evm),
-                        (12, &found_coin.UCID),
+                        (12, &found_coin.ucid),
                         (13, &found_coin.cmc_top),
                     ]);
                 }
@@ -2797,7 +2718,7 @@ fn create_main_window(
                         (9, &found_coin.script_hash),
                         (10, &found_coin.wallet_import_format),
                         (11, &found_coin.evm),
-                        (12, &found_coin.UCID),
+                        (12, &found_coin.ucid),
                         (13, &found_coin.cmc_top),
                     ]);
                 }
@@ -2838,7 +2759,7 @@ fn create_main_window(
                         (9, &found_coin.script_hash),
                         (10, &found_coin.wallet_import_format),
                         (11, &found_coin.evm),
-                        (12, &found_coin.UCID),
+                        (12, &found_coin.ucid),
                         (13, &found_coin.cmc_top),
                     ]);
                 }
@@ -2879,7 +2800,7 @@ fn create_main_window(
                         (9, &found_coin.script_hash),
                         (10, &found_coin.wallet_import_format),
                         (11, &found_coin.evm),
-                        (12, &found_coin.UCID),
+                        (12, &found_coin.ucid),
                         (13, &found_coin.cmc_top),
                     ]);
                 }
@@ -2920,7 +2841,7 @@ fn create_main_window(
                         (9, &found_coin.script_hash),
                         (10, &found_coin.wallet_import_format),
                         (11, &found_coin.evm),
-                        (12, &found_coin.UCID),
+                        (12, &found_coin.ucid),
                         (13, &found_coin.cmc_top),
                     ]);
                 }
@@ -2961,7 +2882,7 @@ fn create_main_window(
                         (9, &found_coin.script_hash),
                         (10, &found_coin.wallet_import_format),
                         (11, &found_coin.evm),
-                        (12, &found_coin.UCID),
+                        (12, &found_coin.ucid),
                         (13, &found_coin.cmc_top),
                     ]);
                 }
@@ -3223,7 +3144,7 @@ fn create_main_window(
                     }
                     
                     let duration = start_time.elapsed();
-                    println!("Address generation completed in {:.2?} seconds", duration);
+                    println!("\t- Address generation completed in {:.2?} seconds", duration);
 
                     // open_loop.quit();
                 }
@@ -3286,8 +3207,8 @@ fn create_main_window(
     main_window_box.set_hexpand(true);
     
     {
-        let Lock_app_messages = app_messages_state.lock().unwrap();
-        Lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
+        let lock_app_messages = app_messages_state.lock().unwrap();
+        lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
         
     }
 
@@ -4717,41 +4638,41 @@ fn save_wallet_to_file() {
     save_loop.run();
 }
 
-fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
+fn update_derivation_label(dp: DerivationPath, label: gtk::Label, ) {
     println!("[+] {}", &t!("log.update_derivation_label").to_string());
 
-    println!("\t- Derivation Path: {:?}", DP);
+    println!("\t- Derivation Path: {:?}", dp);
 
     let mut path = String::new();
     path.push_str("m");
 
-    if DP.bip.unwrap() == 32  {
-        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
-        if DP.hardened_coin.unwrap_or_default() {
+    if dp.bip.unwrap() == 32  {
+        path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
+        if dp.hardened_coin.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
 
-        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
-        if DP.hardened_address.unwrap_or_default() {
+        path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
+        if dp.hardened_address.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
     } else {
-        path.push_str(&format!("/{}", DP.bip.unwrap_or_default()));
-        if DP.hardened_bip.unwrap_or_default() {
+        path.push_str(&format!("/{}", dp.bip.unwrap_or_default()));
+        if dp.hardened_bip.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
 
-        path.push_str(&format!("/{}", DP.coin.unwrap_or_default()));
-        if DP.hardened_coin.unwrap_or_default() {
+        path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
+        if dp.hardened_coin.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
 
-        path.push_str(&format!("/{}", DP.address.unwrap_or_default()));
-        if DP.hardened_address.unwrap_or_default() {
+        path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
+        if dp.hardened_address.unwrap_or_default() {
             path.push_str(&format!("'"));
         }
 
-        path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
+        path.push_str(&format!("/{}", dp.purpose.unwrap_or_default()));
     }
     
     println!("\t- Derivation path: {:?}", &path);
@@ -4822,7 +4743,7 @@ fn generate_address(
  ) -> Result<(String, String, String), String> {
     println!("[+] {}", &t!("log.generate_address").to_string());
 
-    println!("derivation_path: {:?}", derivation_path);
+    println!("\t- derivation_path: {:?}", derivation_path);
 
     let secp = secp256k1::Secp256k1::new();
 
@@ -5047,13 +4968,4 @@ fn generate_address(
     // }
 }
 
-// fn create_log(
-//     log_state: std::sync::Arc<std::sync::Mutex<AppLog>>,
-//     message: String,
-//     message_type: gtk::MessageType,
-// ) {
-
-
-
-
-// }
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

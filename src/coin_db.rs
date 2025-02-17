@@ -42,7 +42,7 @@ pub struct CoinDatabase {
     pub script_hash: String,
     pub wallet_import_format: String,
     pub evm: String,
-    pub UCID: String,
+    pub ucid: String,
     pub cmc_top: String,
 }
 
@@ -83,7 +83,7 @@ pub fn create_coin_store() -> Vec<CoinDatabase> {
         let script_hash = record[9].to_string();
         let wallet_import_format = record[10].to_string();
         let evm = record[11].to_string();
-        let UCID = record[12].to_string();
+        let ucid = record[12].to_string();
         let cmc_top = record[13].to_string();
 
         
@@ -100,7 +100,7 @@ pub fn create_coin_store() -> Vec<CoinDatabase> {
             script_hash, 
             wallet_import_format,
             evm,
-            UCID,
+            ucid,
             cmc_top, 
         };
 
@@ -145,7 +145,7 @@ pub fn create_coin_completion_model() -> gtk::ListStore {
             (9, &coin_symbol.script_hash),
             (10, &coin_symbol.wallet_import_format),
             (11, &coin_symbol.evm),
-            (12, &coin_symbol.UCID),
+            (12, &coin_symbol.ucid),
             (13, &coin_symbol.cmc_top),
         ]);
     }
@@ -242,7 +242,7 @@ fn create_coin_database() -> Vec<CoinDatabase> {
             let script_hash: String = record.get(9).unwrap_or_default().to_string();
             let wallet_import_format: String = record.get(10).unwrap_or_default().to_string();
             let evm: String = record.get(11).unwrap_or_default().to_string();
-            let UCID: String = record.get(12).unwrap_or_default().to_string();
+            let ucid: String = record.get(12).unwrap_or_default().to_string();
             let cmc_top: String = record.get(13).unwrap_or_default().to_string();
 
             CoinDatabase {
@@ -258,7 +258,7 @@ fn create_coin_database() -> Vec<CoinDatabase> {
                 script_hash,
                 wallet_import_format,
                 evm,
-                UCID,
+                ucid,
                 cmc_top,
             }
         }).collect();

@@ -89,7 +89,12 @@
   "cSpell.diagnosticLevel": "Hint",
   "cSpell.words": [
     "dashmap",
+    "Deque",
+    "notif",
+    "paintable",
     "QRNG",
+    "serde",
+    "ucid",
     "winres"
   ],
   "window.newWindowProfile": "ro0t",
