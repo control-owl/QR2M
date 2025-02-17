@@ -1,3 +1,8 @@
+# version 0.73.0
+- Real-time Address Updates: Addresses now appear instantly in a table as they are generated - async 50ms
+- removed default config file and migrated to a struct settings
+- new gtk4 library
+
 # version 0.72.0
 - theme: detect OS theme change
 - all buttons and images in one state

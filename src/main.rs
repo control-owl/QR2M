@@ -56,7 +56,7 @@ const APP_LANGUAGE: &'static [&'static str] = &[
 // const DEFAULT_NOTIFICATION_TIMEOUT: u32 = 5;
 // const DEFAULT_MNEMONIC_LENGTH: u32 = 256;
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
-const APP_DEFAULT_CONFIG_FILE: &str = "default.conf";
+// const APP_DEFAULT_CONFIG_FILE: &str = "default.conf";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
@@ -193,7 +193,7 @@ impl GuiState {
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
-            println!(" - Icon: {:?}", icon_path);
+            println!("\t- Icon: {:?}", icon_path);
             let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
             icons.insert((*name).to_string(), texture);
         }
@@ -215,7 +215,7 @@ impl GuiState {
     }
 
     fn reload_gui_theme(&mut self) {
-        println!(" - [+] {}", &t!("log.reload_gui_theme").to_string());
+        println!("[+] {}", &t!("log.reload_gui_theme").to_string());
         
         if let Some(theme) = &self.gui_theme {
             let preferred_theme = match theme.as_str() {
@@ -225,27 +225,30 @@ impl GuiState {
                 _ => adw::ColorScheme::PreferLight,
             };
             adw::StyleManager::default().set_color_scheme(preferred_theme);
-            println!(" - GUI theme: {:?}", preferred_theme);
+            println!("\t- GUI theme: {:?}", preferred_theme);
         } else {
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
-            eprintln!(" - Problem with GUI theme, revert to default theme");
+            eprintln!("\t- Problem with GUI theme, revert to default theme");
         }
 
     }
 
     fn register_button(&self, name: String, button: std::sync::Arc<gtk::Button>) {
-        println!(" - [+] {}", &t!("log.register_button").to_string());
+        println!("[+] {}", &t!("log.register_button").to_string());
 
         let mut button_map = self.gui_main_buttons.lock().unwrap();
         button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
 
-        println!(" - Button: {:?}", name)
+        println!("\t- Button: {:?}", name)
     }
 
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+use serde::Serialize;
+
+#[derive(Serialize)]
 struct AppSettings {
     wallet_entropy_source: Option<String>,
     wallet_entropy_length: Option<u32>,
@@ -333,24 +336,25 @@ impl AppSettings {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
         
-        println!(" - Settings file: {:?}", local_config_file);
+        println!("\t- Settings file: {:?}", local_config_file);
 
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                eprintln!(
-                    "Failed to read local config file: {:?} \n Error: {:?}",
-                    local_config_file, err
-                );
-        
-                let default_config = qr2m_lib::get_text_from_resources(APP_DEFAULT_CONFIG_FILE);
-                if default_config.is_empty() {
-                    eprintln!("Default configuration from embedded resources is empty.");
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    println!("Config file not found, using default settings.");
+                    match os::create_local_files() {
+                        Ok(_) => {
+                            println!("\t- New config file created");
+                        },
+                        Err(err) => {
+                            eprintln!("\t- New config file NOT created \n {}", err);
+                        },
+                    }
                 } else {
-                    println!("Loaded default configuration from embedded resources.");
+                    eprintln!("Failed to read local config file: {:?} \n Error: {:?}", local_config_file, err);
                 }
-        
-                default_config
+                String::new()
             }
         };
 
@@ -375,11 +379,9 @@ impl AppSettings {
         fn load_section(
             config: &toml::Value, 
             section_name: &str, 
-            // default_config: &toml::Value
         ) -> toml::Value {
             config.get(section_name)
                 .cloned()
-                // .unwrap_or_else(|| default_config.get(section_name).cloned().unwrap_or(toml::Value::Table(toml::value::Table::new())))
                 .unwrap_or_else(|| toml::Value::Table(toml::value::Table::new()))
         }
 
@@ -403,18 +405,18 @@ impl AppSettings {
         settings.gui_log = get_bool(&gui_section, "save_size", settings.gui_log);
         settings.gui_log_level = get_str(&gui_section, "log_level", settings.gui_log_level);
 
-        println!(" - Save last window size: {:?}", settings.gui_save_size);
-        println!(" - GUI width: {:?}", settings.gui_last_width);
-        println!(" - GUI height: {:?}", settings.gui_last_height);
-        println!(" - Maximized: {:?}", settings.gui_maximized);
-        println!(" - Theme: {:?}", settings.gui_theme);
-        println!(" - Icons: {:?}", settings.gui_icons);
-        println!(" - Language: {:?}", settings.gui_language);
-        println!(" - Search: {:?}", settings.gui_search);
-        println!(" - Notification timeout: {:?}", settings.gui_notification_timeout);
-        println!(" - Mnemonic passphrase length: {:?}", settings.gui_mnemonic_length);
-        println!(" - Log enabled: {:?}", settings.gui_log);
-        println!(" - Log level: {:?}", settings.gui_log_level);
+        println!("\t- Save last window size: {:?}", settings.gui_save_size);
+        println!("\t- GUI width: {:?}", settings.gui_last_width);
+        println!("\t- GUI height: {:?}", settings.gui_last_height);
+        println!("\t- Maximized: {:?}", settings.gui_maximized);
+        println!("\t- Theme: {:?}", settings.gui_theme);
+        println!("\t- Icons: {:?}", settings.gui_icons);
+        println!("\t- Language: {:?}", settings.gui_language);
+        println!("\t- Search: {:?}", settings.gui_search);
+        println!("\t- Notification timeout: {:?}", settings.gui_notification_timeout);
+        println!("\t- Mnemonic passphrase length: {:?}", settings.gui_mnemonic_length);
+        println!("\t- Log enabled: {:?}", settings.gui_log);
+        println!("\t- Log level: {:?}", settings.gui_log_level);
 
         // Wallet settings
         settings.wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
@@ -423,11 +425,11 @@ impl AppSettings {
         settings.wallet_address_count = get_u32(&wallet_section, "address_count", settings.wallet_address_count);
         settings.wallet_hardened_address = get_bool(&wallet_section, "hardened_address", settings.wallet_hardened_address);
 
-        println!(" - Entropy source: {:?}", settings.wallet_entropy_source);
-        println!(" - Entropy length: {:?}", settings.wallet_entropy_length);
-        println!(" - BIP: {:?}", settings.wallet_bip);
-        println!(" - Address count: {:?}", settings.wallet_address_count);
-        println!(" - Hard address: {:?}", settings.wallet_hardened_address);
+        println!("\t- Entropy source: {:?}", settings.wallet_entropy_source);
+        println!("\t- Entropy length: {:?}", settings.wallet_entropy_length);
+        println!("\t- BIP: {:?}", settings.wallet_bip);
+        println!("\t- Address count: {:?}", settings.wallet_address_count);
+        println!("\t- Hard address: {:?}", settings.wallet_hardened_address);
 
         // ANU settings
         settings.anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
@@ -436,11 +438,11 @@ impl AppSettings {
         settings.anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
         settings.anu_log = get_bool(&anu_section, "log", settings.anu_log);
 
-        println!(" - Use ANU: {:?}", settings.anu_enabled);
-        println!(" - ANU data format: {:?}", settings.anu_data_format);
-        println!(" - ANU array length: {:?}", settings.anu_array_length);
-        println!(" - ANU hex block size: {:?}", settings.anu_hex_block_size);
-        println!(" - ANU log: {:?}", settings.anu_log);
+        println!("\t- Use ANU: {:?}", settings.anu_enabled);
+        println!("\t- ANU data format: {:?}", settings.anu_data_format);
+        println!("\t- ANU array length: {:?}", settings.anu_array_length);
+        println!("\t- ANU hex block size: {:?}", settings.anu_hex_block_size);
+        println!("\t- ANU log: {:?}", settings.anu_log);
 
         // Proxy settings
         settings.proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
@@ -458,18 +460,18 @@ impl AppSettings {
 
 
         
-        println!(" - Use proxy: {:?}", settings.proxy_status);
-        println!(" - Proxy server address: {:?}", settings.proxy_server_address);
-        println!(" - Proxy server port: {:?}", settings.proxy_server_port);
-        println!(" - Use proxy PAC: {:?}", settings.proxy_use_pac);
-        println!(" - Proxy script address: {:?}", settings.proxy_script_address);
-        println!(" - Use proxy login credentials: {:?}", settings.proxy_login_credentials);
-        println!(" - Proxy username: {:?}", settings.proxy_login_username);
-        println!(" - Proxy password: {:?}", settings.proxy_login_password);
-        println!(" - Use proxy SSL: {:?}", settings.proxy_use_ssl);
-        println!(" - Proxy SSL certificate: {:?}", settings.proxy_ssl_certificate);
-        println!(" - Proxy retry attempts: {:?}", settings.proxy_retry_attempts);
-        println!(" - Proxy timeout: {:?}", settings.proxy_timeout);
+        println!("\t- Use proxy: {:?}", settings.proxy_status);
+        println!("\t- Proxy server address: {:?}", settings.proxy_server_address);
+        println!("\t- Proxy server port: {:?}", settings.proxy_server_port);
+        println!("\t- Use proxy PAC: {:?}", settings.proxy_use_pac);
+        println!("\t- Proxy script address: {:?}", settings.proxy_script_address);
+        println!("\t- Use proxy login credentials: {:?}", settings.proxy_login_credentials);
+        println!("\t- Proxy username: {:?}", settings.proxy_login_username);
+        println!("\t- Proxy password: {:?}", settings.proxy_login_password);
+        println!("\t- Use proxy SSL: {:?}", settings.proxy_use_ssl);
+        println!("\t- Proxy SSL certificate: {:?}", settings.proxy_ssl_certificate);
+        println!("\t- Proxy retry attempts: {:?}", settings.proxy_retry_attempts);
+        println!("\t- Proxy timeout: {:?}", settings.proxy_timeout);
 
         settings
     }
@@ -1192,10 +1194,7 @@ impl AppLog {
             
         }
         
-        println!("AppLog status: {}", is_active);
-        
         let lock_gui_state = gui_state.lock().unwrap();
-    
     
         if let Some(texture_map) = &lock_gui_state.gui_button_images {
             if let Some(new_texture) = texture_map.get("notif") {
@@ -1323,8 +1322,7 @@ fn print_program_info() {
 // GUI -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-#[tokio::main]
-async fn main() {
+fn main() {
     print_program_info();
 
     os::detect_os_and_user_dir();
@@ -1332,7 +1330,7 @@ async fn main() {
     if let Err(err) = os::create_local_files() {
         eprintln!("Error creating local config files: {}", err);
     } else {
-        println!(" - Local files created");  
+        println!("\t- Local files created");  
     }
 
     let application = adw::Application::builder()
@@ -2312,11 +2310,11 @@ fn create_main_window(
                 
                 match passphrase {
                     Some(pass) => {
-                        println!(" - Mnemonic passphrase: {:?}", pass);
+                        println!("\t- Mnemonic passphrase: {:?}", pass);
                         mnemonic_passphrase_text.buffer().set_text(&pass);
                     },
                     None => {
-                        println!(" - No Mnemonic passphrase available");
+                        println!("\t- No Mnemonic passphrase available");
                     },
                 }
 
@@ -2344,7 +2342,7 @@ fn create_main_window(
                     let seed_hex = hex::encode(&seed[..]);
                     seed_text.buffer().set_text(&seed_hex.to_string());
                     
-                    println!(" - Seed (hex): {:?}", seed_hex);
+                    println!("\t- Seed (hex): {:?}", seed_hex);
                 }
 
 
@@ -2379,11 +2377,11 @@ fn create_main_window(
                 
             if !pre_entropy.is_empty() {
                 let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
-                println!(" - Entropy checksum: {:?}", checksum);
+                println!("\t- Entropy checksum: {:?}", checksum);
 
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
-                println!(" - Final entropy: {:?}", full_entropy);
+                println!("\t- Final entropy: {:?}", full_entropy);
                 entropy_text.buffer().set_text(&full_entropy);
                 
                 let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
@@ -2395,7 +2393,7 @@ fn create_main_window(
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
                 
-                println!(" - Seed (hex): {:?}", seed_hex);
+                println!("\t- Seed (hex): {:?}", seed_hex);
 
                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                 wallet_settings.entropy_checksum = Some(checksum.clone());
@@ -2444,7 +2442,7 @@ fn create_main_window(
             let mnemonic_rng_string: String = (0..scale_value)
                         .map(|_| char::from(rand::rng().random_range(32..127)))
                         .collect();
-            println!(" - RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
+            println!("\t- RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
             mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
         }
     ));
@@ -2700,7 +2698,7 @@ fn create_main_window(
     //             let seed = keys::generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
     //             let seed_hex = hex::encode(&seed[..]);
     //             seed_text.buffer().set_text(&seed_hex.to_string());
-    //             println!(" - Seed (hex): {:?}", seed_hex);
+    //             println!("\t- Seed (hex): {:?}", seed_hex);
     //         }
     //     }
     // ));
@@ -4491,7 +4489,7 @@ fn create_settings_window(
                                     lock_new_gui_state.reload_gui_icons();
                                     lock_new_gui_state.apply_language();
                                     
-                                    lock_app_messages.queue_message(t!("UI.messages.dialog.settings-reset").to_string(), gtk::MessageType::Info);
+                                    lock_app_messages.queue_message(t!("UI.messages.dialog.settings_reset").to_string(), gtk::MessageType::Info);
                                 },
                                 _ => {
                                     lock_app_messages.queue_message(t!("error.settings.reset").to_string(), gtk::MessageType::Error);
@@ -4539,27 +4537,25 @@ fn reset_user_settings() -> Result<String, String> {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
         
-        println!(" - Local config file: {:?}", local_config_file);
+        println!("\t- Local config file: {:?}", local_config_file);
         
         match std::fs::remove_file(local_config_file) {
             Ok(_) => {
-                println!(" - Local config file deleted");
+                println!("\t- Local config file deleted");
             },
             Err(err) => {
-                // TODO: AppMessages
-                eprintln!(" - Local config file NOT deleted \n Error: {}", err);
+                eprintln!("\t- Local config file NOT deleted \n Error: {}", err);
             },
         };
     }
     
     match os::create_local_files() {
         Ok(_) => {
-            println!(" - New config file created");
+            println!("\t- New config file created");
             Ok("OK".to_string())
         },
         Err(err) => {
-            // TODO: AppMessages
-            eprintln!(" - New config file NOT created \n {}", err);
+            eprintln!("\t- New config file NOT created \n {}", err);
             Err(err.to_string())
         },
     }
@@ -4645,7 +4641,7 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
                 if let Some(file) = open_dialog.file() {
                     if let Some(path) = file.path() {
                         let file_path = path.to_string_lossy().to_string();
-                        println!(" - Wallet file chosen: {:?}", file_path);
+                        println!("\t- Wallet file chosen: {:?}", file_path);
 
                         let result = process_wallet_file_from_path(&file_path);
                         let lock_state = app_messages_state.lock().unwrap();
@@ -4756,7 +4752,7 @@ fn save_wallet_to_file() {
 fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
     println!("[+] {}", &t!("log.update_derivation_label").to_string());
 
-    println!(" - Derivation Path: {:?}", DP);
+    println!("\t- Derivation Path: {:?}", DP);
 
     let mut path = String::new();
     path.push_str("m");
@@ -4790,7 +4786,7 @@ fn update_derivation_label(DP: DerivationPath, label: gtk::Label, ) {
         path.push_str(&format!("/{}", DP.purpose.unwrap_or_default()));
     }
     
-    println!(" - Derivation path: {:?}", &path);
+    println!("\t- Derivation path: {:?}", &path);
 
     label.set_text(&path);
 }
@@ -4858,7 +4854,6 @@ fn generate_address(
  ) -> Result<(String, String, String), String> {
     println!("[+] {}", &t!("log.generate_address").to_string());
 
-    println!("Generating addresses.................................................................");
     println!("derivation_path: {:?}", derivation_path);
 
     let secp = secp256k1::Secp256k1::new();

@@ -145,22 +145,34 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !Path::new(&local_config_file).exists() {
-        eprintln!(
-            "Local config file '{:?}' does not exist. Creating it from the default configuration.",
-            local_config_file
-        );
+        eprintln!("Local config file '{:?}' does not exist. Creating it from default configuration.", local_config_file);
 
-        let default_config = qr2m_lib::get_text_from_resources(crate::APP_DEFAULT_CONFIG_FILE);
+        let default_settings = crate::AppSettings::default();
 
-        if default_config.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                "Default configuration is empty or missing in resources",
-            )
-            .into());
+        let serialized = toml::to_string(&default_settings)?;
+        let mut config_map: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>> = std::collections::BTreeMap::new();
+
+        for line in serialized.lines() {
+            if let Some((key, value)) = line.split_once(" = ") {
+                let (section, key) = key.split_once('_').unwrap_or(("general", key));
+                config_map.entry(section.to_string())
+                    .or_insert_with(std::collections::BTreeMap::new)
+                    .insert(key.to_string(), value.to_string());
+            }
         }
 
-        fs::write(&local_config_file, default_config)?;
+        let mut toml_string = String::new();
+        for (section, entries) in config_map {
+            toml_string.push_str(&format!("[{}]\n", section));
+            for (key, value) in entries {
+                toml_string.push_str(&format!("{} = {}\n", key, value));
+            }
+            toml_string.push('\n');
+        }
+
+        println!("Generated default configuration.");
+
+        fs::write(&local_config_file, toml_string)?;
         println!("Local config file created successfully.");
     }
 
