@@ -354,9 +354,11 @@ pub fn generate_entropy(
                 .collect();
 
             println!(" - RNG Entropy: {:?}", rng_entropy_string);
-
-            let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap(); // This locks the Mutex
-            wallet_settings.entropy_string = Some(rng_entropy_string.clone());
+            
+            // {
+            //     let mut wallet_settings = crate::WALLET_SETTINGS.write().unwrap();
+            //     wallet_settings.entropy_string = Some(rng_entropy_string.clone());
+            // }
 
             rng_entropy_string
         },
@@ -484,8 +486,11 @@ pub fn generate_entropy(
             
             match rx.recv() {
                 Ok(received_file_entropy_string) => {
-                    let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
-                    wallet_settings.entropy_string = Some(received_file_entropy_string.clone());
+                    {
+
+                        let mut wallet_settings = crate::WALLET_SETTINGS.write().unwrap();
+                        wallet_settings.entropy_string = Some(received_file_entropy_string.clone());
+                    }
 
                     received_file_entropy_string
                 },
@@ -534,10 +539,10 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     println!(" - Entropy chunks: {:?}", chunks);
     println!(" - Decimal mnemonic: {:?}", mnemonic_decimal);
     println!(" - Mnemonic words: {:?}", mnemonic_words_vector);
-
-    let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
-    wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
-    
+    {
+        let mut wallet_settings = crate::WALLET_SETTINGS.write().unwrap();
+        wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
+    }
     mnemonic_words_as_string
 }
 
@@ -663,13 +668,16 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
     println!(" - Master secret key {:?}", master_secret_key);
     println!(" - Master public key {:?}", master_public_key_bytes);
     println!(" - Master public key (xpub): {:?}", master_xpub);
+    
+    {
+        let mut wallet_settings = crate::WALLET_SETTINGS.write().unwrap();
+         wallet_settings.master_xprv = Some(master_xprv.clone());
+         wallet_settings.master_xpub = Some(master_xpub.clone());
+         wallet_settings.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
+         wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
+         wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
 
-    let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
-    wallet_settings.master_xprv = Some(master_xprv.clone());
-    wallet_settings.master_xpub = Some(master_xpub.clone());
-    wallet_settings.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
-    wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
-    wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
+    }
 
     Ok((
         master_xprv, 
