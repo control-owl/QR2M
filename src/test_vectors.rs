@@ -61,7 +61,7 @@ mod tests {
         ];
 
         for vector in entropy_mnemonic_vectors {
-            let mnemonic = crate::keys::generate_mnemonic_words(vector.entropy);
+            let mnemonic = crate::keys::generate_mnemonic_words(None, vector.entropy);
             assert_eq!(mnemonic, vector.mnemonic);
         }
     }
@@ -112,7 +112,7 @@ mod tests {
         ];
 
         for vector in test_vectors {
-            match crate::keys::generate_master_keys(vector.seed, "0x0488ADE4", "0x0488B21E") {
+            match crate::keys::generate_master_keys(None, vector.seed, "0x0488ADE4", "0x0488B21E") {
                 Ok((
                     master_xprv, 
                     master_xpub,

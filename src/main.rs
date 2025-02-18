@@ -106,7 +106,7 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
 
 
 lazy_static::lazy_static! {
-    static ref WALLET_SETTINGS: std::sync::Arc<std::sync::RwLock<WalletSettings>> = std::sync::Arc::new(std::sync::RwLock::new(WalletSettings::new()));
+    // static ref WALLET_SETTINGS: std::sync::Arc<std::sync::RwLock<WalletSettings>> = std::sync::Arc::new(std::sync::RwLock::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
 }
 
@@ -1302,7 +1302,7 @@ fn setup_app_actions(
     application: adw::Application, 
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
-    // app_settings_state: std::sync::Arc<std::sync::Mutex<AppSettings>>,
+    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>,
 ) {
     println!("[+] {}", &t!("log.setup_app_actions").to_string());
     
@@ -1334,9 +1334,12 @@ fn setup_app_actions(
         }
     ));
 
-    save.connect_activate(|_action, _parameter| {
-        save_wallet_to_file();
-    });
+    save.connect_activate(clone!(
+        #[strong] wallet_settings_state,
+        move |_action, _parameter| {
+            save_wallet_to_file(wallet_settings_state.clone());
+        }
+    ));
 
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
@@ -1390,6 +1393,7 @@ fn setup_app_actions(
 
 fn create_gui_tab_keys(
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>,
     gui_search: Option<String>,
 
 ) -> gtk::Box {
@@ -1504,14 +1508,14 @@ fn create_gui_tab_keys(
     coin_db::create_coin_completion_model();
 
     let coin_store = coin_db::create_coin_store();
-    let coin_store = std::rc::Rc::new(std::cell::RefCell::new(coin_store));
+    // let coin_store = std::rc::Rc::new(std::cell::RefCell::new(coin_store));
     let coin_tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 14]);
-    let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
+    // let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
     let coin_treeview = gtk::TreeView::new();
-    let coin_treeview = std::rc::Rc::new(std::cell::RefCell::new(coin_treeview));
+    // let coin_treeview = std::rc::Rc::new(std::cell::RefCell::new(coin_treeview));
     
-    coin_treeview.borrow().set_vexpand(true);
-    coin_treeview.borrow().set_headers_visible(true);
+    coin_treeview.set_vexpand(true);
+    coin_treeview.set_headers_visible(true);
 
     let columns = [
         &t!("UI.main.database.column.status").to_string(),
@@ -1537,15 +1541,14 @@ fn create_gui_tab_keys(
         column.set_title(column_title);
         column.pack_start(&cell, true);
         column.add_attribute(&cell, "text", i as i32);
-        coin_treeview.borrow().append_column(&column);
+        coin_treeview.append_column(&column);
     }
 
-    let full_store = coin_store.borrow();
+    let full_store = coin_store.clone();
     let verified_coins = coin_db::fetch_coins_from_database("Cmc_top", &full_store, "100");
-    let filtered_store = coin_tree_store.borrow_mut();
+    let filtered_store = coin_tree_store.clone();
 
     for found_coin in verified_coins {
-        // Check if the coin's status is verified
         if found_coin.status == "Verified" {
             let iter = filtered_store.append(None);
 
@@ -1568,8 +1571,8 @@ fn create_gui_tab_keys(
         }
     }
 
-    coin_treeview.borrow().set_model(Some(&*filtered_store));
-    scrolled_window.set_child(Some(&*coin_treeview.borrow()));
+    coin_treeview.set_model(Some(&filtered_store));
+    scrolled_window.set_child(Some(&coin_treeview));
     coin_frame.set_child(Some(&scrolled_window));
     coin_main_content_box.append(&coin_frame);
 
@@ -1611,24 +1614,24 @@ fn create_gui_tab_keys(
     generate_master_keys_button.connect_clicked(clone!(
         // #[strong] coin_entry,
         // #[strong] seed_text,
-        #[weak] coin_treeview,
-        #[weak] master_private_key_text,
-        #[weak] master_public_key_text,
+        #[strong] coin_treeview,
+        #[strong] master_private_key_text,
+        #[strong] master_public_key_text,
         #[strong] app_messages_state,
+        #[strong] wallet_settings_state,
         move |_| {
             // let buffer = seed_text.buffer();
             // let start_iter = buffer.start_iter();
             // let end_iter = buffer.end_iter();
             // let text = buffer.text(&start_iter, &end_iter, false);
 
-            
-
-            let wallet_settings = WALLET_SETTINGS.read().unwrap();
+            let wallet_settings = wallet_settings_state.lock().unwrap();
             let seed = wallet_settings.seed.clone().unwrap_or("".to_string());
-            WALLET_SETTINGS.clear_poison();
+            
             println!("------------------------seed: {:?}", seed);
+
             if !seed.is_empty() {
-                if let Some((model, iter)) = coin_treeview.borrow().selection().selected() {
+                if let Some((model, iter)) = coin_treeview.selection().selected() {
                     let status = model.get_value(&iter, 0);
                     let coin_index = model.get_value(&iter, 1);
                     let coin_symbol = model.get_value(&iter, 2);
@@ -1698,39 +1701,72 @@ fn create_gui_tab_keys(
                         // let start_iter = buffer.start_iter();
                         // let end_iter = buffer.end_iter();
                         // let seed_string = buffer.text(&start_iter, &end_iter, true);
-                        
-                        // BUG: Process hang after execute ???
-                        match keys::generate_master_keys(
-                            &seed, 
-                            &private_header,
-                            &public_header,
-                        ) {
-                            Ok(xprv) => {
-                                master_private_key_text.buffer().set_text(&xprv.0);
-                                master_public_key_text.buffer().set_text(&xprv.1);
-                            },
-                            Err(err) => {
-                                {
-                                    let lock_gui_state = app_messages_state.lock().unwrap();
-                                    lock_gui_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
-                                    
+                        let (tx, rx) = std::sync::mpsc::channel();
+
+                        std::thread::spawn(clone!(
+                            #[strong] wallet_settings_state,
+                            move || {
+                                match keys::generate_master_keys(
+                                    Some(wallet_settings_state.clone()),
+                                    &seed, 
+                                    &private_header,
+                                    &public_header,
+                                ) {
+                                    Ok(xprv) => {
+                                        tx.send(xprv).expect("Failed to send xprv");
+                                        println!("sent");
+                                    },
+                                    Err(err) => {
+                                        // {
+                                        //     let lock_gui_state = app_messages_state.lock().unwrap();
+                                        //     lock_gui_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
+                                            
+                                        // }
+                                        eprintln!("\t- {}: {}", &t!("error.master.create"), err)
+                                    },
                                 }
-                                eprintln!("\t- {}: {}", &t!("error.master.create"), err)
-                            },
-                        }
+                            }
+                        ));
+
+                        glib::timeout_add_local(std::time::Duration::from_millis(50), clone!(
+                            #[strong] master_private_key_text,
+                            #[strong] master_public_key_text,
+                            #[strong] wallet_settings_state,
+                            move || {
+                                while let Ok(key) = rx.try_recv() {
+                                    println!("received");
+                                    master_private_key_text.buffer().set_text(&key.0);
+                                    master_public_key_text.buffer().set_text(&key.1);
+                                    // let iter = address_store.append();
+                                    // address_store.set(
+                                    //     &iter,
+                                    //     &[
+                                    //         (0, &new_entry.coin_name.clone().unwrap_or_default()),
+                                    //         (1, &new_entry.derivation_path.clone().unwrap_or_default()),
+                                    //         (2, &new_entry.address.clone().unwrap_or_default()),
+                                    //         (3, &new_entry.public_key.clone().unwrap_or_default()),
+                                    //         (4, &new_entry.private_key.clone().unwrap_or_default()),
+                                    //     ],
+                                    // );
+                                }
+                                {
+                                    let mut wallet_settings = wallet_settings_state.lock().unwrap();
+                                    
+                                    wallet_settings.public_key_hash = Some(public_key_hash.clone());
+                                    wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
+                                    wallet_settings.key_derivation = Some(key_derivation.to_string());
+                                    wallet_settings.hash = Some(hash.to_string());
+                                    wallet_settings.coin_index = Some(coin_index.parse().unwrap());
+                                    wallet_settings.coin_name = Some(coin_name.parse().unwrap());
+                                }
+                                glib::ControlFlow::Continue
+                            }
+                        ));
+
+                        // BUG: Process hang after execute ???
                         // println!("crash");
     
                         // coin_entry.set_text(&coin_index);
-                        {
-                            let mut wallet_settings = WALLET_SETTINGS.write().unwrap();
-                            wallet_settings.public_key_hash = Some(public_key_hash.clone());
-                            wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
-                            wallet_settings.key_derivation = Some(key_derivation.to_string());
-                            wallet_settings.hash = Some(hash.to_string());
-                            wallet_settings.coin_index = Some(coin_index.parse().unwrap());
-                            wallet_settings.coin_name = Some(coin_name.parse().unwrap());
-                            WALLET_SETTINGS.clear_poison();
-                        }
                     }  
                 }
             } else {
@@ -1764,37 +1800,34 @@ fn create_gui_tab_keys(
     }));
 
     coin_search_filter_dropdown.connect_selected_notify(clone!(
-        #[weak] coin_search,
+        #[strong] coin_search,
         move |dropdown| {
             let selected: usize = dropdown.selected().try_into().unwrap_or(0);
             coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = VALID_COIN_SEARCH_PARAMETER[selected])));
             coin_search.set_text("");
     }));
     
-    coin_search.connect_search_changed({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+    coin_search.connect_search_changed(clone!(
+        #[strong] coin_treeview,
+        #[strong] coin_tree_store,
+        #[strong] coin_store,
         move |coin_search| {
             let search_text = coin_search.text().to_lowercase();
-            coin_tree_store.borrow_mut().clear();
+            coin_tree_store.clear();
 
             let selected = coin_search_filter_dropdown.selected() as usize;
             let selected_search_parameter = VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
             let min_search_length = if selected_search_parameter == &"Index" { 1 } else { 2 };
 
             if search_text.len() >= min_search_length {
-                let store = coin_store.borrow();
-                let matching_coins = coin_db::fetch_coins_from_database(selected_search_parameter, &store, &search_text);
+                let matching_coins = coin_db::fetch_coins_from_database(selected_search_parameter, &coin_store, &search_text);
 
                 if !matching_coins.is_empty() {
-                    let store = coin_tree_store.borrow_mut();
-                    store.clear();
+                    coin_tree_store.clear();
 
                     for found_coin in matching_coins {
-                        let iter = store.append(None);
-                        store.set(&iter, &[
+                        let iter = coin_tree_store.append(None);
+                        coin_tree_store.set(&iter, &[
                             (0, &found_coin.status),
                             (1, &found_coin.coin_index.to_string()),
                             (2, &found_coin.coin_symbol),
@@ -1811,34 +1844,30 @@ fn create_gui_tab_keys(
                             (13, &found_coin.cmc_top),
                         ]);
                     }
-                    coin_treeview.borrow().set_model(Some(&*store));
+                    coin_treeview.set_model(Some(&coin_tree_store));
                 } else {
-                    coin_tree_store.borrow_mut().clear();
+                    coin_tree_store.clear();
                 }
             } else {
-                coin_tree_store.borrow_mut().clear();
+                coin_tree_store.clear();
             }
-        }
-    });
+    }));
     
-    filter_top10_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+    filter_top10_coins_button.connect_clicked(clone!(
+        #[strong] coin_treeview,
+        #[strong] coin_tree_store,
+        #[strong] coin_store,
         move |_| {
             let search_text = "10";
             let search_parameter = "Cmc_top";
-            let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
 
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
+            coin_tree_store.clear();
 
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(&iter, &[
+                    let iter = coin_tree_store.append(None);
+                    coin_tree_store.set(&iter, &[
                         (0, &found_coin.status),
                         (1, &found_coin.coin_index.to_string()),
                         (2, &found_coin.coin_symbol),
@@ -1855,31 +1884,27 @@ fn create_gui_tab_keys(
                         (13, &found_coin.cmc_top),
                     ]);
                 }
-                coin_treeview.borrow().set_model(Some(&*store));
+                coin_treeview.set_model(Some(&coin_tree_store));
             } else {
-                store.clear();
+                coin_tree_store.clear();
             }
-        }
-    });
+    }));
     
-    filter_top100_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+    filter_top100_coins_button.connect_clicked(clone!(
+        #[strong] coin_treeview,
+        #[strong] coin_tree_store,
+        #[strong] coin_store,
         move |_| {
             let search_text = "100";
             let search_parameter = "Cmc_top";
-            let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
 
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
+            coin_tree_store.clear();
 
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(&iter, &[
+                    let iter = coin_tree_store.append(None);
+                    coin_tree_store.set(&iter, &[
                         (0, &found_coin.status),
                         (1, &found_coin.coin_index.to_string()),
                         (2, &found_coin.coin_symbol),
@@ -1896,31 +1921,27 @@ fn create_gui_tab_keys(
                         (13, &found_coin.cmc_top),
                     ]);
                 }
-                coin_treeview.borrow().set_model(Some(&*store));
+                coin_treeview.set_model(Some(&coin_tree_store));
             } else {
-                store.clear();
+                coin_tree_store.clear();
             }
-        }
-    });
+    }));
 
-    filter_verified_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+    filter_verified_coins_button.connect_clicked(clone!(
+        #[strong] coin_treeview,
+        #[strong] coin_tree_store,
+        #[strong] coin_store,
         move |_| {
             let search_text = coin_db::VALID_COIN_STATUS_NAME[1];
             let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
 
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
+            coin_tree_store.clear();
 
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(&iter, &[
+                    let iter = coin_tree_store.append(None);
+                    coin_tree_store.set(&iter, &[
                         (0, &found_coin.status),
                         (1, &found_coin.coin_index.to_string()),
                         (2, &found_coin.coin_symbol),
@@ -1937,31 +1958,28 @@ fn create_gui_tab_keys(
                         (13, &found_coin.cmc_top),
                     ]);
                 }
-                coin_treeview.borrow().set_model(Some(&*store));
+                coin_treeview.set_model(Some(&coin_tree_store));
             } else {
-                store.clear();
+                coin_tree_store.clear();
             }
-        }
-    });
 
-    filter_not_verified_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+    }));
 
+    filter_not_verified_coins_button.connect_clicked(clone!(
+        #[strong] coin_treeview,
+        #[strong] coin_tree_store,
+        #[strong] coin_store,
         move |_| {
             let search_text = coin_db::VALID_COIN_STATUS_NAME[2];
             let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
 
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
+            coin_tree_store.clear();
 
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(&iter, &[
+                    let iter = coin_tree_store.append(None);
+                    coin_tree_store.set(&iter, &[
                         (0, &found_coin.status),
                         (1, &found_coin.coin_index.to_string()),
                         (2, &found_coin.coin_symbol),
@@ -1978,31 +1996,27 @@ fn create_gui_tab_keys(
                         (13, &found_coin.cmc_top),
                     ]);
                 }
-                coin_treeview.borrow().set_model(Some(&*store));
+                coin_treeview.set_model(Some(&coin_tree_store));
             } else {
-                store.clear();
+                coin_tree_store.clear();
             }
-        }
-    });
+    }));
 
-    filter_in_plan_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+    filter_in_plan_coins_button.connect_clicked(clone!(
+        #[strong] coin_treeview,
+        #[strong] coin_tree_store,
+        #[strong] coin_store,
         move |_| {
             let search_text = coin_db::VALID_COIN_STATUS_NAME[3];
             let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
 
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
+            coin_tree_store.clear();
 
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(&iter, &[
+                    let iter = coin_tree_store.append(None);
+                    coin_tree_store.set(&iter, &[
                         (0, &found_coin.status),
                         (1, &found_coin.coin_index.to_string()),
                         (2, &found_coin.coin_symbol),
@@ -2019,31 +2033,27 @@ fn create_gui_tab_keys(
                         (13, &found_coin.cmc_top),
                     ]);
                 }
-                coin_treeview.borrow().set_model(Some(&*store));
+                coin_treeview.set_model(Some(&coin_tree_store));
             } else {
-                store.clear();
+                coin_tree_store.clear();
             }
-        }
-    });
+    }));
 
-    filter_not_supported_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+    filter_not_supported_coins_button.connect_clicked(clone!(
+        #[strong] coin_treeview,
+        #[strong] coin_tree_store,
+        #[strong] coin_store,
         move |_| {
             let search_text = coin_db::VALID_COIN_STATUS_NAME[0];
             let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
 
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
+            coin_tree_store.clear();
 
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(&iter, &[
+                    let iter = coin_tree_store.append(None);
+                    coin_tree_store.set(&iter, &[
                         (0, &found_coin.status),
                         (1, &found_coin.coin_index.to_string()),
                         (2, &found_coin.coin_symbol),
@@ -2060,20 +2070,19 @@ fn create_gui_tab_keys(
                         (13, &found_coin.cmc_top),
                     ]);
                 }
-                coin_treeview.borrow().set_model(Some(&*store));
+                coin_treeview.set_model(Some(&coin_tree_store));
             } else {
-                store.clear();
+                coin_tree_store.clear();
             }
-        }
-    });
+    }));
 
-
-    coin_main_content_box
+    coin_main_box
 }
 
 fn create_gui_tab_seed(
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>,
     anu_enabled: Option<bool>,
     wallet_entropy_source: Option<String>,
     wallet_entropy_length: Option<u32>,
@@ -2306,6 +2315,7 @@ fn create_gui_tab_seed(
         // #[weak] master_public_key_text,
         #[weak] seed_text,
         #[strong] app_messages_state,
+        #[strong] wallet_settings_state,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -2315,6 +2325,7 @@ fn create_gui_tab_seed(
             let entropy_length = selected_entropy_length_value.unwrap(); 
 
             let pre_entropy = keys::generate_entropy(
+                Some(wallet_settings_state.clone()),
                 &source,
                 *entropy_length as u64,
             );
@@ -2329,7 +2340,7 @@ fn create_gui_tab_seed(
                 println!("\t Final entropy: {:?}", full_entropy);
                 entropy_text.buffer().set_text(&full_entropy);
                 
-                let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+                let mnemonic_words = keys::generate_mnemonic_words(Some(wallet_settings_state.clone()), &full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
                 
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
@@ -2341,13 +2352,13 @@ fn create_gui_tab_seed(
                 println!("\t Seed (hex): {:?}", seed_hex);
                 
                 {
-                    let mut wallet_settings = WALLET_SETTINGS.write().unwrap();
+                    let mut wallet_settings = wallet_settings_state.lock().unwrap();
                     wallet_settings.entropy_checksum = Some(checksum.clone());
                     wallet_settings.entropy_string = Some(full_entropy.clone());
                     wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
                     wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
                     wallet_settings.seed = Some(seed_hex.clone());
-                    WALLET_SETTINGS.clear_poison();
+                    wallet_settings_state.clear_poison();
                 }
 
                 // master_private_key_text.buffer().set_text("");
@@ -2367,6 +2378,7 @@ fn create_gui_tab_seed(
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
+        #[strong] wallet_settings_state,
         // #[weak] master_private_key_text,
         // #[weak] master_public_key_text,
         // #[weak] address_store,
@@ -2381,13 +2393,13 @@ fn create_gui_tab_seed(
             // address_store.clear();
 
             {
-                let mut wallet_settings = WALLET_SETTINGS.write().unwrap();
+                let mut wallet_settings = wallet_settings_state.lock().unwrap();
                 wallet_settings.entropy_checksum = None;
                 wallet_settings.entropy_string = None;
                 wallet_settings.mnemonic_passphrase = None;
                 wallet_settings.mnemonic_words = None;
                 wallet_settings.seed = None;
-                WALLET_SETTINGS.clear_poison();
+                // WALLET_SETTINGS.clear_poison();
             }
     }));
 
@@ -2421,6 +2433,7 @@ fn create_gui_tab_seed(
         #[weak] entropy_text,
         #[weak] mnemonic_words_text,
         #[weak] seed_text,
+        #[strong] wallet_settings_state,
         // #[weak] mnemonic_passphrase_length_info,
         move |mnemonic_passphrase_text| {
             let entropy_buffer = entropy_text.buffer();
@@ -2445,12 +2458,12 @@ fn create_gui_tab_seed(
                 let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
 
                 {
-                    let mut wallet_settings = WALLET_SETTINGS.write().unwrap();
+                    let mut wallet_settings = wallet_settings_state.lock().unwrap();
                     wallet_settings.entropy_string = Some(final_entropy);
                     wallet_settings.mnemonic_words = Some(final_mnemonic_words);
                     wallet_settings.mnemonic_passphrase = Some(final_mnemonic_passphrase);
                     wallet_settings.seed = Some(seed_hex.clone());
-                    WALLET_SETTINGS.clear_poison();
+                    // WALLET_SETTINGS.clear_poison();
                 }
             }
         }
@@ -2497,216 +2510,6 @@ fn create_gui_tab_seed(
 
     (entropy_main_box, entropy_text, mnemonic_passphrase_text, mnemonic_words_text, seed_text)
 }
-
-
-// fn create_tab_seed(
-//     anu_enabled: Option<bool>,
-//     wallet_entropy_source: Option<String>,
-//     wallet_entropy_length: Option<u32>,
-//     default_mnemonic_length: Option<u32>,
-// 
-// ) -> gtk::Box {
-//     // JUMP: Sidebar 1: Seed
-//     let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-//     entropy_main_box.set_margin_top(10);
-//     entropy_main_box.set_margin_start(10);
-//     entropy_main_box.set_margin_end(10);
-//     entropy_main_box.set_margin_bottom(10);
-// 
-//     // Header
-//     let entropy_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-//     let entropy_header_first_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-//     let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-// 
-//     // Entropy source
-//     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-//     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-// 
-//     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
-//         VALID_ENTROPY_SOURCES.iter().cloned().collect()
-//     } else {
-//         VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
-//     };
-// 
-//     let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
-//     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
-//     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
-//     
-//     let default_entropy_source = valid_entropy_source_as_strings
-//         .iter()
-//         .position(|s| *s == wallet_entropy_source.unwrap()) 
-//         .unwrap_or(0);
-//     
-//     entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
-//     entropy_source_box.set_hexpand(true);
-//     entropy_source_frame.set_hexpand(true);
-//     
-//     // Entropy length
-//     let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-//     let entropy_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.length").to_string()));
-//     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
-//     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
-//     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
-//     
-// 
-//     let default_entropy_length = valid_entropy_lengths_as_strings
-//         .iter()
-//         .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length.unwrap())
-//         .unwrap_or(0);
-// 
-//     entropy_length_dropdown.set_selected(default_entropy_length as u32);
-//     entropy_length_box.set_hexpand(true);
-//     entropy_length_frame.set_hexpand(true);
-// 
-//     // RNG mnemonic passphrase length
-//     let mnemonic_passphrase_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-//     let mnemonic_passphrase_items_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-//     let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-//     let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-//     let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
-//     let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
-//         8.0 * 32.0,
-//         8.0 * 2.0,
-//         8.0 * 128.0,
-//         1.0,
-//         100.0,
-//         0.0,
-//     );
-//     let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
-//     let mnemonic_passphrase_length_info = gtk::Entry::new();
-//     mnemonic_passphrase_items_box.set_hexpand(true);
-//     mnemonic_passphrase_scale_box.set_hexpand(true);
-//     mnemonic_passphrase_length_box.set_hexpand(true);
-//     mnemonic_passphrase_length_frame.set_hexpand(true);
-// 
-//     // let value = entropy_source_dropdown.selected() as usize;
-//     // let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
-//     // let source = selected_entropy_source_value.unwrap();
-// 
-//     mnemonic_passphrase_length_info.set_editable(false);
-//     mnemonic_passphrase_length_info.set_width_request(50);
-//     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
-//     mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.unwrap().to_string());
-//     
-//     // Mnemonic passphrase
-//     let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-//     let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-//     let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
-//     let mnemonic_passphrase_text = gtk::Entry::new();
-//     
-//     mnemonic_passphrase_main_box.set_hexpand(true);
-//     mnemonic_passphrase_text.set_hexpand(true);
-// 
-//     // if *source == "RNG+" {
-//     //     mnemonic_passphrase_length_box.set_visible(true);
-//     //     random_mnemonic_passphrase_button.set_visible(true);
-//     // } else {
-//     //     mnemonic_passphrase_length_box.set_visible(false);
-//     //     random_mnemonic_passphrase_button.set_visible(false);
-//     // }
-// 
-//     let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-// 
-//     seed_buttons_box.set_halign(gtk::Align::Center);
-// 
-//     // Generate entropy button
-//     let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-//     let generate_entropy_button = gtk::Button::new();
-//     
-//     generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
-//     generate_entropy_box.set_halign(gtk::Align::Center);
-//     generate_entropy_box.set_margin_top(10);
-// 
-//     // Delete entropy button
-//     let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-//     let delete_entropy_button = gtk::Button::new();
-//     
-//     delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
-//     delete_entropy_box.set_halign(gtk::Align::Center);
-//     delete_entropy_box.set_margin_top(10);
-// 
-//     // Body
-//     let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-//     
-//     // Entropy string
-//     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-//     let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy").to_string()));
-//     let entropy_text = gtk::TextView::new();
-//     
-//     entropy_text.set_vexpand(true);
-//     entropy_text.set_hexpand(true);
-//     entropy_text.set_wrap_mode(gtk::WrapMode::Char);
-//     entropy_frame.set_child(Some(&entropy_text));
-//     entropy_box.append(&entropy_frame);
-//     entropy_text.set_editable(false);
-//     entropy_text.set_left_margin(5);
-//     entropy_text.set_top_margin(5);
-// 
-//     // Mnemonic words
-//     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-//     let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words").to_string()));
-//     let mnemonic_words_text = gtk::TextView::new();
-//     
-//     mnemonic_words_box.set_hexpand(true);
-//     mnemonic_words_text.set_vexpand(true);
-//     mnemonic_words_text.set_hexpand(true);
-//     mnemonic_words_text.set_editable(false);
-//     mnemonic_words_text.set_left_margin(5);
-//     mnemonic_words_text.set_top_margin(5);
-//     mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
-//     
-//     // Seed
-//     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-//     let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed").to_string()));
-//     let seed_text = gtk::TextView::new();
-//     
-//     seed_box.set_hexpand(true);
-//     seed_text.set_editable(false);
-//     seed_text.set_vexpand(true);
-//     seed_text.set_hexpand(true);
-//     seed_text.set_left_margin(5);
-//     seed_text.set_top_margin(5);
-//     seed_text.set_wrap_mode(gtk::WrapMode::Char);
-// 
-//     // Connections
-//     entropy_source_frame.set_child(Some(&entropy_source_dropdown));
-//     entropy_length_frame.set_child(Some(&entropy_length_dropdown));
-//     mnemonic_passphrase_length_frame.set_child(Some(&mnemonic_passphrase_items_box));
-//     mnemonic_passphrase_length_box.append(&mnemonic_passphrase_length_frame);
-//     mnemonic_passphrase_items_box.append(&mnemonic_passphrase_scale_box);
-//     mnemonic_passphrase_items_box.append(&mnemonic_passphrase_info_box);
-//     mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
-//     mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
-//     generate_entropy_box.append(&generate_entropy_button);
-//     delete_entropy_box.append(&delete_entropy_button);
-//     entropy_source_box.append(&entropy_source_frame);
-//     entropy_length_box.append(&entropy_length_frame);
-//     entropy_header_first_box.append(&entropy_source_box);
-//     entropy_header_first_box.append(&entropy_length_box);
-//     entropy_header_second_box.append(&mnemonic_passphrase_main_box);
-//     entropy_header_second_box.append(&mnemonic_passphrase_length_box);
-//     entropy_header_box.append(&entropy_header_first_box);
-//     entropy_header_box.append(&entropy_header_second_box);  
-//     seed_buttons_box.append(&generate_entropy_box);
-//     seed_buttons_box.append(&delete_entropy_box);
-//     entropy_header_box.append(&seed_buttons_box);
-//     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
-//     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
-//     mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
-//     mnemonic_passphrase_content_box.append(&*buttons["random"]);
-//     seed_frame.set_child(Some(&seed_text));
-//     mnemonic_words_box.append(&mnemonic_words_frame);
-//     mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
-//     seed_box.append(&seed_frame);
-//     body_box.append(&entropy_box);
-//     body_box.append(&mnemonic_words_box);
-//     body_box.append(&seed_box);
-//     entropy_main_box.append(&entropy_header_box);
-//     entropy_main_box.append(&body_box);
-// 
-//     entropy_main_box
-// }
-
 
 fn create_main_window(
     application: adw::Application,
@@ -2816,11 +2619,7 @@ fn create_main_window(
         Some(info_bar.clone()),
     )));
 
-    setup_app_actions(
-        application.clone(),
-        gui_state.clone(),
-        app_messages_state.clone(),
-    );
+    
 
     header_bar.pack_start(&*buttons["new"]);
     header_bar.pack_start(&*buttons["open"]);
@@ -2829,6 +2628,17 @@ fn create_main_window(
     header_bar.pack_end(&*buttons["about"]);
     header_bar.pack_end(&*buttons["log"]);
     
+
+    let wallet_settings_state = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
+    // let lock_wallet_settings = wallet_settings_state.read().unwrap();
+
+    setup_app_actions(
+        application.clone(),
+        gui_state.clone(),
+        app_messages_state.clone(),
+        wallet_settings_state.clone(),
+    );
+
 
     // JUMP: Action: Settings button action
     buttons["settings"].connect_clicked(clone!(
@@ -2864,9 +2674,12 @@ fn create_main_window(
         }
     ));
 
-    buttons["save"].connect_clicked(move |_| {
-        save_wallet_to_file();
-    });
+    buttons["save"].connect_clicked(clone!(
+        #[strong] wallet_settings_state,
+        move |_| {
+            save_wallet_to_file(wallet_settings_state.clone());
+        }
+    ));
     
 
     let stack = Stack::new();
@@ -2878,6 +2691,7 @@ fn create_main_window(
     let seed_tab = create_gui_tab_seed(
         gui_state.clone(), 
         app_messages_state.clone(), 
+        wallet_settings_state.clone(),
         anu_enabled, 
         wallet_entropy_source.clone(), 
         wallet_entropy_length, 
@@ -2894,6 +2708,7 @@ fn create_main_window(
     
     let keys_tab = create_gui_tab_keys(
         app_messages_state.clone(),
+        wallet_settings_state.clone(),
         gui_search.clone(),
     );
     
@@ -3149,6 +2964,7 @@ fn create_main_window(
         #[weak(rename_to = mnemonic_words_text)] seed_tab.3,
         #[weak(rename_to = seed_text)] seed_tab.4,
         #[strong] app_messages_state,
+        #[strong] wallet_settings_state,
         move |_| {
             let (entropy, passphrase) = open_wallet_from_file(&app_messages_state);
 
@@ -3172,7 +2988,7 @@ fn create_main_window(
                 let full_entropy = buffer.text(&start_iter, &end_iter, false);
 
                 if full_entropy != "" {
-                    let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+                    let mnemonic_words = keys::generate_mnemonic_words(Some(wallet_settings_state.clone()), &full_entropy);
                     mnemonic_words_text.buffer().set_text(&mnemonic_words);
 
                     let (entropy_len, _checksum_len) = match full_entropy.len() {
@@ -3445,6 +3261,7 @@ fn create_main_window(
         #[weak] derivation_label_text,
         // #[weak] master_private_key_text,
         #[strong] app_messages_state,
+        #[strong] wallet_settings_state,
         #[weak] address_start_spinbutton,
         #[weak] address_count_spinbutton,
         #[weak] address_options_hardened_address_checkbox,
@@ -3456,24 +3273,23 @@ fn create_main_window(
 
             
 
-            let wallet_settings = {
-                let lock = WALLET_SETTINGS.read().unwrap();
-                lock.clone()
-            };
+            let lock_wallet_settings = wallet_settings_state.lock().unwrap();
 
-            let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+            let coin_name = lock_wallet_settings.coin_name.clone().unwrap_or_default();
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
             let address_start_point = address_start_spinbutton.text();
             let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
             let address_count = address_count_spinbutton.text();
             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
-            let master_private_key = wallet_settings.master_private_key_bytes.clone().unwrap();
+            let master_private_key = lock_wallet_settings.master_private_key_bytes.clone();
             
-            if master_private_key.is_empty() {
-                let lock_app_messages = app_messages_state.lock().unwrap();
-                lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
-                return;
+            match master_private_key {
+                Some(value) => {println!("master_private_key: {:?}", value)},
+                None => {
+                    let lock_app_messages = app_messages_state.lock().unwrap();
+                    lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
+                },
             }
 
             // #######################################
@@ -3484,7 +3300,7 @@ fn create_main_window(
             let start_time = std::time::Instant::now();
 
             std::thread::spawn(clone!(
-                // #[strong] open_loop,
+                #[strong] wallet_settings_state,
                 move || {
 
                     let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
@@ -3506,14 +3322,16 @@ fn create_main_window(
                             format!("{}/{}", derivation_path, current_index)
                         };
 
+                        
                         if !existing_addresses.contains(&full_address_derivation_path) {
-                            let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-                            let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-                            let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-                            let hash = wallet_settings.hash.clone().unwrap_or_default();
-                            let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-                            let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-                            let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+                            let lock_wallet_settings = wallet_settings_state.lock().unwrap();
+                            let master_private_key_bytes = lock_wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+                            let master_chain_code_bytes = lock_wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+                            let key_derivation = lock_wallet_settings.key_derivation.clone().unwrap_or_default();
+                            let hash = lock_wallet_settings.hash.clone().unwrap_or_default();
+                            let wallet_import_format = lock_wallet_settings.wallet_import_format.clone().unwrap_or_default();
+                            let public_key_hash = lock_wallet_settings.public_key_hash.clone().unwrap_or_default();
+                            let coin_index = lock_wallet_settings.coin_index.clone().unwrap_or_default();
 
                             // if let Some(full_address_path) = full_address_derivation_path.split('/').last() {
                             if let Ok((address, public_key, private_key)) = generate_address(
@@ -4991,17 +4809,19 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
     }
 }
 
-fn save_wallet_to_file() {
+fn save_wallet_to_file(
+    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>
+) {
     println!("[+] {}", &t!("log.save_wallet_to_file").to_string());
 
     // TODO: Check if wallet is created before proceeding
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
     
-    let wallet_settings = WALLET_SETTINGS.read().unwrap();
+    let wallet_settings = wallet_settings_state.lock().unwrap();
     let entropy_string = wallet_settings.entropy_string.clone().unwrap_or_default();
     let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap_or_default();
-    WALLET_SETTINGS.clear_poison();
+    // WALLET_SETTINGS.clear_poison();
 
     let save_window = gtk::Window::new();
     let save_dialog = gtk::FileChooserNative::new(
@@ -5052,32 +4872,22 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::Label, ) {
     let mut path = String::new();
     path.push_str("m");
 
-    if dp.bip.unwrap() == 32  {
-        path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
-        if dp.hardened_coin.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
+    path.push_str(&format!("/{}", dp.bip.unwrap_or_default()));
+    if dp.hardened_bip.unwrap_or_default() {
+        path.push_str(&format!("'"));
+    }
+    
+    path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
+    if dp.hardened_coin.unwrap_or_default() {
+        path.push_str(&format!("'"));
+    }
 
-        path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
-        if dp.hardened_address.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-    } else {
-        path.push_str(&format!("/{}", dp.bip.unwrap_or_default()));
-        if dp.hardened_bip.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
+    path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
+    if dp.hardened_address.unwrap_or_default() {
+        path.push_str(&format!("'"));
+    }
 
-        path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
-        if dp.hardened_coin.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
-        if dp.hardened_address.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
+    if dp.bip.unwrap() != 32  {
         path.push_str(&format!("/{}", dp.purpose.unwrap_or_default()));
     }
     

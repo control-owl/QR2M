@@ -336,6 +336,7 @@ pub fn generate_sha256_ripemd160_address(
 
 
 pub fn generate_entropy(
+    wallet_settings_state: Option<std::sync::Arc<std::sync::Mutex<crate::WalletSettings>>>,
     source: &str, 
     entropy_length: u64, 
     // state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
@@ -487,9 +488,13 @@ pub fn generate_entropy(
             match rx.recv() {
                 Ok(received_file_entropy_string) => {
                     {
-
-                        let mut wallet_settings = crate::WALLET_SETTINGS.write().unwrap();
-                        wallet_settings.entropy_string = Some(received_file_entropy_string.clone());
+                        match wallet_settings_state {
+                            Some(state) => {
+                                let mut wallet_settings = state.lock().unwrap();
+                                wallet_settings.entropy_string = Some(received_file_entropy_string.clone());
+                            },
+                            None => {},
+                        }
                     }
 
                     received_file_entropy_string
@@ -507,7 +512,10 @@ pub fn generate_entropy(
     }
 }
 
-pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
+pub fn generate_mnemonic_words(
+    wallet_settings_state: Option<std::sync::Arc<std::sync::Mutex<crate::WalletSettings>>>,
+    final_entropy_binary: &str
+) -> String {
     println!("[+] {}", &t!("log.generate_mnemonic_words").to_string());
     println!(" - Final entropy: {:?}", final_entropy_binary);
     
@@ -539,9 +547,15 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     println!(" - Entropy chunks: {:?}", chunks);
     println!(" - Decimal mnemonic: {:?}", mnemonic_decimal);
     println!(" - Mnemonic words: {:?}", mnemonic_words_vector);
+    
     {
-        let mut wallet_settings = crate::WALLET_SETTINGS.write().unwrap();
-        wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
+        match wallet_settings_state {
+            Some(state) => {
+                let mut wallet_settings = state.lock().unwrap();
+                wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
+            },
+            None => {},
+        }
     }
     mnemonic_words_as_string
 }
@@ -603,7 +617,12 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
     entropy
 }
 
-pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
+pub fn generate_master_keys(
+    wallet_settings_state: Option<std::sync::Arc<std::sync::Mutex<crate::WalletSettings>>>,
+    seed: &str, 
+    mut private_header: &str, 
+    mut public_header: &str
+) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
     println!("[+] {}", &t!("log.derive_master_keys").to_string());
     println!(" - Private header: {:?}", private_header);
     println!(" - Public header: {:?}", public_header);
@@ -670,13 +689,25 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
     println!(" - Master public key (xpub): {:?}", master_xpub);
     
     {
-        let mut wallet_settings = crate::WALLET_SETTINGS.write().unwrap();
-         wallet_settings.master_xprv = Some(master_xprv.clone());
-         wallet_settings.master_xpub = Some(master_xpub.clone());
-         wallet_settings.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
-         wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
-         wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
+        match wallet_settings_state {
+            Some(state) => {
+                let mut wallet_settings = state.lock().unwrap();
 
+                wallet_settings.master_xprv = Some(master_xprv.clone());
+                wallet_settings.master_xpub = Some(master_xpub.clone());
+                wallet_settings.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
+                wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
+                wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
+                println!("sent");
+            },
+            None => {
+                
+                println!("aaaaaaaaaaaaaaaaasent");
+            },
+        }
+
+        
+        
     }
 
     Ok((
