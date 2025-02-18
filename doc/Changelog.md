@@ -2,7 +2,9 @@
 - Real-time Address Updates: Addresses now appear instantly in a table as they are generated - async 50ms
 - removed default config file and migrated to a struct settings
 - new gtk4 library
-- Application startup time: 1.30s (Arch linux latest)
+- Application startup time: 
+    - 1.30s Arch linux
+    - 4.50s Win11
 
 # version 0.72.0
 - theme: detect OS theme change

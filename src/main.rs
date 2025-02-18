@@ -1386,11 +1386,6 @@ fn setup_app_actions(
     application.add_action(&test);
 }
 
-fn create_tab_seed() -> gtk::Box {
-
-}
-
-
 fn create_main_window(
     application: adw::Application,
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
@@ -4646,32 +4641,22 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::Label, ) {
     let mut path = String::new();
     path.push_str("m");
 
-    if dp.bip.unwrap() == 32  {
-        path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
-        if dp.hardened_coin.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
-        if dp.hardened_address.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-    } else {
-        path.push_str(&format!("/{}", dp.bip.unwrap_or_default()));
-        if dp.hardened_bip.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
-        if dp.hardened_coin.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
-        path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
-        if dp.hardened_address.unwrap_or_default() {
-            path.push_str(&format!("'"));
-        }
-
+    path.push_str(&format!("/{}", dp.bip.unwrap_or_default()));
+    if dp.hardened_bip.unwrap_or_default() {
+        path.push_str(&format!("'"));
+    }
+    
+    path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
+    if dp.hardened_coin.unwrap_or_default() {
+        path.push_str(&format!("'"));
+    }
+    
+    path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
+    if dp.hardened_address.unwrap_or_default() {
+        path.push_str(&format!("'"));
+    }
+        
+    if dp.bip.unwrap() != 32  {
         path.push_str(&format!("/{}", dp.purpose.unwrap_or_default()));
     }
     
