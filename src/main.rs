@@ -4492,7 +4492,7 @@ fn create_about_window() {
         .website("https://www.github.com/control-owl/qr2m")
         .website_label("GitHub project")
         .authors([APP_AUTHOR.unwrap()])
-        .copyright("Copyright [2023-2024] Control Owl")
+        .copyright("Copyright [2023-2025] Control Owl")
         .license(licenses)
         .wrap_license(true)
         .comments(&t!("UI.about.description").to_string())
