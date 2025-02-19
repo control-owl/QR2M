@@ -108,23 +108,14 @@ lazy_static::lazy_static! {
     // GuiState - can not be used, no send and sync
     // static ref GUI_STATE: std::sync::Arc<std::sync::Mutex<GuiState>> = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
 
-    // AppSettings - improved startup time 0.05s
     static ref APP_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
-
-    // WalletSettings
+    static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
-
-    // CryptoAddress
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
+    static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
     
     // AppMessages - can not be used, no send and sync
     // static ref APP_MESSAGES: std::sync::Arc<std::sync::Mutex<AppMessages>> = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new()));
-    
-    // AppLog - next implementation
-    static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
-
-    // DerivationPath
-    static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
 }
 
 
@@ -218,6 +209,10 @@ impl GuiState {
                 }
             }
         }
+
+        if self.gui_log_status.unwrap() == false {
+            self.hide_button("log".to_string());
+        }
     }
 
     fn reload_gui_theme(&mut self) {
@@ -243,6 +238,15 @@ impl GuiState {
 
         let mut button_map = self.gui_main_buttons.lock().unwrap();
         button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
+
+        println!("\t- Button: {:?}", name)
+    }
+
+    fn hide_button(&self, name: String) {
+        println!("[+] {}", &t!("log.register_button").to_string());
+
+        let mut button_map = self.gui_main_buttons.lock().unwrap();
+        button_map.entry(name.to_string()).and_modify(|e| { e.get(3).unwrap().hide() });
 
         println!("\t- Button: {:?}", name)
     }
@@ -974,7 +978,7 @@ struct CryptoAddresses {
 
 
 struct AppMessages {
-    info_bar: Option<gtk::Revealer>,
+    gui_info_bar: Option<gtk::Revealer>,
     message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     processing: std::sync::Arc<std::sync::Mutex<bool>>,
 }
@@ -984,7 +988,7 @@ impl AppMessages {
         info_bar: Option<gtk::Revealer>,
     ) -> Self {
         Self {
-            info_bar: info_bar,
+            gui_info_bar: info_bar,
             message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
             processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
         }
@@ -1015,7 +1019,7 @@ impl AppMessages {
     fn start_message_processor(&self) {
         println!("[+] {}", &t!("log.app_messages.start_message_processor").to_string());
 
-        let info_bar = match &self.info_bar {
+        let info_bar = match &self.gui_info_bar {
             Some(info_bar) => info_bar.clone(),
             None => {
                 eprintln!("\t- Error: info_bar is not initialized.");
@@ -1275,6 +1279,8 @@ fn main() {
         println!("\t- Local files created");  
     }
 
+    AppSettings::load_settings();
+
     let application = adw::Application::builder()
         .application_id("wtf.r_o0_t.qr2m")
         .build();
@@ -1416,7 +1422,6 @@ fn create_main_window(
         .decorated(true)
         .build();
 
-    AppSettings::load_settings();
     
     let lock_app_settings = APP_SETTINGS.lock().unwrap();
     let window_width = lock_app_settings.gui_last_width.unwrap();
@@ -4459,7 +4464,7 @@ fn reset_user_settings() -> Result<String, String> {
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource("logo/logo.s7vg");
+    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource("logo/logo.svg");
     let logo_picture = gtk::Picture::new();
     logo_picture.set_paintable(Some(&pixy));
 
