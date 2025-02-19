@@ -177,7 +177,7 @@ UI:
       de: "(Q)RNG Krypto-Schlüsselgenerator"
       hr: "(Q)RNG generator kripto ključeva"
   main:
-    headerbar:
+    tooltips:
       new:
         en: "New wallet %{value}"
         de: "Neue Wallet %{value}"
@@ -202,6 +202,10 @@ UI:
         en: "Log %{value}"
         de: "Protokoll %{value}"
         hr: "Dnevnik %{value}"
+      random:
+        en: "Generate random mnemonic passphrase"
+        de: "Zufällige mnemonische Passphrase generieren"
+        hr: "Generirajte nasumičnu mnemoničku zaporku"
     seed:
       en: "Seed"
       entropy:
@@ -259,6 +263,10 @@ UI:
         en: "Generate master keys"
         de: "Masterschlüssel generieren"
         hr: "Generirajte master ključeve"
+      delete:
+        en: "Delete master keys"
+        de: "Löschen von Hauptschlüsseln"
+        hr: "Izbrišite glavne ključeve"
       keys:
         priv:
           en: "Master private key"

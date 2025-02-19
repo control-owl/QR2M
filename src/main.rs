@@ -105,6 +105,9 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
 
 
 lazy_static::lazy_static! {
+    // GuiState
+    // AppSettings
+    // DerivationPath
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
 }
@@ -1440,18 +1443,19 @@ fn create_main_window(
         buttons.insert(name.to_string(), std::sync::Arc::new(button));
     }
 
-    let headerbar_tooltips = [
+    let button_tooltips = [
         ("new", "Ctrl+N"),
         ("open", "Ctrl+O"),
         ("save", "Ctrl+S"),
         ("about", "F1"),
         ("settings", "F5"),
         ("log", "F11"),
+        ("random", ""),
     ];
 
-    for (name, shortcut) in headerbar_tooltips {
+    for (name, shortcut) in button_tooltips {
         if let Some(button) = buttons.get(name) {
-            button.set_tooltip_text(Some(&t!(format!("UI.main.headerbar.{}", name), value = shortcut).to_string()));
+            button.set_tooltip_text(Some(&t!(format!("UI.main.tooltips.{}", name), value = shortcut).to_string()));
         }
     }
 
@@ -1940,10 +1944,13 @@ fn create_main_window(
     // Generate master keys button
     let generate_master_keys_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let generate_master_keys_button = gtk::Button::new();
+    let delete_master_keys_button = gtk::Button::new();
 
     generate_master_keys_button.set_label(&t!("UI.main.coin.generate").to_string());
+    delete_master_keys_button.set_label(&t!("UI.main.coin.delete").to_string());
     generate_master_keys_box.set_halign(gtk::Align::Center);
     generate_master_keys_box.append(&generate_master_keys_button);
+    generate_master_keys_box.append(&delete_master_keys_button);
     coin_main_content_box.append(&generate_master_keys_box);
 
     // Master private keys entries
