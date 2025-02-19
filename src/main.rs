@@ -209,10 +209,6 @@ impl GuiState {
                 }
             }
         }
-
-        if self.gui_log_status.unwrap() == false {
-            self.hide_button("log".to_string());
-        }
     }
 
     fn reload_gui_theme(&mut self) {
@@ -241,16 +237,6 @@ impl GuiState {
 
         println!("\t- Button: {:?}", name)
     }
-
-    fn hide_button(&self, name: String) {
-        println!("[+] {}", &t!("log.register_button").to_string());
-
-        let mut button_map = self.gui_main_buttons.lock().unwrap();
-        button_map.entry(name.to_string()).and_modify(|e| { e.get(3).unwrap().hide() });
-
-        println!("\t- Button: {:?}", name)
-    }
-
 }
 
 
@@ -1675,14 +1661,15 @@ fn create_main_window(
     // Generate entropy button
     let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_entropy_button = gtk::Button::new();
-    
+    generate_entropy_button.set_width_request(200);
     generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
     generate_entropy_box.set_halign(gtk::Align::Center);
     generate_entropy_box.set_margin_top(10);
-
+    
     // Delete entropy button
     let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let delete_entropy_button = gtk::Button::new();
+    delete_entropy_button.set_width_request(200);
     
     delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
     delete_entropy_box.set_halign(gtk::Align::Center);
@@ -2199,6 +2186,12 @@ fn create_main_window(
     let address_options_clear_addresses_button = gtk::Button::with_label(&t!("UI.main.address.options.clean").to_string());
     address_options_clear_addresses_button.set_size_request(200, 2);
     
+    // Address progress box
+    let address_generation_progress_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_generation_progress_bar = gtk::ProgressBar::new();
+    address_generation_progress_bar.set_hexpand(true);
+    address_generation_progress_box.append(&address_generation_progress_bar);
+
     // Connections
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
@@ -2231,6 +2224,7 @@ fn create_main_window(
     main_address_box.append(&generate_addresses_button_box);
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
+    main_address_box.append(&address_generation_progress_box);
     
     stack.add_titled(
         &main_address_box,
@@ -3058,6 +3052,7 @@ fn create_main_window(
         #[weak] address_start_spinbutton,
         #[weak] address_count_spinbutton,
         #[weak] address_options_hardened_address_checkbox,
+        #[weak] address_generation_progress_bar,
         move |_| {
             let buffer = master_private_key_text.buffer();
             let start_iter = buffer.start_iter();
@@ -3075,6 +3070,7 @@ fn create_main_window(
                 lock.clone()
             };
 
+            address_generation_progress_bar.set_fraction(0.0);
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
@@ -3083,16 +3079,12 @@ fn create_main_window(
             let address_count = address_count_spinbutton.text();
             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
             
-
-            // #######################################
-
-            // let open_context = glib::MainContext::default();
-            // let open_loop = glib::MainLoop::new(Some(&open_context), false);
             let (tx, rx) = std::sync::mpsc::channel();
+            let (tp, rp) = std::sync::mpsc::channel();
+            
             let start_time = std::time::Instant::now();
 
             std::thread::spawn(clone!(
-                // #[strong] open_loop,
                 move || {
 
                     let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
@@ -3123,7 +3115,6 @@ fn create_main_window(
                             let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
                             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
 
-                            // if let Some(full_address_path) = full_address_derivation_path.split('/').last() {
                             if let Ok((address, public_key, private_key)) = keys::generate_address(
                                 coin_index,
                                 &full_address_derivation_path,
@@ -3144,29 +3135,33 @@ fn create_main_window(
 
                                 CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
 
-                                // tx.send(new_entry).expect("Failed to send address");
                                 if tx.send(new_entry).is_err() {
                                     break;
                                 }
 
                                 generated_count += 1;
+
+                                let progress_value = if address_count_int > 0 {
+                                    (generated_count as f64) / (address_count_int as f64)
+                                } else {
+                                    0.0
+                                };
+        
+                                let _ = tp.send(progress_value);
                             }
 
                         }
                         current_index += 1;
                     }
-                    
-                    let duration = start_time.elapsed();
-                    println!("\t- Address generation completed in {:.2?} seconds", duration);
 
-                    // open_loop.quit();
+                    let _ = tp.send(1.0);
                 }
             ));
 
-            // open_loop.run();
-
             glib::timeout_add_local(std::time::Duration::from_millis(50), clone!(
                 #[strong] address_store,
+                #[strong] app_messages_state,
+                #[strong] address_generation_progress_bar,
                 move || {
                     while let Ok(new_entry) = rx.try_recv() {
                         let iter = address_store.append();
@@ -3181,16 +3176,27 @@ fn create_main_window(
                             ],
                         );
                     }
+            
+                    while let Ok(progress) = rp.try_recv() {
+                        address_generation_progress_bar.set_fraction(progress);
+            
+                        if progress >= 1.0 {
+                            {
+                                let duration = start_time.elapsed();
+                                let message = format!("Address generation completed in {:.2?} seconds", duration);
+
+                                let lock_app_messages = app_messages_state.lock().unwrap();
+                                lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+                                
+                            }
+                            return glib::ControlFlow::Break;
+                        }
+                    }
+            
                     glib::ControlFlow::Continue
                 }
             ));
-
-
-
-
-
-
-
+            
         }
     ));
 
