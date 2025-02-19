@@ -105,11 +105,26 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
 
 
 lazy_static::lazy_static! {
-    // GuiState
-    // AppSettings
-    // DerivationPath
+    // GuiState - can not be used, no send and sync
+    // static ref GUI_STATE: std::sync::Arc<std::sync::Mutex<GuiState>> = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
+
+    // AppSettings - improved startup time 0.05s
+    static ref APP_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
+
+    // WalletSettings
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
+
+    // CryptoAddress
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
+    
+    // AppMessages - can not be used, no send and sync
+    // static ref APP_MESSAGES: std::sync::Arc<std::sync::Mutex<AppMessages>> = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new()));
+    
+    // AppLog - next implementation
+    static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
+
+    // DerivationPath
+    static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
 }
 
 
@@ -291,7 +306,7 @@ impl Default for AppSettings {
             gui_theme: Some("System".to_string()),
             gui_icons: Some("Thin".to_string()),
             gui_language: Some("English".to_string()),
-            gui_search: Some("Coin".to_string()),
+            gui_search: Some("Name".to_string()),
             gui_notification_timeout: Some(5),
             gui_mnemonic_length: Some(512),
             gui_log: Some(true),
@@ -318,10 +333,10 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
-    fn load_settings() -> Self {
+    fn load_settings() {
         println!("[+] {}", &t!("log.load_settings").to_string());
         
-        let mut settings = AppSettings::default();
+        let settings = AppSettings::default();
         
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
@@ -380,83 +395,122 @@ impl AppSettings {
         let anu_section = load_section(&config, "anu");
         let proxy_section = load_section(&config, "proxy");
 
-        settings.gui_save_size = get_bool(&gui_section, "save_size", settings.gui_save_size);
-        settings.gui_last_width = get_u32(&gui_section, "last_width", settings.gui_last_width);
-        settings.gui_last_height = get_u32(&gui_section, "last_height", settings.gui_last_height);
-        settings.gui_maximized = get_bool(&gui_section, "maximized", settings.gui_maximized);
-        settings.gui_theme = get_str(&gui_section, "theme", settings.gui_theme);
-        settings.gui_icons = get_str(&gui_section, "icons", settings.gui_icons);
-        settings.gui_language = get_str(&gui_section, "language", settings.gui_language);
-        settings.gui_search = get_str(&gui_section, "search", settings.gui_search);
-        settings.gui_notification_timeout = get_u32(&gui_section, "notification_timeout", settings.gui_notification_timeout);
-        settings.gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", settings.gui_mnemonic_length);
-        settings.gui_log = get_bool(&gui_section, "save_size", settings.gui_log);
-        settings.gui_log_level = get_str(&gui_section, "log_level", settings.gui_log_level);
+        let gui_save_size = get_bool(&gui_section, "save_size", settings.gui_save_size);
+        let gui_last_width = get_u32(&gui_section, "last_width", settings.gui_last_width);
+        let gui_last_height = get_u32(&gui_section, "last_height", settings.gui_last_height);
+        let gui_maximized = get_bool(&gui_section, "maximized", settings.gui_maximized);
+        let gui_theme = get_str(&gui_section, "theme", settings.gui_theme);
+        let gui_icons = get_str(&gui_section, "icons", settings.gui_icons);
+        let gui_language = get_str(&gui_section, "language", settings.gui_language);
+        let gui_search = get_str(&gui_section, "search", settings.gui_search);
+        let gui_notification_timeout = get_u32(&gui_section, "notification_timeout", settings.gui_notification_timeout);
+        let gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", settings.gui_mnemonic_length);
+        let gui_log = get_bool(&gui_section, "gui_log", settings.gui_log);
+        let gui_log_level = get_str(&gui_section, "log_level", settings.gui_log_level);
 
-        println!("\t- Save last window size: {:?}", settings.gui_save_size);
-        println!("\t- GUI width: {:?}", settings.gui_last_width);
-        println!("\t- GUI height: {:?}", settings.gui_last_height);
-        println!("\t- Maximized: {:?}", settings.gui_maximized);
-        println!("\t- Theme: {:?}", settings.gui_theme);
-        println!("\t- Icons: {:?}", settings.gui_icons);
-        println!("\t- Language: {:?}", settings.gui_language);
-        println!("\t- Search: {:?}", settings.gui_search);
-        println!("\t- Notification timeout: {:?}", settings.gui_notification_timeout);
-        println!("\t- Mnemonic passphrase length: {:?}", settings.gui_mnemonic_length);
-        println!("\t- Log enabled: {:?}", settings.gui_log);
-        println!("\t- Log level: {:?}", settings.gui_log_level);
+        println!("\t- Save last window size: {:?}", gui_save_size);
+        println!("\t- GUI width: {:?}", gui_last_width);
+        println!("\t- GUI height: {:?}", gui_last_height);
+        println!("\t- Maximized: {:?}", gui_maximized);
+        println!("\t- Theme: {:?}", gui_theme);
+        println!("\t- Icons: {:?}", gui_icons);
+        println!("\t- Language: {:?}", gui_language);
+        println!("\t- Search: {:?}", gui_search);
+        println!("\t- Notification timeout: {:?}", gui_notification_timeout);
+        println!("\t- Mnemonic passphrase length: {:?}", gui_mnemonic_length);
+        println!("\t- Log enabled: {:?}", gui_log);
+        println!("\t- Log level: {:?}", gui_log_level);
 
-        settings.wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
-        settings.wallet_entropy_length = get_u32(&wallet_section, "entropy_length", settings.wallet_entropy_length);
-        settings.wallet_bip = get_u32(&wallet_section, "bip", settings.wallet_bip);
-        settings.wallet_address_count = get_u32(&wallet_section, "address_count", settings.wallet_address_count);
-        settings.wallet_hardened_address = get_bool(&wallet_section, "hardened_address", settings.wallet_hardened_address);
+        let wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
+        let wallet_entropy_length = get_u32(&wallet_section, "entropy_length", settings.wallet_entropy_length);
+        let wallet_bip = get_u32(&wallet_section, "bip", settings.wallet_bip);
+        let wallet_address_count = get_u32(&wallet_section, "address_count", settings.wallet_address_count);
+        let wallet_hardened_address = get_bool(&wallet_section, "hardened_address", settings.wallet_hardened_address);
 
-        println!("\t- Entropy source: {:?}", settings.wallet_entropy_source);
-        println!("\t- Entropy length: {:?}", settings.wallet_entropy_length);
-        println!("\t- BIP: {:?}", settings.wallet_bip);
-        println!("\t- Address count: {:?}", settings.wallet_address_count);
-        println!("\t- Hard address: {:?}", settings.wallet_hardened_address);
+        println!("\t- Entropy source: {:?}", wallet_entropy_source);
+        println!("\t- Entropy length: {:?}", wallet_entropy_length);
+        println!("\t- BIP: {:?}", wallet_bip);
+        println!("\t- Address count: {:?}", wallet_address_count);
+        println!("\t- Hard address: {:?}", wallet_hardened_address);
 
-        settings.anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
-        settings.anu_data_format = get_str(&anu_section, "data_format", settings.anu_data_format);
-        settings.anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
-        settings.anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
-        settings.anu_log = get_bool(&anu_section, "log", settings.anu_log);
+        let anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
+        let anu_data_format = get_str(&anu_section, "data_format", settings.anu_data_format);
+        let anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
+        let anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
+        let anu_log = get_bool(&anu_section, "log", settings.anu_log);
 
-        println!("\t- Use ANU: {:?}", settings.anu_enabled);
-        println!("\t- ANU data format: {:?}", settings.anu_data_format);
-        println!("\t- ANU array length: {:?}", settings.anu_array_length);
-        println!("\t- ANU hex block size: {:?}", settings.anu_hex_block_size);
-        println!("\t- ANU log: {:?}", settings.anu_log);
+        println!("\t- Use ANU: {:?}", anu_enabled);
+        println!("\t- ANU data format: {:?}", anu_data_format);
+        println!("\t- ANU array length: {:?}", anu_array_length);
+        println!("\t- ANU hex block size: {:?}", anu_hex_block_size);
+        println!("\t- ANU log: {:?}", anu_log);
 
-        settings.proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
-        settings.proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
-        settings.proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
-        settings.proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
-        settings.proxy_script_address = get_str(&proxy_section, "script_address", settings.proxy_script_address);
-        settings.proxy_login_credentials = get_bool(&proxy_section, "login_credentials", settings.proxy_login_credentials);
-        settings.proxy_login_username = get_str(&proxy_section, "login_username", settings.proxy_login_username);
-        settings.proxy_login_password = get_str(&proxy_section, "login_password", settings.proxy_login_password);
-        settings.proxy_use_ssl = get_bool(&proxy_section, "use_ssl", settings.proxy_use_ssl);
-        settings.proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", settings.proxy_ssl_certificate);
-        settings.proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", settings.proxy_retry_attempts);
-        settings.proxy_timeout = get_u32(&proxy_section, "timeout", settings.proxy_timeout);
+        let proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
+        let proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
+        let proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
+        let proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
+        let proxy_script_address = get_str(&proxy_section, "script_address", settings.proxy_script_address);
+        let proxy_login_credentials = get_bool(&proxy_section, "login_credentials", settings.proxy_login_credentials);
+        let proxy_login_username = get_str(&proxy_section, "login_username", settings.proxy_login_username);
+        let proxy_login_password = get_str(&proxy_section, "login_password", settings.proxy_login_password);
+        let proxy_use_ssl = get_bool(&proxy_section, "use_ssl", settings.proxy_use_ssl);
+        let proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", settings.proxy_ssl_certificate);
+        let proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", settings.proxy_retry_attempts);
+        let proxy_timeout = get_u32(&proxy_section, "timeout", settings.proxy_timeout);
         
-        println!("\t- Use proxy: {:?}", settings.proxy_status);
-        println!("\t- Proxy server address: {:?}", settings.proxy_server_address);
-        println!("\t- Proxy server port: {:?}", settings.proxy_server_port);
-        println!("\t- Use proxy PAC: {:?}", settings.proxy_use_pac);
-        println!("\t- Proxy script address: {:?}", settings.proxy_script_address);
-        println!("\t- Use proxy login credentials: {:?}", settings.proxy_login_credentials);
-        println!("\t- Proxy username: {:?}", settings.proxy_login_username);
-        println!("\t- Proxy password: {:?}", settings.proxy_login_password);
-        println!("\t- Use proxy SSL: {:?}", settings.proxy_use_ssl);
-        println!("\t- Proxy SSL certificate: {:?}", settings.proxy_ssl_certificate);
-        println!("\t- Proxy retry attempts: {:?}", settings.proxy_retry_attempts);
-        println!("\t- Proxy timeout: {:?}", settings.proxy_timeout);
+        println!("\t- Use proxy: {:?}", proxy_status);
+        println!("\t- Proxy server address: {:?}", proxy_server_address);
+        println!("\t- Proxy server port: {:?}", proxy_server_port);
+        println!("\t- Use proxy PAC: {:?}", proxy_use_pac);
+        println!("\t- Proxy script address: {:?}", proxy_script_address);
+        println!("\t- Use proxy login credentials: {:?}", proxy_login_credentials);
+        println!("\t- Proxy username: {:?}", proxy_login_username);
+        println!("\t- Proxy password: {:?}", proxy_login_password);
+        println!("\t- Use proxy SSL: {:?}", proxy_use_ssl);
+        println!("\t- Proxy SSL certificate: {:?}", proxy_ssl_certificate);
+        println!("\t- Proxy retry attempts: {:?}", proxy_retry_attempts);
+        println!("\t- Proxy timeout: {:?}", proxy_timeout);
+        
+        let mut application_settings = APP_SETTINGS.lock().unwrap();
+        application_settings.wallet_entropy_source = wallet_entropy_source.clone();
+        application_settings.wallet_entropy_length = wallet_entropy_length.clone();
+        application_settings.wallet_bip = wallet_bip.clone();
+        application_settings.wallet_address_count = wallet_address_count.clone();
+        application_settings.wallet_hardened_address = wallet_hardened_address.clone();
 
-        settings
+        application_settings.gui_save_size = gui_save_size.clone();
+        application_settings.gui_last_width = gui_last_width.clone();
+        application_settings.gui_last_height = gui_last_height.clone();
+        application_settings.gui_maximized = gui_maximized.clone();
+        application_settings.gui_theme = gui_theme.clone();
+        application_settings.gui_icons = gui_icons.clone();
+        application_settings.gui_language = gui_language.clone();
+        application_settings.gui_search = gui_search.clone();
+        application_settings.gui_notification_timeout = gui_notification_timeout.clone();
+        application_settings.gui_mnemonic_length = gui_mnemonic_length.clone();
+        application_settings.gui_log = gui_log.clone();
+        application_settings.gui_log_level = gui_log_level.clone();
+
+        application_settings.anu_enabled = anu_enabled.clone();
+        application_settings.anu_data_format = anu_data_format.clone();
+        application_settings.anu_array_length = anu_array_length.clone();
+        application_settings.anu_hex_block_size = anu_hex_block_size.clone();
+        application_settings.anu_log = anu_log.clone();
+
+        application_settings.proxy_status = proxy_status.clone();
+        application_settings.proxy_server_address = proxy_server_address.clone();
+        application_settings.proxy_server_port = proxy_server_port.clone();
+        application_settings.proxy_use_pac = proxy_use_pac.clone();
+        application_settings.proxy_script_address = proxy_script_address.clone();
+        application_settings.proxy_login_credentials = proxy_login_credentials.clone();
+        application_settings.proxy_login_username = proxy_login_username.clone();
+        application_settings.proxy_login_password = proxy_login_password.clone();
+        application_settings.proxy_use_ssl = proxy_use_ssl.clone();
+        application_settings.proxy_ssl_certificate = proxy_ssl_certificate.clone();
+        application_settings.proxy_retry_attempts = proxy_retry_attempts.clone();
+        application_settings.proxy_timeout = proxy_timeout.clone();
+
+        
     }
 
     fn update_value(
@@ -473,7 +527,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.wallet_entropy_source {
                         self.wallet_entropy_source = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -483,7 +536,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_entropy_length {
                         self.wallet_entropy_length = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -493,7 +545,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_bip {
                         self.wallet_bip = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -503,7 +554,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_address_count {
                         self.wallet_address_count = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -512,7 +562,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_hardened_address {
                         self.wallet_hardened_address = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -521,7 +570,6 @@ impl AppSettings {
                     if Some(value) != self.gui_save_size {
                         self.gui_save_size = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -531,7 +579,6 @@ impl AppSettings {
                     if Some(value) != self.gui_last_width {
                         self.gui_last_width = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -541,7 +588,6 @@ impl AppSettings {
                     if Some(value) != self.gui_last_height {
                         self.gui_last_height = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -550,7 +596,6 @@ impl AppSettings {
                     if Some(value) != self.gui_maximized {
                         self.gui_maximized = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -559,7 +604,6 @@ impl AppSettings {
                     if Some(new_theme.to_string()) != self.gui_theme {
                         self.gui_theme = Some(new_theme.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
 
                         let preferred_theme = match new_theme {
                             "Light" => adw::ColorScheme::ForceLight,
@@ -593,7 +637,6 @@ impl AppSettings {
                         } else {
                             println!("State in gui_icons is None");
                         }
-                        self.save_settings();
                     }
                 } else {
                     eprintln!("Received invalid value for gui_icons: {:?}", new_value);
@@ -604,7 +647,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.gui_language {
                         self.gui_language = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -613,7 +655,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.gui_search {
                         self.gui_search = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -623,7 +664,6 @@ impl AppSettings {
                     if Some(value) != self.gui_notification_timeout {
                         self.gui_notification_timeout = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -633,7 +673,6 @@ impl AppSettings {
                     if Some(value) != self.gui_mnemonic_length {
                         self.gui_mnemonic_length = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -645,18 +684,11 @@ impl AppSettings {
                         if let Some(state) = gui_state {
                             let mut gui_state_lock = state.lock().unwrap();
                             gui_state_lock.gui_log_status = Some(value);
-
-                            if value {
-                                println!("Log status: {:?}", value);
-                            } else {
-                                println!("Log is disabled");
-                            }
                         } else {
                             println!("State in gui_theme is None");
                         }
 
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -665,7 +697,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.gui_log_level {
                         self.gui_log_level = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -674,7 +705,6 @@ impl AppSettings {
                     if Some(value) != self.anu_enabled {
                         self.anu_enabled = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -683,7 +713,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.anu_data_format {
                         self.anu_data_format = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -693,7 +722,6 @@ impl AppSettings {
                     if Some(value) != self.anu_array_length {
                         self.anu_array_length = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -703,7 +731,6 @@ impl AppSettings {
                     if Some(value) != self.anu_hex_block_size {
                         self.anu_hex_block_size = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -712,7 +739,6 @@ impl AppSettings {
                     if Some(value) != self.anu_log {
                         self.anu_log = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -721,7 +747,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_status {
                         self.proxy_status = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -730,7 +755,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_server_address {
                         self.proxy_server_address = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -740,7 +764,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_server_port {
                         self.proxy_server_port = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -749,7 +772,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_use_pac {
                         self.proxy_use_pac = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -758,7 +780,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_script_address {
                         self.proxy_script_address = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -767,7 +788,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_login_credentials {
                         self.proxy_login_credentials = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -776,7 +796,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_login_username {
                         self.proxy_login_username = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -785,7 +804,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_login_password {
                         self.proxy_login_password = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -794,7 +812,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_use_ssl {
                         self.proxy_use_ssl = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -803,7 +820,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_ssl_certificate {
                         self.proxy_ssl_certificate = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -813,7 +829,6 @@ impl AppSettings {
 
     fn save_settings(&self) {
         println!("[+] {}", &t!("log.app_settings.save_settings").to_string());
-
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
@@ -823,7 +838,7 @@ impl AppSettings {
         
         let mut doc = config_str.parse::<toml_edit::DocumentMut>()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to parse config string: {}", e)))
-            .expect("\t- Problem with mut doc");
+            .unwrap_or(toml_edit::DocumentMut::new());
     
         {
             let wallet_section = doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
@@ -1145,19 +1160,15 @@ impl AppLog {
         let is_active = status.lock().unwrap();
         println!("\t- AppLog status: {}", is_active);
         
-        // if *is_active {
-        //     println!("AppLog is active....");
-        // } else {
-        //     println!("AppLog is inactive. trying to activate...");
-        //     return;
-        //     // *is_active = true;
-        //     
-        // }
+        let new_icon = match *is_active {
+            true => "notif",
+            false => "log",
+        };
         
         let lock_gui_state = gui_state.lock().unwrap();
     
         if let Some(texture_map) = &lock_gui_state.gui_button_images {
-            if let Some(new_texture) = texture_map.get("notif") {
+            if let Some(new_texture) = texture_map.get(new_icon) {
                 
                 let mut lock_buttons = lock_gui_state.gui_main_buttons.lock().unwrap();
 
@@ -1196,9 +1207,9 @@ struct DerivationPath {
     purpose: Option<u32>,
 }
 
-impl DerivationPath {
+impl Default for DerivationPath {
     fn default() -> Self {
-        Self {
+        DerivationPath {
             bip: Some(44),
             hardened_bip: Some(true),
             coin: Some(0),
@@ -1208,7 +1219,9 @@ impl DerivationPath {
             purpose: Some(0),
         }
     }
+}
 
+impl DerivationPath {
     fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
         match field {
             "bip" => self.bip = value.and_then(|v| v.into_u32()),
@@ -1304,7 +1317,6 @@ fn setup_app_actions(
     application: adw::Application, 
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
-    // app_settings_state: std::sync::Arc<std::sync::Mutex<AppSettings>>,
 ) {
     println!("[+] {}", &t!("log.setup_app_actions").to_string());
     
@@ -1397,35 +1409,25 @@ fn create_main_window(
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
-    let app_settings_state = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::load_settings()));
-    let lock_app_settings = app_settings_state.read().unwrap();
-
-    let gui_language = lock_app_settings.gui_language.clone().unwrap();
-    let gui_theme = lock_app_settings.gui_theme.clone().unwrap();
-    let gui_icons = lock_app_settings.gui_icons.clone().unwrap();
-    let window_width = lock_app_settings.gui_last_width.unwrap();
-    let window_height = lock_app_settings.gui_last_height.unwrap();
-    let wallet_bip = lock_app_settings.wallet_bip.unwrap();
-    let default_mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap();
-    let app_log_status = lock_app_settings.gui_log.unwrap();
-    let anu_enabled = lock_app_settings.anu_enabled;
-    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone().unwrap();
-    let wallet_entropy_length = lock_app_settings.wallet_entropy_length.unwrap();
-    let gui_search = lock_app_settings.gui_search.clone().unwrap();
-    let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
-    let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
-
-    os::switch_locale(&gui_language);
-    
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
         .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
-        .default_width(window_width as i32)
-        .default_height(window_height as i32)
         .show_menubar(true)
         .decorated(true)
         .build();
 
+    AppSettings::load_settings();
+    
+    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+    let window_width = lock_app_settings.gui_last_width.unwrap();
+    let window_height = lock_app_settings.gui_last_height.unwrap();
+    let gui_language = lock_app_settings.gui_language.clone().unwrap();
+
+    window.set_width_request(window_width as i32);
+    window.set_height_request(window_height as i32);
+    
+    os::switch_locale(&gui_language);
+    
     qr2m_lib::setup_css();
 
     let header_bar = gtk::HeaderBar::new();
@@ -1459,6 +1461,10 @@ fn create_main_window(
         }
     }
 
+    let gui_theme = lock_app_settings.gui_theme.clone().unwrap();
+    let gui_icons = lock_app_settings.gui_icons.clone().unwrap();
+    let app_log_status = lock_app_settings.gui_log.unwrap();
+
     if let Ok(mut lock_gui_state) = gui_state.lock() {
         lock_gui_state.gui_language = Some(gui_language);
         lock_gui_state.gui_theme = Some(gui_theme);
@@ -1486,8 +1492,7 @@ fn create_main_window(
     }
 
     {
-        let app_log_state = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
-        let mut lock_app_log = app_log_state.lock().unwrap();
+        let mut lock_app_log = APP_LOG.lock().unwrap();
         lock_app_log.status = std::sync::Arc::new(std::sync::Mutex::new(app_log_status));
         
         lock_app_log.initialize_app_log(gui_state.clone());
@@ -1571,6 +1576,7 @@ fn create_main_window(
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
 
+    let anu_enabled = lock_app_settings.anu_enabled;
     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
     } else {
@@ -1581,6 +1587,7 @@ fn create_main_window(
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
     
+    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone().unwrap();
     let default_entropy_source = valid_entropy_source_as_strings
         .iter()
         .position(|s| *s == wallet_entropy_source) 
@@ -1597,7 +1604,7 @@ fn create_main_window(
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
     
-
+    let wallet_entropy_length = lock_app_settings.wallet_entropy_length.unwrap();
     let default_entropy_length = valid_entropy_lengths_as_strings
         .iter()
         .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length)
@@ -1632,6 +1639,8 @@ fn create_main_window(
     // let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
     // let source = selected_entropy_source_value.unwrap();
 
+    let default_mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap();
+    
     mnemonic_passphrase_length_info.set_editable(false);
     mnemonic_passphrase_length_info.set_width_request(50);
     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
@@ -1847,6 +1856,7 @@ fn create_main_window(
     let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings.iter().map(|s| s.as_ref()).collect();
     let coin_search_filter_dropdown = gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
     
+    let gui_search = lock_app_settings.gui_search.clone().unwrap();
     let default_coin_search_filter = valid_coin_search_filter_as_strings
         .iter()
         .position(|s| *s == gui_search) 
@@ -2016,6 +2026,7 @@ fn create_main_window(
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
     
+    let wallet_bip = lock_app_settings.wallet_bip.unwrap();
     let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == wallet_bip).unwrap_or_else(|| {
         eprintln!("\t- {}", &t!("error.bip.value", value = wallet_bip));
         1
@@ -2136,6 +2147,7 @@ fn create_main_window(
     // Address count
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
     let address_options_adjustment = gtk::Adjustment::new(
         wallet_address_count as f64,
         1.0,
@@ -2171,7 +2183,7 @@ fn create_main_window(
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
-    
+    let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
 
     address_options_hardened_address_checkbox.set_active(wallet_hardened_address.unwrap());
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
@@ -2895,9 +2907,6 @@ fn create_main_window(
         }
     });
 
-    let derivation_path = std::rc::Rc::new(std::cell::RefCell::new(DerivationPath::default()));
-    let dp_clone = std::rc::Rc::clone(&derivation_path);
-
     bip_dropdown.connect_selected_notify(clone!(
         #[weak] derivation_label_text,
         move |bip_dropdown| {
@@ -2913,58 +2922,55 @@ fn create_main_window(
                 bip_hardened_frame.set_visible(true);
             }
     
-            dp_clone.borrow_mut().update_field("bip", Some(FieldValue::U32(*bip)));
-            update_derivation_label(*dp_clone.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+            dp.update_field("bip", Some(FieldValue::U32(*bip)));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
         
-    let dp_clone = std::rc::Rc::clone(&derivation_path);
-    
     bip_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] bip_hardened_checkbox,
         move |_| {
-            dp_clone.borrow_mut().update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
-            update_derivation_label(*dp_clone.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+            dp.update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
         
-    let dp_clone2 = std::rc::Rc::clone(&derivation_path);
-    
     coin_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] coin_hardened_checkbox,
         move |_| {
-            dp_clone2.borrow_mut().update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
-            update_derivation_label(*dp_clone2.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+
+            dp.update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
 
-    let dp_clone3 = std::rc::Rc::clone(&derivation_path);
-    
     address_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] address_hardened_checkbox,
         move |_| {
-            dp_clone3.borrow_mut().update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
-            update_derivation_label(*dp_clone3.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+
+            dp.update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
         
-    let dp_clone4 = std::rc::Rc::clone(&derivation_path);
-    
     purpose_dropdown.connect_selected_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] purpose_dropdown,
         move |_| {
             let purpose = purpose_dropdown.selected();
+            let mut dp = DERIVATION_PATH.write().unwrap();
 
-            dp_clone4.borrow_mut().update_field("purpose", Some(FieldValue::U32(purpose)));
-            update_derivation_label(*dp_clone4.borrow(), derivation_label_text);
+            dp.update_field("purpose", Some(FieldValue::U32(purpose)));
+            update_derivation_label(*dp, derivation_label_text);
         }
     ));
-
-    let dp_clone5 = std::rc::Rc::clone(&derivation_path);
 
     coin_entry.connect_changed(clone!(
         #[weak] derivation_label_text,
@@ -2973,15 +2979,14 @@ fn create_main_window(
             let coin_number = coin_entry.buffer().text();
             let ff = coin_number.as_str();
             let my_int = ff.parse::<u32>();
-
+            
             if my_int.is_ok() {
-                dp_clone5.borrow_mut().update_field("coin", Some(FieldValue::U32(my_int.unwrap())));
-                update_derivation_label(*dp_clone5.borrow(), derivation_label_text);
+                let mut dp = DERIVATION_PATH.write().unwrap();
+                dp.update_field("coin", Some(FieldValue::U32(my_int.unwrap())));
+                update_derivation_label(*dp, derivation_label_text);
             }
         }
     ));
-
-    let dp_clone6 = std::rc::Rc::clone(&derivation_path);
 
     address_spinbutton.connect_changed(clone!(
         #[weak] derivation_label_text,
@@ -2990,10 +2995,11 @@ fn create_main_window(
             let address_number = address_spinbutton.text();
             let ff = address_number.as_str();
             let my_int = ff.parse::<u32>();
-
+            
             if my_int.is_ok() {
-                dp_clone6.borrow_mut().update_field("address", Some(FieldValue::U32(my_int.unwrap())));
-                update_derivation_label(*dp_clone6.borrow(), derivation_label_text);
+                let mut dp = DERIVATION_PATH.write().unwrap();
+                dp.update_field("address", Some(FieldValue::U32(my_int.unwrap())));
+                update_derivation_label(*dp, derivation_label_text);
             }
         }
     ));
@@ -3113,7 +3119,7 @@ fn create_main_window(
                             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
 
                             // if let Some(full_address_path) = full_address_derivation_path.split('/').last() {
-                            if let Ok((address, public_key, private_key)) = generate_address(
+                            if let Ok((address, public_key, private_key)) = keys::generate_address(
                                 coin_index,
                                 &full_address_derivation_path,
                                 master_private_key_bytes, 
@@ -3278,8 +3284,7 @@ fn create_settings_window(
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    let app_settings_state = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::load_settings()));
-    let lock_app_settings = app_settings_state.read().unwrap();
+    let lock_app_settings = APP_SETTINGS.lock().unwrap();
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.settings").to_string())
@@ -4276,10 +4281,10 @@ fn create_settings_window(
         #[weak] settings_window,
         #[strong] gui_state,
         #[weak] app_messages_state,
-        #[strong] app_settings_state,
         move |_| {
-            let mut lock_app_settings = app_settings_state.write().unwrap();                     
-    
+
+            let mut settings = APP_SETTINGS.lock().unwrap();
+
             let updates = [
                 ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),
                 ("wallet_entropy_length", toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64)),
@@ -4302,7 +4307,7 @@ fn create_settings_window(
                 ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
                 ("proxy_status", toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize])),
                 ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
-                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or_default() as i64)),
+                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or(8080) as i64)),
                 ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
                 ("proxy_script_address", toml_edit::value(proxy_pac_path_entry.text().to_string())),
                 ("proxy_login_credentials", toml_edit::value(use_proxy_credentials_checkbox.is_active())),
@@ -4314,12 +4319,11 @@ fn create_settings_window(
     
             updates.iter().for_each(|(key, value)| {
                 let gui_related = matches!(*key, "gui_theme" | "gui_log" | "gui_icons");
-                lock_app_settings.update_value(key, value.clone(), gui_related.then(|| gui_state.clone()));
+                settings.update_value(key, value.clone(), gui_related.then(|| gui_state.clone()));
             });
-    
-    
-            lock_app_settings.save_settings();
 
+
+            AppSettings::save_settings(&*settings);
 
             {
                 let lock_app_messages = app_messages_state.lock().unwrap();
@@ -4723,241 +4727,5 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
     }
 }
 
-fn generate_address(
-    coin_index: u32,
-    derivation_path: &str,
-    master_private_key_bytes: Vec<u8>,
-    master_chain_code_bytes: Vec<u8>,
-    public_key_hash: &str,
-    key_derivation: &str,
-    wallet_import_format: &str,
-    hash: &str,
- ) -> Result<(String, String, String), String> {
-    println!("[+] {}", &t!("log.generate_address").to_string());
-
-    println!("\t- derivation_path: {:?}", derivation_path);
-
-    let secp = secp256k1::Secp256k1::new();
-
-    let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
-        &public_key_hash[2..]
-    } else {
-        &public_key_hash
-    };
-
-    let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
-        Ok(vec) => vec,
-        Err(e) => {
-            return Err(format!("Problem with decoding public_key_hash_vec: {:?}", e).to_string());
-        },
-    };
-
-    let derived_child_keys = match key_derivation {
-        "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
-        "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
-        "N/A" | _ => {
-            return Err(format!("Unsupported key derivation method: {:?}", key_derivation))
-        }
-    }.expect("Can not derive child key");
-
-    let public_key = match key_derivation {
-        "secp256k1" => {
-            let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-                &secp,
-                &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-            );
-            keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-        },
-        "ed25519" => {
-            let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-            let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-            keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-        },
-        "N/A" | _ => {
-            return Err(format!("Unsupported key derivation method: {:?}", key_derivation));
-        }
-    };
-
-    let public_key_encoded = match hash {
-        "sha256" | "sha256+ripemd160" => match &public_key {
-            keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-            keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-        },
-        "keccak256" => match &public_key {
-            keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-            keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-        },
-        "N/A" | _ => {
-            return Err(format!("Unsupported hash method: {:?}", hash));
-        }
-    };
-
-    let address = match hash {
-        "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-        "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-        "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-            coin_index, 
-            &public_key, 
-            &public_key_hash_vec
-        ) {
-            Ok(addr) => addr,
-            Err(e) => {
-                return Err(format!("Error generating address: {}", e));
-            }
-        },
-        "ed25519" => dev::generate_ed25519_address(&public_key),
-        "N/A" | _ => {
-            return Err(format!("Unsupported hash method: {:?}", hash));
-        }
-    };
-
-    // IMPROVEMENT: remove hard-coding, add this option to UI
-    let compressed = true;
-
-    let priv_key_wif = keys::create_private_key_for_address(
-        Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
-        Some(compressed),
-        Some(&wallet_import_format),
-        &hash,
-    ).expect("Failed to convert private key to WIF");
-
-    Ok((address.clone(), public_key_encoded.clone(), priv_key_wif.clone()))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // // let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
-    // // let current_len = addr_lock.len();
-    // // let current_count = address_count_int;
-    // // let last_value;
-
-    // // if (current_len + address_count_int) >= WALLET_MAX_ADDRESSES as usize {
-    // //     last_value = current_count as usize;
-    // // } else {
-    // //     last_value = current_len + address_count_int;
-    // // }
-
-    // // for mut i in current_len..last_value {
-    //     // i=i+address_start_point_int;
-        
-    //     let full_path = if hardened {
-    //         format!("{}/{}'", derivation_path, i)
-    //     } else {
-    //         format!("{}/{}", derivation_path, i)
-    //     };
-
-    //     
-
-    //     let public_key = match key_derivation {
-    //         "secp256k1" => {
-    //             let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-    //                 &secp,
-    //                 &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-    //             );
-    //             keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-    //         },
-    //         "ed25519" => {
-    //             let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-    //             let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-    //             keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-    //         },
-    //         "N/A" | _ => {
-    //             println!("Unsupported key derivation method: {:?}", key_derivation);
-    //             return;
-    //         }
-    //     };
-
-    //     let public_key_encoded = match hash {
-    //         "sha256" | "sha256+ripemd160" => match &public_key {
-    //             keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-    //             keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-    //         },
-    //         "keccak256" => match &public_key {
-    //             keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-    //             keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-    //         },
-    //         "N/A" | _ => {
-    //             println!("Unsupported hash method: {:?}", hash);
-    //             return;
-    //         }
-    //     };
-        
-    //     let address = match hash {
-    //         "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-    //         "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-    //         "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-    //             coin_index, 
-    //             &public_key, 
-    //             &public_key_hash_vec
-    //         ) {
-    //             Ok(addr) => addr,
-    //             Err(e) => {
-    //                 println!("Error generating address: {}", e);
-    //                 return;
-    //             }
-    //         },
-    //         "ed25519" => dev::generate_ed25519_address(&public_key),
-    //         "N/A" | _ => {
-    //             println!("Unsupported hash method: {:?}", hash);
-    //             return;
-    //         }
-    //     };
-
-    //     println!("Crypto address: {:?}", address);
-
-        
-        
-    //     
-        
-
-        
-        
-        // let new_entry = CryptoAddresses {
-        //     coin_name: Some(coin_name.clone().to_string()),
-        //     derivation_path: Some(full_path.clone()),
-        //     address: Some(address.clone()),
-        //     public_key: Some(public_key_encoded.clone()),
-        //     private_key: Some(priv_key_wif.clone()),
-        // }; 
-
-        // if !addr_lock.iter().any(|addr| 
-        //     addr.coin_name == new_entry.coin_name &&
-        //     addr.derivation_path == new_entry.derivation_path &&
-        //     addr.address == new_entry.address &&
-        //     addr.public_key == new_entry.public_key &&
-        //     addr.private_key == new_entry.private_key
-        // ) {
-        //     addr_lock.push(new_entry);
-        //     let iter = address_store.append();
-        //     address_store.set(
-        //         &iter,
-        //         &[
-        //             (0, &coin_name),
-        //             (1, &full_path),
-        //             (2, &address),
-        //             (3, &public_key_encoded),
-        //             (4, &priv_key_wif),
-        //         ],
-        //     );
-        //     println!("New address added.");
-        // } else {
-        //     println!("Duplicate address found, not adding.");
-        // }
-        
-    // }
-}
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

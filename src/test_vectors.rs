@@ -58,7 +58,20 @@ mod tests {
                 entropy: "110000010110110110000101110000100101100101100101110100110000011001011110111110000010001101100000001011111100100111000000010000011110",
                 mnemonic: "scrap history identify ready frog lobster know afford gasp layer hybrid long",
             },
+            _EntropyMnemonicVector {
+                entropy: "110000010110110110000101110000100101100101100101110100110000011001011110111110000010001101100000001011111100100111000000010000011110",
+                mnemonic: "scrap history identify ready frog lobster know afford gasp layer hybrid long",
+            },
+            _EntropyMnemonicVector {
+                entropy: "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110101",
+                mnemonic: "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong",
+            },
+            _EntropyMnemonicVector {
+                entropy: "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011",
+                mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            },
         ];
+
 
         for vector in entropy_mnemonic_vectors {
             let mnemonic = crate::keys::generate_mnemonic_words(vector.entropy);
@@ -178,6 +191,33 @@ mod tests {
                 expected_child_private_key_bytes: "fa0e1e3be7f3a3a255534b8e086af70d8437466d566c1d9a6955f2faf1c5067b",
                 expected_child_chain_code_bytes: "0b5ed0442c08794937d2fb89e0b238acb8cc166d578db5520ca5662464bfbfdb",
                 expected_child_public_key_bytes: "02424fdb2d2c6f2b0ea4554db66b070fc851d1f260d3381502ff4da32d42092511",
+            },
+            _MasterChildVector {
+                master_private_key: "3e385c087ab3533637afa4cd893da06b624092bbee9d3221917138413d189686",
+                master_chain_code: "8c1070523d5ca058847690e55fe8b7071a9dcaa122ced574c58a55bbcde97bb2",
+                index: 2147483647,
+                hardened: false,
+                expected_child_private_key_bytes: "4f29d476c0f9117dd6b41ce23b0196a306402c841ba69313017a342740b809e0",
+                expected_child_chain_code_bytes: "d715362113635173d838725ef13e2ace7e6e974841e50bb57d879dbb0dce6b66",
+                expected_child_public_key_bytes: "020cea74fb9a7fc603822adb40d6c767657056e3d168d53ad1cdb51a87cbcb0bfe",
+            },
+            _MasterChildVector {
+                master_private_key: "3e385c087ab3533637afa4cd893da06b624092bbee9d3221917138413d189686",
+                master_chain_code: "8c1070523d5ca058847690e55fe8b7071a9dcaa122ced574c58a55bbcde97bb2",
+                index: 0,
+                hardened: true,
+                expected_child_private_key_bytes: "63bbd8cfe0e577e0aeb28bc3c2dfc40dfc612942ac5a657bb5ec996871659097",
+                expected_child_chain_code_bytes: "de651f329479e4dfd2eb1de65337a408a5f962b2524537e3e3917aa273653e76",
+                expected_child_public_key_bytes: "0204321664f421d5e5246d7fcd5814c225ab707544fe49b1c12cf33b643a373d79",
+            },
+            _MasterChildVector {
+                master_private_key: "3e385c087ab3533637afa4cd893da06b624092bbee9d3221917138413d189686",
+                master_chain_code: "8c1070523d5ca058847690e55fe8b7071a9dcaa122ced574c58a55bbcde97bb2",
+                index: 2147483647,
+                hardened: true,
+                expected_child_private_key_bytes: "5fe7634ecc0edf92df9957f219bdf3dbb0da98017b31417e6f953fe82975e296",
+                expected_child_chain_code_bytes: "11fc6bf47338fd0ce97949b0e4f5e94554936e28af72ebd9e568d4cf077c1f29",
+                expected_child_public_key_bytes: "02da228c110ecc75217391533764d69a87737b7b3bddea55a30a78c7c3507fb15d",
             },
         ];
 

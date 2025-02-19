@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "Cryptographic keys"
 // copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2024-12-09"
+// version = "2025-02-19"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -19,6 +19,8 @@ use std::{
     fs::File, 
     io::Read
 };
+
+use crate::APP_SETTINGS;
 
 pub type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 
@@ -44,7 +46,6 @@ pub fn derive_child_key_secp256k1(
     println!("index {:?}", index);
     println!("hardened {:?}", hardened);
     
-    // Check if index is hardened and validate accordingly
     if index & 0x80000000 != 0 && !hardened {
         return None;
     }
@@ -62,7 +63,7 @@ pub fn derive_child_key_secp256k1(
     }
 
     let index_bytes = if hardened {
-        let index = index + 2147483648;
+        let index = index + crate::WALLET_MAX_ADDRESSES + 1;
         index.to_be_bytes()
     } else {
         index.to_be_bytes()
@@ -379,8 +380,7 @@ pub fn generate_entropy(
                 anu_log,
                 entropy_length,
             ) = {
-                let app_settings_state = std::sync::Arc::new(std::sync::Mutex::new(crate::AppSettings::load_settings()));
-                let lock_app_settings = app_settings_state.lock().unwrap();                     
+                let lock_app_settings = APP_SETTINGS.lock().unwrap();
                 (
                     lock_app_settings.anu_data_format.clone().unwrap(),
                     lock_app_settings.anu_array_length.unwrap(),
@@ -680,6 +680,242 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
     ))
 }
 
+pub fn generate_address(
+    coin_index: u32,
+    derivation_path: &str,
+    master_private_key_bytes: Vec<u8>,
+    master_chain_code_bytes: Vec<u8>,
+    public_key_hash: &str,
+    key_derivation: &str,
+    wallet_import_format: &str,
+    hash: &str,
+ ) -> Result<(String, String, String), String> {
+    println!("[+] {}", &t!("log.generate_address").to_string());
+
+    println!("\t- derivation_path: {:?}", derivation_path);
+
+    let secp = secp256k1::Secp256k1::new();
+
+    let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
+        &public_key_hash[2..]
+    } else {
+        &public_key_hash
+    };
+
+    let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
+        Ok(vec) => vec,
+        Err(e) => {
+            return Err(format!("Problem with decoding public_key_hash_vec: {:?}", e).to_string());
+        },
+    };
+
+    let derived_child_keys = match key_derivation {
+        "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
+        "ed25519" => crate::dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
+        "N/A" | _ => {
+            return Err(format!("Unsupported key derivation method: {:?}", key_derivation))
+        }
+    }.expect("Can not derive child key");
+
+    let public_key = match key_derivation {
+        "secp256k1" => {
+            let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+                &secp,
+                &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+            );
+            CryptoPublicKey::Secp256k1(secp_pub_key)
+        },
+        "ed25519" => {
+            let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+            let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+            CryptoPublicKey::Ed25519(pub_key_bytes)
+        },
+        "N/A" | _ => {
+            return Err(format!("Unsupported key derivation method: {:?}", key_derivation));
+        }
+    };
+
+    let public_key_encoded = match hash {
+        "sha256" | "sha256+ripemd160" => match &public_key {
+            CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+            CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+        },
+        "keccak256" => match &public_key {
+            CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+            CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+        },
+        "N/A" | _ => {
+            return Err(format!("Unsupported hash method: {:?}", hash));
+        }
+    };
+
+    let address = match hash {
+        "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
+        "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
+        "sha256+ripemd160" => match generate_sha256_ripemd160_address(
+            coin_index, 
+            &public_key, 
+            &public_key_hash_vec
+        ) {
+            Ok(addr) => addr,
+            Err(e) => {
+                return Err(format!("Error generating address: {}", e));
+            }
+        },
+        "ed25519" => crate::dev::generate_ed25519_address(&public_key),
+        "N/A" | _ => {
+            return Err(format!("Unsupported hash method: {:?}", hash));
+        }
+    };
+
+    // IMPROVEMENT: remove hard-coding, add this option to UI
+    let compressed = true;
+
+    let priv_key_wif = create_private_key_for_address(
+        Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
+        Some(compressed),
+        Some(&wallet_import_format),
+        &hash,
+    ).expect("Failed to convert private key to WIF");
+
+    Ok((address.clone(), public_key_encoded.clone(), priv_key_wif.clone()))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // // let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
+    // // let current_len = addr_lock.len();
+    // // let current_count = address_count_int;
+    // // let last_value;
+
+    // // if (current_len + address_count_int) >= WALLET_MAX_ADDRESSES as usize {
+    // //     last_value = current_count as usize;
+    // // } else {
+    // //     last_value = current_len + address_count_int;
+    // // }
+
+    // // for mut i in current_len..last_value {
+    //     // i=i+address_start_point_int;
+        
+    //     let full_path = if hardened {
+    //         format!("{}/{}'", derivation_path, i)
+    //     } else {
+    //         format!("{}/{}", derivation_path, i)
+    //     };
+
+    //     
+
+    //     let public_key = match key_derivation {
+    //         "secp256k1" => {
+    //             let secp_pub_key = secp256k1::PublicKey::from_secret_key(
+    //                 &secp,
+    //                 &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
+    //             );
+    //             keys::CryptoPublicKey::Secp256k1(secp_pub_key)
+    //         },
+    //         "ed25519" => {
+    //             let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+    //             let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
+    //             keys::CryptoPublicKey::Ed25519(pub_key_bytes)
+    //         },
+    //         "N/A" | _ => {
+    //             println!("Unsupported key derivation method: {:?}", key_derivation);
+    //             return;
+    //         }
+    //     };
+
+    //     let public_key_encoded = match hash {
+    //         "sha256" | "sha256+ripemd160" => match &public_key {
+    //             keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+    //             keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+    //         },
+    //         "keccak256" => match &public_key {
+    //             keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+    //             keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
+    //         },
+    //         "N/A" | _ => {
+    //             println!("Unsupported hash method: {:?}", hash);
+    //             return;
+    //         }
+    //     };
+        
+    //     let address = match hash {
+    //         "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
+    //         "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
+    //         "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
+    //             coin_index, 
+    //             &public_key, 
+    //             &public_key_hash_vec
+    //         ) {
+    //             Ok(addr) => addr,
+    //             Err(e) => {
+    //                 println!("Error generating address: {}", e);
+    //                 return;
+    //             }
+    //         },
+    //         "ed25519" => dev::generate_ed25519_address(&public_key),
+    //         "N/A" | _ => {
+    //             println!("Unsupported hash method: {:?}", hash);
+    //             return;
+    //         }
+    //     };
+
+    //     println!("Crypto address: {:?}", address);
+
+        
+        
+    //     
+        
+
+        
+        
+        // let new_entry = CryptoAddresses {
+        //     coin_name: Some(coin_name.clone().to_string()),
+        //     derivation_path: Some(full_path.clone()),
+        //     address: Some(address.clone()),
+        //     public_key: Some(public_key_encoded.clone()),
+        //     private_key: Some(priv_key_wif.clone()),
+        // }; 
+
+        // if !addr_lock.iter().any(|addr| 
+        //     addr.coin_name == new_entry.coin_name &&
+        //     addr.derivation_path == new_entry.derivation_path &&
+        //     addr.address == new_entry.address &&
+        //     addr.public_key == new_entry.public_key &&
+        //     addr.private_key == new_entry.private_key
+        // ) {
+        //     addr_lock.push(new_entry);
+        //     let iter = address_store.append();
+        //     address_store.set(
+        //         &iter,
+        //         &[
+        //             (0, &coin_name),
+        //             (1, &full_path),
+        //             (2, &address),
+        //             (3, &public_key_encoded),
+        //             (4, &priv_key_wif),
+        //         ],
+        //     );
+        //     println!("New address added.");
+        // } else {
+        //     println!("Duplicate address found, not adding.");
+        // }
+        
+    // }
+}
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
