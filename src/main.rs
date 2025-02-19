@@ -3044,6 +3044,7 @@ fn create_main_window(
     ));
 
     // JUMP: Generate Addresses button
+// // Working version
     generate_addresses_button.connect_clicked(clone!(
         #[strong] address_store,
         #[weak] derivation_label_text,
@@ -3071,6 +3072,7 @@ fn create_main_window(
             };
 
             address_generation_progress_bar.set_fraction(0.0);
+            address_generation_progress_bar.set_show_text(true);
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
@@ -3158,7 +3160,7 @@ fn create_main_window(
                 }
             ));
 
-            glib::timeout_add_local(std::time::Duration::from_millis(50), clone!(
+            glib::idle_add_local(clone!(
                 #[strong] address_store,
                 #[strong] app_messages_state,
                 #[strong] address_generation_progress_bar,
@@ -3200,13 +3202,187 @@ fn create_main_window(
         }
     ));
 
+//     // parallel tasks - shit
+//     generate_addresses_button.connect_clicked(clone!(
+//         #[strong] address_store,
+//         #[weak] derivation_label_text,
+//         #[weak] master_private_key_text,
+//         #[strong] app_messages_state,
+//         #[weak] address_start_spinbutton,
+//         #[weak] address_count_spinbutton,
+//         #[weak] address_options_hardened_address_checkbox,
+//         #[weak] address_generation_progress_bar,
+//         move |_| {
+//             let buffer = master_private_key_text.buffer();
+//             let start_iter = buffer.start_iter();
+//             let end_iter = buffer.end_iter();
+//             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
+// 
+//             if master_private_key_string.is_empty() {
+//                 let lock_app_messages = app_messages_state.lock().unwrap();
+//                 lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
+//                 return;
+//             }
+// 
+//             let wallet_settings = {
+//                 let lock = WALLET_SETTINGS.lock().unwrap();
+//                 lock.clone()
+//             };
+// 
+//             address_generation_progress_bar.set_fraction(0.0);
+//             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+//             let derivation_path = derivation_label_text.text();
+//             let hardened_address = address_options_hardened_address_checkbox.is_active();
+//             let address_start_point = address_start_spinbutton.text();
+//             let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
+//             let address_count = address_count_spinbutton.text();
+//             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
+//             
+//             let (tx, rx) = std::sync::mpsc::channel();
+//             let (tp, rp) = std::sync::mpsc::channel();
+//             let num_threads = 4;
+// 
+//             let progress_counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+//             let start_time = std::time::Instant::now();
+// 
+//             let mut handles = Vec::with_capacity(num_threads);
+//             
+//             let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
+//                 .iter()
+//                 .filter_map(|addr| addr.derivation_path.clone())
+//                 .collect();
+// 
+// 
+//             for thread_id in 0..num_threads {
+//                 let tx = tx.clone();
+//                 let tp = tp.clone();
+//             }
+//             
+//             
+//             let handle = std::thread::spawn(clone!(
+//                 move || {
+// 
+// 
+//                     let mut generated_count = 0;
+//                     let mut current_index = address_start_point_int;
+// 
+//                     while generated_count < address_count_int {
+//                         if current_index > WALLET_MAX_ADDRESSES as usize {
+//                             return;
+//                         }
+//                         
+//                         let full_address_derivation_path = if hardened_address {
+//                             format!("{}/{}'", derivation_path, current_index)
+//                         } else {
+//                             format!("{}/{}", derivation_path, current_index)
+//                         };
+// 
+//                         if !existing_addresses.contains(&full_address_derivation_path) {
+//                             let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+//                             let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+//                             let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+//                             let hash = wallet_settings.hash.clone().unwrap_or_default();
+//                             let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+//                             let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+//                             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+// 
+//                             if let Ok((address, public_key, private_key)) = keys::generate_address(
+//                                 coin_index,
+//                                 &full_address_derivation_path,
+//                                 master_private_key_bytes, 
+//                                 master_chain_code_bytes,
+//                                 &public_key_hash,
+//                                 &key_derivation, 
+//                                 &wallet_import_format,
+//                                 &hash,
+//                             ) {
+//                                 let new_entry = CryptoAddresses {
+//                                     coin_name: Some(coin_name.clone()),
+//                                     derivation_path: Some(full_address_derivation_path.clone()),
+//                                     address: Some(address.clone()),
+//                                     public_key: Some(public_key.clone()),
+//                                     private_key: Some(private_key.clone()),
+//                                 };
+// 
+//                                 CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
+// 
+//                                 if tx.send(new_entry).is_err() {
+//                                     break;
+//                                 }
+// 
+//                                 generated_count += 1;
+// 
+//                                 let progress_value = if address_count_int > 0 {
+//                                     (generated_count as f64) / (address_count_int as f64)
+//                                 } else {
+//                                     0.0
+//                                 };
+//         
+//                                 let _ = tp.send(progress_value);
+//                             }
+// 
+//                         }
+//                         current_index += 1;
+//                     }
+// 
+//                     let _ = tp.send(1.0);
+//                 }
+//             ));
+// 
+//             handles.push(handle);
+// 
+//             glib::idle_add_local(clone!(
+//                 #[strong] address_store,
+//                 #[strong] app_messages_state,
+//                 #[strong] address_generation_progress_bar,
+//                 move || {
+//                     while let Ok(new_entry) = rx.try_recv() {
+//                         let iter = address_store.append();
+//                         address_store.set(
+//                             &iter,
+//                             &[
+//                                 (0, &new_entry.coin_name.clone().unwrap_or_default()),
+//                                 (1, &new_entry.derivation_path.clone().unwrap_or_default()),
+//                                 (2, &new_entry.address.clone().unwrap_or_default()),
+//                                 (3, &new_entry.public_key.clone().unwrap_or_default()),
+//                                 (4, &new_entry.private_key.clone().unwrap_or_default()),
+//                             ],
+//                         );
+//                     }
+//             
+//                     while let Ok(progress) = rp.try_recv() {
+//                         address_generation_progress_bar.set_fraction(progress);
+//             
+//                         if progress >= 1.0 {
+//                             {
+//                                 let duration = start_time.elapsed();
+//                                 let message = format!("Address generation completed in {:.3?}", duration);
+// 
+//                                 let lock_app_messages = app_messages_state.lock().unwrap();
+//                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+//                                 
+//                             }
+//                             return glib::ControlFlow::Break;
+//                         }
+//                     }
+//             
+//                     glib::ControlFlow::Continue
+//                 }
+//             ));
+//             
+//         }
+//     ));
+
     address_options_clear_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] address_start_spinbutton,
+        #[weak] address_generation_progress_bar,
         move |_| {
             address_store.clear();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
+            address_generation_progress_bar.set_show_text(false);
+            address_generation_progress_bar.set_fraction(0.0);
         }
     ));
 
