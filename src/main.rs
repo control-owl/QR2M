@@ -2384,17 +2384,29 @@ fn create_main_window(
         }
     ));
 
+    delete_master_keys_button.connect_clicked(clone!(
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        move |_| {
+            master_private_key_text.buffer().set_text("");
+            master_public_key_text.buffer().set_text("");
+
+            let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+            wallet_settings.master_chain_code_bytes = None;
+            wallet_settings.master_private_key_bytes = None;
+            wallet_settings.master_public_key_bytes = None;
+        }
+    ));
+
     // JUMP: Action: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
         #[strong] coin_entry,
         #[weak] seed_text,
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
         #[strong] app_messages_state,
         move |_| {
-
-            CRYPTO_ADDRESS.clear();
-
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
             let end_iter = buffer.end_iter();
