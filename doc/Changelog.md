@@ -3,8 +3,8 @@
 - removed default config file and migrated to a struct settings
 - new gtk4 library
 - Application startup time:
-    - 1.30s (Arch linux latest)
-    - 4.50s (Windows 11 23H2 build 22631.4890)
+    - 1.30s Arch linux
+    - 4.50s Win11
 
 # version 0.72.0
 - theme: detect OS theme change

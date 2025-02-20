@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "ANU QRNG"
 // copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2024-11-17"
+// version = "2025-02-19"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -17,7 +17,6 @@ use std::{
 use rand::Rng;
 
 use crate::os::LOCAL_SETTINGS;
-// use crate::APPLICATION_SETTINGS;
 
 const ANU_TIMESTAMP_FILE: &str = "anu.timestamp";
 const ANU_RESPONSE_FILE: &str = "anu.api";

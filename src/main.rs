@@ -22,7 +22,6 @@ use std::{
     io::{self, BufRead, Write}, 
     time::SystemTime
 };
-// use glib::OptionArg;
 use hex;
 use rand::Rng;
 use gtk4 as gtk;
@@ -106,8 +105,17 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
 
 
 lazy_static::lazy_static! {
-    // static ref WALLET_SETTINGS: std::sync::Arc<std::sync::RwLock<WalletSettings>> = std::sync::Arc::new(std::sync::RwLock::new(WalletSettings::new()));
+    // GuiState - can not be used, no send and sync
+    // static ref GUI_STATE: std::sync::Arc<std::sync::Mutex<GuiState>> = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
+
+    static ref APP_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
+    static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
+    static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
+    static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
+    
+    // AppMessages - can not be used, no send and sync
+    // static ref APP_MESSAGES: std::sync::Arc<std::sync::Mutex<AppMessages>> = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new()));
 }
 
 
@@ -229,7 +237,6 @@ impl GuiState {
 
         println!("\t- Button: {:?}", name)
     }
-
 }
 
 
@@ -289,7 +296,7 @@ impl Default for AppSettings {
             gui_theme: Some("System".to_string()),
             gui_icons: Some("Thin".to_string()),
             gui_language: Some("English".to_string()),
-            gui_search: Some("Coin".to_string()),
+            gui_search: Some("Name".to_string()),
             gui_notification_timeout: Some(5),
             gui_mnemonic_length: Some(512),
             gui_log: Some(true),
@@ -316,10 +323,10 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
-    fn load_settings() -> Self {
+    fn load_settings() {
         println!("[+] {}", &t!("log.load_settings").to_string());
         
-        let mut settings = AppSettings::default();
+        let settings = AppSettings::default();
         
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
@@ -378,83 +385,122 @@ impl AppSettings {
         let anu_section = load_section(&config, "anu");
         let proxy_section = load_section(&config, "proxy");
 
-        settings.gui_save_size = get_bool(&gui_section, "save_size", settings.gui_save_size);
-        settings.gui_last_width = get_u32(&gui_section, "last_width", settings.gui_last_width);
-        settings.gui_last_height = get_u32(&gui_section, "last_height", settings.gui_last_height);
-        settings.gui_maximized = get_bool(&gui_section, "maximized", settings.gui_maximized);
-        settings.gui_theme = get_str(&gui_section, "theme", settings.gui_theme);
-        settings.gui_icons = get_str(&gui_section, "icons", settings.gui_icons);
-        settings.gui_language = get_str(&gui_section, "language", settings.gui_language);
-        settings.gui_search = get_str(&gui_section, "search", settings.gui_search);
-        settings.gui_notification_timeout = get_u32(&gui_section, "notification_timeout", settings.gui_notification_timeout);
-        settings.gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", settings.gui_mnemonic_length);
-        settings.gui_log = get_bool(&gui_section, "save_size", settings.gui_log);
-        settings.gui_log_level = get_str(&gui_section, "log_level", settings.gui_log_level);
+        let gui_save_size = get_bool(&gui_section, "save_size", settings.gui_save_size);
+        let gui_last_width = get_u32(&gui_section, "last_width", settings.gui_last_width);
+        let gui_last_height = get_u32(&gui_section, "last_height", settings.gui_last_height);
+        let gui_maximized = get_bool(&gui_section, "maximized", settings.gui_maximized);
+        let gui_theme = get_str(&gui_section, "theme", settings.gui_theme);
+        let gui_icons = get_str(&gui_section, "icons", settings.gui_icons);
+        let gui_language = get_str(&gui_section, "language", settings.gui_language);
+        let gui_search = get_str(&gui_section, "search", settings.gui_search);
+        let gui_notification_timeout = get_u32(&gui_section, "notification_timeout", settings.gui_notification_timeout);
+        let gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", settings.gui_mnemonic_length);
+        let gui_log = get_bool(&gui_section, "gui_log", settings.gui_log);
+        let gui_log_level = get_str(&gui_section, "log_level", settings.gui_log_level);
 
-        println!("\t- Save last window size: {:?}", settings.gui_save_size);
-        println!("\t- GUI width: {:?}", settings.gui_last_width);
-        println!("\t- GUI height: {:?}", settings.gui_last_height);
-        println!("\t- Maximized: {:?}", settings.gui_maximized);
-        println!("\t- Theme: {:?}", settings.gui_theme);
-        println!("\t- Icons: {:?}", settings.gui_icons);
-        println!("\t- Language: {:?}", settings.gui_language);
-        println!("\t- Search: {:?}", settings.gui_search);
-        println!("\t- Notification timeout: {:?}", settings.gui_notification_timeout);
-        println!("\t- Mnemonic passphrase length: {:?}", settings.gui_mnemonic_length);
-        println!("\t- Log enabled: {:?}", settings.gui_log);
-        println!("\t- Log level: {:?}", settings.gui_log_level);
+        println!("\t- Save last window size: {:?}", gui_save_size);
+        println!("\t- GUI width: {:?}", gui_last_width);
+        println!("\t- GUI height: {:?}", gui_last_height);
+        println!("\t- Maximized: {:?}", gui_maximized);
+        println!("\t- Theme: {:?}", gui_theme);
+        println!("\t- Icons: {:?}", gui_icons);
+        println!("\t- Language: {:?}", gui_language);
+        println!("\t- Search: {:?}", gui_search);
+        println!("\t- Notification timeout: {:?}", gui_notification_timeout);
+        println!("\t- Mnemonic passphrase length: {:?}", gui_mnemonic_length);
+        println!("\t- Log enabled: {:?}", gui_log);
+        println!("\t- Log level: {:?}", gui_log_level);
 
-        settings.wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
-        settings.wallet_entropy_length = get_u32(&wallet_section, "entropy_length", settings.wallet_entropy_length);
-        settings.wallet_bip = get_u32(&wallet_section, "bip", settings.wallet_bip);
-        settings.wallet_address_count = get_u32(&wallet_section, "address_count", settings.wallet_address_count);
-        settings.wallet_hardened_address = get_bool(&wallet_section, "hardened_address", settings.wallet_hardened_address);
+        let wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
+        let wallet_entropy_length = get_u32(&wallet_section, "entropy_length", settings.wallet_entropy_length);
+        let wallet_bip = get_u32(&wallet_section, "bip", settings.wallet_bip);
+        let wallet_address_count = get_u32(&wallet_section, "address_count", settings.wallet_address_count);
+        let wallet_hardened_address = get_bool(&wallet_section, "hardened_address", settings.wallet_hardened_address);
 
-        println!("\t- Entropy source: {:?}", settings.wallet_entropy_source);
-        println!("\t- Entropy length: {:?}", settings.wallet_entropy_length);
-        println!("\t- BIP: {:?}", settings.wallet_bip);
-        println!("\t- Address count: {:?}", settings.wallet_address_count);
-        println!("\t- Hard address: {:?}", settings.wallet_hardened_address);
+        println!("\t- Entropy source: {:?}", wallet_entropy_source);
+        println!("\t- Entropy length: {:?}", wallet_entropy_length);
+        println!("\t- BIP: {:?}", wallet_bip);
+        println!("\t- Address count: {:?}", wallet_address_count);
+        println!("\t- Hard address: {:?}", wallet_hardened_address);
 
-        settings.anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
-        settings.anu_data_format = get_str(&anu_section, "data_format", settings.anu_data_format);
-        settings.anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
-        settings.anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
-        settings.anu_log = get_bool(&anu_section, "log", settings.anu_log);
+        let anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
+        let anu_data_format = get_str(&anu_section, "data_format", settings.anu_data_format);
+        let anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
+        let anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
+        let anu_log = get_bool(&anu_section, "log", settings.anu_log);
 
-        println!("\t- Use ANU: {:?}", settings.anu_enabled);
-        println!("\t- ANU data format: {:?}", settings.anu_data_format);
-        println!("\t- ANU array length: {:?}", settings.anu_array_length);
-        println!("\t- ANU hex block size: {:?}", settings.anu_hex_block_size);
-        println!("\t- ANU log: {:?}", settings.anu_log);
+        println!("\t- Use ANU: {:?}", anu_enabled);
+        println!("\t- ANU data format: {:?}", anu_data_format);
+        println!("\t- ANU array length: {:?}", anu_array_length);
+        println!("\t- ANU hex block size: {:?}", anu_hex_block_size);
+        println!("\t- ANU log: {:?}", anu_log);
 
-        settings.proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
-        settings.proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
-        settings.proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
-        settings.proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
-        settings.proxy_script_address = get_str(&proxy_section, "script_address", settings.proxy_script_address);
-        settings.proxy_login_credentials = get_bool(&proxy_section, "login_credentials", settings.proxy_login_credentials);
-        settings.proxy_login_username = get_str(&proxy_section, "login_username", settings.proxy_login_username);
-        settings.proxy_login_password = get_str(&proxy_section, "login_password", settings.proxy_login_password);
-        settings.proxy_use_ssl = get_bool(&proxy_section, "use_ssl", settings.proxy_use_ssl);
-        settings.proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", settings.proxy_ssl_certificate);
-        settings.proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", settings.proxy_retry_attempts);
-        settings.proxy_timeout = get_u32(&proxy_section, "timeout", settings.proxy_timeout);
+        let proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
+        let proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
+        let proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
+        let proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
+        let proxy_script_address = get_str(&proxy_section, "script_address", settings.proxy_script_address);
+        let proxy_login_credentials = get_bool(&proxy_section, "login_credentials", settings.proxy_login_credentials);
+        let proxy_login_username = get_str(&proxy_section, "login_username", settings.proxy_login_username);
+        let proxy_login_password = get_str(&proxy_section, "login_password", settings.proxy_login_password);
+        let proxy_use_ssl = get_bool(&proxy_section, "use_ssl", settings.proxy_use_ssl);
+        let proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", settings.proxy_ssl_certificate);
+        let proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", settings.proxy_retry_attempts);
+        let proxy_timeout = get_u32(&proxy_section, "timeout", settings.proxy_timeout);
         
-        println!("\t- Use proxy: {:?}", settings.proxy_status);
-        println!("\t- Proxy server address: {:?}", settings.proxy_server_address);
-        println!("\t- Proxy server port: {:?}", settings.proxy_server_port);
-        println!("\t- Use proxy PAC: {:?}", settings.proxy_use_pac);
-        println!("\t- Proxy script address: {:?}", settings.proxy_script_address);
-        println!("\t- Use proxy login credentials: {:?}", settings.proxy_login_credentials);
-        println!("\t- Proxy username: {:?}", settings.proxy_login_username);
-        println!("\t- Proxy password: {:?}", settings.proxy_login_password);
-        println!("\t- Use proxy SSL: {:?}", settings.proxy_use_ssl);
-        println!("\t- Proxy SSL certificate: {:?}", settings.proxy_ssl_certificate);
-        println!("\t- Proxy retry attempts: {:?}", settings.proxy_retry_attempts);
-        println!("\t- Proxy timeout: {:?}", settings.proxy_timeout);
+        println!("\t- Use proxy: {:?}", proxy_status);
+        println!("\t- Proxy server address: {:?}", proxy_server_address);
+        println!("\t- Proxy server port: {:?}", proxy_server_port);
+        println!("\t- Use proxy PAC: {:?}", proxy_use_pac);
+        println!("\t- Proxy script address: {:?}", proxy_script_address);
+        println!("\t- Use proxy login credentials: {:?}", proxy_login_credentials);
+        println!("\t- Proxy username: {:?}", proxy_login_username);
+        println!("\t- Proxy password: {:?}", proxy_login_password);
+        println!("\t- Use proxy SSL: {:?}", proxy_use_ssl);
+        println!("\t- Proxy SSL certificate: {:?}", proxy_ssl_certificate);
+        println!("\t- Proxy retry attempts: {:?}", proxy_retry_attempts);
+        println!("\t- Proxy timeout: {:?}", proxy_timeout);
+        
+        let mut application_settings = APP_SETTINGS.lock().unwrap();
+        application_settings.wallet_entropy_source = wallet_entropy_source.clone();
+        application_settings.wallet_entropy_length = wallet_entropy_length.clone();
+        application_settings.wallet_bip = wallet_bip.clone();
+        application_settings.wallet_address_count = wallet_address_count.clone();
+        application_settings.wallet_hardened_address = wallet_hardened_address.clone();
 
-        settings
+        application_settings.gui_save_size = gui_save_size.clone();
+        application_settings.gui_last_width = gui_last_width.clone();
+        application_settings.gui_last_height = gui_last_height.clone();
+        application_settings.gui_maximized = gui_maximized.clone();
+        application_settings.gui_theme = gui_theme.clone();
+        application_settings.gui_icons = gui_icons.clone();
+        application_settings.gui_language = gui_language.clone();
+        application_settings.gui_search = gui_search.clone();
+        application_settings.gui_notification_timeout = gui_notification_timeout.clone();
+        application_settings.gui_mnemonic_length = gui_mnemonic_length.clone();
+        application_settings.gui_log = gui_log.clone();
+        application_settings.gui_log_level = gui_log_level.clone();
+
+        application_settings.anu_enabled = anu_enabled.clone();
+        application_settings.anu_data_format = anu_data_format.clone();
+        application_settings.anu_array_length = anu_array_length.clone();
+        application_settings.anu_hex_block_size = anu_hex_block_size.clone();
+        application_settings.anu_log = anu_log.clone();
+
+        application_settings.proxy_status = proxy_status.clone();
+        application_settings.proxy_server_address = proxy_server_address.clone();
+        application_settings.proxy_server_port = proxy_server_port.clone();
+        application_settings.proxy_use_pac = proxy_use_pac.clone();
+        application_settings.proxy_script_address = proxy_script_address.clone();
+        application_settings.proxy_login_credentials = proxy_login_credentials.clone();
+        application_settings.proxy_login_username = proxy_login_username.clone();
+        application_settings.proxy_login_password = proxy_login_password.clone();
+        application_settings.proxy_use_ssl = proxy_use_ssl.clone();
+        application_settings.proxy_ssl_certificate = proxy_ssl_certificate.clone();
+        application_settings.proxy_retry_attempts = proxy_retry_attempts.clone();
+        application_settings.proxy_timeout = proxy_timeout.clone();
+
+        
     }
 
     fn update_value(
@@ -471,7 +517,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.wallet_entropy_source {
                         self.wallet_entropy_source = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -481,7 +526,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_entropy_length {
                         self.wallet_entropy_length = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -491,7 +535,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_bip {
                         self.wallet_bip = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -501,7 +544,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_address_count {
                         self.wallet_address_count = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -510,7 +552,6 @@ impl AppSettings {
                     if Some(value) != self.wallet_hardened_address {
                         self.wallet_hardened_address = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -519,7 +560,6 @@ impl AppSettings {
                     if Some(value) != self.gui_save_size {
                         self.gui_save_size = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -529,7 +569,6 @@ impl AppSettings {
                     if Some(value) != self.gui_last_width {
                         self.gui_last_width = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -539,7 +578,6 @@ impl AppSettings {
                     if Some(value) != self.gui_last_height {
                         self.gui_last_height = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -548,7 +586,6 @@ impl AppSettings {
                     if Some(value) != self.gui_maximized {
                         self.gui_maximized = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -557,7 +594,6 @@ impl AppSettings {
                     if Some(new_theme.to_string()) != self.gui_theme {
                         self.gui_theme = Some(new_theme.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
 
                         let preferred_theme = match new_theme {
                             "Light" => adw::ColorScheme::ForceLight,
@@ -591,7 +627,6 @@ impl AppSettings {
                         } else {
                             println!("State in gui_icons is None");
                         }
-                        self.save_settings();
                     }
                 } else {
                     eprintln!("Received invalid value for gui_icons: {:?}", new_value);
@@ -602,7 +637,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.gui_language {
                         self.gui_language = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -611,7 +645,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.gui_search {
                         self.gui_search = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -621,7 +654,6 @@ impl AppSettings {
                     if Some(value) != self.gui_notification_timeout {
                         self.gui_notification_timeout = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -631,7 +663,6 @@ impl AppSettings {
                     if Some(value) != self.gui_mnemonic_length {
                         self.gui_mnemonic_length = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -643,18 +674,11 @@ impl AppSettings {
                         if let Some(state) = gui_state {
                             let mut gui_state_lock = state.lock().unwrap();
                             gui_state_lock.gui_log_status = Some(value);
-
-                            if value {
-                                println!("Log status: {:?}", value);
-                            } else {
-                                println!("Log is disabled");
-                            }
                         } else {
                             println!("State in gui_theme is None");
                         }
 
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -663,7 +687,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.gui_log_level {
                         self.gui_log_level = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -672,7 +695,6 @@ impl AppSettings {
                     if Some(value) != self.anu_enabled {
                         self.anu_enabled = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -681,7 +703,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.anu_data_format {
                         self.anu_data_format = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -691,7 +712,6 @@ impl AppSettings {
                     if Some(value) != self.anu_array_length {
                         self.anu_array_length = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -701,7 +721,6 @@ impl AppSettings {
                     if Some(value) != self.anu_hex_block_size {
                         self.anu_hex_block_size = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -710,7 +729,6 @@ impl AppSettings {
                     if Some(value) != self.anu_log {
                         self.anu_log = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -719,7 +737,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_status {
                         self.proxy_status = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -728,7 +745,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_server_address {
                         self.proxy_server_address = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -738,7 +754,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_server_port {
                         self.proxy_server_port = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -747,7 +762,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_use_pac {
                         self.proxy_use_pac = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -756,7 +770,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_script_address {
                         self.proxy_script_address = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -765,7 +778,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_login_credentials {
                         self.proxy_login_credentials = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -774,7 +786,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_login_username {
                         self.proxy_login_username = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -783,7 +794,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_login_password {
                         self.proxy_login_password = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -792,7 +802,6 @@ impl AppSettings {
                     if Some(value) != self.proxy_use_ssl {
                         self.proxy_use_ssl = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -801,7 +810,6 @@ impl AppSettings {
                     if Some(value.to_string()) != self.proxy_ssl_certificate {
                         self.proxy_ssl_certificate = Some(value.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                        self.save_settings();
                     }
                 }
             },
@@ -811,7 +819,6 @@ impl AppSettings {
 
     fn save_settings(&self) {
         println!("[+] {}", &t!("log.app_settings.save_settings").to_string());
-
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
@@ -821,7 +828,7 @@ impl AppSettings {
         
         let mut doc = config_str.parse::<toml_edit::DocumentMut>()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to parse config string: {}", e)))
-            .expect("\t- Problem with mut doc");
+            .unwrap_or(toml_edit::DocumentMut::new());
     
         {
             let wallet_section = doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
@@ -957,7 +964,7 @@ struct CryptoAddresses {
 
 
 struct AppMessages {
-    info_bar: Option<gtk::Revealer>,
+    gui_info_bar: Option<gtk::Revealer>,
     message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     processing: std::sync::Arc<std::sync::Mutex<bool>>,
 }
@@ -967,7 +974,7 @@ impl AppMessages {
         info_bar: Option<gtk::Revealer>,
     ) -> Self {
         Self {
-            info_bar: info_bar,
+            gui_info_bar: info_bar,
             message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
             processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
         }
@@ -998,7 +1005,7 @@ impl AppMessages {
     fn start_message_processor(&self) {
         println!("[+] {}", &t!("log.app_messages.start_message_processor").to_string());
 
-        let info_bar = match &self.info_bar {
+        let info_bar = match &self.gui_info_bar {
             Some(info_bar) => info_bar.clone(),
             None => {
                 eprintln!("\t- Error: info_bar is not initialized.");
@@ -1143,19 +1150,15 @@ impl AppLog {
         let is_active = status.lock().unwrap();
         println!("\t- AppLog status: {}", is_active);
         
-        // if *is_active {
-        //     println!("AppLog is active....");
-        // } else {
-        //     println!("AppLog is inactive. trying to activate...");
-        //     return;
-        //     // *is_active = true;
-        //     
-        // }
+        let new_icon = match *is_active {
+            true => "notif",
+            false => "log",
+        };
         
         let lock_gui_state = gui_state.lock().unwrap();
     
         if let Some(texture_map) = &lock_gui_state.gui_button_images {
-            if let Some(new_texture) = texture_map.get("notif") {
+            if let Some(new_texture) = texture_map.get(new_icon) {
                 
                 let mut lock_buttons = lock_gui_state.gui_main_buttons.lock().unwrap();
 
@@ -1194,9 +1197,9 @@ struct DerivationPath {
     purpose: Option<u32>,
 }
 
-impl DerivationPath {
+impl Default for DerivationPath {
     fn default() -> Self {
-        Self {
+        DerivationPath {
             bip: Some(44),
             hardened_bip: Some(true),
             coin: Some(0),
@@ -1206,7 +1209,9 @@ impl DerivationPath {
             purpose: Some(0),
         }
     }
+}
 
+impl DerivationPath {
     fn update_field(&mut self, field: &str, value: Option<FieldValue>) {
         match field {
             "bip" => self.bip = value.and_then(|v| v.into_u32()),
@@ -1257,8 +1262,10 @@ fn main() {
     if let Err(err) = os::create_local_files() {
         eprintln!("\t- Error creating local config files: {}", err);
     } else {
-        println!("\t- Config file loaded");  
+        println!("\t- Local files created");  
     }
+
+    AppSettings::load_settings();
 
     let application = adw::Application::builder()
         .application_id("wtf.r_o0_t.qr2m")
@@ -1302,7 +1309,6 @@ fn setup_app_actions(
     application: adw::Application, 
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
-    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>,
 ) {
     println!("[+] {}", &t!("log.setup_app_actions").to_string());
     
@@ -1334,12 +1340,9 @@ fn setup_app_actions(
         }
     ));
 
-    save.connect_activate(clone!(
-        #[strong] wallet_settings_state,
-        move |_action, _parameter| {
-            save_wallet_to_file(wallet_settings_state.clone());
-        }
-    ));
+    save.connect_activate(|_action, _parameter| {
+        save_wallet_to_file();
+    });
 
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
@@ -1390,33 +1393,165 @@ fn setup_app_actions(
     application.add_action(&test);
 }
 
-fn create_gui_tab_seed(
+fn create_main_window(
+    application: adw::Application,
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
-    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
-    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>,
+    start_time: Option<std::time::Instant>,
 
-    anu_enabled: Option<bool>,
-    wallet_entropy_source: Option<String>,
-    wallet_entropy_length: Option<u32>,
-    default_mnemonic_length: Option<u32>,
-) -> (
-    gtk::Box,           // entropy_main_box
-    gtk::TextView,      // entropy_text
-    gtk::Entry,         // mnemonic_passphrase_text
-    gtk::TextView,      // mnemonic_words_text
-    gtk::TextView,      // seed_text
 ) {
-    let lock_gui_state = gui_state.lock().unwrap();
-    let random_mnemonic_passphrase_button = lock_gui_state
-        .gui_main_buttons
-            .lock()
-                .expect("Failed to lock gui_main_buttons")
-                .get("random")
-                .expect("Button 'Random' not found")
-                .first()
-                .expect("No buttons in 'Random' entry")
-                .clone();
+    println!("[+] {}", &t!("log.create_main_window").to_string());
+
+    let window = gtk::ApplicationWindow::builder()
+        .application(&application)
+        .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
+        .show_menubar(true)
+        .decorated(true)
+        .build();
+
     
+    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+    let window_width = lock_app_settings.gui_last_width.unwrap();
+    let window_height = lock_app_settings.gui_last_height.unwrap();
+    let gui_language = lock_app_settings.gui_language.clone().unwrap();
+
+    window.set_width_request(window_width as i32);
+    window.set_height_request(window_height as i32);
+    
+    os::switch_locale(&gui_language);
+    
+    qr2m_lib::setup_css();
+
+    let header_bar = gtk::HeaderBar::new();
+    let info_bar = gtk::Revealer::new();
+    info_bar.set_transition_type(gtk::RevealerTransitionType::SlideDown);
+    info_bar.set_hexpand(true);
+    info_bar.add_css_class("info-bar");
+    window.set_titlebar(Some(&header_bar));
+
+    let button_names = ["new", "open", "save", "about", "settings", "log", "random"];
+    let mut buttons = std::collections::HashMap::new();
+
+    for &name in &button_names {
+        let button = gtk::Button::new();
+        buttons.insert(name.to_string(), std::sync::Arc::new(button));
+    }
+
+    let button_tooltips = [
+        ("new", "Ctrl+N"),
+        ("open", "Ctrl+O"),
+        ("save", "Ctrl+S"),
+        ("about", "F1"),
+        ("settings", "F5"),
+        ("log", "F11"),
+        ("random", ""),
+    ];
+
+    for (name, shortcut) in button_tooltips {
+        if let Some(button) = buttons.get(name) {
+            button.set_tooltip_text(Some(&t!(format!("UI.main.tooltips.{}", name), value = shortcut).to_string()));
+        }
+    }
+
+    let gui_theme = lock_app_settings.gui_theme.clone().unwrap();
+    let gui_icons = lock_app_settings.gui_icons.clone().unwrap();
+    let app_log_status = lock_app_settings.gui_log.unwrap();
+
+    if let Ok(mut lock_gui_state) = gui_state.lock() {
+        lock_gui_state.gui_language = Some(gui_language);
+        lock_gui_state.gui_theme = Some(gui_theme);
+        lock_gui_state.gui_icon_theme = Some(gui_icons);
+        lock_gui_state.gui_log_status = Some(app_log_status);
+
+        for (name, button) in &buttons {
+            lock_gui_state.register_button(name.clone(), button.clone());
+        }
+
+        lock_gui_state.reload_gui_theme();
+        lock_gui_state.reload_gui_icons();
+    }
+
+    {
+        let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
+        settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
+            #[strong] gui_state,
+            move |_| {
+                if let Ok(mut lock_gui_state) = gui_state.lock() {
+                    lock_gui_state.reload_gui_icons();
+                };
+            }
+        ));
+    }
+
+    {
+        let mut lock_app_log = APP_LOG.lock().unwrap();
+        lock_app_log.status = std::sync::Arc::new(std::sync::Mutex::new(app_log_status));
+        
+        lock_app_log.initialize_app_log(gui_state.clone());
+    }
+
+
+    let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
+        Some(info_bar.clone()),
+    )));
+
+    setup_app_actions(
+        application.clone(),
+        gui_state.clone(),
+        app_messages_state.clone(),
+    );
+
+    header_bar.pack_start(&*buttons["new"]);
+    header_bar.pack_start(&*buttons["open"]);
+    header_bar.pack_start(&*buttons["save"]);
+    header_bar.pack_end(&*buttons["settings"]);
+    header_bar.pack_end(&*buttons["about"]);
+    header_bar.pack_end(&*buttons["log"]);
+    
+
+    // JUMP: Action: Settings button action
+    buttons["settings"].connect_clicked(clone!(
+        #[strong] gui_state,
+        #[strong] app_messages_state,
+        move |_| {
+            let settings_window = create_settings_window(gui_state.clone(), app_messages_state.clone());
+            settings_window.show();
+        }
+    ));
+    
+    buttons["about"].connect_clicked(move |_| {
+        create_about_window();
+    });
+
+    buttons["log"].connect_clicked(clone!(
+        #[strong] gui_state,
+        move |_| {
+            let log_window = create_log_window(gui_state.clone());
+            log_window.show();
+        }
+    ));
+
+    buttons["new"].connect_clicked(clone!(
+        #[strong] application,
+        #[strong] gui_state,
+        move |_| {
+            create_main_window(
+                application.clone(),
+                gui_state.clone(),
+                None,
+            );
+        }
+    ));
+
+    buttons["save"].connect_clicked(move |_| {
+        save_wallet_to_file();
+    });
+    
+
+    let stack = Stack::new();
+    let stack_sidebar = StackSidebar::new();
+    stack_sidebar.set_stack(&stack);
+
+    // JUMP: Sidebar 1: Seed
     let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     entropy_main_box.set_margin_top(10);
     entropy_main_box.set_margin_start(10);
@@ -1432,6 +1567,7 @@ fn create_gui_tab_seed(
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
 
+    let anu_enabled = lock_app_settings.anu_enabled;
     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
     } else {
@@ -1441,27 +1577,31 @@ fn create_gui_tab_seed(
     let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
+    
+    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone().unwrap();
     let default_entropy_source = valid_entropy_source_as_strings
         .iter()
-        .position(|s| *s == wallet_entropy_source.clone().unwrap()) 
+        .position(|s| *s == wallet_entropy_source) 
         .unwrap_or(0);
-
+    
     entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
     entropy_source_box.set_hexpand(true);
     entropy_source_frame.set_hexpand(true);
-
+    
     // Entropy length
     let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let entropy_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.length").to_string()));
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
     let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    
+    let wallet_entropy_length = lock_app_settings.wallet_entropy_length.unwrap();
     let default_entropy_length = valid_entropy_lengths_as_strings
         .iter()
-        .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length.unwrap())
+        .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length)
         .unwrap_or(0);
 
-    entropy_length_dropdown.set_selected(default_entropy_length.try_into().unwrap());
+    entropy_length_dropdown.set_selected(default_entropy_length as u32);
     entropy_length_box.set_hexpand(true);
     entropy_length_frame.set_hexpand(true);
 
@@ -1471,9 +1611,8 @@ fn create_gui_tab_seed(
     let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
-    // TODO: get value from settings
     let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
-        default_mnemonic_length.unwrap_or(256) as f64,
+        8.0 * 32.0,
         8.0 * 2.0,
         8.0 * 128.0,
         1.0,
@@ -1482,7 +1621,6 @@ fn create_gui_tab_seed(
     );
     let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
     let mnemonic_passphrase_length_info = gtk::Entry::new();
-        
     mnemonic_passphrase_items_box.set_hexpand(true);
     mnemonic_passphrase_scale_box.set_hexpand(true);
     mnemonic_passphrase_length_box.set_hexpand(true);
@@ -1490,48 +1628,61 @@ fn create_gui_tab_seed(
 
     // let value = entropy_source_dropdown.selected() as usize;
     // let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+    // let source = selected_entropy_source_value.unwrap();
 
+    let default_mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap();
+    
     mnemonic_passphrase_length_info.set_editable(false);
     mnemonic_passphrase_length_info.set_width_request(50);
     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
-    mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.unwrap().to_string());
-
+    mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.to_string());
+    
     // Mnemonic passphrase
     let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
     let mnemonic_passphrase_text = gtk::Entry::new();
-
+    
     mnemonic_passphrase_main_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
-    
+
+    // if *source == "RNG+" {
+    //     mnemonic_passphrase_length_box.set_visible(true);
+    //     random_mnemonic_passphrase_button.set_visible(true);
+    // } else {
+    //     mnemonic_passphrase_length_box.set_visible(false);
+    //     random_mnemonic_passphrase_button.set_visible(false);
+    // }
+
     let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+
     seed_buttons_box.set_halign(gtk::Align::Center);
 
     // Generate entropy button
     let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_entropy_button = gtk::Button::new();
-
+    generate_entropy_button.set_width_request(200);
     generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
     generate_entropy_box.set_halign(gtk::Align::Center);
     generate_entropy_box.set_margin_top(10);
-
+    
     // Delete entropy button
     let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let delete_entropy_button = gtk::Button::new();
-
+    delete_entropy_button.set_width_request(200);
+    
     delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
     delete_entropy_box.set_halign(gtk::Align::Center);
     delete_entropy_box.set_margin_top(10);
 
     // Body
     let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-
+    
     // Entropy string
     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy").to_string()));
     let entropy_text = gtk::TextView::new();
-
+    
     entropy_text.set_vexpand(true);
     entropy_text.set_hexpand(true);
     entropy_text.set_wrap_mode(gtk::WrapMode::Char);
@@ -1545,7 +1696,7 @@ fn create_gui_tab_seed(
     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words").to_string()));
     let mnemonic_words_text = gtk::TextView::new();
-
+    
     mnemonic_words_box.set_hexpand(true);
     mnemonic_words_text.set_vexpand(true);
     mnemonic_words_text.set_hexpand(true);
@@ -1553,12 +1704,12 @@ fn create_gui_tab_seed(
     mnemonic_words_text.set_left_margin(5);
     mnemonic_words_text.set_top_margin(5);
     mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
-
+    
     // Seed
     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed").to_string()));
     let seed_text = gtk::TextView::new();
-
+    
     seed_box.set_hexpand(true);
     seed_text.set_editable(false);
     seed_text.set_vexpand(true);
@@ -1592,7 +1743,7 @@ fn create_gui_tab_seed(
     mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
     mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
     mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
-    mnemonic_passphrase_content_box.append(&*random_mnemonic_passphrase_button.clone());
+    mnemonic_passphrase_content_box.append(&*buttons["random"]);
     seed_frame.set_child(Some(&seed_text));
     mnemonic_words_box.append(&mnemonic_words_frame);
     mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
@@ -1602,215 +1753,15 @@ fn create_gui_tab_seed(
     body_box.append(&seed_box);
     entropy_main_box.append(&entropy_header_box);
     entropy_main_box.append(&body_box);
-
-    generate_entropy_button.connect_clicked(clone!(
-        #[strong] app_messages_state,
-        #[strong] wallet_settings_state,
-        #[weak] entropy_source_dropdown,
-        #[weak] entropy_text,
-        #[weak] entropy_length_dropdown,
-        #[weak] mnemonic_words_text,
-        #[weak] mnemonic_passphrase_text,
-        #[weak] seed_text,
-        move |_| {
-            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
-            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
-            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
-            let source = selected_entropy_source_value.unwrap().to_string();
-            let entropy_length = selected_entropy_length_value.unwrap(); 
-
-            let pre_entropy = keys::generate_entropy(
-                Some(wallet_settings_state.clone()),
-                &source,
-                *entropy_length as u64,
-            );
-
-            if !pre_entropy.is_empty() {
-                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
-                println!("\t Entropy checksum: {:?}", checksum);
-                
-                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-                
-                println!("\t Final entropy: {:?}", full_entropy);
-                entropy_text.buffer().set_text(&full_entropy);
-                
-                let mnemonic_words = keys::generate_mnemonic_words(Some(wallet_settings_state.clone()), &full_entropy);
-                mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                
-                let passphrase_text = mnemonic_passphrase_text.text().to_string();
-
-                let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
-                
-                println!("\t Seed (hex): {:?}", seed_hex);
-                
-                {
-                    let mut wallet_settings = wallet_settings_state.lock().unwrap();
-                    wallet_settings.entropy_checksum = Some(checksum.clone());
-                    wallet_settings.entropy_string = Some(full_entropy.clone());
-                    wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
-                    wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
-                    wallet_settings.seed = Some(seed_hex.clone());
-                }
-
-                // master_private_key_text.buffer().set_text("");
-                // master_public_key_text.buffer().set_text("");
-
-            } else {
-                eprintln!("{}", &t!("error.entropy.empty"));
-                let lock_app_messages = app_messages_state.lock().unwrap();
-                lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
-            }
-        }
-    ));
-
-
-    delete_entropy_button.connect_clicked(clone!(
-        #[weak] entropy_text,
-        #[weak] mnemonic_words_text,
-        #[weak] mnemonic_passphrase_text,
-        #[weak] seed_text,
-        #[strong] wallet_settings_state,
-        // #[weak] master_private_key_text,
-        // #[weak] master_public_key_text,
-        // #[weak] address_store,
-        // #[weak] save_wallet_button,
-        move |_| {
-            mnemonic_passphrase_text.buffer().set_text("");
-            entropy_text.buffer().set_text("");
-            mnemonic_words_text.buffer().set_text("");
-            seed_text.buffer().set_text("");
-            // master_private_key_text.buffer().set_text("");
-            // master_public_key_text.buffer().set_text("");
-            // address_store.clear();
-
-            {
-                let mut wallet_settings = wallet_settings_state.lock().unwrap();
-                wallet_settings.entropy_checksum = None;
-                wallet_settings.entropy_string = None;
-                wallet_settings.mnemonic_passphrase = None;
-                wallet_settings.mnemonic_words = None;
-                wallet_settings.seed = None;
-                // WALLET_SETTINGS.clear_poison();
-            }
-    }));
-
-    entropy_source_dropdown.connect_selected_notify(clone!(
-        #[weak] generate_entropy_button,
-        #[strong] random_mnemonic_passphrase_button,
-        move |entropy_source_dropdown| {
-            let value = entropy_source_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
-            let source = selected_entropy_source_value.unwrap();
     
-            if *source == "RNG+" {
-                mnemonic_passphrase_length_box.set_visible(true);
-                random_mnemonic_passphrase_button.set_visible(true);
-            } else {
-                mnemonic_passphrase_length_box.set_visible(false);
-                random_mnemonic_passphrase_button.set_visible(false);
-            }
-
-            if *source == "File" {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
-            } else {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
-            }
-        }
-    ));
-
-    
-    mnemonic_passphrase_text.connect_changed(clone!(
-        // #[weak] generate_entropy_button,
-        #[weak] entropy_text,
-        #[weak] mnemonic_words_text,
-        #[weak] seed_text,
-        #[strong] wallet_settings_state,
-        // #[weak] mnemonic_passphrase_length_info,
-        move |mnemonic_passphrase_text| {
-            let entropy_buffer = entropy_text.buffer();
-            let start_iter = entropy_buffer.start_iter();
-            let end_iter = entropy_buffer.end_iter();
-            let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
-
-            if entropy_text != "" {
-                let entropy_length = entropy_text.len();
-                let cut_entropy = entropy_length / 32;
-                let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
-
-                let seed = keys::generate_bip39_seed(&new_pre_entropy, &mnemonic_passphrase_text.buffer().text());
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
-
-                let final_entropy = entropy_text.clone().to_string();
-                let mnemonic_words_buffer = mnemonic_words_text.buffer();
-                let start_iter = mnemonic_words_buffer.start_iter();
-                let end_iter = mnemonic_words_buffer.end_iter();
-                let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
-                let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
-
-                {
-                    let mut wallet_settings = wallet_settings_state.lock().unwrap();
-                    wallet_settings.entropy_string = Some(final_entropy);
-                    wallet_settings.mnemonic_words = Some(final_mnemonic_words);
-                    wallet_settings.mnemonic_passphrase = Some(final_mnemonic_passphrase);
-                    wallet_settings.seed = Some(seed_hex.clone());
-                    // WALLET_SETTINGS.clear_poison();
-                }
-            }
-        }
-    ));
-    
-    mnemonic_passphrase_scale.connect_value_changed(clone!(
-        #[weak] mnemonic_passphrase_length_info,
-        #[strong] random_mnemonic_passphrase_button,
-        move |mnemonic_passphrase_scale| {
-            let scale_value = mnemonic_passphrase_scale.value() as u32;
-            mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
-            random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
-        }
-    ));
+    // Start Seed sidebar
+    stack.add_titled(
+        &entropy_main_box,
+        Some("sidebar-seed"), 
+        &t!("UI.main.seed").to_string());
 
 
-    random_mnemonic_passphrase_button.connect_clicked(clone!(
-        #[weak] mnemonic_passphrase_text,
-        #[weak] mnemonic_passphrase_scale,
-        move |_| {
-            let scale_value = mnemonic_passphrase_scale.value() as u32;
-
-            let mnemonic_rng_string: String = (0..scale_value)
-                        .map(|_| char::from(rand::rng().random_range(32..127)))
-                        .collect();
-            println!("\t RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
-            mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
-        }
-    ));
-
-
-
-
-
-
-
-    // return ----------------------------------------------------
-    // gtk::Box,           // entropy_main_box
-    // gtk::TextView,      // entropy_text
-    // gtk::Entry,         // mnemonic_passphrase_text
-    // gtk::TextView,      // mnemonic_words_text
-    // gtk::TextView,      // seed_text
-
-
-    (entropy_main_box, entropy_text, mnemonic_passphrase_text, mnemonic_words_text, seed_text)
-}
-
-fn create_gui_tab_keys(
-    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
-    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>,
-    gui_search: Option<String>,
-
-) -> gtk::Box {
+    // JUMP: Sidebar 2: Coin
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let coin_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
@@ -1897,9 +1848,10 @@ fn create_gui_tab_keys(
     let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings.iter().map(|s| s.as_ref()).collect();
     let coin_search_filter_dropdown = gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
     
+    let gui_search = lock_app_settings.gui_search.clone().unwrap();
     let default_coin_search_filter = valid_coin_search_filter_as_strings
         .iter()
-        .position(|s| *s == gui_search.clone().unwrap()) 
+        .position(|s| *s == gui_search) 
         .unwrap_or(0);
     
     if let Ok(index) = default_coin_search_filter.try_into() {
@@ -1922,14 +1874,14 @@ fn create_gui_tab_keys(
     coin_db::create_coin_completion_model();
 
     let coin_store = coin_db::create_coin_store();
-    // let coin_store = std::rc::Rc::new(std::cell::RefCell::new(coin_store));
+    let coin_store = std::rc::Rc::new(std::cell::RefCell::new(coin_store));
     let coin_tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 14]);
-    // let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
+    let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
     let coin_treeview = gtk::TreeView::new();
-    // let coin_treeview = std::rc::Rc::new(std::cell::RefCell::new(coin_treeview));
+    let coin_treeview = std::rc::Rc::new(std::cell::RefCell::new(coin_treeview));
     
-    coin_treeview.set_vexpand(true);
-    coin_treeview.set_headers_visible(true);
+    coin_treeview.borrow().set_vexpand(true);
+    coin_treeview.borrow().set_headers_visible(true);
 
     let columns = [
         &t!("UI.main.database.column.status").to_string(),
@@ -1955,14 +1907,15 @@ fn create_gui_tab_keys(
         column.set_title(column_title);
         column.pack_start(&cell, true);
         column.add_attribute(&cell, "text", i as i32);
-        coin_treeview.append_column(&column);
+        coin_treeview.borrow().append_column(&column);
     }
 
-    let full_store = coin_store.clone();
+    let full_store = coin_store.borrow();
     let verified_coins = coin_db::fetch_coins_from_database("Cmc_top", &full_store, "100");
-    let filtered_store = coin_tree_store.clone();
+    let filtered_store = coin_tree_store.borrow_mut();
 
     for found_coin in verified_coins {
+        // Check if the coin's status is verified
         if found_coin.status == "Verified" {
             let iter = filtered_store.append(None);
 
@@ -1985,18 +1938,21 @@ fn create_gui_tab_keys(
         }
     }
 
-    coin_treeview.set_model(Some(&filtered_store));
-    scrolled_window.set_child(Some(&coin_treeview));
+    coin_treeview.borrow().set_model(Some(&*filtered_store));
+    scrolled_window.set_child(Some(&*coin_treeview.borrow()));
     coin_frame.set_child(Some(&scrolled_window));
     coin_main_content_box.append(&coin_frame);
 
     // Generate master keys button
     let generate_master_keys_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let generate_master_keys_button = gtk::Button::new();
+    let delete_master_keys_button = gtk::Button::new();
 
     generate_master_keys_button.set_label(&t!("UI.main.coin.generate").to_string());
+    delete_master_keys_button.set_label(&t!("UI.main.coin.delete").to_string());
     generate_master_keys_box.set_halign(gtk::Align::Center);
     generate_master_keys_box.append(&generate_master_keys_button);
+    generate_master_keys_box.append(&delete_master_keys_button);
     coin_main_content_box.append(&generate_master_keys_box);
 
     // Master private keys entries
@@ -2021,665 +1977,9 @@ fn create_gui_tab_keys(
     master_keys_box.append(&master_xprv_frame);
     master_keys_box.append(&master_xpub_frame);
     coin_main_content_box.append(&master_keys_box);
-
-    
-
-    // JUMP: Action: Generate Master Keys button
-    generate_master_keys_button.connect_clicked(clone!(
-        // #[strong] coin_entry,
-        // #[strong] seed_text,
-        #[strong] coin_treeview,
-        #[strong] master_private_key_text,
-        #[strong] master_public_key_text,
-        #[strong] app_messages_state,
-        #[strong] wallet_settings_state,
-        move |_| {
-            // let buffer = seed_text.buffer();
-            // let start_iter = buffer.start_iter();
-            // let end_iter = buffer.end_iter();
-            // let text = buffer.text(&start_iter, &end_iter, false);
-
-            let wallet_settings = wallet_settings_state.lock().unwrap();
-            let seed = wallet_settings.seed.clone().unwrap_or("".to_string());
-            
-            println!("------------------------seed: {:?}", seed);
-
-            if !seed.is_empty() {
-                if let Some((model, iter)) = coin_treeview.selection().selected() {
-                    let status = model.get_value(&iter, 0);
-                    let coin_index = model.get_value(&iter, 1);
-                    let coin_symbol = model.get_value(&iter, 2);
-                    let coin_name = model.get_value(&iter, 3);
-                    let key_derivation = model.get_value(&iter, 4);
-                    let hash = model.get_value(&iter, 5);
-                    let private_header = model.get_value(&iter, 6);
-                    let public_header = model.get_value(&iter, 7);
-                    let public_key_hash = model.get_value(&iter, 8);
-                    let script_hash = model.get_value(&iter, 9);
-                    let wallet_import_format = model.get_value(&iter, 10);
-                    let evm = model.get_value(&iter, 11);
-                    let ucid = model.get_value(&iter, 12);
-                    let cmc_top = model.get_value(&iter, 13);
-    
-                    if let (
-                        Ok(status),
-                        Ok(coin_index),
-                        Ok(coin_symbol),
-                        Ok(coin_name),
-                        Ok(key_derivation),
-                        Ok(hash),
-                        Ok(private_header),
-                        Ok(public_header),
-                        Ok(public_key_hash),
-                        Ok(script_hash),
-                        Ok(wallet_import_format),
-                        Ok(evm),
-                        Ok(ucid),
-                        Ok(cmc_top),
-                    ) = (
-                        status.get::<String>(),
-                        coin_index.get::<String>(), 
-                        coin_symbol.get::<String>(), 
-                        coin_name.get::<String>(),
-                        key_derivation.get::<String>(),
-                        hash.get::<String>(),
-                        private_header.get::<String>(),
-                        public_header.get::<String>(),
-                        public_key_hash.get::<String>(),
-                        script_hash.get::<String>(),
-                        wallet_import_format.get::<String>(),
-                        evm.get::<String>(),
-                        ucid.get::<String>(),
-                        cmc_top.get::<String>(),
-                    ) {
-                        master_private_key_text.buffer().set_text("");
-                        master_public_key_text.buffer().set_text("");
-    
-                        println!("\n#### Coin info ####");
-                        println!("\t- status: {}", status);
-                        println!("\t- index: {}", coin_index);
-                        println!("\t- coin_symbol: {}", coin_symbol);
-                        println!("\t- coin_name: {}", coin_name);
-                        println!("\t- key_derivation: {}", key_derivation);
-                        println!("\t- hash: {}", hash);
-                        println!("\t- private_header: {}", private_header);
-                        println!("\t- public_header: {}", public_header);
-                        println!("\t- public_key_hash: {}", public_key_hash);
-                        println!("\t- script_hash: {}", script_hash);
-                        println!("\t- wallet_import_format: {}", wallet_import_format);
-                        println!("\t- EVM: {}", evm);
-                        println!("\t- UCID: {}", ucid);
-                        println!("\t- cmc_top: {}", cmc_top);
-
-                        // let buffer = seed_text.buffer();
-                        // let start_iter = buffer.start_iter();
-                        // let end_iter = buffer.end_iter();
-                        // let seed_string = buffer.text(&start_iter, &end_iter, true);
-                        let (tx, rx) = std::sync::mpsc::channel();
-
-                        std::thread::spawn(clone!(
-                            #[strong] wallet_settings_state,
-                            #[strong] app_messages_state,
-                            move || {
-                                match keys::generate_master_keys(
-                                    Some(wallet_settings_state.clone()),
-                                    &seed, 
-                                    &private_header,
-                                    &public_header,
-                                ) {
-                                    Ok(xprv) => {
-                                        tx.send(xprv).expect("Failed to send xprv");
-                                    },
-                                    Err(err) => {
-                                        // {
-                                        //     let lock_gui_state = app_messages_state.lock().unwrap();
-                                        //     lock_gui_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
-                                            
-                                        // }
-                                        eprintln!("\t- {}: {}", &t!("error.master.create"), err)
-                                    },
-                                }
-                            }
-                        ));
-
-                        glib::timeout_add_local(std::time::Duration::from_millis(50), clone!(
-                            #[strong] master_private_key_text,
-                            #[strong] master_public_key_text,
-                            #[strong] wallet_settings_state,
-                            move || {
-                                while let Ok(key) = rx.try_recv() {
-                                    master_private_key_text.buffer().set_text(&key.0);
-                                    master_public_key_text.buffer().set_text(&key.1);
-                                }
-
-                                {
-                                    let mut wallet_settings = wallet_settings_state.lock().unwrap();
-                                    
-                                    wallet_settings.public_key_hash = Some(public_key_hash.clone());
-                                    wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
-                                    wallet_settings.key_derivation = Some(key_derivation.to_string());
-                                    wallet_settings.hash = Some(hash.to_string());
-                                    wallet_settings.coin_index = Some(coin_index.parse().unwrap());
-                                    wallet_settings.coin_name = Some(coin_name.parse().unwrap());
-                                }
-                                glib::ControlFlow::Continue
-                            }
-                        ));
-    
-                        // coin_entry.set_text(&coin_index);
-                    }  
-                }
-            } else {
-                {
-                    let app_messages_state = app_messages_state.lock().unwrap();
-                    app_messages_state.queue_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
-                    
-                }
-
-                // {
-                //     if let Ok(mut log_lock) = app_log.lock() {
-                //         log_lock.initialize_app_log(log_button.clone(), resources.clone());
-                //     }
-                // }
-            }
-        }
-    ));
-
-   
-    advance_search_checkbox.connect_active_notify(clone!(
-        // #[weak] advance_search_checkbox,
-        move |checkbox| {
-        if checkbox.is_active() {
-            advance_search_filter_box.set_visible(true);
-        } else {
-            
-            advance_search_filter_box.set_visible(false);
-        }
-    }));
-
-    coin_search_filter_dropdown.connect_selected_notify(clone!(
-        #[strong] coin_search,
-        move |dropdown| {
-            let selected: usize = dropdown.selected().try_into().unwrap_or(0);
-            coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = VALID_COIN_SEARCH_PARAMETER[selected])));
-            coin_search.set_text("");
-    }));
-    
-    coin_search.connect_search_changed(clone!(
-        #[strong] coin_treeview,
-        #[strong] coin_tree_store,
-        #[strong] coin_store,
-        move |coin_search| {
-            let search_text = coin_search.text().to_lowercase();
-            coin_tree_store.clear();
-
-            let selected = coin_search_filter_dropdown.selected() as usize;
-            let selected_search_parameter = VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
-            let min_search_length = if selected_search_parameter == &"Index" { 1 } else { 2 };
-
-            if search_text.len() >= min_search_length {
-                let matching_coins = coin_db::fetch_coins_from_database(selected_search_parameter, &coin_store, &search_text);
-
-                if !matching_coins.is_empty() {
-                    coin_tree_store.clear();
-
-                    for found_coin in matching_coins {
-                        let iter = coin_tree_store.append(None);
-                        coin_tree_store.set(&iter, &[
-                            (0, &found_coin.status),
-                            (1, &found_coin.coin_index.to_string()),
-                            (2, &found_coin.coin_symbol),
-                            (3, &found_coin.coin_name),
-                            (4, &found_coin.key_derivation),
-                            (5, &found_coin.hash),
-                            (6, &found_coin.private_header),
-                            (7, &found_coin.public_header),
-                            (8, &found_coin.public_key_hash),
-                            (9, &found_coin.script_hash),
-                            (10, &found_coin.wallet_import_format),
-                            (11, &found_coin.evm),
-                            (12, &found_coin.ucid),
-                            (13, &found_coin.cmc_top),
-                        ]);
-                    }
-                    coin_treeview.set_model(Some(&coin_tree_store));
-                } else {
-                    coin_tree_store.clear();
-                }
-            } else {
-                coin_tree_store.clear();
-            }
-    }));
-    
-    filter_top10_coins_button.connect_clicked(clone!(
-        #[strong] coin_treeview,
-        #[strong] coin_tree_store,
-        #[strong] coin_store,
-        move |_| {
-            let search_text = "10";
-            let search_parameter = "Cmc_top";
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
-
-            coin_tree_store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = coin_tree_store.append(None);
-                    coin_tree_store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
-                }
-                coin_treeview.set_model(Some(&coin_tree_store));
-            } else {
-                coin_tree_store.clear();
-            }
-    }));
-    
-    filter_top100_coins_button.connect_clicked(clone!(
-        #[strong] coin_treeview,
-        #[strong] coin_tree_store,
-        #[strong] coin_store,
-        move |_| {
-            let search_text = "100";
-            let search_parameter = "Cmc_top";
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
-
-            coin_tree_store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = coin_tree_store.append(None);
-                    coin_tree_store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
-                }
-                coin_treeview.set_model(Some(&coin_tree_store));
-            } else {
-                coin_tree_store.clear();
-            }
-    }));
-
-    filter_verified_coins_button.connect_clicked(clone!(
-        #[strong] coin_treeview,
-        #[strong] coin_tree_store,
-        #[strong] coin_store,
-        move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[1];
-            let search_parameter = "Status";
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
-
-            coin_tree_store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = coin_tree_store.append(None);
-                    coin_tree_store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
-                }
-                coin_treeview.set_model(Some(&coin_tree_store));
-            } else {
-                coin_tree_store.clear();
-            }
-
-    }));
-
-    filter_not_verified_coins_button.connect_clicked(clone!(
-        #[strong] coin_treeview,
-        #[strong] coin_tree_store,
-        #[strong] coin_store,
-        move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[2];
-            let search_parameter = "Status";
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
-
-            coin_tree_store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = coin_tree_store.append(None);
-                    coin_tree_store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
-                }
-                coin_treeview.set_model(Some(&coin_tree_store));
-            } else {
-                coin_tree_store.clear();
-            }
-    }));
-
-    filter_in_plan_coins_button.connect_clicked(clone!(
-        #[strong] coin_treeview,
-        #[strong] coin_tree_store,
-        #[strong] coin_store,
-        move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[3];
-            let search_parameter = "Status";
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
-
-            coin_tree_store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = coin_tree_store.append(None);
-                    coin_tree_store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
-                }
-                coin_treeview.set_model(Some(&coin_tree_store));
-            } else {
-                coin_tree_store.clear();
-            }
-    }));
-
-    filter_not_supported_coins_button.connect_clicked(clone!(
-        #[strong] coin_treeview,
-        #[strong] coin_tree_store,
-        #[strong] coin_store,
-        move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[0];
-            let search_parameter = "Status";
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &coin_store, &search_text);
-
-            coin_tree_store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = coin_tree_store.append(None);
-                    coin_tree_store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
-                }
-                coin_treeview.set_model(Some(&coin_tree_store));
-            } else {
-                coin_tree_store.clear();
-            }
-    }));
-
-    coin_main_box
-}
-
-fn create_main_window(
-    application: adw::Application,
-    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
-    start_time: Option<std::time::Instant>,
-
-) {
-    println!("[+] {}", &t!("log.create_main_window").to_string());
-
-    let app_settings_state = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::load_settings()));
-    let lock_app_settings = app_settings_state.read().unwrap();
-
-    let gui_language = lock_app_settings.gui_language.clone().unwrap();
-    let gui_theme = lock_app_settings.gui_theme.clone().unwrap();
-    let gui_icons = lock_app_settings.gui_icons.clone().unwrap();
-    let window_width = lock_app_settings.gui_last_width.unwrap();
-    let window_height = lock_app_settings.gui_last_height.unwrap();
-    let wallet_bip = lock_app_settings.wallet_bip.unwrap();
-    let default_mnemonic_length = lock_app_settings.gui_mnemonic_length;
-    let app_log_status = lock_app_settings.gui_log.unwrap();
-    let anu_enabled = lock_app_settings.anu_enabled;
-    let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone();
-    let wallet_entropy_length = lock_app_settings.wallet_entropy_length;
-    let gui_search = lock_app_settings.gui_search.clone();
-    let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
-    let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
-
-    os::switch_locale(&gui_language);
-    
-    let window = gtk::ApplicationWindow::builder()
-        .application(&application)
-        .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
-        .default_width(window_width as i32)
-        .default_height(window_height as i32)
-        .show_menubar(true)
-        .decorated(true)
-        .build();
-
-    qr2m_lib::setup_css();
-
-    let header_bar = gtk::HeaderBar::new();
-    let info_bar = gtk::Revealer::new();
-    info_bar.set_transition_type(gtk::RevealerTransitionType::SlideDown);
-    info_bar.set_hexpand(true);
-    info_bar.add_css_class("info-bar");
-    window.set_titlebar(Some(&header_bar));
-
-    let button_names = ["new", "open", "save", "about", "settings", "log", "random"];
-    let mut buttons = std::collections::HashMap::new();
-
-    for &name in &button_names {
-        let button = gtk::Button::new();
-        buttons.insert(name.to_string(), std::sync::Arc::new(button));
-    }
-
-    let headerbar_tooltips = [
-        ("new", "Ctrl+N"),
-        ("open", "Ctrl+O"),
-        ("save", "Ctrl+S"),
-        ("about", "F1"),
-        ("settings", "F5"),
-        ("log", "F11"),
-    ];
-
-    for (name, shortcut) in headerbar_tooltips {
-        if let Some(button) = buttons.get(name) {
-            button.set_tooltip_text(Some(&t!(format!("UI.main.headerbar.{}", name), value = shortcut).to_string()));
-        }
-    }
-
-    if let Ok(mut lock_gui_state) = gui_state.lock() {
-        lock_gui_state.gui_language = Some(gui_language);
-        lock_gui_state.gui_theme = Some(gui_theme);
-        lock_gui_state.gui_icon_theme = Some(gui_icons);
-        lock_gui_state.gui_log_status = Some(app_log_status);
-
-        for (name, button) in &buttons {
-            lock_gui_state.register_button(name.clone(), button.clone());
-        }
-
-        lock_gui_state.reload_gui_theme();
-        lock_gui_state.reload_gui_icons();
-    }
-
-    {
-        let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
-        settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
-            #[strong] gui_state,
-            move |_| {
-                if let Ok(mut lock_gui_state) = gui_state.lock() {
-                    lock_gui_state.reload_gui_icons();
-                };
-            }
-        ));
-    }
-
-    {
-        let app_log_state = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
-        let mut lock_app_log = app_log_state.lock().unwrap();
-        lock_app_log.status = std::sync::Arc::new(std::sync::Mutex::new(app_log_status));
-        
-        lock_app_log.initialize_app_log(gui_state.clone());
-    }
-
-
-    let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
-        Some(info_bar.clone()),
-    )));
-
-    
-
-    header_bar.pack_start(&*buttons["new"]);
-    header_bar.pack_start(&*buttons["open"]);
-    header_bar.pack_start(&*buttons["save"]);
-    header_bar.pack_end(&*buttons["settings"]);
-    header_bar.pack_end(&*buttons["about"]);
-    header_bar.pack_end(&*buttons["log"]);
-    
-
-    let wallet_settings_state = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
-    // let lock_wallet_settings = wallet_settings_state.read().unwrap();
-
-    setup_app_actions(
-        application.clone(),
-        gui_state.clone(),
-        app_messages_state.clone(),
-        wallet_settings_state.clone(),
-    );
-
-
-    // JUMP: Action: Settings button action
-    buttons["settings"].connect_clicked(clone!(
-        #[strong] gui_state,
-        #[strong] app_messages_state,
-        move |_| {
-            let settings_window = create_settings_window(gui_state.clone(), app_messages_state.clone());
-            settings_window.show();
-        }
-    ));
-    
-    buttons["about"].connect_clicked(move |_| {
-        create_about_window();
-    });
-
-    buttons["log"].connect_clicked(clone!(
-        #[strong] gui_state,
-        move |_| {
-            let log_window = create_log_window(gui_state.clone());
-            log_window.show();
-        }
-    ));
-
-    buttons["new"].connect_clicked(clone!(
-        #[strong] application,
-        #[strong] gui_state,
-        move |_| {
-            create_main_window(
-                application.clone(),
-                gui_state.clone(),
-                None,
-            );
-        }
-    ));
-
-    buttons["save"].connect_clicked(clone!(
-        #[strong] wallet_settings_state,
-        move |_| {
-            save_wallet_to_file(wallet_settings_state.clone());
-        }
-    ));
-    
-
-    let stack = Stack::new();
-    let stack_sidebar = StackSidebar::new();
-    stack_sidebar.set_stack(&stack);
-
-
-
-    let seed_tab = create_gui_tab_seed(
-        gui_state.clone(), 
-        app_messages_state.clone(), 
-        wallet_settings_state.clone(),
-        anu_enabled, 
-        wallet_entropy_source.clone(), 
-        wallet_entropy_length, 
-        default_mnemonic_length,
-    );
-
-
-    stack.add_titled(
-        &seed_tab.0,
-        Some("sidebar-seed"), 
-        &t!("UI.main.seed").to_string());
-
-
-    
-    let keys_tab = create_gui_tab_keys(
-        app_messages_state.clone(),
-        wallet_settings_state.clone(),
-        gui_search.clone(),
-    );
     
     stack.add_titled(
-        &keys_tab, 
+        &coin_main_box, 
         Some("sidebar-coin"), 
         &t!("UI.main.coin").to_string()
     );
@@ -2718,6 +2018,7 @@ fn create_main_window(
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
     
+    let wallet_bip = lock_app_settings.wallet_bip.unwrap();
     let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == wallet_bip).unwrap_or_else(|| {
         eprintln!("\t- {}", &t!("error.bip.value", value = wallet_bip));
         1
@@ -2838,6 +2139,7 @@ fn create_main_window(
     // Address count
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
     let address_options_adjustment = gtk::Adjustment::new(
         wallet_address_count as f64,
         1.0,
@@ -2873,7 +2175,7 @@ fn create_main_window(
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
-    
+    let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
 
     address_options_hardened_address_checkbox.set_active(wallet_hardened_address.unwrap());
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
@@ -2884,6 +2186,12 @@ fn create_main_window(
     let address_options_clear_addresses_button = gtk::Button::with_label(&t!("UI.main.address.options.clean").to_string());
     address_options_clear_addresses_button.set_size_request(200, 2);
     
+    // Address progress box
+    let address_generation_progress_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let address_generation_progress_bar = gtk::ProgressBar::new();
+    address_generation_progress_bar.set_hexpand(true);
+    address_generation_progress_box.append(&address_generation_progress_bar);
+
     // Connections
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
@@ -2916,6 +2224,7 @@ fn create_main_window(
     main_address_box.append(&generate_addresses_button_box);
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
+    main_address_box.append(&address_generation_progress_box);
     
     stack.add_titled(
         &main_address_box,
@@ -2923,14 +2232,13 @@ fn create_main_window(
         &t!("UI.main.address").to_string()
     );
 
-//     // JUMP: Action: Open Wallet
+    // JUMP: Action: Open Wallet
     buttons["open"].connect_clicked(clone!(
-        #[weak(rename_to = entropy_text)] seed_tab.1,
-        #[weak(rename_to = mnemonic_passphrase_text)] seed_tab.2,
-        #[weak(rename_to = mnemonic_words_text)] seed_tab.3,
-        #[weak(rename_to = seed_text)] seed_tab.4,
+        #[weak] entropy_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
         #[strong] app_messages_state,
-        #[strong] wallet_settings_state,
         move |_| {
             let (entropy, passphrase) = open_wallet_from_file(&app_messages_state);
 
@@ -2954,7 +2262,7 @@ fn create_main_window(
                 let full_entropy = buffer.text(&start_iter, &end_iter, false);
 
                 if full_entropy != "" {
-                    let mnemonic_words = keys::generate_mnemonic_words(Some(wallet_settings_state.clone()), &full_entropy);
+                    let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
                     mnemonic_words_text.buffer().set_text(&mnemonic_words);
 
                     let (entropy_len, _checksum_len) = match full_entropy.len() {
@@ -2980,106 +2288,635 @@ fn create_main_window(
 
         }
     ));
-// 
-//     // JUMP: Action: Generate Seed button
-//     generate_entropy_button.connect_clicked(clone!(
-//         #[weak] entropy_source_dropdown,
-//         #[weak] entropy_text,
-//         #[weak] entropy_length_dropdown,
-//         #[weak] mnemonic_words_text,
-//         #[weak] mnemonic_passphrase_text,
-//         #[weak] master_private_key_text,
-//         #[weak] master_public_key_text,
-//         #[weak] seed_text,
-//         #[strong] app_messages_state,
-//         move |_| {
-//             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
-//             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
-//             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
-//             let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
-//             let source = selected_entropy_source_value.unwrap().to_string();
-//             let entropy_length = selected_entropy_length_value.unwrap(); 
-// 
-//             let pre_entropy = keys::generate_entropy(
-//                 &source,
-//                 *entropy_length as u64,
-//             );
-//                 
-//             if !pre_entropy.is_empty() {
-//                 let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
-//                 println!("\t- Entropy checksum: {:?}", checksum);
-// 
-//                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-// 
-//                 println!("\t- Final entropy: {:?}", full_entropy);
-//                 entropy_text.buffer().set_text(&full_entropy);
-//                 
-//                 let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
-//                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
-//                 
-//                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
-// 
-//                 let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
-//                 let seed_hex = hex::encode(&seed[..]);
-//                 seed_text.buffer().set_text(&seed_hex.to_string());
-//                 
-//                 println!("\t- Seed (hex): {:?}", seed_hex);
-// 
-//                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-//                 wallet_settings.entropy_checksum = Some(checksum.clone());
-//                 wallet_settings.entropy_string = Some(full_entropy.clone());
-//                 wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
-//                 wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
-//                 wallet_settings.seed = Some(seed_hex.clone());
-// 
-//                 master_private_key_text.buffer().set_text("");
-//                 master_public_key_text.buffer().set_text("");
-// 
-//             } else {
-//                 eprintln!("\t- {}", &t!("error.entropy.empty"));
-//                 let lock_app_messages = app_messages_state.lock().unwrap();
-//                 lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
-//             }
-//         }
-//     ));
-// 
-//     delete_entropy_button.connect_clicked(clone!(
-//         #[weak] entropy_text,
-//         #[weak] mnemonic_words_text,
-//         #[weak] mnemonic_passphrase_text,
-//         #[weak] seed_text,
-//         #[weak] master_private_key_text,
-//         #[weak] master_public_key_text,
-//         #[weak] address_store,
-//         // #[weak] save_wallet_button,
-//         move |_| {
-//             mnemonic_passphrase_text.buffer().set_text("");
-//             entropy_text.buffer().set_text("");
-//             mnemonic_words_text.buffer().set_text("");
-//             seed_text.buffer().set_text("");
-//             master_private_key_text.buffer().set_text("");
-//             master_public_key_text.buffer().set_text("");
-//             address_store.clear();
-//     }));
-    
-//     buttons["random"].connect_clicked(clone!(
-//         #[weak] mnemonic_passphrase_text,
-//         #[weak] mnemonic_passphrase_scale,
-//         move |_| {
-//             let scale_value = mnemonic_passphrase_scale.value() as u32;
-// 
-//             let mnemonic_rng_string: String = (0..scale_value)
-//                         .map(|_| char::from(rand::rng().random_range(32..127)))
-//                         .collect();
-//             println!("\t- RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
-//             mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
-//         }
-//     ));
 
-    
+    // JUMP: Action: Generate Seed button
+    generate_entropy_button.connect_clicked(clone!(
+        #[weak] entropy_source_dropdown,
+        #[weak] entropy_text,
+        #[weak] entropy_length_dropdown,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        #[weak] seed_text,
+        #[strong] app_messages_state,
+        move |_| {
+            let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
+            let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
+            let source = selected_entropy_source_value.unwrap().to_string();
+            let entropy_length = selected_entropy_length_value.unwrap(); 
 
-    let derivation_path = std::rc::Rc::new(std::cell::RefCell::new(DerivationPath::default()));
-    let dp_clone = std::rc::Rc::clone(&derivation_path);
+            let pre_entropy = keys::generate_entropy(
+                &source,
+                *entropy_length as u64,
+            );
+                
+            if !pre_entropy.is_empty() {
+                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
+                println!("\t- Entropy checksum: {:?}", checksum);
+
+                let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+
+                println!("\t- Final entropy: {:?}", full_entropy);
+                entropy_text.buffer().set_text(&full_entropy);
+                
+                let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+                
+                let passphrase_text = mnemonic_passphrase_text.text().to_string();
+
+                let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+                
+                println!("\t- Seed (hex): {:?}", seed_hex);
+
+                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                wallet_settings.entropy_checksum = Some(checksum.clone());
+                wallet_settings.entropy_string = Some(full_entropy.clone());
+                wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
+                wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
+                wallet_settings.seed = Some(seed_hex.clone());
+
+                master_private_key_text.buffer().set_text("");
+                master_public_key_text.buffer().set_text("");
+
+            } else {
+                eprintln!("\t- {}", &t!("error.entropy.empty"));
+                let lock_app_messages = app_messages_state.lock().unwrap();
+                lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
+            }
+        }
+    ));
+
+    delete_entropy_button.connect_clicked(clone!(
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] seed_text,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        #[weak] address_store,
+        // #[weak] save_wallet_button,
+        move |_| {
+            mnemonic_passphrase_text.buffer().set_text("");
+            entropy_text.buffer().set_text("");
+            mnemonic_words_text.buffer().set_text("");
+            seed_text.buffer().set_text("");
+            master_private_key_text.buffer().set_text("");
+            master_public_key_text.buffer().set_text("");
+            address_store.clear();
+    }));
+    
+    buttons["random"].connect_clicked(clone!(
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_passphrase_scale,
+        move |_| {
+            let scale_value = mnemonic_passphrase_scale.value() as u32;
+
+            let mnemonic_rng_string: String = (0..scale_value)
+                        .map(|_| char::from(rand::rng().random_range(32..127)))
+                        .collect();
+            println!("\t- RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
+            mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
+        }
+    ));
+
+    delete_master_keys_button.connect_clicked(clone!(
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        move |_| {
+            master_private_key_text.buffer().set_text("");
+            master_public_key_text.buffer().set_text("");
+
+            let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+            wallet_settings.master_chain_code_bytes = None;
+            wallet_settings.master_private_key_bytes = None;
+            wallet_settings.master_public_key_bytes = None;
+        }
+    ));
+
+    // JUMP: Action: Generate Master Keys button
+    generate_master_keys_button.connect_clicked(clone!(
+        #[strong] coin_entry,
+        #[weak] seed_text,
+        #[weak] coin_treeview,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        #[strong] app_messages_state,
+        move |_| {
+            let buffer = seed_text.buffer();
+            let start_iter = buffer.start_iter();
+            let end_iter = buffer.end_iter();
+            let text = buffer.text(&start_iter, &end_iter, false);
+
+            if !text.is_empty() {
+                if let Some((model, iter)) = coin_treeview.borrow().selection().selected() {
+                    let status = model.get_value(&iter, 0);
+                    let coin_index = model.get_value(&iter, 1);
+                    let coin_symbol = model.get_value(&iter, 2);
+                    let coin_name = model.get_value(&iter, 3);
+                    let key_derivation = model.get_value(&iter, 4);
+                    let hash = model.get_value(&iter, 5);
+                    let private_header = model.get_value(&iter, 6);
+                    let public_header = model.get_value(&iter, 7);
+                    let public_key_hash = model.get_value(&iter, 8);
+                    let script_hash = model.get_value(&iter, 9);
+                    let wallet_import_format = model.get_value(&iter, 10);
+                    let evm = model.get_value(&iter, 11);
+                    let ucid = model.get_value(&iter, 12);
+                    let cmc_top = model.get_value(&iter, 13);
+    
+                    if let (
+                        Ok(status),
+                        Ok(coin_index),
+                        Ok(coin_symbol),
+                        Ok(coin_name),
+                        Ok(key_derivation),
+                        Ok(hash),
+                        Ok(private_header),
+                        Ok(public_header),
+                        Ok(public_key_hash),
+                        Ok(script_hash),
+                        Ok(wallet_import_format),
+                        Ok(evm),
+                        Ok(ucid),
+                        Ok(cmc_top),
+                    ) = (
+                        status.get::<String>(),
+                        coin_index.get::<String>(), 
+                        coin_symbol.get::<String>(), 
+                        coin_name.get::<String>(),
+                        key_derivation.get::<String>(),
+                        hash.get::<String>(),
+                        private_header.get::<String>(),
+                        public_header.get::<String>(),
+                        public_key_hash.get::<String>(),
+                        script_hash.get::<String>(),
+                        wallet_import_format.get::<String>(),
+                        evm.get::<String>(),
+                        ucid.get::<String>(),
+                        cmc_top.get::<String>(),
+                    ) {
+                        master_private_key_text.buffer().set_text("");
+                        master_public_key_text.buffer().set_text("");
+    
+                        println!("\n#### Coin info ####");
+                        println!("\t- status: {}", status);
+                        println!("\t- index: {}", coin_index);
+                        println!("\t- coin_symbol: {}", coin_symbol);
+                        println!("\t- coin_name: {}", coin_name);
+                        println!("\t- key_derivation: {}", key_derivation);
+                        println!("\t- hash: {}", hash);
+                        println!("\t- private_header: {}", private_header);
+                        println!("\t- public_header: {}", public_header);
+                        println!("\t- public_key_hash: {}", public_key_hash);
+                        println!("\t- script_hash: {}", script_hash);
+                        println!("\t- wallet_import_format: {}", wallet_import_format);
+                        println!("\t- EVM: {}", evm);
+                        println!("\t- UCID: {}", ucid);
+                        println!("\t- cmc_top: {}", cmc_top);
+
+                        let buffer = seed_text.buffer();
+                        let start_iter = buffer.start_iter();
+                        let end_iter = buffer.end_iter();
+                        let seed_string = buffer.text(&start_iter, &end_iter, true);
+                        
+                        match keys::generate_master_keys(
+                            &seed_string, 
+                            &private_header,
+                            &public_header,
+                        ) {
+                            Ok(xprv) => {
+                                master_private_key_text.buffer().set_text(&xprv.0);
+                                master_public_key_text.buffer().set_text(&xprv.1);
+                            },
+                            Err(err) => {
+                                {
+                                    let lock_gui_state = app_messages_state.lock().unwrap();
+                                    lock_gui_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
+                                    
+                                }
+                                eprintln!("\t- {}: {}", &t!("error.master.create"), err)
+                            },
+                        }
+    
+                        coin_entry.set_text(&coin_index);
+
+                        let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                        wallet_settings.public_key_hash = Some(public_key_hash.clone());
+                        wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
+                        wallet_settings.key_derivation = Some(key_derivation.to_string());
+                        wallet_settings.hash = Some(hash.to_string());
+                        wallet_settings.coin_index = Some(coin_index.parse().unwrap());
+                        wallet_settings.coin_name = Some(coin_name.parse().unwrap());
+                    }  
+                }
+            } else {
+                {
+                    let app_messages_state = app_messages_state.lock().unwrap();
+                    app_messages_state.queue_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
+                    
+                }
+                // let lock_state = gui_state.lock().unwrap();
+                // lock_state.show_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
+
+                // {
+                //     if let Ok(mut log_lock) = app_log.lock() {
+                //         log_lock.initialize_app_log(log_button.clone(), resources.clone());
+                //     }
+                // }
+            }
+        }
+    ));
+
+    entropy_source_dropdown.connect_selected_notify(clone!(
+        #[weak] generate_entropy_button,
+        // #[weak] random_mnemonic_passphrase_button,
+        move |entropy_source_dropdown| {
+            let value = entropy_source_dropdown.selected() as usize;
+            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
+            let source = selected_entropy_source_value.unwrap();
+    
+            // if *source == "RNG+" {
+            //     mnemonic_passphrase_length_box.set_visible(true);
+            //     random_mnemonic_passphrase_button.set_visible(true);
+            // } else {
+            //     mnemonic_passphrase_length_box.set_visible(false);
+            //     random_mnemonic_passphrase_button.set_visible(false);
+            // }
+
+            if *source == "File" {
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
+            } else {
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+            }
+        }
+    ));
+    
+    advance_search_checkbox.connect_active_notify(clone!(
+        // #[weak] advance_search_checkbox,
+        move |checkbox| {
+        if checkbox.is_active() {
+            advance_search_filter_box.set_visible(true);
+        } else {
+            
+            advance_search_filter_box.set_visible(false);
+        }
+    }));
+
+    coin_search_filter_dropdown.connect_selected_notify(clone!(
+        #[weak] coin_search,
+        move |dropdown| {
+            let selected: usize = dropdown.selected().try_into().unwrap_or(0);
+            coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = VALID_COIN_SEARCH_PARAMETER[selected])));
+            coin_search.set_text("");
+    }));
+    
+    mnemonic_passphrase_text.connect_changed(clone!(
+        // #[weak] generate_entropy_button,
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
+        // #[weak] mnemonic_passphrase_length_info,
+        move |mnemonic_passphrase_text| {
+            let entropy_buffer = entropy_text.buffer();
+            let start_iter = entropy_buffer.start_iter();
+            let end_iter = entropy_buffer.end_iter();
+            let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
+
+            if entropy_text != "" {
+                let entropy_length = entropy_text.len();
+                let cut_entropy = entropy_length / 32;
+                let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
+
+                let seed = keys::generate_bip39_seed(&new_pre_entropy, &mnemonic_passphrase_text.buffer().text());
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
+
+                let final_entropy = entropy_text.clone().to_string();
+                let mnemonic_words_buffer = mnemonic_words_text.buffer();
+                let start_iter = mnemonic_words_buffer.start_iter();
+                let end_iter = mnemonic_words_buffer.end_iter();
+                let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
+                let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
+
+                let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                wallet_settings.entropy_string = Some(final_entropy);
+                wallet_settings.mnemonic_words = Some(final_mnemonic_words);
+                wallet_settings.mnemonic_passphrase = Some(final_mnemonic_passphrase);
+                wallet_settings.seed = Some(seed_hex.clone());
+            }
+        }
+    ));
+    
+    mnemonic_passphrase_scale.connect_value_changed(clone!(
+        #[weak] mnemonic_passphrase_length_info,
+        #[weak(rename_to = random_mnemonic_passphrase_button)] buttons["random"],
+        move |mnemonic_passphrase_scale| {
+            let scale_value = mnemonic_passphrase_scale.value() as u32;
+            mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
+            random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
+        }
+    ));
+
+    coin_search.connect_search_changed({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |coin_search| {
+            let search_text = coin_search.text().to_lowercase();
+            coin_tree_store.borrow_mut().clear();
+
+            let selected = coin_search_filter_dropdown.selected() as usize;
+            let selected_search_parameter = VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
+            let min_search_length = if selected_search_parameter == &"Index" { 1 } else { 2 };
+
+            if search_text.len() >= min_search_length {
+                let store = coin_store.borrow();
+                let matching_coins = coin_db::fetch_coins_from_database(selected_search_parameter, &store, &search_text);
+
+                if !matching_coins.is_empty() {
+                    let store = coin_tree_store.borrow_mut();
+                    store.clear();
+
+                    for found_coin in matching_coins {
+                        let iter = store.append(None);
+                        store.set(&iter, &[
+                            (0, &found_coin.status),
+                            (1, &found_coin.coin_index.to_string()),
+                            (2, &found_coin.coin_symbol),
+                            (3, &found_coin.coin_name),
+                            (4, &found_coin.key_derivation),
+                            (5, &found_coin.hash),
+                            (6, &found_coin.private_header),
+                            (7, &found_coin.public_header),
+                            (8, &found_coin.public_key_hash),
+                            (9, &found_coin.script_hash),
+                            (10, &found_coin.wallet_import_format),
+                            (11, &found_coin.evm),
+                            (12, &found_coin.ucid),
+                            (13, &found_coin.cmc_top),
+                        ]);
+                    }
+                    coin_treeview.borrow().set_model(Some(&*store));
+                } else {
+                    coin_tree_store.borrow_mut().clear();
+                }
+            } else {
+                coin_tree_store.borrow_mut().clear();
+            }
+        }
+    });
+    
+    filter_top10_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "10";
+            let search_parameter = "Cmc_top";
+            let store = coin_store.borrow();
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.ucid),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+    
+    filter_top100_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "100";
+            let search_parameter = "Cmc_top";
+            let store = coin_store.borrow();
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.ucid),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_verified_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[1];
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.ucid),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_not_verified_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[2];
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.ucid),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_in_plan_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[3];
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.ucid),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
+
+    filter_not_supported_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = coin_db::VALID_COIN_STATUS_NAME[0];
+            let search_parameter = "Status";
+            let store = coin_store.borrow();
+            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(&iter, &[
+                        (0, &found_coin.status),
+                        (1, &found_coin.coin_index.to_string()),
+                        (2, &found_coin.coin_symbol),
+                        (3, &found_coin.coin_name),
+                        (4, &found_coin.key_derivation),
+                        (5, &found_coin.hash),
+                        (6, &found_coin.private_header),
+                        (7, &found_coin.public_header),
+                        (8, &found_coin.public_key_hash),
+                        (9, &found_coin.script_hash),
+                        (10, &found_coin.wallet_import_format),
+                        (11, &found_coin.evm),
+                        (12, &found_coin.ucid),
+                        (13, &found_coin.cmc_top),
+                    ]);
+                }
+                coin_treeview.borrow().set_model(Some(&*store));
+            } else {
+                store.clear();
+            }
+        }
+    });
 
     bip_dropdown.connect_selected_notify(clone!(
         #[weak] derivation_label_text,
@@ -3096,58 +2933,55 @@ fn create_main_window(
                 bip_hardened_frame.set_visible(true);
             }
     
-            dp_clone.borrow_mut().update_field("bip", Some(FieldValue::U32(*bip)));
-            update_derivation_label(*dp_clone.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+            dp.update_field("bip", Some(FieldValue::U32(*bip)));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
         
-    let dp_clone = std::rc::Rc::clone(&derivation_path);
-    
     bip_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] bip_hardened_checkbox,
         move |_| {
-            dp_clone.borrow_mut().update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
-            update_derivation_label(*dp_clone.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+            dp.update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
         
-    let dp_clone2 = std::rc::Rc::clone(&derivation_path);
-    
     coin_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] coin_hardened_checkbox,
         move |_| {
-            dp_clone2.borrow_mut().update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
-            update_derivation_label(*dp_clone2.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+
+            dp.update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
 
-    let dp_clone3 = std::rc::Rc::clone(&derivation_path);
-    
     address_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] address_hardened_checkbox,
         move |_| {
-            dp_clone3.borrow_mut().update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
-            update_derivation_label(*dp_clone3.borrow(), derivation_label_text)
+            let mut dp = DERIVATION_PATH.write().unwrap();
+
+            dp.update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
+            update_derivation_label(*dp, derivation_label_text)
         }
     ));
         
-    let dp_clone4 = std::rc::Rc::clone(&derivation_path);
-    
     purpose_dropdown.connect_selected_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] purpose_dropdown,
         move |_| {
             let purpose = purpose_dropdown.selected();
+            let mut dp = DERIVATION_PATH.write().unwrap();
 
-            dp_clone4.borrow_mut().update_field("purpose", Some(FieldValue::U32(purpose)));
-            update_derivation_label(*dp_clone4.borrow(), derivation_label_text);
+            dp.update_field("purpose", Some(FieldValue::U32(purpose)));
+            update_derivation_label(*dp, derivation_label_text);
         }
     ));
-
-    let dp_clone5 = std::rc::Rc::clone(&derivation_path);
 
     coin_entry.connect_changed(clone!(
         #[weak] derivation_label_text,
@@ -3156,15 +2990,14 @@ fn create_main_window(
             let coin_number = coin_entry.buffer().text();
             let ff = coin_number.as_str();
             let my_int = ff.parse::<u32>();
-
+            
             if my_int.is_ok() {
-                dp_clone5.borrow_mut().update_field("coin", Some(FieldValue::U32(my_int.unwrap())));
-                update_derivation_label(*dp_clone5.borrow(), derivation_label_text);
+                let mut dp = DERIVATION_PATH.write().unwrap();
+                dp.update_field("coin", Some(FieldValue::U32(my_int.unwrap())));
+                update_derivation_label(*dp, derivation_label_text);
             }
         }
     ));
-
-    let dp_clone6 = std::rc::Rc::clone(&derivation_path);
 
     address_spinbutton.connect_changed(clone!(
         #[weak] derivation_label_text,
@@ -3173,10 +3006,11 @@ fn create_main_window(
             let address_number = address_spinbutton.text();
             let ff = address_number.as_str();
             let my_int = ff.parse::<u32>();
-
+            
             if my_int.is_ok() {
-                dp_clone6.borrow_mut().update_field("address", Some(FieldValue::U32(my_int.unwrap())));
-                update_derivation_label(*dp_clone6.borrow(), derivation_label_text);
+                let mut dp = DERIVATION_PATH.write().unwrap();
+                dp.update_field("address", Some(FieldValue::U32(my_int.unwrap())));
+                update_derivation_label(*dp, derivation_label_text);
             }
         }
     ));
@@ -3222,51 +3056,49 @@ fn create_main_window(
     ));
 
     // JUMP: Generate Addresses button
+// // Working version
     generate_addresses_button.connect_clicked(clone!(
         #[strong] address_store,
         #[weak] derivation_label_text,
-        // #[weak] master_private_key_text,
+        #[weak] master_private_key_text,
         #[strong] app_messages_state,
-        #[strong] wallet_settings_state,
         #[weak] address_start_spinbutton,
         #[weak] address_count_spinbutton,
         #[weak] address_options_hardened_address_checkbox,
+        #[weak] address_generation_progress_bar,
         move |_| {
-            // let buffer = master_private_key_text.buffer();
-            // let start_iter = buffer.start_iter();
-            // let end_iter = buffer.end_iter();
-            // let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
+            let buffer = master_private_key_text.buffer();
+            let start_iter = buffer.start_iter();
+            let end_iter = buffer.end_iter();
+            let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
 
-            
+            if master_private_key_string.is_empty() {
+                let lock_app_messages = app_messages_state.lock().unwrap();
+                lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
+                return;
+            }
 
-            let lock_wallet_settings = wallet_settings_state.lock().unwrap();
+            let wallet_settings = {
+                let lock = WALLET_SETTINGS.lock().unwrap();
+                lock.clone()
+            };
 
-            let coin_name = lock_wallet_settings.coin_name.clone().unwrap_or_default();
+            address_generation_progress_bar.set_fraction(0.0);
+            address_generation_progress_bar.set_show_text(true);
+            let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
             let address_start_point = address_start_spinbutton.text();
             let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
             let address_count = address_count_spinbutton.text();
             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
-            let master_private_key = lock_wallet_settings.master_private_key_bytes.clone();
             
-            match master_private_key {
-                Some(value) => {println!("master_private_key: {:?}", value)},
-                None => {
-                    let lock_app_messages = app_messages_state.lock().unwrap();
-                    lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
-                },
-            }
-
-            // #######################################
-
-            // let open_context = glib::MainContext::default();
-            // let open_loop = glib::MainLoop::new(Some(&open_context), false);
             let (tx, rx) = std::sync::mpsc::channel();
+            let (tp, rp) = std::sync::mpsc::channel();
+            
             let start_time = std::time::Instant::now();
 
             std::thread::spawn(clone!(
-                #[strong] wallet_settings_state,
                 move || {
 
                     let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
@@ -3288,19 +3120,16 @@ fn create_main_window(
                             format!("{}/{}", derivation_path, current_index)
                         };
 
-                        
                         if !existing_addresses.contains(&full_address_derivation_path) {
-                            let lock_wallet_settings = wallet_settings_state.lock().unwrap();
-                            let master_private_key_bytes = lock_wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-                            let master_chain_code_bytes = lock_wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-                            let key_derivation = lock_wallet_settings.key_derivation.clone().unwrap_or_default();
-                            let hash = lock_wallet_settings.hash.clone().unwrap_or_default();
-                            let wallet_import_format = lock_wallet_settings.wallet_import_format.clone().unwrap_or_default();
-                            let public_key_hash = lock_wallet_settings.public_key_hash.clone().unwrap_or_default();
-                            let coin_index = lock_wallet_settings.coin_index.clone().unwrap_or_default();
+                            let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+                            let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+                            let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+                            let hash = wallet_settings.hash.clone().unwrap_or_default();
+                            let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+                            let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+                            let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
 
-                            // if let Some(full_address_path) = full_address_derivation_path.split('/').last() {
-                            if let Ok((address, public_key, private_key)) = generate_address(
+                            if let Ok((address, public_key, private_key)) = keys::generate_address(
                                 coin_index,
                                 &full_address_derivation_path,
                                 master_private_key_bytes, 
@@ -3320,29 +3149,33 @@ fn create_main_window(
 
                                 CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
 
-                                // tx.send(new_entry).expect("Failed to send address");
                                 if tx.send(new_entry).is_err() {
                                     break;
                                 }
 
                                 generated_count += 1;
+
+                                let progress_value = if address_count_int > 0 {
+                                    (generated_count as f64) / (address_count_int as f64)
+                                } else {
+                                    0.0
+                                };
+        
+                                let _ = tp.send(progress_value);
                             }
 
                         }
                         current_index += 1;
                     }
-                    
-                    let duration = start_time.elapsed();
-                    println!("\t- Address generation completed in {:.2?} seconds", duration);
 
-                    // open_loop.quit();
+                    let _ = tp.send(1.0);
                 }
             ));
 
-            // open_loop.run();
-
-            glib::timeout_add_local(std::time::Duration::from_millis(50), clone!(
+            glib::idle_add_local(clone!(
                 #[strong] address_store,
+                #[strong] app_messages_state,
+                #[strong] address_generation_progress_bar,
                 move || {
                     while let Ok(new_entry) = rx.try_recv() {
                         let iter = address_store.append();
@@ -3357,26 +3190,211 @@ fn create_main_window(
                             ],
                         );
                     }
+            
+                    while let Ok(progress) = rp.try_recv() {
+                        address_generation_progress_bar.set_fraction(progress);
+            
+                        if progress >= 1.0 {
+                            {
+                                let duration = start_time.elapsed();
+                                let message = format!("Address generation completed in {:.2?} seconds", duration);
+
+                                let lock_app_messages = app_messages_state.lock().unwrap();
+                                lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+                                
+                            }
+                            return glib::ControlFlow::Break;
+                        }
+                    }
+            
                     glib::ControlFlow::Continue
                 }
             ));
-
-
-
-
-
-
-
+            
         }
     ));
+
+//     // parallel tasks - shit
+//     generate_addresses_button.connect_clicked(clone!(
+//         #[strong] address_store,
+//         #[weak] derivation_label_text,
+//         #[weak] master_private_key_text,
+//         #[strong] app_messages_state,
+//         #[weak] address_start_spinbutton,
+//         #[weak] address_count_spinbutton,
+//         #[weak] address_options_hardened_address_checkbox,
+//         #[weak] address_generation_progress_bar,
+//         move |_| {
+//             let buffer = master_private_key_text.buffer();
+//             let start_iter = buffer.start_iter();
+//             let end_iter = buffer.end_iter();
+//             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
+// 
+//             if master_private_key_string.is_empty() {
+//                 let lock_app_messages = app_messages_state.lock().unwrap();
+//                 lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
+//                 return;
+//             }
+// 
+//             let wallet_settings = {
+//                 let lock = WALLET_SETTINGS.lock().unwrap();
+//                 lock.clone()
+//             };
+// 
+//             address_generation_progress_bar.set_fraction(0.0);
+//             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+//             let derivation_path = derivation_label_text.text();
+//             let hardened_address = address_options_hardened_address_checkbox.is_active();
+//             let address_start_point = address_start_spinbutton.text();
+//             let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
+//             let address_count = address_count_spinbutton.text();
+//             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
+//             
+//             let (tx, rx) = std::sync::mpsc::channel();
+//             let (tp, rp) = std::sync::mpsc::channel();
+//             let num_threads = 4;
+// 
+//             let progress_counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+//             let start_time = std::time::Instant::now();
+// 
+//             let mut handles = Vec::with_capacity(num_threads);
+//             
+//             let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
+//                 .iter()
+//                 .filter_map(|addr| addr.derivation_path.clone())
+//                 .collect();
+// 
+// 
+//             for thread_id in 0..num_threads {
+//                 let tx = tx.clone();
+//                 let tp = tp.clone();
+//             }
+//             
+//             
+//             let handle = std::thread::spawn(clone!(
+//                 move || {
+// 
+// 
+//                     let mut generated_count = 0;
+//                     let mut current_index = address_start_point_int;
+// 
+//                     while generated_count < address_count_int {
+//                         if current_index > WALLET_MAX_ADDRESSES as usize {
+//                             return;
+//                         }
+//                         
+//                         let full_address_derivation_path = if hardened_address {
+//                             format!("{}/{}'", derivation_path, current_index)
+//                         } else {
+//                             format!("{}/{}", derivation_path, current_index)
+//                         };
+// 
+//                         if !existing_addresses.contains(&full_address_derivation_path) {
+//                             let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+//                             let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+//                             let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+//                             let hash = wallet_settings.hash.clone().unwrap_or_default();
+//                             let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+//                             let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+//                             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+// 
+//                             if let Ok((address, public_key, private_key)) = keys::generate_address(
+//                                 coin_index,
+//                                 &full_address_derivation_path,
+//                                 master_private_key_bytes, 
+//                                 master_chain_code_bytes,
+//                                 &public_key_hash,
+//                                 &key_derivation, 
+//                                 &wallet_import_format,
+//                                 &hash,
+//                             ) {
+//                                 let new_entry = CryptoAddresses {
+//                                     coin_name: Some(coin_name.clone()),
+//                                     derivation_path: Some(full_address_derivation_path.clone()),
+//                                     address: Some(address.clone()),
+//                                     public_key: Some(public_key.clone()),
+//                                     private_key: Some(private_key.clone()),
+//                                 };
+// 
+//                                 CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
+// 
+//                                 if tx.send(new_entry).is_err() {
+//                                     break;
+//                                 }
+// 
+//                                 generated_count += 1;
+// 
+//                                 let progress_value = if address_count_int > 0 {
+//                                     (generated_count as f64) / (address_count_int as f64)
+//                                 } else {
+//                                     0.0
+//                                 };
+//         
+//                                 let _ = tp.send(progress_value);
+//                             }
+// 
+//                         }
+//                         current_index += 1;
+//                     }
+// 
+//                     let _ = tp.send(1.0);
+//                 }
+//             ));
+// 
+//             handles.push(handle);
+// 
+//             glib::idle_add_local(clone!(
+//                 #[strong] address_store,
+//                 #[strong] app_messages_state,
+//                 #[strong] address_generation_progress_bar,
+//                 move || {
+//                     while let Ok(new_entry) = rx.try_recv() {
+//                         let iter = address_store.append();
+//                         address_store.set(
+//                             &iter,
+//                             &[
+//                                 (0, &new_entry.coin_name.clone().unwrap_or_default()),
+//                                 (1, &new_entry.derivation_path.clone().unwrap_or_default()),
+//                                 (2, &new_entry.address.clone().unwrap_or_default()),
+//                                 (3, &new_entry.public_key.clone().unwrap_or_default()),
+//                                 (4, &new_entry.private_key.clone().unwrap_or_default()),
+//                             ],
+//                         );
+//                     }
+//             
+//                     while let Ok(progress) = rp.try_recv() {
+//                         address_generation_progress_bar.set_fraction(progress);
+//             
+//                         if progress >= 1.0 {
+//                             {
+//                                 let duration = start_time.elapsed();
+//                                 let message = format!("Address generation completed in {:.3?}", duration);
+// 
+//                                 let lock_app_messages = app_messages_state.lock().unwrap();
+//                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+//                                 
+//                             }
+//                             return glib::ControlFlow::Break;
+//                         }
+//                     }
+//             
+//                     glib::ControlFlow::Continue
+//                 }
+//             ));
+//             
+//         }
+//     ));
 
     address_options_clear_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] address_start_spinbutton,
+        #[weak] address_generation_progress_bar,
         move |_| {
             address_store.clear();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
+            address_generation_progress_bar.set_show_text(false);
+            address_generation_progress_bar.set_fraction(0.0);
         }
     ));
 
@@ -3465,8 +3483,7 @@ fn create_settings_window(
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    let app_settings_state = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::load_settings()));
-    let lock_app_settings = app_settings_state.read().unwrap();
+    let lock_app_settings = APP_SETTINGS.lock().unwrap();
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.settings").to_string())
@@ -4463,10 +4480,10 @@ fn create_settings_window(
         #[weak] settings_window,
         #[strong] gui_state,
         #[weak] app_messages_state,
-        #[strong] app_settings_state,
         move |_| {
-            let mut lock_app_settings = app_settings_state.write().unwrap();                     
-    
+
+            let mut settings = APP_SETTINGS.lock().unwrap();
+
             let updates = [
                 ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),
                 ("wallet_entropy_length", toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64)),
@@ -4489,7 +4506,7 @@ fn create_settings_window(
                 ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
                 ("proxy_status", toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize])),
                 ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
-                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or_default() as i64)),
+                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or(8080) as i64)),
                 ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
                 ("proxy_script_address", toml_edit::value(proxy_pac_path_entry.text().to_string())),
                 ("proxy_login_credentials", toml_edit::value(use_proxy_credentials_checkbox.is_active())),
@@ -4501,12 +4518,11 @@ fn create_settings_window(
     
             updates.iter().for_each(|(key, value)| {
                 let gui_related = matches!(*key, "gui_theme" | "gui_log" | "gui_icons");
-                lock_app_settings.update_value(key, value.clone(), gui_related.then(|| gui_state.clone()));
+                settings.update_value(key, value.clone(), gui_related.then(|| gui_state.clone()));
             });
-    
-    
-            lock_app_settings.save_settings();
 
+
+            AppSettings::save_settings(&*settings);
 
             {
                 let lock_app_messages = app_messages_state.lock().unwrap();
@@ -4642,7 +4658,7 @@ fn reset_user_settings() -> Result<String, String> {
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource("logo/logo.s7vg");
+    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource("logo/logo.svg");
     let logo_picture = gtk::Picture::new();
     logo_picture.set_paintable(Some(&pixy));
 
@@ -4670,7 +4686,7 @@ fn create_about_window() {
         .website("https://www.github.com/control-owl/qr2m")
         .website_label("GitHub project")
         .authors([APP_AUTHOR.unwrap()])
-        .copyright("Copyright [2023-2024] Control Owl")
+        .copyright("Copyright [2023-2025] Control Owl")
         .license(licenses)
         .wrap_license(true)
         .comments(&t!("UI.about.description").to_string())
@@ -4775,19 +4791,16 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
     }
 }
 
-fn save_wallet_to_file(
-    wallet_settings_state: std::sync::Arc<std::sync::Mutex<WalletSettings>>
-) {
+fn save_wallet_to_file() {
     println!("[+] {}", &t!("log.save_wallet_to_file").to_string());
 
     // TODO: Check if wallet is created before proceeding
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
     
-    let wallet_settings = wallet_settings_state.lock().unwrap();
+    let wallet_settings = WALLET_SETTINGS.lock().unwrap();
     let entropy_string = wallet_settings.entropy_string.clone().unwrap_or_default();
     let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap_or_default();
-    // WALLET_SETTINGS.clear_poison();
 
     let save_window = gtk::Window::new();
     let save_dialog = gtk::FileChooserNative::new(
@@ -4847,12 +4860,12 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::Label, ) {
     if dp.hardened_coin.unwrap_or_default() {
         path.push_str(&format!("'"));
     }
-
+    
     path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
     if dp.hardened_address.unwrap_or_default() {
         path.push_str(&format!("'"));
     }
-
+        
     if dp.bip.unwrap() != 32  {
         path.push_str(&format!("/{}", dp.purpose.unwrap_or_default()));
     }
@@ -4913,241 +4926,5 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
     }
 }
 
-fn generate_address(
-    coin_index: u32,
-    derivation_path: &str,
-    master_private_key_bytes: Vec<u8>,
-    master_chain_code_bytes: Vec<u8>,
-    public_key_hash: &str,
-    key_derivation: &str,
-    wallet_import_format: &str,
-    hash: &str,
- ) -> Result<(String, String, String), String> {
-    println!("[+] {}", &t!("log.generate_address").to_string());
-
-    println!("\t- derivation_path: {:?}", derivation_path);
-
-    let secp = secp256k1::Secp256k1::new();
-
-    let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
-        &public_key_hash[2..]
-    } else {
-        &public_key_hash
-    };
-
-    let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
-        Ok(vec) => vec,
-        Err(e) => {
-            return Err(format!("Problem with decoding public_key_hash_vec: {:?}", e).to_string());
-        },
-    };
-
-    let derived_child_keys = match key_derivation {
-        "secp256k1" => keys::derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
-        "ed25519" => dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
-        "N/A" | _ => {
-            return Err(format!("Unsupported key derivation method: {:?}", key_derivation))
-        }
-    }.expect("Can not derive child key");
-
-    let public_key = match key_derivation {
-        "secp256k1" => {
-            let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-                &secp,
-                &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-            );
-            keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-        },
-        "ed25519" => {
-            let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-            let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-            keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-        },
-        "N/A" | _ => {
-            return Err(format!("Unsupported key derivation method: {:?}", key_derivation));
-        }
-    };
-
-    let public_key_encoded = match hash {
-        "sha256" | "sha256+ripemd160" => match &public_key {
-            keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-            keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-        },
-        "keccak256" => match &public_key {
-            keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-            keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-        },
-        "N/A" | _ => {
-            return Err(format!("Unsupported hash method: {:?}", hash));
-        }
-    };
-
-    let address = match hash {
-        "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-        "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-        "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-            coin_index, 
-            &public_key, 
-            &public_key_hash_vec
-        ) {
-            Ok(addr) => addr,
-            Err(e) => {
-                return Err(format!("Error generating address: {}", e));
-            }
-        },
-        "ed25519" => dev::generate_ed25519_address(&public_key),
-        "N/A" | _ => {
-            return Err(format!("Unsupported hash method: {:?}", hash));
-        }
-    };
-
-    // IMPROVEMENT: remove hard-coding, add this option to UI
-    let compressed = true;
-
-    let priv_key_wif = keys::create_private_key_for_address(
-        Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
-        Some(compressed),
-        Some(&wallet_import_format),
-        &hash,
-    ).expect("Failed to convert private key to WIF");
-
-    Ok((address.clone(), public_key_encoded.clone(), priv_key_wif.clone()))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // // let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
-    // // let current_len = addr_lock.len();
-    // // let current_count = address_count_int;
-    // // let last_value;
-
-    // // if (current_len + address_count_int) >= WALLET_MAX_ADDRESSES as usize {
-    // //     last_value = current_count as usize;
-    // // } else {
-    // //     last_value = current_len + address_count_int;
-    // // }
-
-    // // for mut i in current_len..last_value {
-    //     // i=i+address_start_point_int;
-        
-    //     let full_path = if hardened {
-    //         format!("{}/{}'", derivation_path, i)
-    //     } else {
-    //         format!("{}/{}", derivation_path, i)
-    //     };
-
-    //     
-
-    //     let public_key = match key_derivation {
-    //         "secp256k1" => {
-    //             let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-    //                 &secp,
-    //                 &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-    //             );
-    //             keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-    //         },
-    //         "ed25519" => {
-    //             let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-    //             let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-    //             keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-    //         },
-    //         "N/A" | _ => {
-    //             println!("Unsupported key derivation method: {:?}", key_derivation);
-    //             return;
-    //         }
-    //     };
-
-    //     let public_key_encoded = match hash {
-    //         "sha256" | "sha256+ripemd160" => match &public_key {
-    //             keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-    //             keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-    //         },
-    //         "keccak256" => match &public_key {
-    //             keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-    //             keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-    //         },
-    //         "N/A" | _ => {
-    //             println!("Unsupported hash method: {:?}", hash);
-    //             return;
-    //         }
-    //     };
-        
-    //     let address = match hash {
-    //         "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-    //         "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-    //         "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-    //             coin_index, 
-    //             &public_key, 
-    //             &public_key_hash_vec
-    //         ) {
-    //             Ok(addr) => addr,
-    //             Err(e) => {
-    //                 println!("Error generating address: {}", e);
-    //                 return;
-    //             }
-    //         },
-    //         "ed25519" => dev::generate_ed25519_address(&public_key),
-    //         "N/A" | _ => {
-    //             println!("Unsupported hash method: {:?}", hash);
-    //             return;
-    //         }
-    //     };
-
-    //     println!("Crypto address: {:?}", address);
-
-        
-        
-    //     
-        
-
-        
-        
-        // let new_entry = CryptoAddresses {
-        //     coin_name: Some(coin_name.clone().to_string()),
-        //     derivation_path: Some(full_path.clone()),
-        //     address: Some(address.clone()),
-        //     public_key: Some(public_key_encoded.clone()),
-        //     private_key: Some(priv_key_wif.clone()),
-        // }; 
-
-        // if !addr_lock.iter().any(|addr| 
-        //     addr.coin_name == new_entry.coin_name &&
-        //     addr.derivation_path == new_entry.derivation_path &&
-        //     addr.address == new_entry.address &&
-        //     addr.public_key == new_entry.public_key &&
-        //     addr.private_key == new_entry.private_key
-        // ) {
-        //     addr_lock.push(new_entry);
-        //     let iter = address_store.append();
-        //     address_store.set(
-        //         &iter,
-        //         &[
-        //             (0, &coin_name),
-        //             (1, &full_path),
-        //             (2, &address),
-        //             (3, &public_key_encoded),
-        //             (4, &priv_key_wif),
-        //         ],
-        //     );
-        //     println!("New address added.");
-        // } else {
-        //     println!("Duplicate address found, not adding.");
-        // }
-        
-    // }
-}
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
