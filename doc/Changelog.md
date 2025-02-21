@@ -1,5 +1,5 @@
 # version 0.74.0
-- address generation - parallel threads
+- finish fuxking proxy - moron
 
 # version 0.73.0
 - Real-time Address Updates: Addresses now appear instantly in a table as they are generated
