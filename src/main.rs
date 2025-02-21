@@ -1034,7 +1034,10 @@ impl AppMessages {
                 if let Some((message, message_type)) = queue_lock.pop_front() {
                     AppMessages::create_info_message(&info_bar, &message, message_type);
     
-                    glib::timeout_add_local(std::time::Duration::from_secs(3), {
+                    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+                    let timeout = lock_app_settings.gui_notification_timeout.unwrap();
+
+                    glib::timeout_add_local(std::time::Duration::from_secs(timeout as u64), {
                         let queue = queue.clone();
                         let info_bar = info_bar.clone();
                         let processing = processing.clone();
@@ -1042,7 +1045,7 @@ impl AppMessages {
                         move || {
                             info_bar.set_reveal_child(false);
     
-                            AppMessages::start_next_message(&queue, &info_bar, &processing);
+                            AppMessages::start_next_message(&queue, &info_bar, &processing, timeout);
     
                             glib::ControlFlow::Break
                         }
@@ -1061,6 +1064,7 @@ impl AppMessages {
         queue: &std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
         info_bar: &gtk::Revealer,
         processing: &std::sync::Arc<std::sync::Mutex<bool>>,
+        timeout: u32,
     ) {
         println!("[+] {}", &t!("log.app_messages.start_next_message").to_string());
 
@@ -1072,11 +1076,11 @@ impl AppMessages {
             let info_bar = info_bar.clone();
             let processing = processing.clone();
     
-            // TODO: Get value from settings
-            glib::timeout_add_local(std::time::Duration::from_secs(3), move || {
+            
+            glib::timeout_add_local(std::time::Duration::from_secs(timeout as u64), move || {
                 info_bar.set_reveal_child(false);
     
-                AppMessages::start_next_message(&queue, &info_bar, &processing);
+                AppMessages::start_next_message(&queue, &info_bar, &processing, timeout);
     
                 glib::ControlFlow::Break
             });
@@ -3197,7 +3201,9 @@ fn create_main_window(
                         if progress >= 1.0 {
                             {
                                 let duration = start_time.elapsed();
-                                let message = format!("Address generation completed in {:.2?} seconds", duration);
+                                let message = format!("Address generation completed in {:.2?}", duration);
+
+                                println!("{}", message);
 
                                 let lock_app_messages = app_messages_state.lock().unwrap();
                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
@@ -4794,7 +4800,6 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
 fn save_wallet_to_file() {
     println!("[+] {}", &t!("log.save_wallet_to_file").to_string());
 
-    // TODO: Check if wallet is created before proceeding
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
     

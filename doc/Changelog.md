@@ -1,5 +1,8 @@
+# version 0.74.0
+- address generation - parallel threads
+
 # version 0.73.0
-- Real-time Address Updates: Addresses now appear instantly in a table as they are generated - async 50ms
+- Real-time Address Updates: Addresses now appear instantly in a table as they are generated
 - removed default config file and migrated to a struct settings
 - new gtk4 library
 - Application startup time:
