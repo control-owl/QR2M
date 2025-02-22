@@ -1256,7 +1256,8 @@ impl FieldValue {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let start_time = std::time::Instant::now();
 
     print_program_info();
@@ -1376,9 +1377,14 @@ fn setup_app_actions(
         }
     ));
 
-    test.connect_activate(|_action, _parameter| {
-        dev::anu_window();
-    });
+    test.connect_activate(clone!(
+        // #[strong] gui_state,
+        // #[weak] app_messages_state,
+        move |_action, _parameter| {
+            let anu_window = dev::anu_window();
+            anu_window.show();
+        }
+    ));
 
     application.set_accels_for_action("app.new", &["<Primary>N"]);
     application.set_accels_for_action("app.open", &["<Primary>O"]);

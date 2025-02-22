@@ -462,6 +462,8 @@ UI:
       en: "Save wallet in directory"
       de: "Wallet im Verzeichnis speichern"
       hr: "Spremiti novčanik u direktorij"
+  anu:
+    en: "ANU QRNG Downloader"
 error:
   settings:
     config:

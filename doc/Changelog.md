@@ -1,5 +1,7 @@
 # version 0.74.0
 - finish fuxking proxy - moron
+- and again I do ANU :D
+    - N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
 
 # version 0.73.0
 - Real-time Address Updates: Addresses now appear instantly in a table as they are generated

@@ -130,11 +130,13 @@ pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> St
 
 // NEW ANU LOGIC
 
-const QRNG_KEY_LEVEL: usize = 14;
-const QRNG_MAGIC_NUMBER: usize = 1024 * QRNG_KEY_LEVEL;
+const QRNG_BLOCK_SIZE: u32 = 512;
+const QRNG_KEY_LEVEL: u32 = 24;
+const QRNG_MAGIC_NUMBER: u32 = QRNG_BLOCK_SIZE * QRNG_KEY_LEVEL;
+const BOX_SIZE: u32 = 5;
+const MARGIN_TOTAL: u32 = 20;
 
-
-fn get_qrng() -> String {
+async fn get_qrng() -> String {
     use rand::{Rng, rng};
 
     let mut rng = rng();
@@ -155,74 +157,139 @@ fn get_qrng() -> String {
     hex_chars
 }
 
-pub fn anu_window() {
-    let app = gtk::Application::builder()
-        .application_id("wtf.r_o0_t.qr2m.qrng_checker")
+pub fn anu_window() -> gtk::ApplicationWindow {
+    let app = gtk::ApplicationWindow::builder()
+        .title(t!("UI.anu").to_string())
+        .default_width(crate::WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
+        .default_height(crate::WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
+        .resizable(true)
+        .modal(true)
         .build();
 
-    app.connect_activate(|app| {
-        let window = gtk::ApplicationWindow::builder()
-            .application(app)
-            .title("QRNG Checker")
-            .default_width(1024)
-            .default_height(768)
+
+    let main_grid_box = gtk::Box::builder()
+        .margin_bottom(10)
+        .margin_end(10)
+        .margin_start(10)
+        .margin_top(10)
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+
+    let scroll_window = gtk::ScrolledWindow::new();
+    scroll_window.set_hexpand(true);
+    scroll_window.set_vexpand(true);
+
+    let grid = gtk::Grid::builder()
+        .column_spacing(0)
+        .row_spacing(0)
+        .build();
+
+    scroll_window.set_child(Some(&grid));
+    main_grid_box.append(&scroll_window);
+
+    let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let ok_button = gtk::Button::with_label("OK");
+    let cancel_button = gtk::Button::with_label("Cancel");
+    let new_button = gtk::Button::with_label("New QRNG");
+
+    main_button_box.append(&ok_button);
+    main_button_box.append(&new_button);
+    main_button_box.append(&cancel_button);
+
+    main_button_box.set_margin_bottom(4);
+    main_button_box.set_margin_top(4);
+    main_button_box.set_margin_start(4);
+    main_button_box.set_margin_end(4);
+
+    main_grid_box.append(&main_button_box);
+
+
+
+
+
+
+
+    let boxes = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+    for _ in 0..QRNG_MAGIC_NUMBER {
+        let small_box = gtk::Box::builder()
+            .width_request(BOX_SIZE as i32)
+            .height_request(BOX_SIZE as i32)
             .build();
+        small_box.set_css_classes(&["empty-box"]);
+        boxes.borrow_mut().push(small_box);
+    }
 
-        let main_grid_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let scroll_window = gtk::ScrolledWindow::new();
-        scroll_window.set_hexpand(true);
-        scroll_window.set_vexpand(true);
+    let initial_boxes = boxes.borrow();
+    let initial_columns = ((QRNG_BLOCK_SIZE - MARGIN_TOTAL) / BOX_SIZE).max(1) as usize;
+    for (i, small_box) in initial_boxes.iter().enumerate() {
+        grid.attach(small_box, (i % initial_columns) as i32, (i / initial_columns) as i32, 1, 1);
+    }
 
-        let grid = gtk::Grid::builder()
-            .column_spacing(3)
-            .row_spacing(3)
-            .margin_start(5)
-            .margin_end(5)
-            .margin_top(5)
-            .margin_bottom(5)
-            .build();
-
-        scroll_window.set_child(Some(&grid));
-        main_grid_box.append(&scroll_window);
-
-        let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-        let ok_button = gtk::Button::with_label("OK");
-        let cancel_button = gtk::Button::with_label("Cancel");
-        let new_button = gtk::Button::with_label("New QRNG");
-
-        main_button_box.append(&ok_button);
-        main_button_box.append(&new_button);
-        main_button_box.append(&cancel_button);
-
-        main_button_box.set_margin_bottom(4);
-        main_button_box.set_margin_top(4);
-        main_button_box.set_margin_start(4);
-        main_button_box.set_margin_end(4);
-
-        main_grid_box.append(&main_button_box);
-
-        let mut boxes = Vec::new();
-
-        for i in 0..QRNG_MAGIC_NUMBER {
-            let small_box = gtk::Box::builder()
-                .width_request(7)
-                .height_request(7)
-                .build();
-
-            small_box.set_css_classes(&["empty-box"]);
-            // IMPLEMENT: Get window size, then calculate maximum boxes per row
-            grid.attach(&small_box, (i % 150) as i32, (i / 150) as i32, 1, 1);
-            boxes.push(small_box);
+    drop(initial_boxes);
+   
+    let reallocate_boxes = {
+        let grid = grid.clone();
+        let boxes = boxes.clone();
+        let mut last_width = app.default_width() - MARGIN_TOTAL as i32;
+        move |width: i32| {
+            let effective_width = width - MARGIN_TOTAL as i32;
+            if effective_width != last_width {
+                let columns = (effective_width / BOX_SIZE as i32).max(1) as usize;
+                let boxes = boxes.borrow();
+                for small_box in boxes.iter() {
+                    if small_box.parent().map_or(false, |p| p == *grid.upcast_ref::<gtk::Widget>()) {
+                        grid.remove(small_box);
+                    }
+                }
+                for (i, small_box) in boxes.iter().enumerate() {
+                    grid.attach(small_box, (i % columns) as i32, (i / columns) as i32, 1, 1);
+                }
+                println!("width={}, effective_width={}, columns={}", width, effective_width, columns);
+                last_width = effective_width;
+            }
         }
+    };
 
-        let recolor_boxes = std::rc::Rc::new(std::cell::RefCell::new({
-            let boxes = boxes.clone();
-            move || {
-                let qrng_string = get_qrng();
+    let mut reallocate_boxes_clone = reallocate_boxes.clone();
+    reallocate_boxes_clone(app.width());
+    
+    glib::idle_add_local(glib::clone!(
+        #[strong] app,
+        // #[strong] reallocate_boxes,
+        move || {
+            let mut width = app.width();
+            if width == 0 {
+                width = crate::WINDOW_SETTINGS_DEFAULT_WIDTH as i32;
+            }
+            reallocate_boxes_clone(width);
+            glib::ControlFlow::Continue
+    }));
+
+    let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
+
+    new_button.connect_clicked(move |_| {
+        let tx = tx.clone();
+        tokio::spawn(async move {
+            let qrng_string = get_qrng().await;
+            tx.send(qrng_string).expect("Failed to send QRNG result");
+        });
+    });
+
+    cancel_button.connect_clicked(glib::clone!(
+        #[weak] app,
+        move |_| {
+            app.close()
+        }
+    ));
+
+    let boxes_clone = boxes.clone();
+    glib::idle_add_local(move || {
+        match rx.try_recv() {
+            Ok(qrng_string) => {
                 let qrng_length = qrng_string.len();
                 println!("New QRNG Length: {}", qrng_length);
 
-                for (i, small_box) in boxes.iter().enumerate() {
+                for (i, small_box) in boxes_clone.borrow().iter().enumerate() {
                     if i < qrng_length {
                         small_box.set_css_classes(&["green-box"]);
                     } else {
@@ -230,24 +297,18 @@ pub fn anu_window() {
                     }
                 }
 
-                if qrng_length == QRNG_MAGIC_NUMBER {
-                    println!("Done");
-                } else {
-                    println!("Not enough");
-                }
+                // if qrng_length == QRNG_MAGIC_NUMBER {
+                //     println!("Done");
+                // } else {
+                //     println!("Not enough");
+                // }
             }
-        }));
-
-        {
-            let recolor_boxes = recolor_boxes.clone();
-            new_button.connect_clicked(move |_| {
-                recolor_boxes.borrow_mut()();
-            });
+            Err(_) => {}
         }
-
-        window.set_child(Some(&main_grid_box));
-        window.show();
+        glib::ControlFlow::Continue
     });
 
-    app.run();
+    app.set_child(Some(&main_grid_box));
+
+    app
 }
