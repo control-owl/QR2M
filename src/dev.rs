@@ -133,29 +133,263 @@ pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> St
 const QRNG_BLOCK_SIZE: u32 = 1024;
 pub const QRNG_KEY_LEVEL: u32 = 24;
 const QRNG_MAGIC_NUMBER: u32 = QRNG_BLOCK_SIZE * QRNG_KEY_LEVEL;
-const BOX_SIZE: u32 = 5;
-const MARGIN_TOTAL: u32 = 20;
+// const BOX_SIZE: u32 = 5;
+// const MARGIN_TOTAL: u32 = 20;
 
-async fn get_qrng() -> String {
-    use rand::{Rng, rng};
+// TEST
+// async fn get_qrng() -> String {
+//     use rand::{Rng, rng};
+// 
+//     let mut rng = rng();
+//     let length = rng.random_range(2..=QRNG_MAGIC_NUMBER);
+// 
+//     let hex_chars: String = (0..length)
+//         .map(|_| {
+//             let random_char = rng.random_range(0..16);
+//             match random_char {
+//                 0..=9 => (b'0' + random_char as u8) as char,
+//                 10..=15 => (b'A' + (random_char - 10) as u8) as char, // A-F
+//                 _ => unreachable!(),
+//             }
+//         })
+//         .collect();
+// 
+//     println!("Generated String: {}", hex_chars);
+//     hex_chars
+// }
 
-    let mut rng = rng();
-    let length = rng.random_range(2..=QRNG_MAGIC_NUMBER);
 
-    let hex_chars: String = (0..length)
-        .map(|_| {
-            let random_char = rng.random_range(0..16);
-            match random_char {
-                0..=9 => (b'0' + random_char as u8) as char,
-                10..=15 => (b'A' + (random_char - 10) as u8) as char, // A-F
-                _ => unreachable!(),
-            }
-        })
-        .collect();
+fn create_boxes(n: u32) -> Vec<BlockEntry> {
+    let mut blocks = Vec::new();
 
-    println!("Generated String: {}", hex_chars);
-    hex_chars
+    for i in 0..n {
+        let container = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+        
+        let label = gtk::Label::new(Some(&format!("Block {}", i + 1)));
+        
+        let info_box = gtk::Box::new(gtk::Orientation::Vertical, 5);
+        let entry = gtk::Entry::new();
+        let progress_bar = gtk::ProgressBar::new();
+
+        entry.set_hexpand(true);
+        progress_bar.set_hexpand(true);
+
+        info_box.append(&entry);
+        info_box.append(&progress_bar);
+
+        container.append(&label);
+        container.append(&info_box);
+
+        blocks.push(BlockEntry {
+            container,
+            entry,
+            progress_bar,
+        });
+    }
+
+    blocks
 }
+
+pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
+    let window = gtk::ApplicationWindow::builder()
+        .title(t!("UI.anu").to_string())
+        .default_width(crate::WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
+        .default_height(crate::WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
+        .resizable(true)
+        .modal(true)
+        .build();
+
+
+    let main_grid_box = gtk::Box::builder()
+        .margin_bottom(10)
+        .margin_end(10)
+        .margin_start(10)
+        .margin_top(10)
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+
+    let scroll_window = gtk::ScrolledWindow::new();
+    scroll_window.set_hexpand(true);
+    scroll_window.set_vexpand(true);
+
+    let main_container = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let blocks = create_boxes(count);
+    
+    let blocks_rc = std::rc::Rc::new(std::cell::RefCell::new(blocks));
+    
+    for block in blocks_rc.borrow().iter() {
+        main_container.append(&block.container);
+    }
+
+    main_grid_box.append(&scroll_window);
+    scroll_window.set_child(Some(&main_container));
+
+    let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let ok_button = gtk::Button::with_label("OK");
+    let cancel_button = gtk::Button::with_label("Cancel");
+    let new_button = gtk::Button::with_label("New QRNG");
+
+    main_button_box.append(&ok_button);
+    main_button_box.append(&new_button);
+    main_button_box.append(&cancel_button);
+
+    main_button_box.set_margin_bottom(4);
+    main_button_box.set_margin_top(4);
+    main_button_box.set_margin_start(4);
+    main_button_box.set_margin_end(4);
+    main_button_box.set_halign(gtk::Align::Center);
+    main_grid_box.append(&main_button_box);
+    window.set_child(Some(&main_grid_box));
+
+    // let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
+
+    let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
+    let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
+
+    let blocks_rc_clone = blocks_rc.clone();
+    
+    glib::idle_add_local(move || {
+        if let Ok(result) = rx.try_recv() {
+            match result {
+                Ok(data) => {
+                    let blocks = blocks_rc_clone.borrow();
+                    for (i, block) in blocks.iter().enumerate() {
+                        if i < data.len() {
+                            block.entry.set_text(&data[i]);
+                            block.progress_bar.set_fraction(1.0); // Show completion
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("Error receiving QRNG data: {:?}", e);
+                }
+            }
+        }
+        glib::ControlFlow::Continue
+    });
+
+    new_button.connect_clicked(glib::clone!(
+        #[strong] task_handle,
+        #[strong] blocks_rc,
+        move |_| {
+            let tx = tx.clone();
+            let blocks = blocks_rc.borrow();
+
+            for block in blocks.iter() {
+                block.entry.set_text("");
+                block.progress_bar.set_fraction(0.0);
+            }
+
+            if let Some(handle) = task_handle.borrow_mut().take() {
+                handle.abort();
+                println!("Previous task aborted.");
+            }
+
+            let new_handle = tokio::spawn(async move {
+                let result = tokio::time::timeout(
+                    tokio::time::Duration::from_secs(60),
+                    get_qrng("hex16".to_string(), count, 120)
+                ).await;
+                
+                let _ = tx.send(match result {
+                    Ok(Ok(data)) => Ok(data),
+                    Ok(Err(e)) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "stupid error")) as Box<dyn std::error::Error + Send + Sync>),
+                    Err(_) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::TimedOut, "QRNG fetch timed out")) as Box<dyn std::error::Error + Send + Sync>),
+                });
+            });
+
+            *task_handle.borrow_mut() = Some(new_handle);
+        }
+    ));
+    
+    cancel_button.connect_clicked(glib::clone!(
+        #[strong] task_handle,
+        #[weak] window,
+        move |_| {
+            if let Some(handle) = task_handle.borrow_mut().take() {
+                println!("aborting async task before closing...");
+                handle.abort();
+            }
+            window.close();
+        }
+    ));
+
+    window.connect_close_request(glib::clone!(
+        #[strong] task_handle,
+        move |_| {
+            if let Some(handle) = task_handle.borrow_mut().take() {
+                println!("aborting async task on window close...");
+                handle.abort();
+            }
+            gtk::glib::Propagation::Proceed
+        }
+    ));
+
+    window
+}
+
+
+
+
+struct BlockEntry {
+    container: gtk::Box,
+    entry: gtk::Entry,
+    progress_bar: gtk::ProgressBar,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct AnuResponse {
+    success: bool,
+    data: Vec<String>,
+    #[serde(rename = "type")]
+    data_type: String,
+    length: u32,
+    size: u32,
+}
+
+async fn get_qrng(type_: String, array_size: u32, hex_block_size: u32) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    
+    let url = format!(
+        "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
+        array_size, type_, hex_block_size
+    );
+
+    let response = client
+        .get(&url)
+        .send()
+        .await?
+        .json::<AnuResponse>()
+        .await?;
+
+    println!("API Response: {:?}", response);
+
+    if !response.success {
+        return Err("API request failed".into());
+    }
+
+    Ok(response.data)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // BOXES - too memory intensive
@@ -416,136 +650,3 @@ async fn get_qrng() -> String {
 // }
 // 
 
-
-fn create_boxes(n: u32) -> Vec<gtk::Box> {
-    let mut boxes = Vec::new();
-
-    for i in 0..n {
-        let container = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-        
-        let label = gtk::Label::new(Some(&format!("Block {}", i + 1)));
-        
-        let info_box = gtk::Box::new(gtk::Orientation::Vertical, 5);
-        let entry = gtk::Entry::new();
-        let progress_bar = gtk::ProgressBar::new();
-
-        entry.set_hexpand(true);
-        progress_bar.set_hexpand(true);
-
-        info_box.append(&entry);
-        info_box.append(&progress_bar);
-
-        container.append(&label);
-        container.append(&info_box);
-
-        boxes.push(container);
-    }
-
-    boxes
-}
-
-pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
-    let window = gtk::ApplicationWindow::builder()
-        .title(t!("UI.anu").to_string())
-        .default_width(crate::WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
-        .default_height(crate::WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
-        .resizable(true)
-        .modal(true)
-        .build();
-
-
-    let main_grid_box = gtk::Box::builder()
-        .margin_bottom(10)
-        .margin_end(10)
-        .margin_start(10)
-        .margin_top(10)
-        .orientation(gtk::Orientation::Vertical)
-        .build();
-
-    let scroll_window = gtk::ScrolledWindow::new();
-    scroll_window.set_hexpand(true);
-    scroll_window.set_vexpand(true);
-
-    let main_container = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let boxes = create_boxes(count);
-    for b in boxes {
-        main_container.append(&b);
-    }
-
-    main_grid_box.append(&scroll_window);
-    scroll_window.set_child(Some(&main_container));
-
-    let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let ok_button = gtk::Button::with_label("OK");
-    let cancel_button = gtk::Button::with_label("Cancel");
-    let new_button = gtk::Button::with_label("New QRNG");
-
-    main_button_box.append(&ok_button);
-    main_button_box.append(&new_button);
-    main_button_box.append(&cancel_button);
-
-    main_button_box.set_margin_bottom(4);
-    main_button_box.set_margin_top(4);
-    main_button_box.set_margin_start(4);
-    main_button_box.set_margin_end(4);
-    main_button_box.set_halign(gtk::Align::Center);
-    main_grid_box.append(&main_button_box);
-    window.set_child(Some(&main_grid_box));
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    // let rx = std::rc::Rc::new(std::cell::RefCell::new(rx));
-    let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
-
-    new_button.connect_clicked(glib::clone!(
-        #[strong] task_handle,
-        // #[weak] app_messages_state,
-        move |_| {
-            let tx = tx.clone();
-
-            if let Some(handle) = task_handle.borrow_mut().take() {
-                handle.abort();
-                println!("Previous task aborted.");
-            }
-
-            let new_handle = tokio::spawn(async move {
-                match tokio::time::timeout(tokio::time::Duration::from_secs(3), get_qrng()).await {
-                    Ok(qrng_string) => {
-                        let _ = tx.send(qrng_string);
-                    }
-                    Err(_) => println!("QRNG fetch timed out."),
-                }
-            });
-    
-
-            *task_handle.borrow_mut() = Some(new_handle);
-        }
-    ));
-    
-    cancel_button.connect_clicked(glib::clone!(
-        #[strong] task_handle,
-        #[weak] window,
-        move |_| {
-            if let Some(handle) = task_handle.borrow_mut().take() {
-                println!("aborting async task before closing...");
-                handle.abort();
-            }
-            window.close();
-        }
-    ));
-
-    window.connect_close_request(glib::clone!(
-        #[strong] task_handle,
-        // #[strong] rx,
-        move |_| {
-            if let Some(handle) = task_handle.borrow_mut().take() {
-                println!("aborting async task on window close...");
-                handle.abort();
-            }
-            // rx.borrow_mut();
-            
-            glib::Propagation::Proceed
-        }
-    ));
-
-    window
-}
