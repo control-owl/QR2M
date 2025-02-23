@@ -1381,7 +1381,7 @@ fn setup_app_actions(
         // #[strong] gui_state,
         // #[weak] app_messages_state,
         move |_action, _parameter| {
-            let anu_window = dev::anu_window();
+            let anu_window = dev::anu_window(5);
             anu_window.show();
         }
     ));
