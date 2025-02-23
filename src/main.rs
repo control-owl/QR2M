@@ -70,7 +70,7 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
-const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
+const ANU_MINIMUM_ARRAY_LENGTH: u32 = 24;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
@@ -1381,7 +1381,7 @@ fn setup_app_actions(
         // #[strong] gui_state,
         // #[weak] app_messages_state,
         move |_action, _parameter| {
-            let anu_window = dev::anu_window(dev::QRNG_KEY_LEVEL);
+            let anu_window = dev::anu_window();
             anu_window.show();
         }
     ));

@@ -130,53 +130,46 @@ pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> St
 
 // NEW ANU LOGIC
 
-const QRNG_BLOCK_SIZE: u32 = 1024;
-pub const QRNG_KEY_LEVEL: u32 = 24;
-const QRNG_MAGIC_NUMBER: u32 = QRNG_BLOCK_SIZE * QRNG_KEY_LEVEL;
-// const BOX_SIZE: u32 = 5;
-// const MARGIN_TOTAL: u32 = 20;
+struct BlockEntry {
+    container: gtk::Box,
+    entry: gtk::Entry,
+    progress_bar: gtk::ProgressBar,
+}
 
-// TEST
-// async fn get_qrng() -> String {
-//     use rand::{Rng, rng};
-// 
-//     let mut rng = rng();
-//     let length = rng.random_range(2..=QRNG_MAGIC_NUMBER);
-// 
-//     let hex_chars: String = (0..length)
-//         .map(|_| {
-//             let random_char = rng.random_range(0..16);
-//             match random_char {
-//                 0..=9 => (b'0' + random_char as u8) as char,
-//                 10..=15 => (b'A' + (random_char - 10) as u8) as char, // A-F
-//                 _ => unreachable!(),
-//             }
-//         })
-//         .collect();
-// 
-//     println!("Generated String: {}", hex_chars);
-//     hex_chars
-// }
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct AnuResponse {
+    success: bool,
+    data: Vec<String>,
+    #[serde(rename = "type")]
+    data_type: String,
+    length: u32,
+    size: u32,
+}
 
+const QRNG_DEF_BLOCK_SIZE: u32 = 1024;
+const QRNG_MIN_ARRAY: u32 = 24;
 
-fn create_boxes(n: u32) -> Vec<BlockEntry> {
+fn create_boxes(n: Option<u32>) -> Vec<BlockEntry> {
     let mut blocks = Vec::new();
 
-    for i in 0..n {
+    let array_size = match n {
+        Some(value) => {if value < QRNG_MIN_ARRAY {QRNG_MIN_ARRAY} else {value}},
+        None => QRNG_MIN_ARRAY
+    };
+
+    for i in 0..array_size {
         let container = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-        
         let label = gtk::Label::new(Some(&format!("Block {}", i + 1)));
-        
         let info_box = gtk::Box::new(gtk::Orientation::Vertical, 5);
         let entry = gtk::Entry::new();
         let progress_bar = gtk::ProgressBar::new();
 
         entry.set_hexpand(true);
         progress_bar.set_hexpand(true);
+        progress_bar.set_pulse_step(0.1);
 
         info_box.append(&entry);
         info_box.append(&progress_bar);
-
         container.append(&label);
         container.append(&info_box);
 
@@ -190,7 +183,7 @@ fn create_boxes(n: u32) -> Vec<BlockEntry> {
     blocks
 }
 
-pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
+pub fn anu_window() -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()
         .title(t!("UI.anu").to_string())
         .default_width(crate::WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
@@ -199,6 +192,11 @@ pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
         .modal(true)
         .build();
 
+
+    let lock_app_settings = crate::APP_SETTINGS.lock().unwrap();
+    let anu_data_type = lock_app_settings.anu_data_format.clone();
+    let anu_array_length = lock_app_settings.anu_array_length.clone();
+    let anu_hex_block_size = lock_app_settings.anu_hex_block_size.clone();
 
     let main_grid_box = gtk::Box::builder()
         .margin_bottom(10)
@@ -213,7 +211,7 @@ pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
     scroll_window.set_vexpand(true);
 
     let main_container = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let blocks = create_boxes(count);
+    let blocks = create_boxes(anu_array_length);
     
     let blocks_rc = std::rc::Rc::new(std::cell::RefCell::new(blocks));
     
@@ -245,23 +243,45 @@ pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
 
     let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
     let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
-
     let blocks_rc_clone = blocks_rc.clone();
     
+    
+    let pulse_active = std::rc::Rc::new(std::cell::RefCell::new(false));
+    let pulse_active_clone = pulse_active.clone();
+    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+        if *pulse_active.borrow() {
+            for block in blocks_rc_clone.borrow().iter() {
+                block.progress_bar.pulse();
+            }
+            glib::ControlFlow::Continue
+        } else {
+            glib::ControlFlow::Break
+        }
+    });
+    
+    
+    let pulse_active = std::rc::Rc::new(std::cell::RefCell::new(false));
+    let blocks_rc_clone = blocks_rc.clone();
     glib::idle_add_local(move || {
         if let Ok(result) = rx.try_recv() {
+            *pulse_active_clone.borrow_mut() = false;
             match result {
                 Ok(data) => {
                     let blocks = blocks_rc_clone.borrow();
                     for (i, block) in blocks.iter().enumerate() {
                         if i < data.len() {
                             block.entry.set_text(&data[i]);
-                            block.progress_bar.set_fraction(1.0); // Show completion
+                            block.progress_bar.set_fraction(1.0);
                         }
                     }
                 }
                 Err(e) => {
                     println!("Error receiving QRNG data: {:?}", e);
+                    let blocks = blocks_rc_clone.borrow();
+                    for block in blocks.iter() {
+                        block.entry.set_text("Error occurred");
+                        block.progress_bar.set_fraction(0.0);
+                    }
                 }
             }
         }
@@ -271,29 +291,32 @@ pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
     new_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
         #[strong] blocks_rc,
+        #[strong] pulse_active,
         move |_| {
             let tx = tx.clone();
             let blocks = blocks_rc.borrow();
-
+            
             for block in blocks.iter() {
-                block.entry.set_text("");
+                block.entry.set_text("Loading...");
                 block.progress_bar.set_fraction(0.0);
             }
-
+            *pulse_active.borrow_mut() = true;
+            
             if let Some(handle) = task_handle.borrow_mut().take() {
                 handle.abort();
                 println!("Previous task aborted.");
             }
-
+            
+            let anu_data_type_clone = anu_data_type.clone();
             let new_handle = tokio::spawn(async move {
                 let result = tokio::time::timeout(
                     tokio::time::Duration::from_secs(60),
-                    get_qrng("hex16".to_string(), count, 120)
+                    get_qrng(anu_data_type_clone, anu_array_length, anu_hex_block_size)
                 ).await;
                 
                 let _ = tx.send(match result {
                     Ok(Ok(data)) => Ok(data),
-                    Ok(Err(e)) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "stupid error")) as Box<dyn std::error::Error + Send + Sync>),
+                    Ok(Err(_)) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "stupid ANU error")) as Box<dyn std::error::Error + Send + Sync>),
                     Err(_) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::TimedOut, "QRNG fetch timed out")) as Box<dyn std::error::Error + Send + Sync>),
                 });
             });
@@ -304,8 +327,10 @@ pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
     
     cancel_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
+        #[strong] pulse_active,
         #[weak] window,
         move |_| {
+            *pulse_active.borrow_mut() = false;
             if let Some(handle) = task_handle.borrow_mut().take() {
                 println!("aborting async task before closing...");
                 handle.abort();
@@ -316,43 +341,32 @@ pub fn anu_window(count: u32) -> gtk::ApplicationWindow {
 
     window.connect_close_request(glib::clone!(
         #[strong] task_handle,
+        #[strong] pulse_active,
         move |_| {
+            *pulse_active.borrow_mut() = false;
             if let Some(handle) = task_handle.borrow_mut().take() {
                 println!("aborting async task on window close...");
                 handle.abort();
             }
-            gtk::glib::Propagation::Proceed
+            glib::Propagation::Proceed
         }
     ));
-
+    
     window
 }
 
-
-
-
-struct BlockEntry {
-    container: gtk::Box,
-    entry: gtk::Entry,
-    progress_bar: gtk::ProgressBar,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-struct AnuResponse {
-    success: bool,
-    data: Vec<String>,
-    #[serde(rename = "type")]
-    data_type: String,
-    length: u32,
-    size: u32,
-}
-
-async fn get_qrng(type_: String, array_size: u32, hex_block_size: u32) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+async fn get_qrng(
+    anu_data_type: Option<String>, 
+    anu_array_length: Option<u32>, 
+    anu_hex_block_size: Option<u32>
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     
     let url = format!(
         "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
-        array_size, type_, hex_block_size
+        anu_array_length.unwrap_or(QRNG_MIN_ARRAY), 
+        anu_data_type.unwrap_or("hex16".to_string()), 
+        anu_hex_block_size.unwrap_or(QRNG_DEF_BLOCK_SIZE)
     );
 
     let response = client
