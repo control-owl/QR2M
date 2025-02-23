@@ -136,6 +136,8 @@ const QRNG_MAGIC_NUMBER: u32 = QRNG_BLOCK_SIZE * QRNG_KEY_LEVEL;
 const BOX_SIZE: u32 = 5;
 const MARGIN_TOTAL: u32 = 20;
 
+
+
 async fn get_qrng() -> String {
     use rand::{Rng, rng};
 
@@ -202,6 +204,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     main_button_box.set_margin_end(4);
 
     main_grid_box.append(&main_button_box);
+    app.set_child(Some(&main_grid_box));
 
 
 
@@ -230,8 +233,11 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let reallocate_boxes = {
         let grid = grid.clone();
         let boxes = boxes.clone();
-        let mut last_width = app.default_width() - MARGIN_TOTAL as i32;
-        move |width: i32| {
+        let mut last_width = app.width() - MARGIN_TOTAL as i32;
+        move |mut width: i32| {
+            if width <= 0 {
+                width = crate::WINDOW_SETTINGS_DEFAULT_WIDTH as i32
+            }
             let effective_width = width - MARGIN_TOTAL as i32;
             if effective_width != last_width {
                 let columns = (effective_width / BOX_SIZE as i32).max(1) as usize;
@@ -253,62 +259,158 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let mut reallocate_boxes_clone = reallocate_boxes.clone();
     reallocate_boxes_clone(app.width());
     
-    glib::idle_add_local(glib::clone!(
-        #[strong] app,
-        // #[strong] reallocate_boxes,
-        move || {
-            let mut width = app.width();
-            if width == 0 {
-                width = crate::WINDOW_SETTINGS_DEFAULT_WIDTH as i32;
+    // glib::idle_add_local(glib::clone!(
+    //     #[strong] app,
+    //     // #[strong] reallocate_boxes,
+    //     move || {
+    //         if app.is_active() {
+    //             let mut width = app.width();
+    //             if width == 0 {
+    //                 width = crate::WINDOW_SETTINGS_DEFAULT_WIDTH as i32;
+    //             }
+    //             reallocate_boxes_clone(width);
+    //             glib::ControlFlow::Continue
+    //         } else {
+    //             println!("Stopping reallocate_boxes_clone loop because app is closed.");
+    //             glib::ControlFlow::Break
+    //         }
+    // }));
+
+    app.connect_default_width_notify(glib::clone!(
+        // #[strong] app,
+        move |app| {
+            if app.is_visible() && app.is_mapped() {
+                println!("--------------------------------------------------------------resize event");
+                let last_resize_time = std::rc::Rc::new(std::cell::Cell::new(std::time::Instant::now()));
+                
+                last_resize_time.set(std::time::Instant::now());
+                let mut reallocate_boxes_clone = reallocate_boxes.clone();
+
+
+
+                let app_width = app.width();
+
+                glib::timeout_add_local(std::time::Duration::from_millis(500), glib::clone!(
+                    #[strong] app,
+                    #[strong] last_resize_time,
+                    move || {
+
+                        if app_width == app.width() {
+                            println!("same width");
+                            return glib::ControlFlow::Break;
+                        } else {
+                            if app.is_visible() && app.is_mapped() {
+                                let elapsed = last_resize_time.get().elapsed();
+                                if elapsed >= std::time::Duration::from_millis(1000) {
+                                    // let mut reallocate_boxes_clone = reallocate_boxes.clone();
+                                    println!("--------------------------------------------------------------resize executed");
+                                    reallocate_boxes_clone(app.width());
+                                    return glib::ControlFlow::Break;
+                                }
+                                glib::ControlFlow::Continue
+                            } else {
+                                println!("Stopping timeout because app is closed.");
+                                glib::ControlFlow::Break
+                            }
+
+                        }
+                    }
+                ));
             }
-            reallocate_boxes_clone(width);
-            glib::ControlFlow::Continue
-    }));
-
-    let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
-
-    new_button.connect_clicked(move |_| {
-        let tx = tx.clone();
-        tokio::spawn(async move {
-            let qrng_string = get_qrng().await;
-            tx.send(qrng_string).expect("Failed to send QRNG result");
-        });
-    });
-
-    cancel_button.connect_clicked(glib::clone!(
-        #[weak] app,
-        move |_| {
-            app.close()
         }
     ));
 
-    let boxes_clone = boxes.clone();
-    glib::idle_add_local(move || {
-        match rx.try_recv() {
-            Ok(qrng_string) => {
-                let qrng_length = qrng_string.len();
-                println!("New QRNG Length: {}", qrng_length);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let rx = std::rc::Rc::new(std::cell::RefCell::new(rx));
+    let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
 
-                for (i, small_box) in boxes_clone.borrow().iter().enumerate() {
-                    if i < qrng_length {
-                        small_box.set_css_classes(&["green-box"]);
-                    } else {
-                        small_box.set_css_classes(&["empty-box"]);
+    
+    new_button.connect_clicked(glib::clone!(
+        #[strong] task_handle,
+        // #[weak] app_messages_state,
+        move |_| {
+            let tx = tx.clone();
+
+            if let Some(handle) = task_handle.borrow_mut().take() {
+                handle.abort();
+                println!("Previous task aborted.");
+            }
+
+            
+            // let new_handle = tokio::spawn(async move {
+            //     let qrng_string = get_qrng().await;
+            //     tx.send(qrng_string).expect("Failed to send QRNG result");
+            // });
+
+            // IMPLEMENT: ANU API Timeout
+            let new_handle = tokio::spawn(async move {
+                match tokio::time::timeout(tokio::time::Duration::from_secs(3), get_qrng()).await {
+                    Ok(qrng_string) => {
+                        let _ = tx.send(qrng_string);
+                    }
+                    Err(_) => println!("QRNG fetch timed out."),
+                }
+            });
+    
+
+            *task_handle.borrow_mut() = Some(new_handle);
+        }
+    ));
+    
+
+
+    let boxes_clone = boxes.clone();
+    let app_weak = app.downgrade();
+    let rx_clone = rx.clone();
+
+    glib::idle_add_local(move || {
+        if let Some(_app) = app_weak.upgrade() {
+            match rx_clone.borrow().try_recv() {
+                Ok(qrng_string) => {
+                    for (i, small_box) in boxes_clone.borrow().iter().enumerate() {
+                        if i < qrng_string.len() {
+                            small_box.set_css_classes(&["green-box"]);
+                        } else {
+                            small_box.set_css_classes(&["empty-box"]);
+                        }
                     }
                 }
-
-                // if qrng_length == QRNG_MAGIC_NUMBER {
-                //     println!("Done");
-                // } else {
-                //     println!("Not enough");
-                // }
+                Err(_) => {}
             }
-            Err(_) => {}
+            glib::ControlFlow::Continue
+        } else {
+            println!("Stopping idle function because anu window is closed");
+            glib::ControlFlow::Break
         }
-        glib::ControlFlow::Continue
     });
 
-    app.set_child(Some(&main_grid_box));
+
+    cancel_button.connect_clicked(glib::clone!(
+        #[strong] task_handle,
+        #[weak] app,
+        move |_| {
+            if let Some(handle) = task_handle.borrow_mut().take() {
+                println!("aborting async task before closing...");
+                handle.abort();
+            }
+            app.close();
+        }
+    ));
+
+    app.connect_close_request(glib::clone!(
+        #[strong] task_handle,
+        // #[strong] rx,
+        move |_| {
+            if let Some(handle) = task_handle.borrow_mut().take() {
+                println!("aborting async task on window close...");
+                handle.abort();
+            }
+            // rx.borrow_mut();
+            
+            glib::Propagation::Proceed
+        }
+    ));
+
 
     app
 }
