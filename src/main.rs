@@ -74,11 +74,11 @@ const ANU_MINIMUM_ARRAY_LENGTH: u32 = 24;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
-const VALID_PROXY_STATUS: &'static [&'static str] = &[
-    "Off", 
-    "Auto", 
-    "Manual",
-];
+// const VALID_PROXY_STATUS: &'static [&'static str] = &[
+//     "Off", 
+//     "Auto", 
+//     "Manual",
+// ];
 const VALID_GUI_THEMES: &'static [&'static str] = &[
     "System", 
     "Light", 
@@ -267,7 +267,7 @@ struct AppSettings {
     anu_array_length: Option<u32>,
     anu_hex_block_size: Option<u32>,
     anu_log: Option<bool>,
-    proxy_status: Option<String>,
+    proxy_status: Option<bool>,
     proxy_server_address: Option<String>,
     proxy_server_port: Option<u32>,
     proxy_use_pac: Option<bool>,
@@ -306,7 +306,7 @@ impl Default for AppSettings {
             anu_array_length: Some(1024),
             anu_hex_block_size: Some(16),
             anu_log: Some(true),
-            proxy_status: Some("Auto".to_string()),
+            proxy_status: Some(false),
             proxy_server_address: Some("".to_string()),
             proxy_server_port: Some(8080),
             proxy_use_pac: Some(false),
@@ -435,7 +435,7 @@ impl AppSettings {
         println!("\t- ANU hex block size: {:?}", anu_hex_block_size);
         println!("\t- ANU log: {:?}", anu_log);
 
-        let proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
+        let proxy_status = get_bool(&proxy_section, "status", settings.proxy_status);
         let proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
         let proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
         let proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
@@ -733,9 +733,9 @@ impl AppSettings {
                 }
             },
             "proxy_status" => {
-                if let Some(value) = new_value.as_str() {
-                    if Some(value.to_string()) != self.proxy_status {
-                        self.proxy_status = Some(value.to_string());
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.proxy_status {
+                        self.proxy_status = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
@@ -4172,25 +4172,28 @@ fn create_settings_window(
     let use_proxy_settings_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_settings_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_settings_label = gtk::Label::new(Some(&t!("UI.settings.proxy.use").to_string()));
-    let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
-    let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
-    let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
+    // let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
+    // let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
+    let use_proxy_settings_checkbox = gtk::CheckButton::new();
 
     let proxy_status = lock_app_settings.proxy_status.clone().unwrap();
-    let default_proxy_settings_format = valid_proxy_settings_as_strings
-        .iter()
-        .position(|x| x.parse::<String>().unwrap() == proxy_status.clone())
-        .unwrap_or(1);  // Default proxy: auto
 
-    use_proxy_settings_dropdown.set_selected(default_proxy_settings_format.try_into().unwrap());
-    use_proxy_settings_dropdown.set_size_request(200, 10);
+    use_proxy_settings_checkbox.set_active(proxy_status);
+
+    // let default_proxy_settings_format = valid_proxy_settings_as_strings
+    //     .iter()
+    //     .position(|x| x.parse::<String>().unwrap() == proxy_status.clone())
+    //     .unwrap_or(1);  // Default proxy: auto
+
+    // use_proxy_settings_dropdown.set_selected(default_proxy_settings_format.try_into().unwrap());
+    // use_proxy_settings_dropdown.set_size_request(200, 10);
     use_proxy_settings_label_box.set_hexpand(true);
     use_proxy_settings_item_box.set_hexpand(true);
     use_proxy_settings_item_box.set_margin_end(20);
     use_proxy_settings_item_box.set_halign(gtk::Align::End);
 
     use_proxy_settings_label_box.append(&use_proxy_settings_label);
-    use_proxy_settings_item_box.append(&use_proxy_settings_dropdown);
+    use_proxy_settings_item_box.append(&use_proxy_settings_checkbox);
     use_proxy_settings_box.append(&use_proxy_settings_label_box);
     use_proxy_settings_box.append(&use_proxy_settings_item_box);
     content_proxy_box.append(&use_proxy_settings_box);
@@ -4198,7 +4201,7 @@ fn create_settings_window(
     // Proxy manual settings
     let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    if proxy_status == "Manual" {
+    if proxy_status == true {
         proxy_manual_settings_box.set_visible(true);
     } else {
         proxy_manual_settings_box.set_visible(false);
@@ -4434,14 +4437,14 @@ fn create_settings_window(
     );
 
     // Actions
-    use_proxy_settings_dropdown.connect_selected_notify(clone!(
+    use_proxy_settings_checkbox.connect_active_notify(clone!(
         #[weak] proxy_manual_settings_box,
         move |dd| {
-            let value = dd.selected() as usize;
-            let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
-            let settings = selected_proxy_settings_value.unwrap();
+            let proxy_status = dd.is_active();
+            // let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
+            // let settings = value;
             
-            if *settings == "Manual" {
+            if proxy_status == true {
                 proxy_manual_settings_box.set_visible(true);
             } else {
                 proxy_manual_settings_box.set_visible(false);
@@ -4516,7 +4519,7 @@ fn create_settings_window(
                 ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
                 ("anu_array_length", toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64)),
                 ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
-                ("proxy_status", toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize])),
+                ("proxy_status", toml_edit::value(use_proxy_settings_checkbox.is_active())),
                 ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
                 ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or(8080) as i64)),
                 ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
