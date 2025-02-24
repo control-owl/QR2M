@@ -316,7 +316,10 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                 
                 let _ = tx.send(match result {
                     Ok(Ok(data)) => Ok(data),
-                    Ok(Err(_)) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "stupid ANU error")) as Box<dyn std::error::Error + Send + Sync>),
+                    Ok(Err(_)) => {
+                        let msg = format!{"ANU error: {:?}", result};
+                        Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, msg)) as Box<dyn std::error::Error + Send + Sync>)
+                    },
                     Err(_) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::TimedOut, "QRNG fetch timed out")) as Box<dyn std::error::Error + Send + Sync>),
                 });
             });
@@ -411,36 +414,46 @@ async fn get_qrng(
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let mut client_builder = reqwest::Client::builder();
     
-    let lock_app_settings = crate::APP_SETTINGS.lock().unwrap();
-    
-    if lock_app_settings.proxy_status {
+    let lock_app_settings = crate::APP_SETTINGS.lock();
+    let cccc = lock_app_settings.unwrap().clone();
+    let proxy_status = cccc.proxy_status.clone().unwrap();
+    let proxy_use_ssl = cccc.proxy_use_ssl.clone().unwrap();
+    let proxy_server_address = cccc.proxy_server_address.clone().unwrap();
+    let proxy_server_port = cccc.proxy_server_port.clone().unwrap();
+    let proxy_login_credentials = cccc.proxy_login_credentials.clone().unwrap();
+    let proxy_login_username = cccc.proxy_login_username.clone().unwrap();
+    let proxy_login_password = cccc.proxy_login_password.clone().unwrap();
+    let proxy_use_pac = cccc.proxy_use_pac.clone().unwrap();
+    let proxy_ssl_certificate = cccc.proxy_ssl_certificate.clone().unwrap();
+
+    if proxy_status {
         let proxy_address = format!(
             "{}://{}:{}",
-            if lock_app_settings.proxy_use_ssl { "https" } else { "http" },
-            lock_app_settings.proxy_server_address,
-            lock_app_settings.proxy_server_port
+            if proxy_use_ssl { "https" } else { "http" },
+            proxy_server_address,
+            proxy_server_port,
         );
         
         let mut proxy = reqwest::Proxy::all(proxy_address)?;
         
-        if lock_app_settings.proxy_login_credentials {
+        if proxy_login_credentials {
             proxy = proxy.basic_auth(
-                &lock_app_settings.proxy_login_username,
-                &lock_app_settings.proxy_login_password
+                &proxy_login_username,
+                &proxy_login_password,
             );
         }
         
         client_builder = client_builder.proxy(proxy);
     }
     
-    if lock_app_settings.proxy_use_pac {
+    if proxy_use_pac {
         // reqwest does not support PAC files - fuuuuuck
         println!("Warning: PAC support is limited - using direct connection");
     }
     
-    if lock_app_settings.proxy_use_ssl && !lock_app_settings.proxy_ssl_certificate.is_empty() {
+    if proxy_use_ssl && !proxy_ssl_certificate.is_empty() {
         let cert = reqwest::Certificate::from_pem(
-            lock_app_settings.proxy_ssl_certificate.as_bytes()
+            proxy_ssl_certificate.as_bytes()
         )?;
         client_builder = client_builder.add_root_certificate(cert);
     }
@@ -462,6 +475,7 @@ async fn get_qrng(
         .await?;
 
     println!("API Response: {:?}", response);
+
 
     if !response.success {
         return Err("API request failed".into());

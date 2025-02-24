@@ -93,6 +93,7 @@
     "notif",
     "paintable",
     "QRNG",
+    "reqwest",
     "serde",
     "ucid",
     "winres"

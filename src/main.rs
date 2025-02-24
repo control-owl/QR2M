@@ -243,7 +243,7 @@ impl GuiState {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 struct AppSettings {
     wallet_entropy_source: Option<String>,
     wallet_entropy_length: Option<u32>,
@@ -303,8 +303,8 @@ impl Default for AppSettings {
             gui_log_level: Some("Standard".to_string()),
             anu_enabled: Some(false),
             anu_data_format: Some("uint8".to_string()),
-            anu_array_length: Some(1024),
-            anu_hex_block_size: Some(16),
+            anu_array_length: Some(24),
+            anu_hex_block_size: Some(1024),
             anu_log: Some(true),
             proxy_status: Some(false),
             proxy_server_address: Some("".to_string()),
@@ -4057,9 +4057,9 @@ fn create_settings_window(
     default_hex_size = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_hex_size);
 
     let hex_block_size_adjustment = gtk::Adjustment::new(
-        default_hex_size as f64,           
-        1.0,                               
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        default_hex_size as f64,
+        1.0,
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,
         1.0,
         10.0,
         0.0,
@@ -4241,11 +4241,7 @@ fn create_settings_window(
     proxy_server_port_item_box.set_margin_end(20);
     proxy_server_port_item_box.set_halign(gtk::Align::End);
 
-    // if settings.proxy_server_port.unwrap() == 0 {
-    //     proxy_server_port_entry.set_text(&DEFAULT_PROXY_PORT.to_string());
-    // } else {
-    //     proxy_server_port_entry.set_text(&settings.proxy_server_port.unwrap().to_string());
-    // }
+    proxy_server_port_entry.set_text(&lock_app_settings.proxy_server_port.unwrap().to_string());
 
     proxy_server_port_label_box.append(&proxy_server_port_label);
     proxy_server_port_item_box.append(&proxy_server_port_entry);
