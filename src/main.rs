@@ -110,7 +110,7 @@ lazy_static::lazy_static! {
     // GuiState - can not be used, no send and sync
     // static ref GUI_STATE: std::sync::Arc<std::sync::Mutex<GuiState>> = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
 
-    static ref APP_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
+    static ref APP_SETTINGS: std::sync::Arc<std::sync::RwLock<AppSettings>> = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::default()));
     static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
@@ -467,7 +467,7 @@ impl AppSettings {
         println!("\t- Proxy retry attempts: {:?}", proxy_retry_attempts);
         println!("\t- Proxy timeout: {:?}", proxy_timeout);
         
-        let mut application_settings = APP_SETTINGS.lock().unwrap();
+        let mut application_settings = APP_SETTINGS.write().unwrap();
         application_settings.wallet_entropy_source = wallet_entropy_source.clone();
         application_settings.wallet_entropy_length = wallet_entropy_length.clone();
         application_settings.wallet_bip = wallet_bip.clone();
@@ -1051,7 +1051,7 @@ impl AppMessages {
                 if let Some((message, message_type)) = queue_lock.pop_front() {
                     AppMessages::create_info_message(&info_bar, &message, message_type);
     
-                    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+                    let lock_app_settings = APP_SETTINGS.read().unwrap();
                     let timeout = lock_app_settings.gui_notification_timeout.unwrap();
 
                     glib::timeout_add_local(std::time::Duration::from_secs(timeout as u64), {
@@ -1436,7 +1436,7 @@ fn create_main_window(
         .build();
 
     
-    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+    let lock_app_settings = APP_SETTINGS.read().unwrap();
     let window_width = lock_app_settings.gui_last_width.unwrap();
     let window_height = lock_app_settings.gui_last_height.unwrap();
     let gui_language = lock_app_settings.gui_language.clone().unwrap();
@@ -3512,7 +3512,7 @@ fn create_settings_window(
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+    let lock_app_settings = APP_SETTINGS.read().unwrap();
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.settings").to_string())
@@ -4543,7 +4543,7 @@ fn create_settings_window(
         #[weak] app_messages_state,
         move |_| {
 
-            let mut settings = APP_SETTINGS.lock().unwrap();
+            let mut settings = APP_SETTINGS.write().unwrap();
 
             let updates = [
                 ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),

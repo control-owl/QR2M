@@ -380,7 +380,7 @@ pub fn generate_entropy(
                 anu_log,
                 entropy_length,
             ) = {
-                let lock_app_settings = APP_SETTINGS.lock().unwrap();
+                let lock_app_settings = APP_SETTINGS.read().unwrap();
                 (
                     lock_app_settings.anu_data_format.clone().unwrap(),
                     lock_app_settings.anu_array_length.unwrap(),

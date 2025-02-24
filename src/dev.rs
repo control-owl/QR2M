@@ -193,7 +193,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         .build();
 
 
-    let lock_app_settings = crate::APP_SETTINGS.lock().unwrap();
+    let lock_app_settings = crate::APP_SETTINGS.read().unwrap();
     let anu_data_type = lock_app_settings.anu_data_format.clone();
     let anu_array_length = lock_app_settings.anu_array_length.clone();
     let anu_hex_block_size = lock_app_settings.anu_hex_block_size.clone();
@@ -342,6 +342,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         glib::ControlFlow::Continue
     });
 
+
     new_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
         #[strong] blocks_rc,
@@ -383,6 +384,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         }
     ));
     
+    
     cancel_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
         #[strong] pulse_active,
@@ -421,7 +423,7 @@ async fn get_qrng(
     println!("function get_qrng");
     let mut client_builder = reqwest::Client::builder();
     
-    let lock_app_settings = crate::APP_SETTINGS.lock();
+    let lock_app_settings = crate::APP_SETTINGS.read();
     let cccc = lock_app_settings.unwrap().clone();
     let proxy_status = cccc.proxy_status.clone().unwrap();
     let proxy_use_ssl = cccc.proxy_use_ssl.clone().unwrap();
