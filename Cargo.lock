@@ -17,6 +17,7 @@ dependencies = [
  "include_dir",
  "lazy_static",
  "libadwaita",
+ "native-tls",
  "num-bigint",
  "once_cell",
  "rand 0.9.0",

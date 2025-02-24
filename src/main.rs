@@ -70,7 +70,7 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
-const ANU_MINIMUM_ARRAY_LENGTH: u32 = 24;
+// const ANU_MINIMUM_ARRAY_LENGTH: u32 = 24;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
 
@@ -4038,13 +4038,13 @@ fn create_settings_window(
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
     let mut default_array_length = lock_app_settings.anu_array_length.unwrap();
-    default_array_length = std::cmp::max(ANU_MINIMUM_ARRAY_LENGTH, default_array_length);
+    default_array_length = std::cmp::max(1, default_array_length);
     default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
 
     let array_length_adjustment = gtk::Adjustment::new(
         default_array_length as f64,       
-        ANU_MINIMUM_ARRAY_LENGTH as f64,   
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        1 as f64,
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,
         1.0,
         10.0,
         0.0,

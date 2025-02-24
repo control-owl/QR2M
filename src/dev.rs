@@ -146,8 +146,10 @@ struct AnuResponse {
     size: u32,
 }
 
-const QRNG_DEF_BLOCK_SIZE: u32 = 1024;
-const QRNG_MIN_ARRAY: u32 = 24;
+const QRNG_MIN_ARRAY: u32 = 2;
+const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 10;
+const ANU_API_URL: &str = "qrng.anu.edu.au:443";
+
 
 fn create_boxes(n: Option<u32>) -> Vec<BlockEntry> {
     let mut blocks = Vec::new();
@@ -296,14 +298,33 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     main_anu_window_box.append(&main_button_box);
     window.set_child(Some(&main_anu_window_box));
 
-    let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
+
+    // Hocus - Pokus
+
+
+    // let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
+    // let (tx, rx): (std::sync::mpsc::Sender<Vec<String>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
+    let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
+
+
     let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
     let blocks_rc_clone = blocks_rc.clone();
-    
+    let anu_progress_clone = anu_progress.clone();
+
+    let total_length = anu_array_length.clone().unwrap() as f64;
+    let block_size = anu_hex_block_size.clone().unwrap();
+    let total_hex_chars = total_length as f64 * block_size as f64 * 2.0;
+    let received_chars = std::rc::Rc::new(std::cell::RefCell::new(0.0));
+
+    let current_index = std::rc::Rc::new(std::cell::RefCell::new(0));
+    let char_buffer = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
+    let current_index_clone = current_index.clone();
+
     let pulse_active = std::rc::Rc::new(std::cell::RefCell::new(false));
     let pulse_active_clone = pulse_active.clone();
+   
     glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
-        if *pulse_active.borrow() {
+        if *pulse_active_clone.borrow() {
             for block in blocks_rc_clone.borrow().iter() {
                 block.progress_bar.pulse();
             }
@@ -314,39 +335,69 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     });
     
     
-    let pulse_active = std::rc::Rc::new(std::cell::RefCell::new(false));
     let blocks_rc_clone = blocks_rc.clone();
+    let anu_status_entry_clone = anu_status_entry.clone();
+    let received_chars_clone = received_chars.clone();
+    let char_buffer_clone = char_buffer.clone();
+    let pulse_active_clone = pulse_active.clone();
+
     glib::idle_add_local(move || {
-        if let Ok(result) = rx.try_recv() {
-            *pulse_active_clone.borrow_mut() = false;
-            match result {
-                Ok(data) => {
-                    let blocks = blocks_rc_clone.borrow();
-                    for (i, block) in blocks.iter().enumerate() {
-                        if i < data.len() {
-                            block.entry.set_text(&data[i]);
-                            block.progress_bar.set_fraction(1.0);
+        if let Ok(chunk) = rx.try_recv() {
+            let blocks = blocks_rc_clone.borrow();
+            let mut index = current_index_clone.borrow_mut();
+            let mut chars = received_chars_clone.borrow_mut();
+            let mut buffer = char_buffer_clone.borrow_mut();
+
+            if chunk.starts_with("FINAL:") {
+                let json_data = &chunk[6..];
+                if let Ok(anu_response) = serde_json::from_str::<AnuResponse>(json_data) {
+                    if anu_response.success {
+                        for (i, value) in anu_response.data.iter().enumerate() {
+                            let pos = i;
+                            if pos < blocks.len() {
+                                blocks[pos].entry.set_text(value.as_str());
+                                blocks[pos].progress_bar.set_fraction(1.0);
+                                *chars = (pos + 1) as f64 * value.len() as f64;
+                            }
                         }
+                        *index = anu_response.data.len();
+                        anu_status_entry_clone.set_text("Complete");
+                        anu_progress_clone.set_fraction(1.0);
+                        *pulse_active_clone.borrow_mut() = false;
+                        *buffer = String::new();
                     }
                 }
-                Err(e) => {
-                    println!("Error receiving QRNG data: {:?}", e);
-                    let blocks = blocks_rc_clone.borrow();
-                    for block in blocks.iter() {
-                        block.entry.set_text("Error occurred");
-                        block.progress_bar.set_fraction(0.0);
+            } else {
+                buffer.push_str(&chunk);
+                let block_size_chars = anu_hex_block_size.clone().unwrap() as usize * 2;
+                while buffer.len() >= block_size_chars {
+                    let segment = buffer.drain(..block_size_chars).collect::<String>();
+                    let pos = *index;
+                    if pos < blocks.len() {
+                        blocks[pos].entry.set_text(&segment);
+                        let chars_received = segment.len() as f64 / 2.0;
+                        let target_chars = anu_hex_block_size.clone().unwrap() as f64;
+                        let entry_progress = (chars_received / target_chars).min(1.0);
+                        blocks[pos].progress_bar.set_fraction(entry_progress);
+                        *chars += chars_received;
+                        *index += 1;
                     }
                 }
+                let progress = *chars / total_hex_chars;
+                anu_progress_clone.set_fraction(progress.min(1.0));
+                anu_status_entry_clone.set_text("Receiving...");
             }
         }
         glib::ControlFlow::Continue
     });
 
-
     new_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
         #[strong] blocks_rc,
-        #[strong] pulse_active,
+        #[strong] current_index,
+        #[strong] received_chars,
+        #[weak] anu_progress,
+        #[weak] anu_status_entry,
         move |_| {
             let tx = tx.clone();
             let blocks = blocks_rc.borrow();
@@ -355,35 +406,23 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                 block.entry.set_text("Loading...");
                 block.progress_bar.set_fraction(0.0);
             }
-            *pulse_active.borrow_mut() = true;
-            
+            *current_index.borrow_mut() = 0;
+            *received_chars.borrow_mut() = 0.0;
+            anu_progress.set_fraction(0.0);
+            anu_status_entry.set_text("Starting...");
+
             if let Some(handle) = task_handle.borrow_mut().take() {
                 handle.abort();
                 println!("Previous task aborted.");
             }
-            
-            let anu_data_type_clone = anu_data_type.clone();
-            
-            let anu_timeout = lock_app_settings.anu_timeout.clone().unwrap();
-            println!("anu_timeout: {:?}", anu_timeout);
 
             let new_handle = tokio::spawn(async move {
-                let result = get_qrng(anu_data_type_clone, anu_array_length, anu_hex_block_size).await;
-                
-                let _ = tx.send(match result {
-                    Ok(data) => Ok(data),
-                    Err(_) => {
-                        let msg = format!{"ANU error: {:?}", result};
-                        Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, msg)) as Box<dyn std::error::Error + Send + Sync>)
-                    },
-                    // Err(_) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::TimedOut, "QRNG fetch timed out")) as Box<dyn std::error::Error + Send + Sync>),
-                });
+                fetch_anu_qrng_data("hex16", total_length as u32, block_size, tx);
             });
 
             *task_handle.borrow_mut() = Some(new_handle);
         }
     ));
-    
     
     cancel_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
@@ -415,85 +454,123 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     window
 }
 
-async fn get_qrng(
-    anu_data_type: Option<String>, 
-    anu_array_length: Option<u32>, 
-    anu_hex_block_size: Option<u32>
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    println!("function get_qrng");
-    let mut client_builder = reqwest::Client::builder();
-    
-    let lock_app_settings = crate::APP_SETTINGS.read();
-    let cccc = lock_app_settings.unwrap().clone();
-    let proxy_status = cccc.proxy_status.clone().unwrap();
-    let proxy_use_ssl = cccc.proxy_use_ssl.clone().unwrap();
-    let proxy_server_address = cccc.proxy_server_address.clone().unwrap();
-    let proxy_server_port = cccc.proxy_server_port.clone().unwrap();
-    let proxy_login_credentials = cccc.proxy_login_credentials.clone().unwrap();
-    let proxy_login_username = cccc.proxy_login_username.clone().unwrap();
-    let proxy_login_password = cccc.proxy_login_password.clone().unwrap();
-    let proxy_use_pac = cccc.proxy_use_pac.clone().unwrap();
-    let proxy_ssl_certificate = cccc.proxy_ssl_certificate.clone().unwrap();
+use std::{
+    io::{Read, Write}, 
+    net::ToSocketAddrs, 
+};
 
-    if proxy_status {
-        let proxy_address = format!(
-            "{}://{}:{}",
-            if proxy_use_ssl { "https" } else { "http" },
-            proxy_server_address,
-            proxy_server_port,
-        );
-        
-        let mut proxy = reqwest::Proxy::all(proxy_address)?;
-        
-        if proxy_login_credentials {
-            proxy = proxy.basic_auth(
-                &proxy_login_username,
-                &proxy_login_password,
-            );
+
+fn filter_chunked_body(chunk: &str) -> String {
+    let mut filtered = String::new();
+    let mut lines = chunk.lines();
+    let mut skip_next = false;
+
+    while let Some(line) = lines.next() {
+        if skip_next {
+            skip_next = false;
+            continue;
         }
-        
-        client_builder = client_builder.proxy(proxy);
+        if let Ok(size) = usize::from_str_radix(line.trim(), 16) {
+            if size == 0 {
+                break;
+            }
+            skip_next = true;
+            if let Some(data) = lines.next() {
+                filtered.push_str(data);
+            }
+        } else {
+            filtered.push_str(line);
+        }
     }
-    
-    if proxy_use_pac {
-        // reqwest does not support PAC files - fuck
-        println!("Warning: PAC support is limited - using direct connection");
-    }
-    
-    if proxy_use_ssl && !proxy_ssl_certificate.is_empty() {
-        let cert = reqwest::Certificate::from_pem(
-            proxy_ssl_certificate.as_bytes()
-        )?;
-        client_builder = client_builder.add_root_certificate(cert);
-    }
-    
-    let client = client_builder.build()?;
-    println!("Client: {:?}", client);
-    
-    let url = format!(
-        "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
-        anu_array_length.unwrap_or(QRNG_MIN_ARRAY), 
-        anu_data_type.unwrap_or("hex16".to_string()), 
-        anu_hex_block_size.unwrap_or(QRNG_DEF_BLOCK_SIZE)
-    );
-
-    println!("ANU URL: {:?}", url);
-
-    let response = client
-        .get(&url)
-        .send()
-        .await?
-        .json::<AnuResponse>()
-        .await?;
-
-    println!("API Response: {:?}", response);
+    filtered
+}
 
 
-    if !response.success {
-        return Err("API request failed".into());
-    }
+fn fetch_anu_qrng_data(
+    data_format: &str,
+    array_length: u32,
+    block_size: u32,
+    sender: std::sync::mpsc::Sender<String>,
+) {
+    let data_format_owned = data_format.to_string();
 
-    Ok(response.data)
+    println!("Starting fetch_anu_qrng_data: format={}, length={}, size={}", data_format, array_length, block_size);
+
+    tokio::task::block_in_place(|| {
+        let socket_addr = ANU_API_URL.to_socket_addrs().unwrap().next().unwrap();
+        let stream = std::net::TcpStream::connect_timeout(&socket_addr, std::time::Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS)).unwrap();
+        let mut stream = native_tls::TlsConnector::new().unwrap().connect("qrng.anu.edu.au", stream).unwrap();
+
+        let anu_request = format!(
+            "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
+            data_format_owned, array_length, block_size
+        ).into_bytes();
+
+        println!("Sending request: {:?}", String::from_utf8_lossy(&anu_request));
+        stream.write_all(&anu_request).unwrap();
+        stream.flush().unwrap();
+
+        let mut buffer = [0; 2048];
+        let mut response = Vec::new();
+        let mut headers_done = false;
+        let mut json_buffer = String::new();
+
+        loop {
+            match stream.read(&mut buffer) {
+                Ok(bytes_read) if bytes_read > 0 => {
+                    response.extend_from_slice(&buffer[..bytes_read]);
+                    let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+                    println!("Received chunk: {}", chunk);
+
+                    if !headers_done {
+                        if chunk.contains("\r\n\r\n") {
+                            headers_done = true;
+                            let header_end = response.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
+                            let body_start = String::from_utf8_lossy(&response[header_end..]).to_string();
+                            json_buffer = filter_chunked_body(&body_start);
+                            sender.send(body_start).unwrap();
+                        }
+                    } else {
+                        let filtered_chunk = filter_chunked_body(&chunk);
+                        json_buffer.push_str(&filtered_chunk);
+                        sender.send(chunk.to_string()).unwrap();
+                    }
+
+                    if headers_done && json_buffer.contains('}') {
+                        println!("Full JSON assembled: {}", json_buffer);
+                        match serde_json::from_str::<AnuResponse>(&json_buffer) {
+                            Ok(anu_response) => {
+                                if anu_response.success {
+                                    println!("Parsed JSON: {:?}", anu_response);
+                                    sender.send(format!("FINAL:{}", json_buffer)).unwrap();
+                                    break;
+                                } else {
+                                    println!("API returned success: false: {:?}", anu_response);
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                println!("JSON parsing failed: {}. Buffer: {}", e, json_buffer);
+                            }
+                        }
+                    }
+                }
+                Ok(0) => {
+                    println!("Stream closed by server");
+                    break;
+                }
+                Ok(_) => {
+                    println!("Stream ?????");
+                    break;
+                }
+                Err(e) => {
+                    println!("Read error: {}", e);
+                    break;
+                }
+            }
+        }
+    });
+    println!("fetch_anu_qrng_data completed");
 }
 
 
@@ -508,265 +585,84 @@ async fn get_qrng(
 
 
 
-
-
-
-
-// BOXES - too memory intensive
-// pub fn anu_window() -> gtk::ApplicationWindow {
-//     let app = gtk::ApplicationWindow::builder()
-//         .title(t!("UI.anu").to_string())
-//         .default_width(crate::WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
-//         .default_height(crate::WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
-//         .resizable(true)
-//         .modal(true)
-//         .build();
+// 
+// async fn get_qrng(
+//     anu_data_type: Option<String>, 
+//     anu_array_length: Option<u32>, 
+//     anu_hex_block_size: Option<u32>
+// ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+//     println!("function get_qrng");
+//     let mut client_builder = reqwest::Client::builder();
+//     
+//     let lock_app_settings = crate::APP_SETTINGS.read();
+//     let cccc = lock_app_settings.unwrap().clone();
+//     let proxy_status = cccc.proxy_status.clone().unwrap();
+//     let proxy_use_ssl = cccc.proxy_use_ssl.clone().unwrap();
+//     let proxy_server_address = cccc.proxy_server_address.clone().unwrap();
+//     let proxy_server_port = cccc.proxy_server_port.clone().unwrap();
+//     let proxy_login_credentials = cccc.proxy_login_credentials.clone().unwrap();
+//     let proxy_login_username = cccc.proxy_login_username.clone().unwrap();
+//     let proxy_login_password = cccc.proxy_login_password.clone().unwrap();
+//     let proxy_use_pac = cccc.proxy_use_pac.clone().unwrap();
+//     let proxy_ssl_certificate = cccc.proxy_ssl_certificate.clone().unwrap();
+// 
+//     if proxy_status {
+//         let proxy_address = format!(
+//             "{}://{}:{}",
+//             if proxy_use_ssl { "https" } else { "http" },
+//             proxy_server_address,
+//             proxy_server_port,
+//         );
+//         
+//         let mut proxy = reqwest::Proxy::all(proxy_address)?;
+//         
+//         if proxy_login_credentials {
+//             proxy = proxy.basic_auth(
+//                 &proxy_login_username,
+//                 &proxy_login_password,
+//             );
+//         }
+//         
+//         client_builder = client_builder.proxy(proxy);
+//     }
+//     
+//     if proxy_use_pac {
+//         // reqwest does not support PAC files - fuck
+//         println!("Warning: PAC support is limited - using direct connection");
+//     }
+//     
+//     if proxy_use_ssl && !proxy_ssl_certificate.is_empty() {
+//         let cert = reqwest::Certificate::from_pem(
+//             proxy_ssl_certificate.as_bytes()
+//         )?;
+//         client_builder = client_builder.add_root_certificate(cert);
+//     }
+//     
+//     let client = client_builder.build()?;
+//     println!("Client: {:?}", client);
+//     
+//     let url = format!(
+//         "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
+//         anu_array_length.unwrap_or(QRNG_MIN_ARRAY), 
+//         anu_data_type.unwrap_or("hex16".to_string()), 
+//         anu_hex_block_size.unwrap_or(anu_hex_block_size.clone().unwrap())
+//     );
+// 
+//     println!("ANU URL: {:?}", url);
+// 
+//     let response = client
+//         .get(&url)
+//         .send()
+//         .await?
+//         .json::<AnuResponse>()
+//         .await?;
+// 
+//     println!("API Response: {:?}", response);
 // 
 // 
-//     let main_anu_window_box = gtk::Box::builder()
-//         .margin_bottom(10)
-//         .margin_end(10)
-//         .margin_start(10)
-//         .margin_top(10)
-//         .orientation(gtk::Orientation::Vertical)
-//         .build();
-// 
-//     let scroll_window = gtk::ScrolledWindow::new();
-//     scroll_window.set_hexpand(true);
-//     scroll_window.set_vexpand(true);
-// 
-//     let grid = gtk::Grid::builder()
-//         .column_spacing(0)
-//         .row_spacing(0)
-//         .build();
-// 
-//     scroll_window.set_child(Some(&grid));
-//     main_anu_window_box.append(&scroll_window);
-// 
-//     let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-//     let ok_button = gtk::Button::with_label("OK");
-//     let cancel_button = gtk::Button::with_label("Cancel");
-//     let new_button = gtk::Button::with_label("New QRNG");
-// 
-//     main_button_box.append(&ok_button);
-//     main_button_box.append(&new_button);
-//     main_button_box.append(&cancel_button);
-// 
-//     main_button_box.set_margin_bottom(4);
-//     main_button_box.set_margin_top(4);
-//     main_button_box.set_margin_start(4);
-//     main_button_box.set_margin_end(4);
-// 
-//     main_anu_window_box.append(&main_button_box);
-//     app.set_child(Some(&main_anu_window_box));
-// 
-// 
-// 
-// 
-// 
-// 
-// 
-//     let boxes = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
-//     for _ in 0..QRNG_MAGIC_NUMBER {
-//         let small_box = gtk::Box::builder()
-//             .width_request(BOX_SIZE as i32)
-//             .height_request(BOX_SIZE as i32)
-//             .build();
-//         small_box.set_css_classes(&["empty-box"]);
-//         boxes.borrow_mut().push(small_box);
+//     if !response.success {
+//         return Err("API request failed".into());
 //     }
 // 
-//     let initial_boxes = boxes.borrow();
-//     let initial_columns = ((QRNG_BLOCK_SIZE - MARGIN_TOTAL) / BOX_SIZE).max(1) as usize;
-//     for (i, small_box) in initial_boxes.iter().enumerate() {
-//         grid.attach(small_box, (i % initial_columns) as i32, (i / initial_columns) as i32, 1, 1);
-//     }
-// 
-//     drop(initial_boxes);
-//    
-//     let reallocate_boxes = {
-//         let grid = grid.clone();
-//         let boxes = boxes.clone();
-//         let mut last_width = app.width() - MARGIN_TOTAL as i32;
-//         move |mut width: i32| {
-//             if width <= 0 {
-//                 width = crate::WINDOW_SETTINGS_DEFAULT_WIDTH as i32
-//             }
-//             let effective_width = width - MARGIN_TOTAL as i32;
-//             if effective_width != last_width {
-//                 let columns = (effective_width / BOX_SIZE as i32).max(1) as usize;
-//                 let boxes = boxes.borrow();
-//                 for small_box in boxes.iter() {
-//                     if small_box.parent().map_or(false, |p| p == *grid.upcast_ref::<gtk::Widget>()) {
-//                         grid.remove(small_box);
-//                     }
-//                 }
-//                 for (i, small_box) in boxes.iter().enumerate() {
-//                     grid.attach(small_box, (i % columns) as i32, (i / columns) as i32, 1, 1);
-//                 }
-//                 println!("width={}, effective_width={}, columns={}", width, effective_width, columns);
-//                 last_width = effective_width;
-//             }
-//         }
-//     };
-// 
-//     let mut reallocate_boxes_clone = reallocate_boxes.clone();
-//     reallocate_boxes_clone(app.width());
-//     
-//     // glib::idle_add_local(glib::clone!(
-//     //     #[strong] app,
-//     //     // #[strong] reallocate_boxes,
-//     //     move || {
-//     //         if app.is_active() {
-//     //             let mut width = app.width();
-//     //             if width == 0 {
-//     //                 width = crate::WINDOW_SETTINGS_DEFAULT_WIDTH as i32;
-//     //             }
-//     //             reallocate_boxes_clone(width);
-//     //             glib::ControlFlow::Continue
-//     //         } else {
-//     //             println!("Stopping reallocate_boxes_clone loop because app is closed.");
-//     //             glib::ControlFlow::Break
-//     //         }
-//     // }));
-// 
-//     app.connect_default_width_notify(glib::clone!(
-//         // #[strong] app,
-//         move |app| {
-//             if app.is_visible() && app.is_mapped() {
-//                 println!("--------------------------------------------------------------resize event");
-//                 
-//                 // last_resize_time.set(std::time::Instant::now());
-//                 let mut reallocate_boxes_clone = reallocate_boxes.clone();
-//                 
-//                 
-//                 
-//                 let last_resize_width = std::rc::Rc::new(std::cell::Cell::new(app.width()));
-//                 // let app_width = app.width();
-// 
-//                 glib::timeout_add_local(std::time::Duration::from_millis(500), glib::clone!(
-//                     #[strong] app,
-//                     #[strong] last_resize_width,
-//                     move || {
-// 
-//                         if *last_resize_width == app.width().into() {
-//                             println!("same width");
-//                             return glib::ControlFlow::Break;
-//                         } else {
-//                             if app.is_visible() && app.is_mapped() {
-//                                 // let elapsed = last_resize_time.get().elapsed();
-//                                 // if elapsed >= std::time::Duration::from_millis(500) {
-//                                     // let mut reallocate_boxes_clone = reallocate_boxes.clone();
-//                                     println!("--------------------------------------------------------------resize executed");
-//                                     reallocate_boxes_clone(app.width());
-//                                     return glib::ControlFlow::Break;
-//                                 // }
-//                                 // glib::ControlFlow::Continue
-//                             } else {
-//                                 println!("Stopping timeout because app is closed.");
-//                                 glib::ControlFlow::Break
-//                             }
-// 
-//                         }
-//                     }
-//                 ));
-//             }
-//         }
-//     ));
-// 
-//     let (tx, rx) = std::sync::mpsc::channel();
-//     let rx = std::rc::Rc::new(std::cell::RefCell::new(rx));
-//     let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
-// 
-//     
-//     new_button.connect_clicked(glib::clone!(
-//         #[strong] task_handle,
-//         // #[weak] app_messages_state,
-//         move |_| {
-//             let tx = tx.clone();
-// 
-//             if let Some(handle) = task_handle.borrow_mut().take() {
-//                 handle.abort();
-//                 println!("Previous task aborted.");
-//             }
-// 
-//             
-//             // let new_handle = tokio::spawn(async move {
-//             //     let qrng_string = get_qrng().await;
-//             //     tx.send(qrng_string).expect("Failed to send QRNG result");
-//             // });
-// 
-//             // IMPLEMENT: ANU API Timeout
-//             let new_handle = tokio::spawn(async move {
-//                 match tokio::time::timeout(tokio::time::Duration::from_secs(3), get_qrng()).await {
-//                     Ok(qrng_string) => {
-//                         let _ = tx.send(qrng_string);
-//                     }
-//                     Err(_) => println!("QRNG fetch timed out."),
-//                 }
-//             });
-//     
-// 
-//             *task_handle.borrow_mut() = Some(new_handle);
-//         }
-//     ));
-//     
-// 
-// 
-//     let boxes_clone = boxes.clone();
-//     let app_weak = app.downgrade();
-//     let rx_clone = rx.clone();
-// 
-//     glib::idle_add_local(move || {
-//         if let Some(_app) = app_weak.upgrade() {
-//             match rx_clone.borrow().try_recv() {
-//                 Ok(qrng_string) => {
-//                     for (i, small_box) in boxes_clone.borrow().iter().enumerate() {
-//                         if i < qrng_string.len() {
-//                             small_box.set_css_classes(&["green-box"]);
-//                         } else {
-//                             small_box.set_css_classes(&["empty-box"]);
-//                         }
-//                     }
-//                 }
-//                 Err(_) => {}
-//             }
-//             glib::ControlFlow::Continue
-//         } else {
-//             println!("Stopping idle function because anu window is closed");
-//             glib::ControlFlow::Break
-//         }
-//     });
-// 
-// 
-//     cancel_button.connect_clicked(glib::clone!(
-//         #[strong] task_handle,
-//         #[weak] app,
-//         move |_| {
-//             if let Some(handle) = task_handle.borrow_mut().take() {
-//                 println!("aborting async task before closing...");
-//                 handle.abort();
-//             }
-//             app.close();
-//         }
-//     ));
-// 
-//     app.connect_close_request(glib::clone!(
-//         #[strong] task_handle,
-//         // #[strong] rx,
-//         move |_| {
-//             if let Some(handle) = task_handle.borrow_mut().take() {
-//                 println!("aborting async task on window close...");
-//                 handle.abort();
-//             }
-//             // rx.borrow_mut();
-//             
-//             glib::Propagation::Proceed
-//         }
-//     ));
-// 
-// 
-//     app
+//     Ok(response.data)
 // }
-// 
-
