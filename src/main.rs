@@ -72,6 +72,8 @@ const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
 const ANU_MINIMUM_ARRAY_LENGTH: u32 = 24;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
+const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
+
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
 // const VALID_PROXY_STATUS: &'static [&'static str] = &[
@@ -267,6 +269,7 @@ struct AppSettings {
     anu_array_length: Option<u32>,
     anu_hex_block_size: Option<u32>,
     anu_log: Option<bool>,
+    anu_timeout: Option<u32>,
     proxy_status: Option<bool>,
     proxy_server_address: Option<String>,
     proxy_server_port: Option<u32>,
@@ -306,6 +309,7 @@ impl Default for AppSettings {
             anu_array_length: Some(24),
             anu_hex_block_size: Some(1024),
             anu_log: Some(true),
+            anu_timeout: Some(5),
             proxy_status: Some(false),
             proxy_server_address: Some("".to_string()),
             proxy_server_port: Some(8080),
@@ -317,7 +321,7 @@ impl Default for AppSettings {
             proxy_use_ssl: Some(false),
             proxy_ssl_certificate: Some("".to_string()),
             proxy_retry_attempts: Some(3),
-            proxy_timeout: Some(3000),
+            proxy_timeout: Some(5000),
         }
     }
 }
@@ -428,12 +432,14 @@ impl AppSettings {
         let anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
         let anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
         let anu_log = get_bool(&anu_section, "log", settings.anu_log);
+        let anu_timeout = get_u32(&anu_section, "timeout", settings.anu_timeout);
 
         println!("\t- Use ANU: {:?}", anu_enabled);
         println!("\t- ANU data format: {:?}", anu_data_format);
         println!("\t- ANU array length: {:?}", anu_array_length);
         println!("\t- ANU hex block size: {:?}", anu_hex_block_size);
         println!("\t- ANU log: {:?}", anu_log);
+        println!("\t- ANU timeout: {:?}", anu_timeout);
 
         let proxy_status = get_bool(&proxy_section, "status", settings.proxy_status);
         let proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
@@ -486,6 +492,7 @@ impl AppSettings {
         application_settings.anu_array_length = anu_array_length.clone();
         application_settings.anu_hex_block_size = anu_hex_block_size.clone();
         application_settings.anu_log = anu_log.clone();
+        application_settings.anu_timeout = anu_timeout.clone();
 
         application_settings.proxy_status = proxy_status.clone();
         application_settings.proxy_server_address = proxy_server_address.clone();
@@ -732,6 +739,15 @@ impl AppSettings {
                     }
                 }
             },
+            "anu_timeout" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.anu_timeout {
+                        self.anu_timeout = Some(value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
+                    }
+                }
+            },
             "proxy_status" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_status {
@@ -867,6 +883,7 @@ impl AppSettings {
                 anu_table["array_length"] = toml_edit::value(self.anu_array_length.unwrap() as i64);
                 anu_table["hex_block_size"] = toml_edit::value(self.anu_hex_block_size.unwrap() as i64);
                 anu_table["log"] = toml_edit::value(self.anu_log.unwrap());
+                anu_table["timeout"] = toml_edit::value(self.anu_timeout.unwrap() as i64);
             }
         }
     
@@ -4099,6 +4116,39 @@ fn create_settings_window(
         default_anu_array_length_box.set_visible(false);
         default_anu_hex_length_box.set_visible(false);
     };
+
+    // Anu timeout
+    let anu_connection_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let anu_connection_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let anu_connection_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let anu_connection_timeout_label = gtk::Label::new(Some(&t!("UI.settings.proxy.timeout").to_string()));
+
+    let mut default_connection_timeout = lock_app_settings.anu_timeout.unwrap();
+    default_connection_timeout = std::cmp::max(1, default_connection_timeout);
+    default_connection_timeout = std::cmp::min(ANU_MAXIMUM_CONNECTION_TIMEOUT, default_connection_timeout);
+
+    let anu_connection_timeout_adjustment = gtk::Adjustment::new(
+        default_connection_timeout as f64,
+        1.0,
+        ANU_MAXIMUM_CONNECTION_TIMEOUT as f64,
+        1.0,
+        10.0,
+        0.0,
+    );
+    let anu_connection_timeout_spinbutton = gtk::SpinButton::new(Some(&anu_connection_timeout_adjustment), 1.0, 0);
+
+
+    anu_connection_timeout_spinbutton.set_size_request(200, 10);
+    anu_connection_timeout_label_box.set_hexpand(true);
+    anu_connection_timeout_item_box.set_hexpand(true);
+    anu_connection_timeout_item_box.set_margin_end(20);
+    anu_connection_timeout_item_box.set_halign(gtk::Align::End);
+
+    anu_connection_timeout_label_box.append(&anu_connection_timeout_label);
+    anu_connection_timeout_item_box.append(&anu_connection_timeout_spinbutton);
+    anu_connection_timeout_box.append(&anu_connection_timeout_label_box);
+    anu_connection_timeout_box.append(&anu_connection_timeout_item_box);
+    content_anu_box.append(&anu_connection_timeout_box);
     
     // Actions
     let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
@@ -4512,6 +4562,7 @@ fn create_settings_window(
                 ("gui_log_level", toml_edit::value(APP_LOG_LEVEL[default_gui_log_level_dropdown.selected() as usize])),
                 ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
                 ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
+                ("anu_timeout", toml_edit::value(anu_connection_timeout_spinbutton.value_as_int() as i64)),
                 ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
                 ("anu_array_length", toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64)),
                 ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),

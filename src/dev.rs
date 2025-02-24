@@ -186,8 +186,8 @@ fn create_boxes(n: Option<u32>) -> Vec<BlockEntry> {
 pub fn anu_window() -> gtk::ApplicationWindow {
     let window = gtk::ApplicationWindow::builder()
         .title(t!("UI.anu").to_string())
-        .default_width(crate::WINDOW_SETTINGS_DEFAULT_WIDTH.try_into().unwrap())
-        .default_height(crate::WINDOW_SETTINGS_DEFAULT_HEIGHT.try_into().unwrap())
+        .default_width(1024)
+        .default_height(768)
         .resizable(true)
         .modal(true)
         .build();
@@ -197,8 +197,9 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let anu_data_type = lock_app_settings.anu_data_format.clone();
     let anu_array_length = lock_app_settings.anu_array_length.clone();
     let anu_hex_block_size = lock_app_settings.anu_hex_block_size.clone();
+    
 
-    let main_grid_box = gtk::Box::builder()
+    let main_anu_window_box = gtk::Box::builder()
         .margin_bottom(10)
         .margin_end(10)
         .margin_start(10)
@@ -206,10 +207,69 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         .orientation(gtk::Orientation::Vertical)
         .build();
 
+    let main_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let content_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let content_header_box_status = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let content_header_box_data_type = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let content_header_box_array_length = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let content_header_box_block_size = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let content_header_box_progress = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let scroll_window = gtk::ScrolledWindow::new();
+    let anu_progress = gtk::ProgressBar::new();
+    
+    let anu_status_frame = gtk::Frame::new(Some("ANU status"));
+    let anu_data_type_frame = gtk::Frame::new(Some("ANU data type"));
+    let anu_array_length_frame = gtk::Frame::new(Some("ANU array length"));
+    let anu_block_size_frame = gtk::Frame::new(Some("ANU block size"));
+    // let anu_progress_frame = gtk::Frame::new(Some("ANU progress"));
+
+
+    main_anu_window_box.append(&main_header_box);
+    main_anu_window_box.append(&scroll_window);
+    
+    main_header_box.append(&content_header_box);
+    main_header_box.append(&content_header_box_progress);
+    
+    content_header_box.append(&content_header_box_status);
+    content_header_box.append(&content_header_box_data_type);
+    content_header_box.append(&content_header_box_array_length);
+    content_header_box.append(&content_header_box_block_size);
+
+    content_header_box_status.append(&anu_status_frame);
+    content_header_box_status.append(&anu_data_type_frame);
+    content_header_box_status.append(&anu_array_length_frame);
+    content_header_box_status.append(&anu_block_size_frame);
+    content_header_box_progress.append(&anu_progress);
+    
     scroll_window.set_hexpand(true);
     scroll_window.set_vexpand(true);
 
+    content_header_box.set_halign(gtk::Align::Center);
+    content_header_box.set_hexpand(true);
+
+    content_header_box_progress.set_margin_bottom(20);
+    content_header_box_progress.set_hexpand(true);
+
+    let anu_status_entry = gtk::Entry::new();
+    anu_status_entry.set_text("Inactive");
+    anu_status_entry.set_editable(false);
+    anu_status_frame.set_child(Some(&anu_status_entry));
+
+    let anu_data_type_entry = gtk::Entry::new();
+    anu_data_type_entry.set_text(&anu_data_type.clone().unwrap());
+    anu_data_type_entry.set_editable(false);
+    anu_data_type_frame.set_child(Some(&anu_data_type_entry));
+
+    let anu_array_length_entry = gtk::Entry::new();
+    anu_array_length_entry.set_text(&anu_array_length.clone().unwrap().to_string());
+    anu_array_length_entry.set_editable(false);
+    anu_array_length_frame.set_child(Some(&anu_array_length_entry));
+
+    let anu_block_size_entry = gtk::Entry::new();
+    anu_block_size_entry.set_text(&anu_hex_block_size.clone().unwrap().to_string());
+    anu_block_size_entry.set_editable(false);
+    anu_block_size_frame.set_child(Some(&anu_block_size_entry));
+    
     let main_container = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let blocks = create_boxes(anu_array_length);
     
@@ -219,7 +279,6 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         main_container.append(&block.container);
     }
 
-    main_grid_box.append(&scroll_window);
     scroll_window.set_child(Some(&main_container));
 
     let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -231,20 +290,15 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     main_button_box.append(&new_button);
     main_button_box.append(&cancel_button);
 
-    main_button_box.set_margin_bottom(4);
-    main_button_box.set_margin_top(4);
-    main_button_box.set_margin_start(4);
-    main_button_box.set_margin_end(4);
+    main_button_box.set_margin_bottom(10);
+    main_button_box.set_margin_top(20);
     main_button_box.set_halign(gtk::Align::Center);
-    main_grid_box.append(&main_button_box);
-    window.set_child(Some(&main_grid_box));
-
-    // let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
+    main_anu_window_box.append(&main_button_box);
+    window.set_child(Some(&main_anu_window_box));
 
     let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
     let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
     let blocks_rc_clone = blocks_rc.clone();
-    
     
     let pulse_active = std::rc::Rc::new(std::cell::RefCell::new(false));
     let pulse_active_clone = pulse_active.clone();
@@ -308,9 +362,12 @@ pub fn anu_window() -> gtk::ApplicationWindow {
             }
             
             let anu_data_type_clone = anu_data_type.clone();
+
+            let anu_timeout = lock_app_settings.anu_timeout.clone().unwrap();
+
             let new_handle = tokio::spawn(async move {
                 let result = tokio::time::timeout(
-                    tokio::time::Duration::from_secs(60),
+                    tokio::time::Duration::from_secs(anu_timeout as u64),
                     get_qrng(anu_data_type_clone, anu_array_length, anu_hex_block_size)
                 ).await;
                 
@@ -358,55 +415,6 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     window
 }
 
-// async fn get_qrng(
-//     anu_data_type: Option<String>, 
-//     anu_array_length: Option<u32>, 
-//     anu_hex_block_size: Option<u32>
-// ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-//     let client = reqwest::Client::new();
-    
-//     let lock_app_settings = crate::APP_SETTINGS.lock().unwrap();
-
-//     let proxy_status = lock_app_settings.proxy_status;
-//     let proxy_server_address = lock_app_settings.proxy_server_address;
-//     let proxy_server_port = lock_app_settings.proxy_server_port;
-
-//     let proxy_login_credentials = lock_app_settings.proxy_login_credentials;
-//     let proxy_login_username = lock_app_settings.proxy_login_username;
-//     let proxy_login_password = lock_app_settings.proxy_login_password;
-
-//     let proxy_use_pac = lock_app_settings.proxy_use_pac;
-//     let proxy_script_address = lock_app_settings.proxy_script_address;
-    
-//     let proxy_use_ssl = lock_app_settings.proxy_use_ssl;
-//     let proxy_ssl_certificate = lock_app_settings.proxy_ssl_certificate;
-
-//     let url = format!(
-//         "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
-//         anu_array_length.unwrap_or(QRNG_MIN_ARRAY), 
-//         anu_data_type.unwrap_or("hex16".to_string()), 
-//         anu_hex_block_size.unwrap_or(QRNG_DEF_BLOCK_SIZE)
-//     );
-
-//     let response = client
-//         .get(&url)
-//         .send()
-//         .await?
-//         .json::<AnuResponse>()
-//         .await?;
-
-//     println!("API Response: {:?}", response);
-
-//     if !response.success {
-//         return Err("API request failed".into());
-//     }
-
-//     Ok(response.data)
-// }
-
-
-
-
 async fn get_qrng(
     anu_data_type: Option<String>, 
     anu_array_length: Option<u32>, 
@@ -447,7 +455,7 @@ async fn get_qrng(
     }
     
     if proxy_use_pac {
-        // reqwest does not support PAC files - fuuuuuck
+        // reqwest does not support PAC files - fuck
         println!("Warning: PAC support is limited - using direct connection");
     }
     
@@ -511,7 +519,7 @@ async fn get_qrng(
 //         .build();
 // 
 // 
-//     let main_grid_box = gtk::Box::builder()
+//     let main_anu_window_box = gtk::Box::builder()
 //         .margin_bottom(10)
 //         .margin_end(10)
 //         .margin_start(10)
@@ -529,7 +537,7 @@ async fn get_qrng(
 //         .build();
 // 
 //     scroll_window.set_child(Some(&grid));
-//     main_grid_box.append(&scroll_window);
+//     main_anu_window_box.append(&scroll_window);
 // 
 //     let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
 //     let ok_button = gtk::Button::with_label("OK");
@@ -545,8 +553,8 @@ async fn get_qrng(
 //     main_button_box.set_margin_start(4);
 //     main_button_box.set_margin_end(4);
 // 
-//     main_grid_box.append(&main_button_box);
-//     app.set_child(Some(&main_grid_box));
+//     main_anu_window_box.append(&main_button_box);
+//     app.set_child(Some(&main_anu_window_box));
 // 
 // 
 // 
