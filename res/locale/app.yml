@@ -92,6 +92,10 @@ UI:
         en: "Save API response to log file"
         de: "API-Antwort in Protokolldatei speichern"
         hr: "Spremi API odgovor u log datoteku"
+      timeout:
+        en: "Connection timeout"
+        de: "Verbindungszeitüberschreitung"
+        hr: "Istek vremena veze"
     proxy:
       en: "Proxy settings"
       de: "Proxy Einstellungen"

@@ -4121,7 +4121,7 @@ fn create_settings_window(
     let anu_connection_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let anu_connection_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let anu_connection_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let anu_connection_timeout_label = gtk::Label::new(Some(&t!("UI.settings.proxy.timeout").to_string()));
+    let anu_connection_timeout_label = gtk::Label::new(Some(&t!("UI.settings.anu.timeout").to_string()));
 
     let mut default_connection_timeout = lock_app_settings.anu_timeout.unwrap();
     default_connection_timeout = std::cmp::max(1, default_connection_timeout);

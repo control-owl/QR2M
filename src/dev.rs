@@ -362,22 +362,20 @@ pub fn anu_window() -> gtk::ApplicationWindow {
             }
             
             let anu_data_type_clone = anu_data_type.clone();
-
+            
             let anu_timeout = lock_app_settings.anu_timeout.clone().unwrap();
+            println!("anu_timeout: {:?}", anu_timeout);
 
             let new_handle = tokio::spawn(async move {
-                let result = tokio::time::timeout(
-                    tokio::time::Duration::from_secs(anu_timeout as u64),
-                    get_qrng(anu_data_type_clone, anu_array_length, anu_hex_block_size)
-                ).await;
+                let result = get_qrng(anu_data_type_clone, anu_array_length, anu_hex_block_size).await;
                 
                 let _ = tx.send(match result {
-                    Ok(Ok(data)) => Ok(data),
-                    Ok(Err(_)) => {
+                    Ok(data) => Ok(data),
+                    Err(_) => {
                         let msg = format!{"ANU error: {:?}", result};
                         Err(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, msg)) as Box<dyn std::error::Error + Send + Sync>)
                     },
-                    Err(_) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::TimedOut, "QRNG fetch timed out")) as Box<dyn std::error::Error + Send + Sync>),
+                    // Err(_) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::TimedOut, "QRNG fetch timed out")) as Box<dyn std::error::Error + Send + Sync>),
                 });
             });
 
@@ -420,6 +418,7 @@ async fn get_qrng(
     anu_array_length: Option<u32>, 
     anu_hex_block_size: Option<u32>
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    println!("function get_qrng");
     let mut client_builder = reqwest::Client::builder();
     
     let lock_app_settings = crate::APP_SETTINGS.lock();
@@ -467,6 +466,7 @@ async fn get_qrng(
     }
     
     let client = client_builder.build()?;
+    println!("Client: {:?}", client);
     
     let url = format!(
         "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
@@ -474,6 +474,8 @@ async fn get_qrng(
         anu_data_type.unwrap_or("hex16".to_string()), 
         anu_hex_block_size.unwrap_or(QRNG_DEF_BLOCK_SIZE)
     );
+
+    println!("ANU URL: {:?}", url);
 
     let response = client
         .get(&url)
