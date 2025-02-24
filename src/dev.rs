@@ -355,12 +355,97 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     window
 }
 
+// async fn get_qrng(
+//     anu_data_type: Option<String>, 
+//     anu_array_length: Option<u32>, 
+//     anu_hex_block_size: Option<u32>
+// ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+//     let client = reqwest::Client::new();
+    
+//     let lock_app_settings = crate::APP_SETTINGS.lock().unwrap();
+
+//     let proxy_status = lock_app_settings.proxy_status;
+//     let proxy_server_address = lock_app_settings.proxy_server_address;
+//     let proxy_server_port = lock_app_settings.proxy_server_port;
+
+//     let proxy_login_credentials = lock_app_settings.proxy_login_credentials;
+//     let proxy_login_username = lock_app_settings.proxy_login_username;
+//     let proxy_login_password = lock_app_settings.proxy_login_password;
+
+//     let proxy_use_pac = lock_app_settings.proxy_use_pac;
+//     let proxy_script_address = lock_app_settings.proxy_script_address;
+    
+//     let proxy_use_ssl = lock_app_settings.proxy_use_ssl;
+//     let proxy_ssl_certificate = lock_app_settings.proxy_ssl_certificate;
+
+//     let url = format!(
+//         "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
+//         anu_array_length.unwrap_or(QRNG_MIN_ARRAY), 
+//         anu_data_type.unwrap_or("hex16".to_string()), 
+//         anu_hex_block_size.unwrap_or(QRNG_DEF_BLOCK_SIZE)
+//     );
+
+//     let response = client
+//         .get(&url)
+//         .send()
+//         .await?
+//         .json::<AnuResponse>()
+//         .await?;
+
+//     println!("API Response: {:?}", response);
+
+//     if !response.success {
+//         return Err("API request failed".into());
+//     }
+
+//     Ok(response.data)
+// }
+
+
+
+
 async fn get_qrng(
     anu_data_type: Option<String>, 
     anu_array_length: Option<u32>, 
     anu_hex_block_size: Option<u32>
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
+    let mut client_builder = reqwest::Client::builder();
+    
+    let lock_app_settings = crate::APP_SETTINGS.lock().unwrap();
+    
+    if lock_app_settings.proxy_status {
+        let proxy_address = format!(
+            "{}://{}:{}",
+            if lock_app_settings.proxy_use_ssl { "https" } else { "http" },
+            lock_app_settings.proxy_server_address,
+            lock_app_settings.proxy_server_port
+        );
+        
+        let mut proxy = reqwest::Proxy::all(proxy_address)?;
+        
+        if lock_app_settings.proxy_login_credentials {
+            proxy = proxy.basic_auth(
+                &lock_app_settings.proxy_login_username,
+                &lock_app_settings.proxy_login_password
+            );
+        }
+        
+        client_builder = client_builder.proxy(proxy);
+    }
+    
+    if lock_app_settings.proxy_use_pac {
+        // reqwest does not support PAC files - fuuuuuck
+        println!("Warning: PAC support is limited - using direct connection");
+    }
+    
+    if lock_app_settings.proxy_use_ssl && !lock_app_settings.proxy_ssl_certificate.is_empty() {
+        let cert = reqwest::Certificate::from_pem(
+            lock_app_settings.proxy_ssl_certificate.as_bytes()
+        )?;
+        client_builder = client_builder.add_root_certificate(cert);
+    }
+    
+    let client = client_builder.build()?;
     
     let url = format!(
         "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
@@ -384,11 +469,6 @@ async fn get_qrng(
 
     Ok(response.data)
 }
-
-
-
-
-
 
 
 
