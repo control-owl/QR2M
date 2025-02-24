@@ -274,7 +274,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                             block.progress_bar.set_fraction(1.0);
                         }
                     }
-                }
+                },
                 Err(e) => {
                     println!("Error receiving QRNG data: {:?}", e);
                     let blocks = blocks_rc_clone.borrow();
