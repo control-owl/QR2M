@@ -302,45 +302,23 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     // Hocus - Pokus
 
     let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
-
-
     let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
-    let blocks_rc_clone = blocks_rc.clone();
-    
-
+    let anu_handler: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
     let total_length = anu_array_length.clone().unwrap() as f64;
     let block_size = anu_hex_block_size.clone().unwrap();
     let total_hex_chars = total_length as f64 * block_size as f64 * 2.0;
     let received_chars = std::rc::Rc::new(std::cell::RefCell::new(0.0));
-
     let current_index = std::rc::Rc::new(std::cell::RefCell::new(0));
     let char_buffer = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
-
-    let pulse_active = std::rc::Rc::new(std::cell::RefCell::new(false));
-    let pulse_active_clone = pulse_active.clone();
-   
-    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
-        if *pulse_active_clone.borrow() {
-            for block in blocks_rc_clone.borrow().iter() {
-                block.progress_bar.pulse();
-            }
-            glib::ControlFlow::Continue
-        } else {
-            glib::ControlFlow::Break
-        }
-    });
-    
-    
-    
     let rx = std::rc::Rc::new(std::cell::RefCell::new(rx));
     
 
     new_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
+        #[strong] anu_handler,
         #[strong] blocks_rc,
         #[strong] current_index,
         #[strong] received_chars,
-        #[strong] pulse_active,
         #[strong] anu_progress,
         #[weak] anu_progress,
         #[weak] anu_status_entry,
@@ -349,13 +327,11 @@ pub fn anu_window() -> gtk::ApplicationWindow {
             let anu_status_entry_clone = anu_status_entry.clone();
             let received_chars_clone = received_chars.clone();
             let char_buffer_clone = char_buffer.clone();
-            let pulse_active_clone = pulse_active.clone();
             let tx = tx.clone();
             let blocks = blocks_rc.borrow();
             let rx_clone = rx.clone();
             let current_index_clone = current_index.clone();
             let anu_progress_clone = anu_progress.clone();
-
             
             for block in blocks.iter() {
                 block.entry.set_text("Loading...");
@@ -371,38 +347,45 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                 println!("Previous task aborted.");
             }
 
-            let new_handle = tokio::spawn(async move {
+            let anu_handle = tokio::spawn(async move {
                 fetch_anu_qrng_data("hex16", total_length as u32, block_size, tx);
             });
 
-            *task_handle.borrow_mut() = Some(new_handle);
+            *task_handle.borrow_mut() = Some(anu_handle);
 
-            
-
-            glib::idle_add_local(move || {
+            let parsing_loop = glib::idle_add_local(move || {
                 if let Ok(chunk) = rx_clone.borrow_mut().try_recv() {
                     let blocks = blocks_rc_clone.borrow();
                     let mut index = current_index_clone.borrow_mut();
                     let mut chars = received_chars_clone.borrow_mut();
                     let mut buffer = char_buffer_clone.borrow_mut();
-        
+            
                     if chunk.starts_with("FINAL:") {
                         let json_data = &chunk[6..];
-                        if let Ok(anu_response) = serde_json::from_str::<AnuResponse>(json_data) {
-                            if anu_response.success {
-                                for (i, value) in anu_response.data.iter().enumerate() {
-                                    let pos = i;
-                                    if pos < blocks.len() {
-                                        blocks[pos].entry.set_text(value.as_str());
-                                        blocks[pos].progress_bar.set_fraction(1.0);
-                                        *chars = (pos + 1) as f64 * value.len() as f64;
+                        match serde_json::from_str::<AnuResponse>(json_data) {
+                            Ok(anu_response) => {
+                                if anu_response.success {
+                                    for (i, value) in anu_response.data.iter().enumerate() {
+                                        let pos = i;
+                                        if pos < blocks.len() {
+                                            blocks[pos].entry.set_text(value.as_str());
+                                            blocks[pos].progress_bar.set_fraction(1.0);
+                                            *chars = (pos + 1) as f64 * value.len() as f64;
+                                        }
                                     }
+                                    *index = anu_response.data.len();
+                                    anu_status_entry_clone.set_text("Complete");
+                                    anu_progress_clone.set_fraction(1.0);
+                                    *buffer = String::new();
+                                    return glib::ControlFlow::Break;
+                                } else {
+                                    anu_status_entry_clone.set_text("ANU response unsuccessful");
+                                    return glib::ControlFlow::Break;
                                 }
-                                *index = anu_response.data.len();
-                                anu_status_entry_clone.set_text("Complete");
-                                anu_progress_clone.set_fraction(1.0);
-                                *pulse_active_clone.borrow_mut() = false;
-                                *buffer = String::new();
+                            }
+                            Err(e) => {
+                                anu_status_entry_clone.set_text(&format!("Parsing error: {}", e));
+                                return glib::ControlFlow::Break;
                             }
                         }
                     } else {
@@ -421,22 +404,21 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                                 *index += 1;
                             }
                         }
-                        let progress = (*chars / total_hex_chars) * 2.0;
+                        let progress = *chars / total_hex_chars * 2.0;
                         anu_progress_clone.set_fraction(progress.min(1.0));
                         anu_status_entry_clone.set_text("Receiving raw...");
                     }
                 }
                 glib::ControlFlow::Continue
             });
+
         }
     ));
     
     cancel_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
-        #[strong] pulse_active,
         #[weak] window,
         move |_| {
-            *pulse_active.borrow_mut() = false;
             if let Some(handle) = task_handle.borrow_mut().take() {
                 println!("aborting async task before closing...");
                 handle.abort();
@@ -447,9 +429,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
 
     window.connect_close_request(glib::clone!(
         #[strong] task_handle,
-        #[strong] pulse_active,
         move |_| {
-            *pulse_active.borrow_mut() = false;
             if let Some(handle) = task_handle.borrow_mut().take() {
                 println!("aborting async task on window close...");
                 handle.abort();
