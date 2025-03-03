@@ -1,6 +1,7 @@
 # version 0.74.0
 - beta proxy (not tested yet)
 - new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
+- Rust 2024 edition
 
 # version 0.73.0
 - Real-time Address Updates: Addresses now appear instantly in a table as they are generated
