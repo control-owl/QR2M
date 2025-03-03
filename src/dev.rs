@@ -301,15 +301,12 @@ pub fn anu_window() -> gtk::ApplicationWindow {
 
     // Hocus - Pokus
 
-
-    // let (tx, rx): (std::sync::mpsc::Sender<Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
-    // let (tx, rx): (std::sync::mpsc::Sender<Vec<String>>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
     let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
 
 
     let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
     let blocks_rc_clone = blocks_rc.clone();
-    let anu_progress_clone = anu_progress.clone();
+    
 
     let total_length = anu_array_length.clone().unwrap() as f64;
     let block_size = anu_hex_block_size.clone().unwrap();
@@ -318,7 +315,6 @@ pub fn anu_window() -> gtk::ApplicationWindow {
 
     let current_index = std::rc::Rc::new(std::cell::RefCell::new(0));
     let char_buffer = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
-    let current_index_clone = current_index.clone();
 
     let pulse_active = std::rc::Rc::new(std::cell::RefCell::new(false));
     let pulse_active_clone = pulse_active.clone();
@@ -335,72 +331,31 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     });
     
     
-    let blocks_rc_clone = blocks_rc.clone();
-    let anu_status_entry_clone = anu_status_entry.clone();
-    let received_chars_clone = received_chars.clone();
-    let char_buffer_clone = char_buffer.clone();
-    let pulse_active_clone = pulse_active.clone();
-
-    glib::idle_add_local(move || {
-        if let Ok(chunk) = rx.try_recv() {
-            let blocks = blocks_rc_clone.borrow();
-            let mut index = current_index_clone.borrow_mut();
-            let mut chars = received_chars_clone.borrow_mut();
-            let mut buffer = char_buffer_clone.borrow_mut();
-
-            if chunk.starts_with("FINAL:") {
-                let json_data = &chunk[6..];
-                if let Ok(anu_response) = serde_json::from_str::<AnuResponse>(json_data) {
-                    if anu_response.success {
-                        for (i, value) in anu_response.data.iter().enumerate() {
-                            let pos = i;
-                            if pos < blocks.len() {
-                                blocks[pos].entry.set_text(value.as_str());
-                                blocks[pos].progress_bar.set_fraction(1.0);
-                                *chars = (pos + 1) as f64 * value.len() as f64;
-                            }
-                        }
-                        *index = anu_response.data.len();
-                        anu_status_entry_clone.set_text("Complete");
-                        anu_progress_clone.set_fraction(1.0);
-                        *pulse_active_clone.borrow_mut() = false;
-                        *buffer = String::new();
-                    }
-                }
-            } else {
-                buffer.push_str(&chunk);
-                let block_size_chars = anu_hex_block_size.clone().unwrap() as usize * 2;
-                while buffer.len() >= block_size_chars {
-                    let segment = buffer.drain(..block_size_chars).collect::<String>();
-                    let pos = *index;
-                    if pos < blocks.len() {
-                        blocks[pos].entry.set_text(&segment);
-                        let chars_received = segment.len() as f64 / 2.0;
-                        let target_chars = anu_hex_block_size.clone().unwrap() as f64;
-                        let entry_progress = (chars_received / target_chars).min(1.0);
-                        blocks[pos].progress_bar.set_fraction(entry_progress);
-                        *chars += chars_received;
-                        *index += 1;
-                    }
-                }
-                let progress = *chars / total_hex_chars;
-                anu_progress_clone.set_fraction(progress.min(1.0));
-                anu_status_entry_clone.set_text("Receiving...");
-            }
-        }
-        glib::ControlFlow::Continue
-    });
+    
+    let rx = std::rc::Rc::new(std::cell::RefCell::new(rx));
+    
 
     new_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
         #[strong] blocks_rc,
         #[strong] current_index,
         #[strong] received_chars,
+        #[strong] pulse_active,
+        #[strong] anu_progress,
         #[weak] anu_progress,
         #[weak] anu_status_entry,
         move |_| {
+            let blocks_rc_clone = blocks_rc.clone();
+            let anu_status_entry_clone = anu_status_entry.clone();
+            let received_chars_clone = received_chars.clone();
+            let char_buffer_clone = char_buffer.clone();
+            let pulse_active_clone = pulse_active.clone();
             let tx = tx.clone();
             let blocks = blocks_rc.borrow();
+            let rx_clone = rx.clone();
+            let current_index_clone = current_index.clone();
+            let anu_progress_clone = anu_progress.clone();
+
             
             for block in blocks.iter() {
                 block.entry.set_text("Loading...");
@@ -421,6 +376,58 @@ pub fn anu_window() -> gtk::ApplicationWindow {
             });
 
             *task_handle.borrow_mut() = Some(new_handle);
+
+            
+
+            glib::idle_add_local(move || {
+                if let Ok(chunk) = rx_clone.borrow_mut().try_recv() {
+                    let blocks = blocks_rc_clone.borrow();
+                    let mut index = current_index_clone.borrow_mut();
+                    let mut chars = received_chars_clone.borrow_mut();
+                    let mut buffer = char_buffer_clone.borrow_mut();
+        
+                    if chunk.starts_with("FINAL:") {
+                        let json_data = &chunk[6..];
+                        if let Ok(anu_response) = serde_json::from_str::<AnuResponse>(json_data) {
+                            if anu_response.success {
+                                for (i, value) in anu_response.data.iter().enumerate() {
+                                    let pos = i;
+                                    if pos < blocks.len() {
+                                        blocks[pos].entry.set_text(value.as_str());
+                                        blocks[pos].progress_bar.set_fraction(1.0);
+                                        *chars = (pos + 1) as f64 * value.len() as f64;
+                                    }
+                                }
+                                *index = anu_response.data.len();
+                                anu_status_entry_clone.set_text("Complete");
+                                anu_progress_clone.set_fraction(1.0);
+                                *pulse_active_clone.borrow_mut() = false;
+                                *buffer = String::new();
+                            }
+                        }
+                    } else {
+                        buffer.push_str(&chunk);
+                        let block_size_chars = anu_hex_block_size.clone().unwrap() as usize * 2;
+                        while buffer.len() >= block_size_chars {
+                            let segment = buffer.drain(..block_size_chars).collect::<String>();
+                            let pos = *index;
+                            if pos < blocks.len() {
+                                blocks[pos].entry.set_text(&segment);
+                                let chars_received = segment.len() as f64 / 2.0;
+                                let target_chars = anu_hex_block_size.clone().unwrap() as f64;
+                                let entry_progress = (chars_received / target_chars).min(1.0);
+                                blocks[pos].progress_bar.set_fraction(entry_progress);
+                                *chars += chars_received;
+                                *index += 1;
+                            }
+                        }
+                        let progress = (*chars / total_hex_chars) * 2.0;
+                        anu_progress_clone.set_fraction(progress.min(1.0));
+                        anu_status_entry_clone.set_text("Receiving raw...");
+                    }
+                }
+                glib::ControlFlow::Continue
+            });
         }
     ));
     
