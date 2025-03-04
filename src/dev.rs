@@ -288,8 +288,8 @@ pub fn anu_window() -> gtk::ApplicationWindow {
 
     let main_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let ok_button = gtk::Button::with_label("OK");
-    let cancel_button = gtk::Button::with_label("Cancel");
     let new_button = gtk::Button::with_label("New QRNG");
+    let cancel_button = gtk::Button::with_label("Cancel");
 
     main_button_box.append(&ok_button);
     main_button_box.append(&new_button);
@@ -304,6 +304,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
 
     // Hocus - Pokus
     
+
     let fetch_handle = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
     let parse_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
 
@@ -313,7 +314,6 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let received_chars = std::sync::Arc::new(std::sync::Mutex::new(0.0));
     let current_index = std::sync::Arc::new(std::sync::Mutex::new(0));
     let char_buffer = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
-
 
     new_button.connect_clicked(glib::clone!(
         #[strong] fetch_handle,
@@ -325,8 +325,6 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         #[strong] anu_status_entry,
         move |_| {
             let (tx, mut rx): (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) = tokio::sync::mpsc::channel(100);
-            anu_progress.set_show_text(true);
-
             let current_index_clone = current_index.clone();           
             let blocks = blocks_rc.borrow();
 
@@ -339,18 +337,19 @@ pub fn anu_window() -> gtk::ApplicationWindow {
             *received_chars.lock().unwrap() = 0.0;
             anu_progress.set_fraction(0.0);
             anu_status_entry.set_text("Starting...");
+            anu_progress.set_show_text(true);
     
             if let Some(handle) = fetch_handle.lock().unwrap().take() {
                 handle.abort();
                 println!("Previous fetch aborted.");
             }
-    
+
             if let Some(handle) = parse_handler.lock().unwrap().take() {
                 handle.abort();
                 println!("Previous parsing aborted.");
             }
             let main_context = glib::MainContext::default();
-    
+
             let anu_loop = main_context.spawn_local(async move {
                 fetch_anu_qrng_data("hex16", total_length as u32, block_size, tx);
             });
@@ -423,7 +422,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                     }
                 }
             });
-    
+
             *parse_handler.lock().unwrap() = Some(parsing_loop);
         }
     ));

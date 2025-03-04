@@ -24,7 +24,7 @@ use std::{
 };
 use hex;
 use rand::Rng;
-use gtk4 as gtk;
+use gtk4::{self as gtk};
 use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
@@ -70,17 +70,11 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
-// const ANU_MINIMUM_ARRAY_LENGTH: u32 = 24;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
 
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
-// const VALID_PROXY_STATUS: &'static [&'static str] = &[
-//     "Off", 
-//     "Auto", 
-//     "Manual",
-// ];
 const VALID_GUI_THEMES: &'static [&'static str] = &[
     "System", 
     "Light", 
@@ -102,6 +96,8 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
     "Ultimate",
 ];
 
+#[cfg(any(target_os = "windows"))]
+const GUI_IMAGE_EXTENSION: &str = "png";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -178,15 +174,17 @@ impl GuiState {
             .join(theme_subdir)
             .join(gui_icons);
 
+        let extension = Some(GUI_IMAGE_EXTENSION).unwrap_or("svg");
+        
         let icon_files = [
-            ("new", "new.svg"),
-            ("open", "open.svg"),
-            ("save", "save.svg"),
-            ("about", "about.svg"),
-            ("settings", "settings.svg"),
-            ("log", "log.svg"),
-            ("notif", "notif.svg"),
-            ("random", "random.svg"),
+            ("new", format!("new.{}",extension)),
+            ("open", format!("open.{}",extension)),
+            ("save", format!("save.{}",extension)),
+            ("about", format!("about.{}",extension)),
+            ("settings", format!("settings.{}",extension)),
+            ("log", format!("log.{}",extension)),
+            ("notif", format!("notif.{}",extension)),
+            ("random", format!("random.{}",extension)),
         ];
         
         let mut icons = std::collections::HashMap::new();
@@ -1593,7 +1591,6 @@ fn create_main_window(
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-
     let anu_enabled = lock_app_settings.anu_enabled;
     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
@@ -4720,7 +4717,9 @@ fn reset_user_settings() -> Result<String, String> {
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource("logo/logo.svg");
+    let extension = Some(GUI_IMAGE_EXTENSION).unwrap_or("svg");
+
+    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}",extension));
     let logo_picture = gtk::Picture::new();
     logo_picture.set_paintable(Some(&pixy));
 

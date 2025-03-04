@@ -1,6 +1,7 @@
 # version 0.74.0
 - beta proxy (not tested yet)
 - new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
+    - save quantum entropy as image
 - Rust 2024 edition
 
 # version 0.73.0
