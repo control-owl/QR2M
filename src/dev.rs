@@ -432,12 +432,12 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         #[strong] parse_handler,
         move |_| {
             if let Some(handle) = fetch_handle.lock().unwrap().take() {
-                println!("canceling async task...");
+                println!("ANU fetch canceled");
                 handle.abort();
             }
 
             if let Some(handle) = parse_handler.lock().unwrap().take() {
-                println!("canceling parsing async task...");
+                println!("Parsing canceled");
                 handle.abort();
             }
         }

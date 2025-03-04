@@ -8,6 +8,7 @@
 
 
 #### Old tasks
+- [ ] Stop generating addresses
 - [x] master private key (xprv)
 - [x] master public key (xpub)
 - [x] child keys
