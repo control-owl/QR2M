@@ -298,17 +298,22 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     main_anu_window_box.append(&main_button_box);
     window.set_child(Some(&main_anu_window_box));
 
+
     // Hocus - Pokus
-    let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<_>) = std::sync::mpsc::channel();
-    let task_handle: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
-    let anu_handler: std::rc::Rc<std::cell::RefCell<Option<tokio::task::JoinHandle<()>>>> = std::rc::Rc::new(std::cell::RefCell::new(None));
+    
+    
+    // let (tx, mut rx): (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) = tokio::sync::mpsc::channel(100);
+    
+    let task_handle = std::sync::Arc::new(std::sync::Mutex::new(None::<tokio::task::JoinHandle<()>>));
+    // let anu_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<tokio::task::JoinHandle<()>>));
     let total_length = anu_array_length.clone().unwrap() as f64;
     let block_size = anu_hex_block_size.clone().unwrap();
     let total_hex_chars = total_length as f64 * block_size as f64 * 2.0;
-    let received_chars = std::rc::Rc::new(std::cell::RefCell::new(0.0));
-    let current_index = std::rc::Rc::new(std::cell::RefCell::new(0));
-    let char_buffer = std::rc::Rc::new(std::cell::RefCell::new(String::new()));
-    let rx = std::rc::Rc::new(std::cell::RefCell::new(rx));
+    let received_chars = std::sync::Arc::new(std::sync::Mutex::new(0.0));
+    let current_index = std::sync::Arc::new(std::sync::Mutex::new(0));
+    let char_buffer = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+
+    let anu_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
 
     new_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
@@ -317,144 +322,138 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         #[strong] current_index,
         #[strong] received_chars,
         #[strong] anu_progress,
-        #[strong] rx,
-        #[weak] anu_progress,
         #[weak] anu_status_entry,
         move |_| {
             let blocks_rc_clone = blocks_rc.clone();
             let anu_status_entry_clone = anu_status_entry.clone();
             let received_chars_clone = received_chars.clone();
             let char_buffer_clone = char_buffer.clone();
-            let tx = tx.clone();
-            let blocks = blocks_rc.borrow();
-            let rx_clone = rx.clone();
             let current_index_clone = current_index.clone();
             let anu_progress_clone = anu_progress.clone();
+            let task_handle_clone = task_handle.clone();
+            let anu_handler_clone = anu_handler.clone();
             
+            let (tx, mut rx): (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) = 
+                tokio::sync::mpsc::channel(100);
+            
+            let blocks = blocks_rc.borrow();
             for block in blocks.iter() {
                 block.entry.set_text("Loading...");
                 block.progress_bar.set_fraction(0.0);
             }
-            *current_index.borrow_mut() = 0;
-            *received_chars.borrow_mut() = 0.0;
+            *current_index_clone.lock().unwrap() = 0;
+            *received_chars_clone.lock().unwrap() = 0.0;
             anu_progress.set_fraction(0.0);
             anu_status_entry.set_text("Starting...");
-
-            if let Some(handle) = task_handle.borrow_mut().take() {
+    
+            if let Some(handle) = task_handle_clone.lock().unwrap().take() {
                 handle.abort();
                 println!("Previous task aborted.");
             }
-
-            if let Some(handle) = anu_handler.borrow_mut().take() {
+    
+            if let Some(handle) = anu_handler_clone.lock().unwrap().take() {
                 handle.abort();
                 println!("Previous parsing aborted.");
             }
-
-            let anu_handle = tokio::spawn(async move {
-                fetch_anu_qrng_data("hex16", total_length as u32, block_size, tx);
-            });
-
-            *task_handle.borrow_mut() = Some(anu_handle);
-
-            let parsing_loop = tokio::spawn(async move {
-                tokio::task::block_in_place(glib::clone!(
-                    #[strong] rx_clone,
-                    #[strong] current_index_clone,
-                    #[strong] blocks_rc_clone,
-                    move || { 
-                        loop {
-                            // IMPLEMENT: Add timeout if parser does not receive any data in x seconds
-                            if let Ok(chunk) = rx_clone.borrow_mut().try_recv() {
-                                let blocks = blocks_rc_clone.borrow();
-                                let mut index = current_index_clone.borrow_mut();
-                                let mut chars = received_chars_clone.borrow_mut();
-                                let mut buffer = char_buffer_clone.borrow_mut();
-                        
-                                if chunk.starts_with("FINAL:") {
-                                    let json_data = &chunk[6..];
-                                    match serde_json::from_str::<AnuResponse>(json_data) {
-                                        Ok(anu_response) => {
-                                            if anu_response.success {
-                                                for (i, value) in anu_response.data.iter().enumerate() {
-                                                    let pos = i;
-                                                    if pos < blocks.len() {
-                                                        blocks[pos].entry.set_text(value.as_str());
-                                                        blocks[pos].progress_bar.set_fraction(1.0);
-                                                        *chars = (pos + 1) as f64 * value.len() as f64;
-                                                    }
-                                                }
-                                                *index = anu_response.data.len();
-                                                anu_status_entry_clone.set_text("Complete");
-                                                anu_progress_clone.set_fraction(1.0);
-                                                *buffer = String::new();
-                                                break
-                                            } else {
-                                                anu_status_entry_clone.set_text("ANU response unsuccessful");
-                                                break
-                                            }
-                                        }
-                                        Err(e) => {
-                                            anu_status_entry_clone.set_text(&format!("Parsing error: {}", e));
-                                            break
-                                        }
-                                    }
-                                } else {
-                                    buffer.push_str(&chunk);
-                                    let block_size_chars = anu_hex_block_size.clone().unwrap() as usize * 2;
-                                    while buffer.len() >= block_size_chars {
-                                        let segment = buffer.drain(..block_size_chars).collect::<String>();
-                                        let pos = *index;
+    
+            fetch_anu_qrng_data("hex16", total_length as u32, block_size, tx.clone());
+    
+            let main_context = glib::MainContext::default();
+            let parsing_loop = main_context.spawn_local(async move {
+                while let Some(chunk) = rx.recv().await {
+                    let blocks = blocks_rc_clone.borrow();
+                    let mut index = current_index_clone.lock().unwrap();
+                    let mut chars = received_chars_clone.lock().unwrap();
+                    let mut buffer = char_buffer_clone.lock().unwrap();
+                    
+                    if chunk.starts_with("FINAL:") {
+                        let json_data = &chunk[6..];
+                        match serde_json::from_str::<AnuResponse>(json_data) {
+                            Ok(anu_response) => {
+                                if anu_response.success {
+                                    for (i, value) in anu_response.data.iter().enumerate() {
+                                        let pos = i;
                                         if pos < blocks.len() {
-                                            blocks[pos].entry.set_text(&segment);
-                                            let chars_received = segment.len() as f64 / 2.0;
-                                            let target_chars = anu_hex_block_size.clone().unwrap() as f64;
-                                            let entry_progress = (chars_received / target_chars).min(1.0);
-                                            blocks[pos].progress_bar.set_fraction(entry_progress);
-                                            *chars += chars_received;
-                                            *index += 1;
+                                            blocks[pos].entry.set_text(value.as_str());
+                                            blocks[pos].progress_bar.set_fraction(1.0);
+                                            *chars = (pos + 1) as f64 * value.len() as f64;
                                         }
                                     }
-                                    let progress = *chars / total_hex_chars * 2.0;
-                                    anu_progress_clone.set_fraction(progress.min(1.0));
-                                    anu_status_entry_clone.set_text("Receiving raw...");
+                                    *index = anu_response.data.len();
+                                    anu_status_entry_clone.set_text("Complete");
+                                    anu_progress_clone.set_fraction(1.0);
+                                    *buffer = String::new();
+                                    break;
+                                } else {
+                                    anu_status_entry_clone.set_text("ANU response unsuccessful");
+                                    break;
                                 }
                             }
+                            Err(e) => {
+                                anu_status_entry_clone.set_text(&format!("Parsing error: {}", e));
+                                break;
+                            }
                         }
+                    } else {
+                        buffer.push_str(&chunk);
+                        let block_size_chars = anu_hex_block_size.clone().unwrap() as usize * 2;
+                        while buffer.len() >= block_size_chars {
+                            let segment = buffer.drain(..block_size_chars).collect::<String>();
+                            let pos = *index;
+                            if pos < blocks.len() {
+                                blocks[pos].entry.set_text(&segment);
+                                let chars_received = segment.len() as f64 / 2.0;
+                                let target_chars = anu_hex_block_size.clone().unwrap() as f64;
+                                let entry_progress = (chars_received / target_chars).min(1.0);
+                                blocks[pos].progress_bar.set_fraction(entry_progress);
+                                *chars += chars_received;
+                                *index += 1;
+                            }
+                        }
+                        let progress = *chars / total_hex_chars * 2.0;
+                        anu_progress_clone.set_fraction(progress.min(1.0));
+                        anu_status_entry_clone.set_text("Receiving raw...");
                     }
-                ))
+                }
             });
-
-            *anu_handler.borrow_mut() = Some(parsing_loop);
-
+    
+            *anu_handler_clone.lock().unwrap() = Some(parsing_loop);
         }
     ));
-    
-    
-    let anu_status_entry_clone = anu_status_entry.clone();
-    let received_chars_clone = received_chars.clone();
-    let char_buffer_clone = char_buffer.clone();
-    let tx = tx.clone();
-    let blocks = blocks_rc.borrow();
 
     cancel_button.connect_clicked(glib::clone!(
         #[strong] task_handle,
+        #[strong] anu_handler,
         #[weak] window,
         move |_| {
-            if let Some(handle) = task_handle.borrow_mut().take() {
+            if let Some(handle) = task_handle.lock().unwrap().take() {
                 println!("canceling async task...");
                 handle.abort();
             }
+
+            if let Some(handle) = anu_handler.lock().unwrap().take() {
+                println!("canceling parsing async task...");
+                handle.abort();
+            }
+
             window.close();
         }
     ));  
 
     window.connect_close_request(glib::clone!(
         #[strong] task_handle,
+        #[strong] anu_handler,
         move |_| {
-            if let Some(handle) = task_handle.borrow_mut().take() {
+            if let Some(handle) = task_handle.lock().unwrap().take() {
                 println!("aborting async task on window close...");
                 handle.abort();
             }
+
+            if let Some(handle) = anu_handler.lock().unwrap().take() {
+                println!("canceling parsing async task...");
+                handle.abort();
+            }
+
             glib::Propagation::Proceed
         }
     ));
@@ -493,95 +492,118 @@ fn filter_chunked_body(chunk: &str) -> String {
     filtered
 }
 
-
 fn fetch_anu_qrng_data(
     data_format: &str,
     array_length: u32,
     block_size: u32,
-    sender: std::sync::mpsc::Sender<String>,
+    sender: tokio::sync::mpsc::Sender<String>,
 ) {
     let data_format_owned = data_format.to_string();
 
-    println!("Starting fetch_anu_qrng_data: format={}, length={}, size={}", data_format, array_length, block_size);
+    println!(
+        "Starting fetch_anu_qrng_data: format={}, length={}, size={}",
+        data_format, array_length, block_size
+    );
 
-    tokio::task::block_in_place(|| {
-        let socket_addr = ANU_API_URL.to_socket_addrs().unwrap().next().unwrap();
-        let stream = std::net::TcpStream::connect_timeout(&socket_addr, std::time::Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS)).unwrap();
-        let mut stream = native_tls::TlsConnector::new().unwrap().connect("qrng.anu.edu.au", stream).unwrap();
+    // Move to async context instead of block_in_place
+    tokio::spawn(async move {
+        match std::net::TcpStream::connect_timeout(
+            &ANU_API_URL.to_socket_addrs().unwrap().next().unwrap(),
+            std::time::Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS),
+        ) {
+            Ok(stream) => {
+                match native_tls::TlsConnector::new()
+                    .unwrap()
+                    .connect("qrng.anu.edu.au", stream)
+                {
+                    Ok(mut stream) => {
+                        let anu_request = format!(
+                            "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
+                            data_format_owned, array_length, block_size
+                        ).into_bytes();
 
-        let anu_request = format!(
-            "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
-            data_format_owned, array_length, block_size
-        ).into_bytes();
+                        println!("Sending request: {:?}", String::from_utf8_lossy(&anu_request));
+                        
+                        if stream.write_all(&anu_request).is_ok() && stream.flush().is_ok() {
+                            let mut buffer = [0; 2048];
+                            let mut response = Vec::new();
+                            let mut headers_done = false;
+                            let mut json_buffer = String::new();
 
-        println!("Sending request: {:?}", String::from_utf8_lossy(&anu_request));
-        stream.write_all(&anu_request).unwrap();
-        stream.flush().unwrap();
+                            loop {
+                                match stream.read(&mut buffer) {
+                                    Ok(bytes_read) if bytes_read > 0 => {
+                                        response.extend_from_slice(&buffer[..bytes_read]);
+                                        let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+                                        println!("Received chunk: {}", chunk);
 
-        let mut buffer = [0; 2048];
-        let mut response = Vec::new();
-        let mut headers_done = false;
-        let mut json_buffer = String::new();
+                                        if !headers_done {
+                                            if chunk.contains("\r\n\r\n") {
+                                                headers_done = true;
+                                                let header_end = response.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
+                                                let body_start = String::from_utf8_lossy(&response[header_end..]).to_string();
+                                                json_buffer = filter_chunked_body(&body_start);
+                                                if sender.send(body_start).await.is_err() {
+                                                    println!("Failed to send body_start");
+                                                    break;
+                                                }
+                                            }
+                                        } else {
+                                            let filtered_chunk = filter_chunked_body(&chunk);
+                                            json_buffer.push_str(&filtered_chunk);
+                                            if sender.send(chunk.to_string()).await.is_err() {
+                                                println!("Failed to send chunk");
+                                                break;
+                                            }
+                                        }
 
-        loop {
-            match stream.read(&mut buffer) {
-                Ok(bytes_read) if bytes_read > 0 => {
-                    response.extend_from_slice(&buffer[..bytes_read]);
-                    let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-                    println!("Received chunk: {}", chunk);
-
-                    if !headers_done {
-                        if chunk.contains("\r\n\r\n") {
-                            headers_done = true;
-                            let header_end = response.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
-                            let body_start = String::from_utf8_lossy(&response[header_end..]).to_string();
-                            json_buffer = filter_chunked_body(&body_start);
-                            sender.send(body_start).unwrap();
-                        }
-                    } else {
-                        let filtered_chunk = filter_chunked_body(&chunk);
-                        json_buffer.push_str(&filtered_chunk);
-                        sender.send(chunk.to_string()).unwrap();
-                    }
-
-                    if headers_done && json_buffer.contains('}') {
-                        println!("Full JSON assembled: {}", json_buffer);
-                        match serde_json::from_str::<AnuResponse>(&json_buffer) {
-                            Ok(anu_response) => {
-                                if anu_response.success {
-                                    println!("Parsed JSON: {:?}", anu_response);
-                                    sender.send(format!("FINAL:{}", json_buffer)).unwrap();
-                                    break;
-                                } else {
-                                    println!("API returned success: false: {:?}", anu_response);
-                                    break;
+                                        if headers_done && json_buffer.contains('}') {
+                                            println!("Full JSON assembled: {}", json_buffer);
+                                            match serde_json::from_str::<AnuResponse>(&json_buffer) {
+                                                Ok(anu_response) => {
+                                                    if anu_response.success {
+                                                        println!("Parsed JSON: {:?}", anu_response);
+                                                        if sender.send(format!("FINAL:{}", json_buffer)).await.is_err() {
+                                                            println!("Failed to send final response");
+                                                        }
+                                                        break;
+                                                    } else {
+                                                        println!("API returned success: false: {:?}", anu_response);
+                                                        break;
+                                                    }
+                                                }
+                                                Err(e) => {
+                                                    println!("JSON parsing failed: {}. Buffer: {}", e, json_buffer);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Ok(0) => {
+                                        println!("Stream closed by server");
+                                        break;
+                                    }
+                                    Ok(_) => {
+                                        println!("Stream ?????");
+                                        break;
+                                    }
+                                    Err(e) => {
+                                        println!("Read error: {}", e);
+                                        break;
+                                    }
                                 }
                             }
-                            Err(e) => {
-                                println!("JSON parsing failed: {}. Buffer: {}", e, json_buffer);
-                            }
+                        } else {
+                            println!("Failed to write request or flush stream");
                         }
                     }
-                }
-                Ok(0) => {
-                    println!("Stream closed by server");
-                    break;
-                }
-                Ok(_) => {
-                    println!("Stream ?????");
-                    break;
-                }
-                Err(e) => {
-                    println!("Read error: {}", e);
-                    break;
+                    Err(e) => println!("TLS connection error: {}", e),
                 }
             }
+            Err(e) => println!("TCP connection error: {}", e),
         }
+        println!("fetch_anu_qrng_data completed");
     });
-    println!("fetch_anu_qrng_data completed");
 }
-
-
 
 
 
