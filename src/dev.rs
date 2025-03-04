@@ -167,6 +167,7 @@ fn create_boxes(n: Option<u32>) -> Vec<BlockEntry> {
         let progress_bar = gtk::ProgressBar::new();
 
         entry.set_hexpand(true);
+        entry.set_width_request(250);
         progress_bar.set_hexpand(true);
         progress_bar.set_pulse_step(0.1);
 
@@ -199,7 +200,6 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let anu_data_type = lock_app_settings.anu_data_format.clone();
     let anu_array_length = lock_app_settings.anu_array_length.clone();
     let anu_hex_block_size = lock_app_settings.anu_hex_block_size.clone();
-    
 
     let main_anu_window_box = gtk::Box::builder()
         .margin_bottom(10)
@@ -209,13 +209,13 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         .orientation(gtk::Orientation::Vertical)
         .build();
 
-    let main_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let content_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let main_header_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let content_header_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let content_header_box_status = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let content_header_box_data_type = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let content_header_box_array_length = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let content_header_box_block_size = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let content_header_box_progress = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let content_header_box_data_type = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let content_header_box_array_length = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let content_header_box_block_size = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let content_header_box_progress = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let scroll_window = gtk::ScrolledWindow::new();
     let anu_progress = gtk::ProgressBar::new();
     
@@ -231,6 +231,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     
     main_header_box.append(&content_header_box);
     main_header_box.append(&content_header_box_progress);
+    main_header_box.set_hexpand(true);
     
     content_header_box.append(&content_header_box_status);
     content_header_box.append(&content_header_box_data_type);
@@ -250,7 +251,9 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     content_header_box.set_hexpand(true);
 
     content_header_box_progress.set_margin_bottom(20);
+    content_header_box_progress.set_margin_top(20);
     content_header_box_progress.set_hexpand(true);
+    anu_progress.set_hexpand(true);
 
     let anu_status_entry = gtk::Entry::new();
     anu_status_entry.set_text("Inactive");
@@ -301,11 +304,9 @@ pub fn anu_window() -> gtk::ApplicationWindow {
 
     // Hocus - Pokus
     
-    
-    // let (tx, mut rx): (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) = tokio::sync::mpsc::channel(100);
-    
-    let task_handle = std::sync::Arc::new(std::sync::Mutex::new(None::<tokio::task::JoinHandle<()>>));
-    // let anu_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<tokio::task::JoinHandle<()>>));
+    let fetch_handle = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
+    let parse_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
+
     let total_length = anu_array_length.clone().unwrap() as f64;
     let block_size = anu_hex_block_size.clone().unwrap();
     let total_hex_chars = total_length as f64 * block_size as f64 * 2.0;
@@ -313,52 +314,55 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let current_index = std::sync::Arc::new(std::sync::Mutex::new(0));
     let char_buffer = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
 
-    let anu_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
 
     new_button.connect_clicked(glib::clone!(
-        #[strong] task_handle,
-        #[strong] anu_handler,
+        #[strong] fetch_handle,
+        #[strong] parse_handler,
         #[strong] blocks_rc,
         #[strong] current_index,
         #[strong] received_chars,
         #[strong] anu_progress,
-        #[weak] anu_status_entry,
+        #[strong] anu_status_entry,
         move |_| {
-            let blocks_rc_clone = blocks_rc.clone();
-            let anu_status_entry_clone = anu_status_entry.clone();
-            let received_chars_clone = received_chars.clone();
-            let char_buffer_clone = char_buffer.clone();
-            let current_index_clone = current_index.clone();
-            let anu_progress_clone = anu_progress.clone();
-            let task_handle_clone = task_handle.clone();
-            let anu_handler_clone = anu_handler.clone();
-            
-            let (tx, mut rx): (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) = 
-                tokio::sync::mpsc::channel(100);
-            
+            let (tx, mut rx): (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) = tokio::sync::mpsc::channel(100);
+            anu_progress.set_show_text(true);
+
+            let current_index_clone = current_index.clone();           
             let blocks = blocks_rc.borrow();
+
             for block in blocks.iter() {
                 block.entry.set_text("Loading...");
                 block.progress_bar.set_fraction(0.0);
             }
+
             *current_index_clone.lock().unwrap() = 0;
-            *received_chars_clone.lock().unwrap() = 0.0;
+            *received_chars.lock().unwrap() = 0.0;
             anu_progress.set_fraction(0.0);
             anu_status_entry.set_text("Starting...");
     
-            if let Some(handle) = task_handle_clone.lock().unwrap().take() {
+            if let Some(handle) = fetch_handle.lock().unwrap().take() {
                 handle.abort();
-                println!("Previous task aborted.");
+                println!("Previous fetch aborted.");
             }
     
-            if let Some(handle) = anu_handler_clone.lock().unwrap().take() {
+            if let Some(handle) = parse_handler.lock().unwrap().take() {
                 handle.abort();
                 println!("Previous parsing aborted.");
             }
-    
-            fetch_anu_qrng_data("hex16", total_length as u32, block_size, tx.clone());
-    
             let main_context = glib::MainContext::default();
+    
+            let anu_loop = main_context.spawn_local(async move {
+                fetch_anu_qrng_data("hex16", total_length as u32, block_size, tx);
+            });
+
+            *fetch_handle.lock().unwrap() = Some(anu_loop);
+
+            let blocks_rc_clone = blocks_rc.clone();
+            let anu_status_entry_clone = anu_status_entry.clone();
+            let char_buffer_clone = char_buffer.clone();
+            let anu_progress_clone = anu_progress.clone();
+            let received_chars_clone = received_chars.clone();
+
             let parsing_loop = main_context.spawn_local(async move {
                 while let Some(chunk) = rx.recv().await {
                     let blocks = blocks_rc_clone.borrow();
@@ -367,7 +371,10 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                     let mut buffer = char_buffer_clone.lock().unwrap();
                     
                     if chunk.starts_with("FINAL:") {
+                        anu_status_entry_clone.set_text("Reconstructing quantum entropy ...");
+
                         let json_data = &chunk[6..];
+                        
                         match serde_json::from_str::<AnuResponse>(json_data) {
                             Ok(anu_response) => {
                                 if anu_response.success {
@@ -412,44 +419,41 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                         }
                         let progress = *chars / total_hex_chars * 2.0;
                         anu_progress_clone.set_fraction(progress.min(1.0));
-                        anu_status_entry_clone.set_text("Receiving raw...");
+                        anu_status_entry_clone.set_text("Receiving raw json data ...");
                     }
                 }
             });
     
-            *anu_handler_clone.lock().unwrap() = Some(parsing_loop);
+            *parse_handler.lock().unwrap() = Some(parsing_loop);
         }
     ));
 
     cancel_button.connect_clicked(glib::clone!(
-        #[strong] task_handle,
-        #[strong] anu_handler,
-        #[weak] window,
+        #[strong] fetch_handle,
+        #[strong] parse_handler,
         move |_| {
-            if let Some(handle) = task_handle.lock().unwrap().take() {
+            if let Some(handle) = fetch_handle.lock().unwrap().take() {
                 println!("canceling async task...");
                 handle.abort();
             }
 
-            if let Some(handle) = anu_handler.lock().unwrap().take() {
+            if let Some(handle) = parse_handler.lock().unwrap().take() {
                 println!("canceling parsing async task...");
                 handle.abort();
             }
-
-            window.close();
         }
     ));  
 
     window.connect_close_request(glib::clone!(
-        #[strong] task_handle,
-        #[strong] anu_handler,
+        #[strong] fetch_handle,
+        #[strong] parse_handler,
         move |_| {
-            if let Some(handle) = task_handle.lock().unwrap().take() {
+            if let Some(handle) = fetch_handle.lock().unwrap().take() {
                 println!("aborting async task on window close...");
                 handle.abort();
             }
 
-            if let Some(handle) = anu_handler.lock().unwrap().take() {
+            if let Some(handle) = parse_handler.lock().unwrap().take() {
                 println!("canceling parsing async task...");
                 handle.abort();
             }
@@ -500,12 +504,8 @@ fn fetch_anu_qrng_data(
 ) {
     let data_format_owned = data_format.to_string();
 
-    println!(
-        "Starting fetch_anu_qrng_data: format={}, length={}, size={}",
-        data_format, array_length, block_size
-    );
+    println!("Starting fetch_anu_qrng_data: format={}, length={}, size={}", data_format, array_length, block_size);
 
-    // Move to async context instead of block_in_place
     tokio::spawn(async move {
         match std::net::TcpStream::connect_timeout(
             &ANU_API_URL.to_socket_addrs().unwrap().next().unwrap(),
@@ -533,8 +533,8 @@ fn fetch_anu_qrng_data(
                             loop {
                                 match stream.read(&mut buffer) {
                                     Ok(bytes_read) if bytes_read > 0 => {
-                                        response.extend_from_slice(&buffer[..bytes_read]);
                                         let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+                                        response.extend_from_slice(&buffer[..bytes_read]);
                                         println!("Received chunk: {}", chunk);
 
                                         if !headers_done {
@@ -544,7 +544,7 @@ fn fetch_anu_qrng_data(
                                                 let body_start = String::from_utf8_lossy(&response[header_end..]).to_string();
                                                 json_buffer = filter_chunked_body(&body_start);
                                                 if sender.send(body_start).await.is_err() {
-                                                    println!("Failed to send body_start");
+                                                    eprintln!("Failed to send body_start");
                                                     break;
                                                 }
                                             }
@@ -579,28 +579,31 @@ fn fetch_anu_qrng_data(
                                         }
                                     }
                                     Ok(0) => {
-                                        println!("Stream closed by server");
+                                        if sender.send(format!("ERROR: Stream closed by server. \nLast chunk: {}", json_buffer)).await.is_err() {
+                                            println!("Stream closed by server");
+                                        }
                                         break;
                                     }
                                     Ok(_) => {
-                                        println!("Stream ?????");
+                                        eprintln!("Stream ?????");
                                         break;
                                     }
                                     Err(e) => {
-                                        println!("Read error: {}", e);
+                                        eprintln!("Read error: {}", e);
                                         break;
                                     }
                                 }
                             }
                         } else {
-                            println!("Failed to write request or flush stream");
+                            eprintln!("Failed to write request or flush stream");
                         }
                     }
-                    Err(e) => println!("TLS connection error: {}", e),
+                    Err(e) => eprintln!("TLS connection error: {}", e),
                 }
             }
             Err(e) => println!("TCP connection error: {}", e),
         }
+
         println!("fetch_anu_qrng_data completed");
     });
 }
