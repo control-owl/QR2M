@@ -2216,6 +2216,33 @@ fn create_main_window(
     address_generation_progress_bar.set_hexpand(true);
     address_generation_progress_box.append(&address_generation_progress_bar);
 
+
+    // JUMP: STOP ADD GEN
+    let generator_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
+
+    let stop_address_generation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    stop_address_generation_box.set_hexpand(true);
+    stop_address_generation_box.set_halign(gtk::Align::Center);
+    let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
+
+
+
+    stop_address_generation_box.append(&stop_address_generation_button);
+    stop_address_generation_box.set_visible(false);
+
+    stop_address_generation_button.connect_clicked(clone!(
+        #[strong] generator_handler,
+        move |_| {
+            if let Some(handle) = generator_handler.lock().unwrap().take() {
+                println!("ANU fetch canceled");
+                handle.abort();
+            }
+        }
+    ));
+
+
+
+
     // Connections
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
@@ -2249,6 +2276,7 @@ fn create_main_window(
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
     main_address_box.append(&address_generation_progress_box);
+    main_address_box.append(&stop_address_generation_box);
     
     stack.add_titled(
         &main_address_box,
@@ -3083,6 +3111,8 @@ fn create_main_window(
 // // Working version
     generate_addresses_button.connect_clicked(clone!(
         #[strong] address_store,
+        #[strong] stop_address_generation_box,
+        #[strong] generator_handler,
         #[weak] derivation_label_text,
         #[weak] master_private_key_text,
         #[strong] app_messages_state,
@@ -3091,6 +3121,14 @@ fn create_main_window(
         #[weak] address_options_hardened_address_checkbox,
         #[weak] address_generation_progress_bar,
         move |_| {
+
+            if let Some(handle) = generator_handler.lock().unwrap().take() {
+                handle.abort();
+                println!("Previous fetch aborted.");
+            }
+
+            stop_address_generation_box.set_visible(true);
+
             let buffer = master_private_key_text.buffer();
             let start_iter = buffer.start_iter();
             let end_iter = buffer.end_iter();
@@ -3122,10 +3160,13 @@ fn create_main_window(
             
             let start_time = std::time::Instant::now();
 
+            // IMPLEMENTATION: Create async block
+            let main_context = glib::MainContext::default();
+
             std::thread::spawn(clone!(
                 move || {
-
-                    let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
+            // let address_loop = main_context.spawn_local(async move {
+                let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
                         .iter()
                         .filter_map(|addr| addr.derivation_path.clone())
                         .collect();
@@ -3193,8 +3234,9 @@ fn create_main_window(
                     }
 
                     let _ = tp.send(1.0);
-                }
-            ));
+            }));
+
+            // *generator_handler.lock().unwrap() = Some(address_loop);
 
             glib::idle_add_local(clone!(
                 #[strong] address_store,

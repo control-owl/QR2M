@@ -333,6 +333,10 @@ UI:
         en: "Generate address"
         de: "Adresse generieren"
         hr: "Generirajte adresu"
+        stop:
+          en: "Stop generating addresses"
+          de: "Generierung von Adressen beenden"
+          hr: "Zaustavi generiranje adresa"
       table:
         coin:
           en: "Coin"
