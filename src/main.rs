@@ -96,6 +96,8 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
     "Ultimate",
 ];
 
+const GUI_IMAGE_EXTENSION: &str = "svg";
+
 #[cfg(any(target_os = "windows"))]
 const GUI_IMAGE_EXTENSION: &str = "png";
 
@@ -174,7 +176,7 @@ impl GuiState {
             .join(theme_subdir)
             .join(gui_icons);
 
-        let extension = Some(GUI_IMAGE_EXTENSION).unwrap_or("svg");
+        let extension = GUI_IMAGE_EXTENSION;
         
         let icon_files = [
             ("new", format!("new.{}",extension)),
