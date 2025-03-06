@@ -1,3 +1,6 @@
+# Short pause
+- I am not OK
+
 # version 0.74.0
 - beta proxy (not tested yet)
 - new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
