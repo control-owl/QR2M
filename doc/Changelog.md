@@ -1,12 +1,12 @@
-# Short pause
-- I am not OK
+# Next version
+- new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
+    - save quantum entropy as image
 
 # version 0.74.0
 - beta proxy (not tested yet)
-- new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
-    - save quantum entropy as image
 - Rust 2024 edition
 - all GUI images are working
+- stop generating addresses
 
 # version 0.73.0
 - Real-time Address Updates: Addresses now appear instantly in a table as they are generated
