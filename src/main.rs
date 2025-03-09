@@ -24,7 +24,7 @@ use std::{
 };
 use hex;
 use rand::Rng;
-use gtk4 as gtk;
+use gtk4::{self as gtk};
 use libadwaita as adw;
 use adw::prelude::*;
 use gtk::{gio, glib::clone, Stack, StackSidebar};
@@ -70,15 +70,11 @@ const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
-const ANU_MINIMUM_ARRAY_LENGTH: u32 = 32;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
+const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
+
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
-const VALID_PROXY_STATUS: &'static [&'static str] = &[
-    "Off", 
-    "Auto", 
-    "Manual",
-];
 const VALID_GUI_THEMES: &'static [&'static str] = &[
     "System", 
     "Light", 
@@ -100,22 +96,20 @@ const APP_LOG_LEVEL: &'static [&'static str] = &[
     "Ultimate",
 ];
 
+const GUI_IMAGE_EXTENSION: &str = "svg";
+
+#[cfg(any(target_os = "windows"))]
+const GUI_IMAGE_EXTENSION: &str = "png";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
 lazy_static::lazy_static! {
-    // GuiState - can not be used, no send and sync
-    // static ref GUI_STATE: std::sync::Arc<std::sync::Mutex<GuiState>> = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
-
-    static ref APP_SETTINGS: std::sync::Arc<std::sync::Mutex<AppSettings>> = std::sync::Arc::new(std::sync::Mutex::new(AppSettings::default()));
+    static ref APP_SETTINGS: std::sync::Arc<std::sync::RwLock<AppSettings>> = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::default()));
     static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
     static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
-    
-    // AppMessages - can not be used, no send and sync
-    // static ref APP_MESSAGES: std::sync::Arc<std::sync::Mutex<AppMessages>> = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new()));
 }
 
 
@@ -176,15 +170,17 @@ impl GuiState {
             .join(theme_subdir)
             .join(gui_icons);
 
+        let extension = GUI_IMAGE_EXTENSION;
+        
         let icon_files = [
-            ("new", "new.svg"),
-            ("open", "open.svg"),
-            ("save", "save.svg"),
-            ("about", "about.svg"),
-            ("settings", "settings.svg"),
-            ("log", "log.svg"),
-            ("notif", "notif.svg"),
-            ("random", "random.svg"),
+            ("new", format!("new.{}",extension)),
+            ("open", format!("open.{}",extension)),
+            ("save", format!("save.{}",extension)),
+            ("about", format!("about.{}",extension)),
+            ("settings", format!("settings.{}",extension)),
+            ("log", format!("log.{}",extension)),
+            ("notif", format!("notif.{}",extension)),
+            ("random", format!("random.{}",extension)),
         ];
         
         let mut icons = std::collections::HashMap::new();
@@ -243,7 +239,7 @@ impl GuiState {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 struct AppSettings {
     wallet_entropy_source: Option<String>,
     wallet_entropy_length: Option<u32>,
@@ -267,7 +263,8 @@ struct AppSettings {
     anu_array_length: Option<u32>,
     anu_hex_block_size: Option<u32>,
     anu_log: Option<bool>,
-    proxy_status: Option<String>,
+    anu_timeout: Option<u32>,
+    proxy_status: Option<bool>,
     proxy_server_address: Option<String>,
     proxy_server_port: Option<u32>,
     proxy_use_pac: Option<bool>,
@@ -303,10 +300,11 @@ impl Default for AppSettings {
             gui_log_level: Some("Standard".to_string()),
             anu_enabled: Some(false),
             anu_data_format: Some("uint8".to_string()),
-            anu_array_length: Some(1024),
-            anu_hex_block_size: Some(16),
+            anu_array_length: Some(24),
+            anu_hex_block_size: Some(1024),
             anu_log: Some(true),
-            proxy_status: Some("Auto".to_string()),
+            anu_timeout: Some(5),
+            proxy_status: Some(false),
             proxy_server_address: Some("".to_string()),
             proxy_server_port: Some(8080),
             proxy_use_pac: Some(false),
@@ -317,7 +315,7 @@ impl Default for AppSettings {
             proxy_use_ssl: Some(false),
             proxy_ssl_certificate: Some("".to_string()),
             proxy_retry_attempts: Some(3),
-            proxy_timeout: Some(3000),
+            proxy_timeout: Some(5000),
         }
     }
 }
@@ -428,14 +426,16 @@ impl AppSettings {
         let anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
         let anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
         let anu_log = get_bool(&anu_section, "log", settings.anu_log);
+        let anu_timeout = get_u32(&anu_section, "timeout", settings.anu_timeout);
 
         println!("\t- Use ANU: {:?}", anu_enabled);
         println!("\t- ANU data format: {:?}", anu_data_format);
         println!("\t- ANU array length: {:?}", anu_array_length);
         println!("\t- ANU hex block size: {:?}", anu_hex_block_size);
         println!("\t- ANU log: {:?}", anu_log);
+        println!("\t- ANU timeout: {:?}", anu_timeout);
 
-        let proxy_status = get_str(&proxy_section, "status", settings.proxy_status);
+        let proxy_status = get_bool(&proxy_section, "status", settings.proxy_status);
         let proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
         let proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
         let proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
@@ -461,7 +461,7 @@ impl AppSettings {
         println!("\t- Proxy retry attempts: {:?}", proxy_retry_attempts);
         println!("\t- Proxy timeout: {:?}", proxy_timeout);
         
-        let mut application_settings = APP_SETTINGS.lock().unwrap();
+        let mut application_settings = APP_SETTINGS.write().unwrap();
         application_settings.wallet_entropy_source = wallet_entropy_source.clone();
         application_settings.wallet_entropy_length = wallet_entropy_length.clone();
         application_settings.wallet_bip = wallet_bip.clone();
@@ -486,6 +486,7 @@ impl AppSettings {
         application_settings.anu_array_length = anu_array_length.clone();
         application_settings.anu_hex_block_size = anu_hex_block_size.clone();
         application_settings.anu_log = anu_log.clone();
+        application_settings.anu_timeout = anu_timeout.clone();
 
         application_settings.proxy_status = proxy_status.clone();
         application_settings.proxy_server_address = proxy_server_address.clone();
@@ -732,10 +733,19 @@ impl AppSettings {
                     }
                 }
             },
+            "anu_timeout" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.anu_timeout {
+                        self.anu_timeout = Some(value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
+                    }
+                }
+            },
             "proxy_status" => {
-                if let Some(value) = new_value.as_str() {
-                    if Some(value.to_string()) != self.proxy_status {
-                        self.proxy_status = Some(value.to_string());
+                if let Some(value) = new_value.as_bool() {
+                    if Some(value) != self.proxy_status {
+                        self.proxy_status = Some(value);
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
@@ -867,6 +877,7 @@ impl AppSettings {
                 anu_table["array_length"] = toml_edit::value(self.anu_array_length.unwrap() as i64);
                 anu_table["hex_block_size"] = toml_edit::value(self.anu_hex_block_size.unwrap() as i64);
                 anu_table["log"] = toml_edit::value(self.anu_log.unwrap());
+                anu_table["timeout"] = toml_edit::value(self.anu_timeout.unwrap() as i64);
             }
         }
     
@@ -1034,7 +1045,10 @@ impl AppMessages {
                 if let Some((message, message_type)) = queue_lock.pop_front() {
                     AppMessages::create_info_message(&info_bar, &message, message_type);
     
-                    glib::timeout_add_local(std::time::Duration::from_secs(3), {
+                    let lock_app_settings = APP_SETTINGS.read().unwrap();
+                    let timeout = lock_app_settings.gui_notification_timeout.unwrap();
+
+                    glib::timeout_add_local(std::time::Duration::from_secs(timeout as u64), {
                         let queue = queue.clone();
                         let info_bar = info_bar.clone();
                         let processing = processing.clone();
@@ -1042,7 +1056,7 @@ impl AppMessages {
                         move || {
                             info_bar.set_reveal_child(false);
     
-                            AppMessages::start_next_message(&queue, &info_bar, &processing);
+                            AppMessages::start_next_message(&queue, &info_bar, &processing, timeout);
     
                             glib::ControlFlow::Break
                         }
@@ -1061,6 +1075,7 @@ impl AppMessages {
         queue: &std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
         info_bar: &gtk::Revealer,
         processing: &std::sync::Arc<std::sync::Mutex<bool>>,
+        timeout: u32,
     ) {
         println!("[+] {}", &t!("log.app_messages.start_next_message").to_string());
 
@@ -1072,11 +1087,11 @@ impl AppMessages {
             let info_bar = info_bar.clone();
             let processing = processing.clone();
     
-            // TODO: Get value from settings
-            glib::timeout_add_local(std::time::Duration::from_secs(3), move || {
+            
+            glib::timeout_add_local(std::time::Duration::from_secs(timeout as u64), move || {
                 info_bar.set_reveal_child(false);
     
-                AppMessages::start_next_message(&queue, &info_bar, &processing);
+                AppMessages::start_next_message(&queue, &info_bar, &processing, timeout);
     
                 glib::ControlFlow::Break
             });
@@ -1252,7 +1267,8 @@ impl FieldValue {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let start_time = std::time::Instant::now();
 
     print_program_info();
@@ -1372,9 +1388,14 @@ fn setup_app_actions(
         }
     ));
 
-    test.connect_activate(|_action, _parameter| {
-        dev::anu_window();
-    });
+    test.connect_activate(clone!(
+        // #[strong] gui_state,
+        // #[weak] app_messages_state,
+        move |_action, _parameter| {
+            let anu_window = dev::anu_window();
+            anu_window.show();
+        }
+    ));
 
     application.set_accels_for_action("app.new", &["<Primary>N"]);
     application.set_accels_for_action("app.open", &["<Primary>O"]);
@@ -1409,7 +1430,7 @@ fn create_main_window(
         .build();
 
     
-    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+    let lock_app_settings = APP_SETTINGS.read().unwrap();
     let window_width = lock_app_settings.gui_last_width.unwrap();
     let window_height = lock_app_settings.gui_last_height.unwrap();
     let gui_language = lock_app_settings.gui_language.clone().unwrap();
@@ -1566,7 +1587,6 @@ fn create_main_window(
     // Entropy source
     let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-
     let anu_enabled = lock_app_settings.anu_enabled;
     let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
@@ -2085,9 +2105,46 @@ fn create_main_window(
         .css_classes(["large-title"])
         .build();
 
-    // Generate address button
+
+    let address_generation_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    address_generation_buttons_box.set_halign(gtk::Align::Center);
+    
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
+    generate_addresses_button_box.append(&generate_addresses_button);
+
+
+    let delete_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let delete_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate.clean").to_string());
+    delete_addresses_button_box.append(&delete_addresses_button);
+    delete_addresses_button_box.set_visible(false);
+    
+    let generator_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<(tokio::task::JoinHandle<()>, tokio::sync::watch::Sender<bool>)>));
+    let stop_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
+    stop_addresses_button_box.append(&stop_address_generation_button);
+    stop_addresses_button_box.set_visible(false);
+
+
+    address_generation_buttons_box.append(&generate_addresses_button_box);
+    address_generation_buttons_box.append(&delete_addresses_button_box);
+    address_generation_buttons_box.append(&stop_addresses_button_box);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Address tree
     let address_scrolled_window = gtk::ScrolledWindow::new();
@@ -2182,15 +2239,36 @@ fn create_main_window(
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
     address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
     
-    // Clear address
-    let address_options_clear_addresses_button = gtk::Button::with_label(&t!("UI.main.address.options.clean").to_string());
-    address_options_clear_addresses_button.set_size_request(200, 2);
     
+
     // Address progress box
     let address_generation_progress_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_generation_progress_bar = gtk::ProgressBar::new();
     address_generation_progress_bar.set_hexpand(true);
     address_generation_progress_box.append(&address_generation_progress_bar);
+
+
+
+
+    stop_address_generation_button.connect_clicked(clone!(
+        #[strong] generator_handler,
+        #[weak] delete_addresses_button_box,
+        #[weak] stop_addresses_button_box,
+        move |_| {
+            if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
+                cancel_tx.send(true).ok();
+                handle.abort();
+                println!("Address generation aborted");
+                delete_addresses_button_box.set_visible(true);
+                stop_addresses_button_box.set_visible(false);
+            } else {
+                eprintln!("No handle!");
+            }
+        }
+    ));
+
+
+
 
     // Connections
     bip_box.append(&bip_dropdown);
@@ -2216,15 +2294,13 @@ fn create_main_window(
     address_options_content.append(&address_options_frame);
     address_options_content.append(&address_start_frame);
     address_options_content.append(&address_options_hardened_address_frame);
-    generate_addresses_button_box.append(&generate_addresses_button);
-    generate_addresses_button_box.append(&address_options_clear_addresses_button);
-    generate_addresses_button_box.set_halign(gtk::Align::Center);
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
-    main_address_box.append(&generate_addresses_button_box);
+    main_address_box.append(&address_generation_buttons_box);
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
     main_address_box.append(&address_generation_progress_box);
+    // main_address_box.append(&stop_addresses_button_box);
     
     stack.add_titled(
         &main_address_box,
@@ -3059,6 +3135,8 @@ fn create_main_window(
 // // Working version
     generate_addresses_button.connect_clicked(clone!(
         #[strong] address_store,
+        #[strong] stop_addresses_button_box,
+        #[strong] generator_handler,
         #[weak] derivation_label_text,
         #[weak] master_private_key_text,
         #[strong] app_messages_state,
@@ -3066,6 +3144,7 @@ fn create_main_window(
         #[weak] address_count_spinbutton,
         #[weak] address_options_hardened_address_checkbox,
         #[weak] address_generation_progress_bar,
+        #[weak] delete_addresses_button_box,
         move |_| {
             let buffer = master_private_key_text.buffer();
             let start_iter = buffer.start_iter();
@@ -3085,6 +3164,9 @@ fn create_main_window(
 
             address_generation_progress_bar.set_fraction(0.0);
             address_generation_progress_bar.set_show_text(true);
+            stop_addresses_button_box.set_visible(true);
+            delete_addresses_button_box.set_visible(false);
+
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
@@ -3095,87 +3177,99 @@ fn create_main_window(
             
             let (tx, rx) = std::sync::mpsc::channel();
             let (tp, rp) = std::sync::mpsc::channel();
-            
+            let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+
+
             let start_time = std::time::Instant::now();
 
-            std::thread::spawn(clone!(
-                move || {
+            let address_loop = tokio::spawn(async move {
+                let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
+                    .iter()
+                    .filter_map(|addr| addr.derivation_path.clone())
+                    .collect();
+            
+                let mut generated_count = 0;
+                let mut current_index = address_start_point_int;
+            
+                while generated_count < address_count_int {
+                    tokio::select! {
+                        _ = async {} => {
+                            if current_index > WALLET_MAX_ADDRESSES as usize {
+                                return;
+                            }
+            
+                            let full_address_derivation_path = if hardened_address {
+                                format!("{}/{}'", derivation_path, current_index)
+                            } else {
+                                format!("{}/{}", derivation_path, current_index)
+                            };
+            
+                            if !existing_addresses.contains(&full_address_derivation_path) {
+                                let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+                                let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+                                let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+                                let hash = wallet_settings.hash.clone().unwrap_or_default();
+                                let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+                                let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+                                let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+            
+                                if let Ok((address, public_key, private_key)) = keys::generate_address(
+                                    coin_index,
+                                    &full_address_derivation_path,
+                                    master_private_key_bytes,
+                                    master_chain_code_bytes,
+                                    &public_key_hash,
+                                    &key_derivation,
+                                    &wallet_import_format,
+                                    &hash,
+                                ) {
+                                    let new_entry = CryptoAddresses {
+                                        coin_name: Some(coin_name.clone()),
+                                        derivation_path: Some(full_address_derivation_path.clone()),
+                                        address: Some(address.clone()),
+                                        public_key: Some(public_key.clone()),
+                                        private_key: Some(private_key.clone()),
+                                    };
+            
+                                    CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
+            
+                                    if tx.send(new_entry).is_err() {
+                                        break;
+                                    }
+            
+                                    generated_count += 1;
+            
+                                    let progress_value = if address_count_int > 0 {
+                                        (generated_count as f64) / (address_count_int as f64)
+                                    } else {
+                                        0.0
+                                    };
+            
+                                    let _ = tp.send(progress_value);
+                                }
+                            }
+                            current_index += 1;
+                        }
 
-                    let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
-                        .iter()
-                        .filter_map(|addr| addr.derivation_path.clone())
-                        .collect();
-
-                    let mut generated_count = 0;
-                    let mut current_index = address_start_point_int;
-
-                    while generated_count < address_count_int {
-                        if current_index > WALLET_MAX_ADDRESSES as usize {
+                        _ = cancel_rx.changed() => {
+                            println!("Address generation aborted (async).");
+                            let _ = tp.send(1.0);
                             return;
                         }
-                        
-                        let full_address_derivation_path = if hardened_address {
-                            format!("{}/{}'", derivation_path, current_index)
-                        } else {
-                            format!("{}/{}", derivation_path, current_index)
-                        };
-
-                        if !existing_addresses.contains(&full_address_derivation_path) {
-                            let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-                            let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-                            let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-                            let hash = wallet_settings.hash.clone().unwrap_or_default();
-                            let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-                            let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-                            let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
-
-                            if let Ok((address, public_key, private_key)) = keys::generate_address(
-                                coin_index,
-                                &full_address_derivation_path,
-                                master_private_key_bytes, 
-                                master_chain_code_bytes,
-                                &public_key_hash,
-                                &key_derivation, 
-                                &wallet_import_format,
-                                &hash,
-                            ) {
-                                let new_entry = CryptoAddresses {
-                                    coin_name: Some(coin_name.clone()),
-                                    derivation_path: Some(full_address_derivation_path.clone()),
-                                    address: Some(address.clone()),
-                                    public_key: Some(public_key.clone()),
-                                    private_key: Some(private_key.clone()),
-                                };
-
-                                CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
-
-                                if tx.send(new_entry).is_err() {
-                                    break;
-                                }
-
-                                generated_count += 1;
-
-                                let progress_value = if address_count_int > 0 {
-                                    (generated_count as f64) / (address_count_int as f64)
-                                } else {
-                                    0.0
-                                };
-        
-                                let _ = tp.send(progress_value);
-                            }
-
-                        }
-                        current_index += 1;
                     }
-
-                    let _ = tp.send(1.0);
                 }
-            ));
+            
+                let _ = tp.send(1.0);
+            });
+
+            *generator_handler.lock().unwrap() = Some((address_loop, cancel_tx));
 
             glib::idle_add_local(clone!(
                 #[strong] address_store,
                 #[strong] app_messages_state,
                 #[strong] address_generation_progress_bar,
+                #[strong] stop_addresses_button_box,
+                #[strong] delete_addresses_button_box,
                 move || {
                     while let Ok(new_entry) = rx.try_recv() {
                         let iter = address_store.append();
@@ -3197,10 +3291,15 @@ fn create_main_window(
                         if progress >= 1.0 {
                             {
                                 let duration = start_time.elapsed();
-                                let message = format!("Address generation completed in {:.2?} seconds", duration);
+                                let message = format!("Address generation completed in {:.2?}", duration);
+
+                                println!("{}", message);
 
                                 let lock_app_messages = app_messages_state.lock().unwrap();
                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+
+                                stop_addresses_button_box.set_visible(false);
+                                delete_addresses_button_box.set_visible(true);
                                 
                             }
                             return glib::ControlFlow::Break;
@@ -3214,187 +3313,18 @@ fn create_main_window(
         }
     ));
 
-//     // parallel tasks - shit
-//     generate_addresses_button.connect_clicked(clone!(
-//         #[strong] address_store,
-//         #[weak] derivation_label_text,
-//         #[weak] master_private_key_text,
-//         #[strong] app_messages_state,
-//         #[weak] address_start_spinbutton,
-//         #[weak] address_count_spinbutton,
-//         #[weak] address_options_hardened_address_checkbox,
-//         #[weak] address_generation_progress_bar,
-//         move |_| {
-//             let buffer = master_private_key_text.buffer();
-//             let start_iter = buffer.start_iter();
-//             let end_iter = buffer.end_iter();
-//             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
-// 
-//             if master_private_key_string.is_empty() {
-//                 let lock_app_messages = app_messages_state.lock().unwrap();
-//                 lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
-//                 return;
-//             }
-// 
-//             let wallet_settings = {
-//                 let lock = WALLET_SETTINGS.lock().unwrap();
-//                 lock.clone()
-//             };
-// 
-//             address_generation_progress_bar.set_fraction(0.0);
-//             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
-//             let derivation_path = derivation_label_text.text();
-//             let hardened_address = address_options_hardened_address_checkbox.is_active();
-//             let address_start_point = address_start_spinbutton.text();
-//             let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
-//             let address_count = address_count_spinbutton.text();
-//             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
-//             
-//             let (tx, rx) = std::sync::mpsc::channel();
-//             let (tp, rp) = std::sync::mpsc::channel();
-//             let num_threads = 4;
-// 
-//             let progress_counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-//             let start_time = std::time::Instant::now();
-// 
-//             let mut handles = Vec::with_capacity(num_threads);
-//             
-//             let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
-//                 .iter()
-//                 .filter_map(|addr| addr.derivation_path.clone())
-//                 .collect();
-// 
-// 
-//             for thread_id in 0..num_threads {
-//                 let tx = tx.clone();
-//                 let tp = tp.clone();
-//             }
-//             
-//             
-//             let handle = std::thread::spawn(clone!(
-//                 move || {
-// 
-// 
-//                     let mut generated_count = 0;
-//                     let mut current_index = address_start_point_int;
-// 
-//                     while generated_count < address_count_int {
-//                         if current_index > WALLET_MAX_ADDRESSES as usize {
-//                             return;
-//                         }
-//                         
-//                         let full_address_derivation_path = if hardened_address {
-//                             format!("{}/{}'", derivation_path, current_index)
-//                         } else {
-//                             format!("{}/{}", derivation_path, current_index)
-//                         };
-// 
-//                         if !existing_addresses.contains(&full_address_derivation_path) {
-//                             let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-//                             let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-//                             let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-//                             let hash = wallet_settings.hash.clone().unwrap_or_default();
-//                             let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-//                             let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-//                             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
-// 
-//                             if let Ok((address, public_key, private_key)) = keys::generate_address(
-//                                 coin_index,
-//                                 &full_address_derivation_path,
-//                                 master_private_key_bytes, 
-//                                 master_chain_code_bytes,
-//                                 &public_key_hash,
-//                                 &key_derivation, 
-//                                 &wallet_import_format,
-//                                 &hash,
-//                             ) {
-//                                 let new_entry = CryptoAddresses {
-//                                     coin_name: Some(coin_name.clone()),
-//                                     derivation_path: Some(full_address_derivation_path.clone()),
-//                                     address: Some(address.clone()),
-//                                     public_key: Some(public_key.clone()),
-//                                     private_key: Some(private_key.clone()),
-//                                 };
-// 
-//                                 CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
-// 
-//                                 if tx.send(new_entry).is_err() {
-//                                     break;
-//                                 }
-// 
-//                                 generated_count += 1;
-// 
-//                                 let progress_value = if address_count_int > 0 {
-//                                     (generated_count as f64) / (address_count_int as f64)
-//                                 } else {
-//                                     0.0
-//                                 };
-//         
-//                                 let _ = tp.send(progress_value);
-//                             }
-// 
-//                         }
-//                         current_index += 1;
-//                     }
-// 
-//                     let _ = tp.send(1.0);
-//                 }
-//             ));
-// 
-//             handles.push(handle);
-// 
-//             glib::idle_add_local(clone!(
-//                 #[strong] address_store,
-//                 #[strong] app_messages_state,
-//                 #[strong] address_generation_progress_bar,
-//                 move || {
-//                     while let Ok(new_entry) = rx.try_recv() {
-//                         let iter = address_store.append();
-//                         address_store.set(
-//                             &iter,
-//                             &[
-//                                 (0, &new_entry.coin_name.clone().unwrap_or_default()),
-//                                 (1, &new_entry.derivation_path.clone().unwrap_or_default()),
-//                                 (2, &new_entry.address.clone().unwrap_or_default()),
-//                                 (3, &new_entry.public_key.clone().unwrap_or_default()),
-//                                 (4, &new_entry.private_key.clone().unwrap_or_default()),
-//                             ],
-//                         );
-//                     }
-//             
-//                     while let Ok(progress) = rp.try_recv() {
-//                         address_generation_progress_bar.set_fraction(progress);
-//             
-//                         if progress >= 1.0 {
-//                             {
-//                                 let duration = start_time.elapsed();
-//                                 let message = format!("Address generation completed in {:.3?}", duration);
-// 
-//                                 let lock_app_messages = app_messages_state.lock().unwrap();
-//                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
-//                                 
-//                             }
-//                             return glib::ControlFlow::Break;
-//                         }
-//                     }
-//             
-//                     glib::ControlFlow::Continue
-//                 }
-//             ));
-//             
-//         }
-//     ));
-
-    address_options_clear_addresses_button.connect_clicked(clone!(
+    delete_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] address_start_spinbutton,
         #[weak] address_generation_progress_bar,
+        #[strong] delete_addresses_button_box,
         move |_| {
             address_store.clear();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
             address_generation_progress_bar.set_show_text(false);
             address_generation_progress_bar.set_fraction(0.0);
+            delete_addresses_button_box.set_visible(false);
         }
     ));
 
@@ -3405,10 +3335,8 @@ fn create_main_window(
     
     main_sidebar_box.append(&stack_sidebar);
     main_sidebar_box.append(&stack);
-
     main_infobar_box.append(&info_bar);
     main_infobar_box.set_hexpand(true);
-
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
     main_window_box.set_hexpand(true);
@@ -3483,7 +3411,7 @@ fn create_settings_window(
 ) -> gtk::ApplicationWindow { 
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
-    let lock_app_settings = APP_SETTINGS.lock().unwrap();
+    let lock_app_settings = APP_SETTINGS.read().unwrap();
 
     let settings_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.settings").to_string())
@@ -4009,13 +3937,13 @@ fn create_settings_window(
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
     let mut default_array_length = lock_app_settings.anu_array_length.unwrap();
-    default_array_length = std::cmp::max(ANU_MINIMUM_ARRAY_LENGTH, default_array_length);
+    default_array_length = std::cmp::max(1, default_array_length);
     default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
 
     let array_length_adjustment = gtk::Adjustment::new(
         default_array_length as f64,       
-        ANU_MINIMUM_ARRAY_LENGTH as f64,   
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        1 as f64,
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,
         1.0,
         10.0,
         0.0,
@@ -4045,9 +3973,9 @@ fn create_settings_window(
     default_hex_size = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_hex_size);
 
     let hex_block_size_adjustment = gtk::Adjustment::new(
-        default_hex_size as f64,           
-        1.0,                               
-        ANU_MAXIMUM_ARRAY_LENGTH as f64,   
+        default_hex_size as f64,
+        1.0,
+        ANU_MAXIMUM_ARRAY_LENGTH as f64,
         1.0,
         10.0,
         0.0,
@@ -4087,6 +4015,39 @@ fn create_settings_window(
         default_anu_array_length_box.set_visible(false);
         default_anu_hex_length_box.set_visible(false);
     };
+
+    // Anu timeout
+    let anu_connection_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+    let anu_connection_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let anu_connection_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let anu_connection_timeout_label = gtk::Label::new(Some(&t!("UI.settings.anu.timeout").to_string()));
+
+    let mut default_connection_timeout = lock_app_settings.anu_timeout.unwrap();
+    default_connection_timeout = std::cmp::max(1, default_connection_timeout);
+    default_connection_timeout = std::cmp::min(ANU_MAXIMUM_CONNECTION_TIMEOUT, default_connection_timeout);
+
+    let anu_connection_timeout_adjustment = gtk::Adjustment::new(
+        default_connection_timeout as f64,
+        1.0,
+        ANU_MAXIMUM_CONNECTION_TIMEOUT as f64,
+        1.0,
+        10.0,
+        0.0,
+    );
+    let anu_connection_timeout_spinbutton = gtk::SpinButton::new(Some(&anu_connection_timeout_adjustment), 1.0, 0);
+
+
+    anu_connection_timeout_spinbutton.set_size_request(200, 10);
+    anu_connection_timeout_label_box.set_hexpand(true);
+    anu_connection_timeout_item_box.set_hexpand(true);
+    anu_connection_timeout_item_box.set_margin_end(20);
+    anu_connection_timeout_item_box.set_halign(gtk::Align::End);
+
+    anu_connection_timeout_label_box.append(&anu_connection_timeout_label);
+    anu_connection_timeout_item_box.append(&anu_connection_timeout_spinbutton);
+    anu_connection_timeout_box.append(&anu_connection_timeout_label_box);
+    anu_connection_timeout_box.append(&anu_connection_timeout_item_box);
+    content_anu_box.append(&anu_connection_timeout_box);
     
     // Actions
     let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
@@ -4160,25 +4121,28 @@ fn create_settings_window(
     let use_proxy_settings_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_settings_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_settings_label = gtk::Label::new(Some(&t!("UI.settings.proxy.use").to_string()));
-    let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
-    let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
-    let use_proxy_settings_dropdown = gtk::DropDown::from_strings(&valid_proxy_settings_as_str_refs);
+    // let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
+    // let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
+    let use_proxy_settings_checkbox = gtk::CheckButton::new();
 
     let proxy_status = lock_app_settings.proxy_status.clone().unwrap();
-    let default_proxy_settings_format = valid_proxy_settings_as_strings
-        .iter()
-        .position(|x| x.parse::<String>().unwrap() == proxy_status.clone())
-        .unwrap_or(1);  // Default proxy: auto
 
-    use_proxy_settings_dropdown.set_selected(default_proxy_settings_format.try_into().unwrap());
-    use_proxy_settings_dropdown.set_size_request(200, 10);
+    use_proxy_settings_checkbox.set_active(proxy_status);
+
+    // let default_proxy_settings_format = valid_proxy_settings_as_strings
+    //     .iter()
+    //     .position(|x| x.parse::<String>().unwrap() == proxy_status.clone())
+    //     .unwrap_or(1);  // Default proxy: auto
+
+    // use_proxy_settings_dropdown.set_selected(default_proxy_settings_format.try_into().unwrap());
+    // use_proxy_settings_dropdown.set_size_request(200, 10);
     use_proxy_settings_label_box.set_hexpand(true);
     use_proxy_settings_item_box.set_hexpand(true);
     use_proxy_settings_item_box.set_margin_end(20);
     use_proxy_settings_item_box.set_halign(gtk::Align::End);
 
     use_proxy_settings_label_box.append(&use_proxy_settings_label);
-    use_proxy_settings_item_box.append(&use_proxy_settings_dropdown);
+    use_proxy_settings_item_box.append(&use_proxy_settings_checkbox);
     use_proxy_settings_box.append(&use_proxy_settings_label_box);
     use_proxy_settings_box.append(&use_proxy_settings_item_box);
     content_proxy_box.append(&use_proxy_settings_box);
@@ -4186,7 +4150,7 @@ fn create_settings_window(
     // Proxy manual settings
     let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     
-    if proxy_status == "Manual" {
+    if proxy_status == true {
         proxy_manual_settings_box.set_visible(true);
     } else {
         proxy_manual_settings_box.set_visible(false);
@@ -4226,11 +4190,7 @@ fn create_settings_window(
     proxy_server_port_item_box.set_margin_end(20);
     proxy_server_port_item_box.set_halign(gtk::Align::End);
 
-    // if settings.proxy_server_port.unwrap() == 0 {
-    //     proxy_server_port_entry.set_text(&DEFAULT_PROXY_PORT.to_string());
-    // } else {
-    //     proxy_server_port_entry.set_text(&settings.proxy_server_port.unwrap().to_string());
-    // }
+    proxy_server_port_entry.set_text(&lock_app_settings.proxy_server_port.unwrap().to_string());
 
     proxy_server_port_label_box.append(&proxy_server_port_label);
     proxy_server_port_item_box.append(&proxy_server_port_entry);
@@ -4422,14 +4382,14 @@ fn create_settings_window(
     );
 
     // Actions
-    use_proxy_settings_dropdown.connect_selected_notify(clone!(
+    use_proxy_settings_checkbox.connect_active_notify(clone!(
         #[weak] proxy_manual_settings_box,
         move |dd| {
-            let value = dd.selected() as usize;
-            let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
-            let settings = selected_proxy_settings_value.unwrap();
+            let proxy_status = dd.is_active();
+            // let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
+            // let settings = value;
             
-            if *settings == "Manual" {
+            if proxy_status == true {
                 proxy_manual_settings_box.set_visible(true);
             } else {
                 proxy_manual_settings_box.set_visible(false);
@@ -4482,7 +4442,7 @@ fn create_settings_window(
         #[weak] app_messages_state,
         move |_| {
 
-            let mut settings = APP_SETTINGS.lock().unwrap();
+            let mut settings = APP_SETTINGS.write().unwrap();
 
             let updates = [
                 ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),
@@ -4501,10 +4461,11 @@ fn create_settings_window(
                 ("gui_log_level", toml_edit::value(APP_LOG_LEVEL[default_gui_log_level_dropdown.selected() as usize])),
                 ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
                 ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
+                ("anu_timeout", toml_edit::value(anu_connection_timeout_spinbutton.value_as_int() as i64)),
                 ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
                 ("anu_array_length", toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64)),
                 ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
-                ("proxy_status", toml_edit::value(VALID_PROXY_STATUS[use_proxy_settings_dropdown.selected() as usize])),
+                ("proxy_status", toml_edit::value(use_proxy_settings_checkbox.is_active())),
                 ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
                 ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or(8080) as i64)),
                 ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
@@ -4658,7 +4619,9 @@ fn reset_user_settings() -> Result<String, String> {
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource("logo/logo.svg");
+    let extension = Some(GUI_IMAGE_EXTENSION).unwrap_or("svg");
+
+    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}",extension));
     let logo_picture = gtk::Picture::new();
     logo_picture.set_paintable(Some(&pixy));
 
@@ -4794,7 +4757,6 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
 fn save_wallet_to_file() {
     println!("[+] {}", &t!("log.save_wallet_to_file").to_string());
 
-    // TODO: Check if wallet is created before proceeding
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
     

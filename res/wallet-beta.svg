@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <bx:guide x="100" y="100" angle="0"></bx:guide>
+    <bx:guide x="100" y="100" angle="90"></bx:guide>
+  </defs>
+  <g id="entropy1">
+    <rect width="200" height="200" style="fill: rgb(0, 0, 0);"></rect>
+  </g>
+  <g id="entropy2">
+    <rect x="20" y="20" width="160" height="160" style="fill: rgb(0, 0, 0);"></rect>
+  </g>
+  <g id="entropy3">
+    <rect x="40" y="40" width="120" height="120" style="fill: rgb(0, 0, 0);"></rect>
+  </g>
+  <g id="changelog">
+    <rect x="60" y="60" width="80" height="80" style="fill: rgb(0, 0, 0);"></rect>
+  </g>
+</svg>

@@ -33,24 +33,24 @@
     border: 1px solid #ff6666;
 }
 
-.button {
+/* .button {
     padding: 5px;
 
-}
+} */
 
-.green-box {
+/* .green-box {
     background-color: green;
-    border: 1px solid black;
+    border: 0px solid black;
 }
 
 .empty-box {
     background-color: lightgray;
-    border: 1px solid black;
-}
+    border: 0px solid black;
+} */
 
-.main-buttons {
+/* .main-buttons {
     padding: 5px;
-}
+} */
 
 /* .main-buttons:hover {
     padding: 3px;

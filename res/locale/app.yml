@@ -92,6 +92,10 @@ UI:
         en: "Save API response to log file"
         de: "API-Antwort in Protokolldatei speichern"
         hr: "Spremi API odgovor u log datoteku"
+      timeout:
+        en: "Connection timeout"
+        de: "Verbindungszeitüberschreitung"
+        hr: "Istek vremena veze"
     proxy:
       en: "Proxy settings"
       de: "Proxy Einstellungen"
@@ -329,6 +333,14 @@ UI:
         en: "Generate address"
         de: "Adresse generieren"
         hr: "Generirajte adresu"
+        stop:
+          en: "Stop"
+          de: "Beenden"
+          hr: "Zaustavi"
+        clean:
+          en: "Delete"
+          de: "Entfernen"
+          hr: "Obriši"
       table:
         coin:
           en: "Coin"
@@ -361,10 +373,7 @@ UI:
           en: "Hardened address"
           de: "Gehärtete Adresse"
           hr: "Tvrda adresa"
-        clean:
-          en: "Clean addresses"
-          de: "Entferne Adressen"
-          hr: "Obriši adrese"
+
     database:
       column:
         status:
@@ -462,6 +471,8 @@ UI:
       en: "Save wallet in directory"
       de: "Wallet im Verzeichnis speichern"
       hr: "Spremiti novčanik u direktorij"
+  anu:
+    en: "ANU QRNG Downloader"
 error:
   settings:
     config:

@@ -1,13 +1,7 @@
 ### Main window
 
-#### New priorities
-
-1. Plan for new versioning
-2. Unify states
-3. Log
-
-
 #### Old tasks
+- [ ] Stop generating addresses
 - [x] master private key (xprv)
 - [x] master public key (xpub)
 - [x] child keys
