@@ -334,9 +334,13 @@ UI:
         de: "Adresse generieren"
         hr: "Generirajte adresu"
         stop:
-          en: "Stop generating addresses"
-          de: "Generierung von Adressen beenden"
-          hr: "Zaustavi generiranje adresa"
+          en: "Stop"
+          de: "Beenden"
+          hr: "Zaustavi"
+        clean:
+          en: "Delete"
+          de: "Entfernen"
+          hr: "Obriši"
       table:
         coin:
           en: "Coin"
@@ -369,10 +373,7 @@ UI:
           en: "Hardened address"
           de: "Gehärtete Adresse"
           hr: "Tvrda adresa"
-        clean:
-          en: "Clean addresses"
-          de: "Entferne Adressen"
-          hr: "Obriši adrese"
+
     database:
       column:
         status:

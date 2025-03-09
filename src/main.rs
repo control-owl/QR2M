@@ -105,17 +105,11 @@ const GUI_IMAGE_EXTENSION: &str = "png";
 
 
 lazy_static::lazy_static! {
-    // GuiState - can not be used, no send and sync
-    // static ref GUI_STATE: std::sync::Arc<std::sync::Mutex<GuiState>> = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
-
     static ref APP_SETTINGS: std::sync::Arc<std::sync::RwLock<AppSettings>> = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::default()));
     static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u32, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
     static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
-    
-    // AppMessages - can not be used, no send and sync
-    // static ref APP_MESSAGES: std::sync::Arc<std::sync::Mutex<AppMessages>> = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new()));
 }
 
 
@@ -2111,9 +2105,46 @@ fn create_main_window(
         .css_classes(["large-title"])
         .build();
 
-    // Generate address button
+
+    let address_generation_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    address_generation_buttons_box.set_halign(gtk::Align::Center);
+    
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
+    generate_addresses_button_box.append(&generate_addresses_button);
+
+
+    let delete_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let delete_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate.clean").to_string());
+    delete_addresses_button_box.append(&delete_addresses_button);
+    delete_addresses_button_box.set_visible(false);
+    
+    let generator_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<(tokio::task::JoinHandle<()>, tokio::sync::watch::Sender<bool>)>));
+    let stop_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
+    stop_addresses_button_box.append(&stop_address_generation_button);
+    stop_addresses_button_box.set_visible(false);
+
+
+    address_generation_buttons_box.append(&generate_addresses_button_box);
+    address_generation_buttons_box.append(&delete_addresses_button_box);
+    address_generation_buttons_box.append(&stop_addresses_button_box);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Address tree
     let address_scrolled_window = gtk::ScrolledWindow::new();
@@ -2208,10 +2239,8 @@ fn create_main_window(
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
     address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
     
-    // Clear address
-    let address_options_clear_addresses_button = gtk::Button::with_label(&t!("UI.main.address.options.clean").to_string());
-    address_options_clear_addresses_button.set_size_request(200, 2);
     
+
     // Address progress box
     let address_generation_progress_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_generation_progress_bar = gtk::ProgressBar::new();
@@ -2219,25 +2248,21 @@ fn create_main_window(
     address_generation_progress_box.append(&address_generation_progress_bar);
 
 
-    // JUMP: STOP ADD GEN
-    let generator_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
 
-    let stop_address_generation_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    stop_address_generation_box.set_hexpand(true);
-    stop_address_generation_box.set_halign(gtk::Align::Center);
-    let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
-
-
-
-    stop_address_generation_box.append(&stop_address_generation_button);
-    stop_address_generation_box.set_visible(false);
 
     stop_address_generation_button.connect_clicked(clone!(
         #[strong] generator_handler,
+        #[weak] delete_addresses_button_box,
+        #[weak] stop_addresses_button_box,
         move |_| {
-            if let Some(handle) = generator_handler.lock().unwrap().take() {
-                println!("ANU fetch canceled");
+            if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
+                cancel_tx.send(true).ok();
                 handle.abort();
+                println!("Address generation aborted");
+                delete_addresses_button_box.set_visible(true);
+                stop_addresses_button_box.set_visible(false);
+            } else {
+                eprintln!("No handle!");
             }
         }
     ));
@@ -2269,16 +2294,13 @@ fn create_main_window(
     address_options_content.append(&address_options_frame);
     address_options_content.append(&address_start_frame);
     address_options_content.append(&address_options_hardened_address_frame);
-    generate_addresses_button_box.append(&generate_addresses_button);
-    generate_addresses_button_box.append(&address_options_clear_addresses_button);
-    generate_addresses_button_box.set_halign(gtk::Align::Center);
     main_address_box.append(&derivation_box);
     main_address_box.append(&derivation_label_box);
-    main_address_box.append(&generate_addresses_button_box);
+    main_address_box.append(&address_generation_buttons_box);
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
     main_address_box.append(&address_generation_progress_box);
-    main_address_box.append(&stop_address_generation_box);
+    // main_address_box.append(&stop_addresses_button_box);
     
     stack.add_titled(
         &main_address_box,
@@ -3113,7 +3135,7 @@ fn create_main_window(
 // // Working version
     generate_addresses_button.connect_clicked(clone!(
         #[strong] address_store,
-        #[strong] stop_address_generation_box,
+        #[strong] stop_addresses_button_box,
         #[strong] generator_handler,
         #[weak] derivation_label_text,
         #[weak] master_private_key_text,
@@ -3122,15 +3144,8 @@ fn create_main_window(
         #[weak] address_count_spinbutton,
         #[weak] address_options_hardened_address_checkbox,
         #[weak] address_generation_progress_bar,
+        #[weak] delete_addresses_button_box,
         move |_| {
-
-            if let Some(handle) = generator_handler.lock().unwrap().take() {
-                handle.abort();
-                println!("Previous fetch aborted.");
-            }
-
-            stop_address_generation_box.set_visible(true);
-
             let buffer = master_private_key_text.buffer();
             let start_iter = buffer.start_iter();
             let end_iter = buffer.end_iter();
@@ -3149,6 +3164,9 @@ fn create_main_window(
 
             address_generation_progress_bar.set_fraction(0.0);
             address_generation_progress_bar.set_show_text(true);
+            stop_addresses_button_box.set_visible(true);
+            delete_addresses_button_box.set_visible(false);
+
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
@@ -3159,91 +3177,99 @@ fn create_main_window(
             
             let (tx, rx) = std::sync::mpsc::channel();
             let (tp, rp) = std::sync::mpsc::channel();
-            
+            let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+
+
             let start_time = std::time::Instant::now();
 
-            // IMPLEMENTATION: Create async block
-            let main_context = glib::MainContext::default();
-
-            std::thread::spawn(clone!(
-                move || {
-            // let address_loop = main_context.spawn_local(async move {
+            let address_loop = tokio::spawn(async move {
                 let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
-                        .iter()
-                        .filter_map(|addr| addr.derivation_path.clone())
-                        .collect();
+                    .iter()
+                    .filter_map(|addr| addr.derivation_path.clone())
+                    .collect();
+            
+                let mut generated_count = 0;
+                let mut current_index = address_start_point_int;
+            
+                while generated_count < address_count_int {
+                    tokio::select! {
+                        _ = async {} => {
+                            if current_index > WALLET_MAX_ADDRESSES as usize {
+                                return;
+                            }
+            
+                            let full_address_derivation_path = if hardened_address {
+                                format!("{}/{}'", derivation_path, current_index)
+                            } else {
+                                format!("{}/{}", derivation_path, current_index)
+                            };
+            
+                            if !existing_addresses.contains(&full_address_derivation_path) {
+                                let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
+                                let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
+                                let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+                                let hash = wallet_settings.hash.clone().unwrap_or_default();
+                                let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
+                                let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
+                                let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+            
+                                if let Ok((address, public_key, private_key)) = keys::generate_address(
+                                    coin_index,
+                                    &full_address_derivation_path,
+                                    master_private_key_bytes,
+                                    master_chain_code_bytes,
+                                    &public_key_hash,
+                                    &key_derivation,
+                                    &wallet_import_format,
+                                    &hash,
+                                ) {
+                                    let new_entry = CryptoAddresses {
+                                        coin_name: Some(coin_name.clone()),
+                                        derivation_path: Some(full_address_derivation_path.clone()),
+                                        address: Some(address.clone()),
+                                        public_key: Some(public_key.clone()),
+                                        private_key: Some(private_key.clone()),
+                                    };
+            
+                                    CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
+            
+                                    if tx.send(new_entry).is_err() {
+                                        break;
+                                    }
+            
+                                    generated_count += 1;
+            
+                                    let progress_value = if address_count_int > 0 {
+                                        (generated_count as f64) / (address_count_int as f64)
+                                    } else {
+                                        0.0
+                                    };
+            
+                                    let _ = tp.send(progress_value);
+                                }
+                            }
+                            current_index += 1;
+                        }
 
-                    let mut generated_count = 0;
-                    let mut current_index = address_start_point_int;
-
-                    while generated_count < address_count_int {
-                        if current_index > WALLET_MAX_ADDRESSES as usize {
+                        _ = cancel_rx.changed() => {
+                            println!("Address generation aborted (async).");
+                            let _ = tp.send(1.0);
                             return;
                         }
-                        
-                        let full_address_derivation_path = if hardened_address {
-                            format!("{}/{}'", derivation_path, current_index)
-                        } else {
-                            format!("{}/{}", derivation_path, current_index)
-                        };
-
-                        if !existing_addresses.contains(&full_address_derivation_path) {
-                            let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-                            let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-                            let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-                            let hash = wallet_settings.hash.clone().unwrap_or_default();
-                            let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-                            let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-                            let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
-
-                            if let Ok((address, public_key, private_key)) = keys::generate_address(
-                                coin_index,
-                                &full_address_derivation_path,
-                                master_private_key_bytes, 
-                                master_chain_code_bytes,
-                                &public_key_hash,
-                                &key_derivation, 
-                                &wallet_import_format,
-                                &hash,
-                            ) {
-                                let new_entry = CryptoAddresses {
-                                    coin_name: Some(coin_name.clone()),
-                                    derivation_path: Some(full_address_derivation_path.clone()),
-                                    address: Some(address.clone()),
-                                    public_key: Some(public_key.clone()),
-                                    private_key: Some(private_key.clone()),
-                                };
-
-                                CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
-
-                                if tx.send(new_entry).is_err() {
-                                    break;
-                                }
-
-                                generated_count += 1;
-
-                                let progress_value = if address_count_int > 0 {
-                                    (generated_count as f64) / (address_count_int as f64)
-                                } else {
-                                    0.0
-                                };
-        
-                                let _ = tp.send(progress_value);
-                            }
-
-                        }
-                        current_index += 1;
                     }
+                }
+            
+                let _ = tp.send(1.0);
+            });
 
-                    let _ = tp.send(1.0);
-            }));
-
-            // *generator_handler.lock().unwrap() = Some(address_loop);
+            *generator_handler.lock().unwrap() = Some((address_loop, cancel_tx));
 
             glib::idle_add_local(clone!(
                 #[strong] address_store,
                 #[strong] app_messages_state,
                 #[strong] address_generation_progress_bar,
+                #[strong] stop_addresses_button_box,
+                #[strong] delete_addresses_button_box,
                 move || {
                     while let Ok(new_entry) = rx.try_recv() {
                         let iter = address_store.append();
@@ -3271,6 +3297,9 @@ fn create_main_window(
 
                                 let lock_app_messages = app_messages_state.lock().unwrap();
                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+
+                                stop_addresses_button_box.set_visible(false);
+                                delete_addresses_button_box.set_visible(true);
                                 
                             }
                             return glib::ControlFlow::Break;
@@ -3284,187 +3313,18 @@ fn create_main_window(
         }
     ));
 
-//     // parallel tasks - shit
-//     generate_addresses_button.connect_clicked(clone!(
-//         #[strong] address_store,
-//         #[weak] derivation_label_text,
-//         #[weak] master_private_key_text,
-//         #[strong] app_messages_state,
-//         #[weak] address_start_spinbutton,
-//         #[weak] address_count_spinbutton,
-//         #[weak] address_options_hardened_address_checkbox,
-//         #[weak] address_generation_progress_bar,
-//         move |_| {
-//             let buffer = master_private_key_text.buffer();
-//             let start_iter = buffer.start_iter();
-//             let end_iter = buffer.end_iter();
-//             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
-// 
-//             if master_private_key_string.is_empty() {
-//                 let lock_app_messages = app_messages_state.lock().unwrap();
-//                 lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
-//                 return;
-//             }
-// 
-//             let wallet_settings = {
-//                 let lock = WALLET_SETTINGS.lock().unwrap();
-//                 lock.clone()
-//             };
-// 
-//             address_generation_progress_bar.set_fraction(0.0);
-//             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
-//             let derivation_path = derivation_label_text.text();
-//             let hardened_address = address_options_hardened_address_checkbox.is_active();
-//             let address_start_point = address_start_spinbutton.text();
-//             let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
-//             let address_count = address_count_spinbutton.text();
-//             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
-//             
-//             let (tx, rx) = std::sync::mpsc::channel();
-//             let (tp, rp) = std::sync::mpsc::channel();
-//             let num_threads = 4;
-// 
-//             let progress_counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-//             let start_time = std::time::Instant::now();
-// 
-//             let mut handles = Vec::with_capacity(num_threads);
-//             
-//             let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
-//                 .iter()
-//                 .filter_map(|addr| addr.derivation_path.clone())
-//                 .collect();
-// 
-// 
-//             for thread_id in 0..num_threads {
-//                 let tx = tx.clone();
-//                 let tp = tp.clone();
-//             }
-//             
-//             
-//             let handle = std::thread::spawn(clone!(
-//                 move || {
-// 
-// 
-//                     let mut generated_count = 0;
-//                     let mut current_index = address_start_point_int;
-// 
-//                     while generated_count < address_count_int {
-//                         if current_index > WALLET_MAX_ADDRESSES as usize {
-//                             return;
-//                         }
-//                         
-//                         let full_address_derivation_path = if hardened_address {
-//                             format!("{}/{}'", derivation_path, current_index)
-//                         } else {
-//                             format!("{}/{}", derivation_path, current_index)
-//                         };
-// 
-//                         if !existing_addresses.contains(&full_address_derivation_path) {
-//                             let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-//                             let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-//                             let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-//                             let hash = wallet_settings.hash.clone().unwrap_or_default();
-//                             let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-//                             let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-//                             let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
-// 
-//                             if let Ok((address, public_key, private_key)) = keys::generate_address(
-//                                 coin_index,
-//                                 &full_address_derivation_path,
-//                                 master_private_key_bytes, 
-//                                 master_chain_code_bytes,
-//                                 &public_key_hash,
-//                                 &key_derivation, 
-//                                 &wallet_import_format,
-//                                 &hash,
-//                             ) {
-//                                 let new_entry = CryptoAddresses {
-//                                     coin_name: Some(coin_name.clone()),
-//                                     derivation_path: Some(full_address_derivation_path.clone()),
-//                                     address: Some(address.clone()),
-//                                     public_key: Some(public_key.clone()),
-//                                     private_key: Some(private_key.clone()),
-//                                 };
-// 
-//                                 CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
-// 
-//                                 if tx.send(new_entry).is_err() {
-//                                     break;
-//                                 }
-// 
-//                                 generated_count += 1;
-// 
-//                                 let progress_value = if address_count_int > 0 {
-//                                     (generated_count as f64) / (address_count_int as f64)
-//                                 } else {
-//                                     0.0
-//                                 };
-//         
-//                                 let _ = tp.send(progress_value);
-//                             }
-// 
-//                         }
-//                         current_index += 1;
-//                     }
-// 
-//                     let _ = tp.send(1.0);
-//                 }
-//             ));
-// 
-//             handles.push(handle);
-// 
-//             glib::idle_add_local(clone!(
-//                 #[strong] address_store,
-//                 #[strong] app_messages_state,
-//                 #[strong] address_generation_progress_bar,
-//                 move || {
-//                     while let Ok(new_entry) = rx.try_recv() {
-//                         let iter = address_store.append();
-//                         address_store.set(
-//                             &iter,
-//                             &[
-//                                 (0, &new_entry.coin_name.clone().unwrap_or_default()),
-//                                 (1, &new_entry.derivation_path.clone().unwrap_or_default()),
-//                                 (2, &new_entry.address.clone().unwrap_or_default()),
-//                                 (3, &new_entry.public_key.clone().unwrap_or_default()),
-//                                 (4, &new_entry.private_key.clone().unwrap_or_default()),
-//                             ],
-//                         );
-//                     }
-//             
-//                     while let Ok(progress) = rp.try_recv() {
-//                         address_generation_progress_bar.set_fraction(progress);
-//             
-//                         if progress >= 1.0 {
-//                             {
-//                                 let duration = start_time.elapsed();
-//                                 let message = format!("Address generation completed in {:.3?}", duration);
-// 
-//                                 let lock_app_messages = app_messages_state.lock().unwrap();
-//                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
-//                                 
-//                             }
-//                             return glib::ControlFlow::Break;
-//                         }
-//                     }
-//             
-//                     glib::ControlFlow::Continue
-//                 }
-//             ));
-//             
-//         }
-//     ));
-
-    address_options_clear_addresses_button.connect_clicked(clone!(
+    delete_addresses_button.connect_clicked(clone!(
         #[weak] address_store,
         #[weak] address_start_spinbutton,
         #[weak] address_generation_progress_bar,
+        #[strong] delete_addresses_button_box,
         move |_| {
             address_store.clear();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
             address_generation_progress_bar.set_show_text(false);
             address_generation_progress_bar.set_fraction(0.0);
+            delete_addresses_button_box.set_visible(false);
         }
     ));
 
@@ -3475,10 +3335,8 @@ fn create_main_window(
     
     main_sidebar_box.append(&stack_sidebar);
     main_sidebar_box.append(&stack);
-
     main_infobar_box.append(&info_bar);
     main_infobar_box.set_hexpand(true);
-
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
     main_window_box.set_hexpand(true);
