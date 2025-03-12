@@ -2,6 +2,9 @@
 - new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
     - save quantum entropy as image
 
+# version 0.74.2
+- remove all cargo clippy warning (>200 warnings)
+
 # version 0.74.1
 - save gui window size
 - cleaning mess after rust formatter

@@ -1473,7 +1473,7 @@ fn create_main_window(
 
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
-        .title(&format!(
+        .title(format!(
             "{} {}",
             APP_DESCRIPTION.unwrap(),
             APP_VERSION.unwrap()
@@ -1527,7 +1527,7 @@ fn create_main_window(
     for (name, shortcut) in button_tooltips {
         if let Some(button) = buttons.get(name) {
             button.set_tooltip_text(Some(
-                &t!(format!("UI.main.tooltips.{}", name), value = shortcut).to_string(),
+                &t!(format!("UI.main.tooltips.{}", name), value = shortcut),
             ));
         }
     }
@@ -1665,13 +1665,13 @@ fn create_main_window(
         .build();
 
     let entropy_source_frame = gtk::Frame::builder()
-        .label(&t!("UI.main.seed.entropy.source").to_string())
+        .label(t!("UI.main.seed.entropy.source").to_string())
         .hexpand(true)
         .build();
 
     let anu_enabled = lock_app_settings.anu_enabled.unwrap_or(false);
     let valid_entropy_sources: Vec<&str> = if anu_enabled {
-        VALID_ENTROPY_SOURCES.iter().cloned().collect()
+        VALID_ENTROPY_SOURCES.to_vec()
     } else {
         VALID_ENTROPY_SOURCES
             .iter()
@@ -2100,8 +2100,8 @@ fn create_main_window(
     let generate_master_keys_button = gtk::Button::new();
     let delete_master_keys_button = gtk::Button::new();
 
-    generate_master_keys_button.set_label(&t!("UI.main.coin.generate").to_string());
-    delete_master_keys_button.set_label(&t!("UI.main.coin.delete").to_string());
+    generate_master_keys_button.set_label(&t!("UI.main.coin.generate"));
+    delete_master_keys_button.set_label(&t!("UI.main.coin.delete"));
     generate_master_keys_box.set_halign(gtk::Align::Center);
     generate_master_keys_box.append(&generate_master_keys_button);
     generate_master_keys_box.append(&delete_master_keys_button);
@@ -2109,8 +2109,8 @@ fn create_main_window(
 
     // Master private keys entries
     let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let master_xprv_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.priv").to_string()));
-    let master_xpub_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.pub").to_string()));
+    let master_xprv_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.priv")));
+    let master_xpub_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.pub")));
     let master_private_key_text = gtk::TextView::new();
     let master_public_key_text = gtk::TextView::new();
 
@@ -2133,7 +2133,7 @@ fn create_main_window(
     stack.add_titled(
         &coin_main_box,
         Some("sidebar-coin"),
-        &t!("UI.main.coin").to_string(),
+        &t!("UI.main.coin"),
     );
 
     // JUMP: Sidebar 3: Address
@@ -2151,12 +2151,12 @@ fn create_main_window(
     let coin_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let address_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let main_bip_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.bip").to_string()));
-    let main_coin_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.coin").to_string()));
+    let main_bip_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.bip")));
+    let main_coin_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.coin")));
     let main_address_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.derivation.address").to_string()));
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.address")));
     let main_purpose_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.derivation.purpose").to_string()));
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.purpose")));
 
     main_bip_frame.set_hexpand(true);
     main_coin_frame.set_hexpand(true);
@@ -2164,11 +2164,11 @@ fn create_main_window(
     main_purpose_frame.set_hexpand(true);
 
     let bip_hardened_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard")));
     let coin_hardened_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard")));
     let address_hardened_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard")));
 
     let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS
         .iter()
@@ -2229,7 +2229,7 @@ fn create_main_window(
     // Derivation label
     let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let derivation_label_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.derivation").to_string()));
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation")));
     derivation_label_frame.set_hexpand(true);
 
     let default_bip_label = if wallet_bip == 32 {
@@ -2251,11 +2251,11 @@ fn create_main_window(
     address_generation_buttons_box.set_halign(gtk::Align::Center);
 
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
+    let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate"));
     generate_addresses_button_box.append(&generate_addresses_button);
 
     let delete_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let delete_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate.clean").to_string());
+    let delete_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate.clean"));
     delete_addresses_button_box.append(&delete_addresses_button);
     delete_addresses_button_box.set_visible(false);
 
@@ -2266,7 +2266,7 @@ fn create_main_window(
         )>,
     ));
     let stop_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
+    let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop"));
     stop_addresses_button_box.append(&stop_address_generation_button);
     stop_addresses_button_box.set_visible(false);
 
@@ -2277,7 +2277,7 @@ fn create_main_window(
     // Address tree
     let address_scrolled_window = gtk::ScrolledWindow::new();
     let address_treeview_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let address_treeview_frame = gtk::Frame::new(Some(&t!("UI.main.address").to_string()));
+    let address_treeview_frame = gtk::Frame::new(Some(&t!("UI.main.address")));
     address_treeview_frame.set_hexpand(true);
     address_treeview_frame.set_vexpand(true);
 
@@ -2298,11 +2298,11 @@ fn create_main_window(
 
     address_treeview.set_headers_visible(true);
     let columns = [
-        &t!("UI.main.address.table.coin").to_string(),
-        &t!("UI.main.address.table.path").to_string(),
-        &t!("UI.main.address.table.address").to_string(),
-        &t!("UI.main.address.table.pub").to_string(),
-        &t!("UI.main.address.table.priv").to_string(),
+        &t!("UI.main.address.table.coin"),
+        &t!("UI.main.address.table.path"),
+        &t!("UI.main.address.table.address"),
+        &t!("UI.main.address.table.pub"),
+        &t!("UI.main.address.table.priv"),
     ];
 
     for (i, column_title) in columns.iter().enumerate() {
@@ -2320,7 +2320,7 @@ fn create_main_window(
     address_options_box.append(&address_options_content);
 
     // Address count
-    let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
+    let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count")));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
     let address_options_adjustment = gtk::Adjustment::new(
@@ -2337,7 +2337,7 @@ fn create_main_window(
     address_options_address_count_box.append(&address_count_spinbutton);
 
     // Address start
-    let address_start_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.start").to_string()));
+    let address_start_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.start")));
     let address_start_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_start_adjustment = gtk::Adjustment::new(
         0.0,
@@ -2353,7 +2353,7 @@ fn create_main_window(
     address_start_address_count_box.append(&address_start_spinbutton);
 
     // Hardened address
-    let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
+    let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened")));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
     let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
@@ -3513,38 +3513,47 @@ fn create_main_window(
 
     window.set_child(Some(&main_window_box));
 
-    window.connect_close_request({
-        let window = window.clone();
+    window.connect_close_request(clone!(
+        #[strong] window,
         move |_| {
             let gui_last_width = window.width() as i64;
             let gui_last_height = window.height() as i64;
             let gui_maximized = window.is_maximized();
 
-            let mut settings = APP_SETTINGS.write().unwrap();
+            // BUG: Mutex poison ???
+            let app_settings_lock = APP_SETTINGS.read().unwrap();
+            let gui_save_size = app_settings_lock.gui_save_size.unwrap();
 
-            let updates = [
-                (
-                    "gui_last_width",
-                    toml_edit::value(gui_last_width),
-                ),
-                (
-                    "gui_last_height",
-                    toml_edit::value(gui_last_height),
-                ),
-                (
-                    "gui_maximized",
-                    toml_edit::value(gui_maximized),
-                ),
-            ];
-
-            updates.iter().for_each(|(key, value)| {
-                settings.update_value(key, value.clone(), None);
-            });
-
-            AppSettings::save_settings(&*settings);
-            glib::Propagation::Proceed
+            if gui_save_size {
+                {
+                    let mut settings = APP_SETTINGS.write().unwrap();
+                    let updates = [
+                        (
+                            "gui_last_width",
+                            toml_edit::value(gui_last_width),
+                        ),
+                        (
+                            "gui_last_height",
+                            toml_edit::value(gui_last_height),
+                        ),
+                        (
+                            "gui_maximized",
+                            toml_edit::value(gui_maximized),
+                        ),
+                    ];
+                    
+                    updates.iter().for_each(|(key, value)| {
+                        settings.update_value(key, value.clone(), None);
+                    });
+        
+                    AppSettings::save_settings(&*settings);
+                    glib::Propagation::Proceed
+                }
+            } else {
+                glib::Propagation::Proceed
+            }
         }
-    });
+    ));
 
     window.present();
 
@@ -4843,7 +4852,7 @@ fn create_settings_window(
                 settings.update_value(key, value.clone(), gui_related.then(|| gui_state.clone()));
             });
 
-            AppSettings::save_settings(&*settings);
+            AppSettings::save_settings(&settings);
 
             {
                 let lock_app_messages = app_messages_state.lock().unwrap();
@@ -4993,18 +5002,15 @@ fn reset_user_settings() -> Result<String, String> {
 fn create_about_window() {
     println!("[+] {}", &t!("log.create_about_window").to_string());
 
-    let extension = Some(GUI_IMAGE_EXTENSION).unwrap_or("svg");
-
-    let pixy: gtk4::gdk::Texture =
-        qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}", extension));
+    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}", GUI_IMAGE_EXTENSION));
     let logo_picture = gtk::Picture::new();
     logo_picture.set_paintable(Some(&pixy));
 
     let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
-    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
+    let app_license = qr2m_lib::get_text_from_resources(my_license.to_str().unwrap());
 
     let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
-    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
+    let lgpl_license = qr2m_lib::get_text_from_resources(their_license.to_str().unwrap());
 
     let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
 
@@ -5027,7 +5033,7 @@ fn create_about_window() {
         .copyright("Copyright [2023-2025] Control Owl")
         .license(licenses)
         .wrap_license(true)
-        .comments(&t!("UI.about.description").to_string())
+        .comments(t!("UI.about.description").to_string())
         .logo(
             &logo_picture
                 .paintable()
@@ -5084,10 +5090,7 @@ fn open_wallet_from_file(
 
                         match result {
                             Ok((version, entropy, password)) => {
-                                let passphrase = match password {
-                                    Some(pass) => pass,
-                                    None => String::new(),
-                                };
+                                let passphrase = password.unwrap_or_default();
 
                                 let file_entropy_string =
                                     format!("{}\n{}\n{}", version, entropy, passphrase);
@@ -5210,21 +5213,21 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::Label) {
     println!("\t- Derivation Path: {:?}", dp);
 
     let mut path = String::new();
-    path.push_str("m");
+    path.push('m');
 
     path.push_str(&format!("/{}", dp.bip.unwrap_or_default()));
     if dp.hardened_bip.unwrap_or_default() {
-        path.push_str(&format!("'"));
+        path.push_str(&format!("'").to_string());
     }
 
     path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
     if dp.hardened_coin.unwrap_or_default() {
-        path.push_str(&format!("'"));
+        path.push_str(&format!("'").to_string());
     }
 
     path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
     if dp.hardened_address.unwrap_or_default() {
-        path.push_str(&format!("'"));
+        path.push_str(&format!("'").to_string());
     }
 
     if dp.bip.unwrap() != 32 {
