@@ -44,10 +44,7 @@ const APP_LANGUAGE: &'static [&'static str] = &["English", "Deutsch", "Hrvatski"
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
-const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
-    // "RNG",
-    "RNG+", "File", "QRNG",
-];
+const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["RNG+", "File", "QRNG"];
 const VALID_WALLET_PURPOSE: &'static [&'static str] = &["Internal", "External"];
 const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &["uint8", "uint16", "hex16"];
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
@@ -55,16 +52,13 @@ const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
-
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
 const VALID_GUI_THEMES: &'static [&'static str] = &["System", "Light", "Dark"];
 const VALID_GUI_ICONS: &'static [&'static str] = &["Thin", "Bold", "Fill"];
 const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &["Name", "Symbol", "Index"];
 const APP_LOG_LEVEL: &'static [&'static str] = &["Standard", "Verbose", "Ultimate"];
-
 const GUI_IMAGE_EXTENSION: &str = "svg";
-
 #[cfg(any(target_os = "windows"))]
 const GUI_IMAGE_EXTENSION: &str = "png";
 
@@ -85,9 +79,7 @@ struct GuiState {
     gui_theme: Option<String>,
     gui_icon_theme: Option<String>,
     gui_log_status: Option<bool>,
-    gui_main_buttons: std::sync::Arc<
-        std::sync::Mutex<std::collections::HashMap<String, Vec<std::sync::Arc<gtk::Button>>>>,
-    >,
+    gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<std::sync::Arc<gtk::Button>>>>>,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
 }
 
@@ -98,18 +90,13 @@ impl GuiState {
             gui_theme: VALID_GUI_THEMES.get(0).map(|&s| s.to_string()),
             gui_icon_theme: VALID_GUI_ICONS.get(0).map(|&s| s.to_string()),
             gui_log_status: None,
-            gui_main_buttons: std::sync::Arc::new(std::sync::Mutex::new(
-                std::collections::HashMap::new(),
-            )),
+            gui_main_buttons: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             gui_button_images: None,
         }
     }
 
     fn apply_language(&mut self) {
-        println!(
-            "[+] {}",
-            &t!("log.process_wallet_file_from_path").to_string()
-        );
+        println!("[+] {}", &t!("log.process_wallet_file_from_path").to_string());
 
         if let Some(language) = &self.gui_language {
             let language_code = match language.as_str() {
@@ -138,6 +125,7 @@ impl GuiState {
             .gui_icon_theme
             .clone()
             .unwrap_or(VALID_GUI_ICONS[0].to_string());
+
         let theme_base_path = std::path::Path::new("theme")
             .join("basic")
             .join(theme_subdir)
@@ -309,7 +297,7 @@ impl AppSettings {
             Err(err) => {
                 if err.kind() == std::io::ErrorKind::NotFound {
                     println!("\t- Config file not found, using default settings.");
-                    match os::create_local_files() {
+                    match os::check_local_config() {
                         Ok(_) => {
                             println!("\t- New config file created");
                         }
@@ -1344,10 +1332,10 @@ async fn main() {
 
     os::detect_os_and_user_dir();
 
-    if let Err(err) = os::create_local_files() {
+    if let Err(err) = os::check_local_config() {
         eprintln!("\t- Error creating local config files: {}", err);
     } else {
-        println!("\t- Local files created");
+        println!("\t- Config file ready");
     }
 
     AppSettings::load_settings();
@@ -2263,13 +2251,11 @@ fn create_main_window(
     address_generation_buttons_box.set_halign(gtk::Align::Center);
 
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let generate_addresses_button =
-        gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
+    let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
     generate_addresses_button_box.append(&generate_addresses_button);
 
     let delete_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let delete_addresses_button =
-        gtk::Button::with_label(&t!("UI.main.address.generate.clean").to_string());
+    let delete_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate.clean").to_string());
     delete_addresses_button_box.append(&delete_addresses_button);
     delete_addresses_button_box.set_visible(false);
 
@@ -2280,8 +2266,7 @@ fn create_main_window(
         )>,
     ));
     let stop_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let stop_address_generation_button =
-        gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
+    let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
     stop_addresses_button_box.append(&stop_address_generation_button);
     stop_addresses_button_box.set_visible(false);
 
@@ -2335,8 +2320,7 @@ fn create_main_window(
     address_options_box.append(&address_options_content);
 
     // Address count
-    let address_options_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
+    let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
     let address_options_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let wallet_address_count = lock_app_settings.wallet_address_count.unwrap();
     let address_options_adjustment = gtk::Adjustment::new(
@@ -2353,8 +2337,7 @@ fn create_main_window(
     address_options_address_count_box.append(&address_count_spinbutton);
 
     // Address start
-    let address_start_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.options.start").to_string()));
+    let address_start_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.start").to_string()));
     let address_start_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_start_adjustment = gtk::Adjustment::new(
         0.0,
@@ -2370,8 +2353,7 @@ fn create_main_window(
     address_start_address_count_box.append(&address_start_spinbutton);
 
     // Hardened address
-    let address_options_hardened_address_frame =
-        gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
+    let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
     let address_options_hardened_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_hardened_address_checkbox = gtk::CheckButton::new();
     let wallet_hardened_address = lock_app_settings.wallet_hardened_address;
@@ -2388,12 +2370,9 @@ fn create_main_window(
     address_generation_progress_box.append(&address_generation_progress_bar);
 
     stop_address_generation_button.connect_clicked(clone!(
-        #[strong]
-        generator_handler,
-        #[weak]
-        delete_addresses_button_box,
-        #[weak]
-        stop_addresses_button_box,
+        #[strong] generator_handler,
+        #[weak] delete_addresses_button_box,
+        #[weak] stop_addresses_button_box,
         move |_| {
             if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
                 cancel_tx.send(true).ok();
@@ -2407,7 +2386,6 @@ fn create_main_window(
         }
     ));
 
-    // Connections
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
     coin_box.append(&coin_entry);
@@ -2437,7 +2415,6 @@ fn create_main_window(
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
     main_address_box.append(&address_generation_progress_box);
-    // main_address_box.append(&stop_addresses_button_box);
 
     stack.add_titled(
         &main_address_box,
@@ -2447,16 +2424,11 @@ fn create_main_window(
 
     // JUMP: Action: Open Wallet
     buttons["open"].connect_clicked(clone!(
-        #[weak]
-        entropy_text,
-        #[weak]
-        mnemonic_passphrase_text,
-        #[weak]
-        mnemonic_words_text,
-        #[weak]
-        seed_text,
-        #[strong]
-        app_messages_state,
+        #[weak] entropy_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
+        #[strong] app_messages_state,
         move |_| {
             let (entropy, passphrase) = open_wallet_from_file(&app_messages_state);
 
@@ -2509,24 +2481,15 @@ fn create_main_window(
 
     // JUMP: Action: Generate Seed button
     generate_entropy_button.connect_clicked(clone!(
-        #[weak]
-        entropy_source_dropdown,
-        #[weak]
-        entropy_text,
-        #[weak]
-        entropy_length_dropdown,
-        #[weak]
-        mnemonic_words_text,
-        #[weak]
-        mnemonic_passphrase_text,
-        #[weak]
-        master_private_key_text,
-        #[weak]
-        master_public_key_text,
-        #[weak]
-        seed_text,
-        #[strong]
-        app_messages_state,
+        #[weak] entropy_source_dropdown,
+        #[weak] entropy_text,
+        #[weak] entropy_length_dropdown,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        #[weak] seed_text,
+        #[strong] app_messages_state,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -2581,21 +2544,13 @@ fn create_main_window(
     ));
 
     delete_entropy_button.connect_clicked(clone!(
-        #[weak]
-        entropy_text,
-        #[weak]
-        mnemonic_words_text,
-        #[weak]
-        mnemonic_passphrase_text,
-        #[weak]
-        seed_text,
-        #[weak]
-        master_private_key_text,
-        #[weak]
-        master_public_key_text,
-        #[weak]
-        address_store,
-        // #[weak] save_wallet_button,
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] seed_text,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        #[weak] address_store,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
@@ -2608,10 +2563,8 @@ fn create_main_window(
     ));
 
     buttons["random"].connect_clicked(clone!(
-        #[weak]
-        mnemonic_passphrase_text,
-        #[weak]
-        mnemonic_passphrase_scale,
+        #[weak] mnemonic_passphrase_text,
+        #[weak] mnemonic_passphrase_scale,
         move |_| {
             let scale_value = mnemonic_passphrase_scale.value() as u32;
 
@@ -2624,10 +2577,8 @@ fn create_main_window(
     ));
 
     delete_master_keys_button.connect_clicked(clone!(
-        #[weak]
-        master_private_key_text,
-        #[weak]
-        master_public_key_text,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
         move |_| {
             master_private_key_text.buffer().set_text("");
             master_public_key_text.buffer().set_text("");
@@ -2641,18 +2592,12 @@ fn create_main_window(
 
     // JUMP: Action: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
-        #[strong]
-        coin_entry,
-        #[weak]
-        seed_text,
-        #[weak]
-        coin_treeview,
-        #[weak]
-        master_private_key_text,
-        #[weak]
-        master_public_key_text,
-        #[strong]
-        app_messages_state,
+        #[strong] coin_entry,
+        #[weak] seed_text,
+        #[weak] coin_treeview,
+        #[weak] master_private_key_text,
+        #[weak] master_public_key_text,
+        #[strong] app_messages_state,
         move |_| {
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
@@ -2785,8 +2730,7 @@ fn create_main_window(
     ));
 
     entropy_source_dropdown.connect_selected_notify(clone!(
-        #[weak]
-        generate_entropy_button,
+        #[weak] generate_entropy_button,
         // #[weak] random_mnemonic_passphrase_button,
         move |entropy_source_dropdown| {
             let value = entropy_source_dropdown.selected() as usize;
@@ -2821,8 +2765,7 @@ fn create_main_window(
     ));
 
     coin_search_filter_dropdown.connect_selected_notify(clone!(
-        #[weak]
-        coin_search,
+        #[weak] coin_search,
         move |dropdown| {
             let selected: usize = dropdown.selected().try_into().unwrap_or(0);
             coin_search.set_placeholder_text(Some(&t!(
@@ -2834,14 +2777,9 @@ fn create_main_window(
     ));
 
     mnemonic_passphrase_text.connect_changed(clone!(
-        // #[weak] generate_entropy_button,
-        #[weak]
-        entropy_text,
-        #[weak]
-        mnemonic_words_text,
-        #[weak]
-        seed_text,
-        // #[weak] mnemonic_passphrase_length_info,
+        #[weak] entropy_text,
+        #[weak] mnemonic_words_text,
+        #[weak] seed_text,
         move |mnemonic_passphrase_text| {
             let entropy_buffer = entropy_text.buffer();
             let start_iter = entropy_buffer.start_iter();
@@ -2880,8 +2818,7 @@ fn create_main_window(
     ));
 
     mnemonic_passphrase_scale.connect_value_changed(clone!(
-        #[weak]
-        mnemonic_passphrase_length_info,
+        #[weak] mnemonic_passphrase_length_info,
         #[weak(rename_to = random_mnemonic_passphrase_button)]
         buttons["random"],
         move |mnemonic_passphrase_scale| {
@@ -3224,8 +3161,7 @@ fn create_main_window(
     });
 
     bip_dropdown.connect_selected_notify(clone!(
-        #[weak]
-        derivation_label_text,
+        #[weak] derivation_label_text,
         move |bip_dropdown| {
             let value = bip_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(value);
@@ -3246,10 +3182,8 @@ fn create_main_window(
     ));
 
     bip_hardened_checkbox.connect_active_notify(clone!(
-        #[weak]
-        derivation_label_text,
-        #[weak]
-        bip_hardened_checkbox,
+        #[weak] derivation_label_text,
+        #[weak] bip_hardened_checkbox,
         move |_| {
             let mut dp = DERIVATION_PATH.write().unwrap();
             dp.update_field(
@@ -3261,10 +3195,8 @@ fn create_main_window(
     ));
 
     coin_hardened_checkbox.connect_active_notify(clone!(
-        #[weak]
-        derivation_label_text,
-        #[weak]
-        coin_hardened_checkbox,
+        #[weak] derivation_label_text,
+        #[weak] coin_hardened_checkbox,
         move |_| {
             let mut dp = DERIVATION_PATH.write().unwrap();
 
@@ -3277,10 +3209,8 @@ fn create_main_window(
     ));
 
     address_hardened_checkbox.connect_active_notify(clone!(
-        #[weak]
-        derivation_label_text,
-        #[weak]
-        address_hardened_checkbox,
+        #[weak] derivation_label_text,
+        #[weak] address_hardened_checkbox,
         move |_| {
             let mut dp = DERIVATION_PATH.write().unwrap();
 
@@ -3293,10 +3223,8 @@ fn create_main_window(
     ));
 
     purpose_dropdown.connect_selected_notify(clone!(
-        #[weak]
-        derivation_label_text,
-        #[weak]
-        purpose_dropdown,
+        #[weak] derivation_label_text,
+        #[weak] purpose_dropdown,
         move |_| {
             let purpose = purpose_dropdown.selected();
             let mut dp = DERIVATION_PATH.write().unwrap();
@@ -3307,10 +3235,8 @@ fn create_main_window(
     ));
 
     coin_entry.connect_changed(clone!(
-        #[weak]
-        derivation_label_text,
-        #[strong]
-        coin_entry,
+        #[weak] derivation_label_text,
+        #[strong] coin_entry,
         move |_| {
             let coin_number = coin_entry.buffer().text();
             let ff = coin_number.as_str();
@@ -5052,7 +4978,7 @@ fn reset_user_settings() -> Result<String, String> {
         };
     }
 
-    match os::create_local_files() {
+    match os::check_local_config() {
         Ok(_) => {
             println!("\t- New config file created");
             Ok("OK".to_string())

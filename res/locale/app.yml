@@ -734,20 +734,7 @@ log:
       en: "Creating info message"
   switch_locale:
     en: "Changing app language"
-  create_local_files:
-    en: "Creating local files"
+  check_local_config:
+    en: "Local config"
   setup_app_actions:
     en: "Creating app actions"
-
-
-
-# &t!("UI.settings.element.frame.select").to_string()
-# Some(&t!("log.settings").to_string())
-
-# .expect(&t!("error.seed.decode").to_string());
-# .expect(&t!("error.master.parse.header").to_string());
-
-# .expect(&t!("error.seed.decode", part = "SOME_PART").to_string());
-# .expect(&t!("error.master.parse.header", part = "private").to_string());
-
-# "{}", &t!("error.settings.read", part = "ANU data format")

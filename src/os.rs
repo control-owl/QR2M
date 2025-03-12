@@ -82,19 +82,19 @@ pub fn detect_os_and_user_dir() {
             Ok(target) => {
                 if target.is_dir() {
                     if fs::metadata(&target).map(|m| m.permissions().readonly()).unwrap_or(true) {
-                        println!("[!] Symlink target is not writable: {:?}", &target);
+                        eprintln!("\t- Symlink target is not writable: {:?}", &target);
                         (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
                     } else {
-                        println!(" - Using writable symlink target: {:?}", &target);
+                        println!("\t- Using writable symlink target: {:?}", &target);
                         (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
                     }
                 } else {
-                    println!("[!] Symlink does not point to a directory: {:?}", &target);
+                    eprintln!("\t- Symlink does not point to a directory: {:?}", &target);
                     (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
                 }
             },
             Err(e) => {
-                println!("[!] Failed to read symlink target: {:?}, Error: {}", &local_config_dir, e);
+                eprintln!("\t- Failed to read symlink target: {:?}\n\tError: {}", &local_config_dir, e);
                 (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
             }
         }
@@ -109,11 +109,11 @@ pub fn detect_os_and_user_dir() {
     local_settings.local_config_file = Some(config_file.clone());
     local_settings.local_temp_file = Some(local_temp_file.clone());
 
-    println!(" - OS: {:?}", &os);
-    println!(" - Config directory: {:?}", &config_dir);
-    println!(" - Configuration file: {:?}", &config_file);
-    println!(" - Temp directory: {:?}", &local_temp_dir);
-    println!(" - Temp file: {:?}", &local_temp_file);
+    println!("\t- OS: {:?}", &os);
+    println!("\t- Config directory: {:?}", &config_dir);
+    println!("\t- Configuration file: {:?}", &config_file);
+    println!("\t- Temp directory: {:?}", &local_temp_dir);
+    println!("\t- Temp file: {:?}", &local_temp_file);
 }
 
 pub fn switch_locale(lang: &str) {
@@ -128,15 +128,14 @@ pub fn switch_locale(lang: &str) {
     println!(" - Language: {:?}", lang);
 }
 
-pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
-    println!("[+] {}", &t!("log.create_local_files").to_string());
+pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
+    println!("[+] {}", &t!("log.check_local_config").to_string());
 
     let local_settings = LOCAL_SETTINGS.lock().unwrap();
     let local_config_file = local_settings.local_config_file.clone().unwrap();
     let local_config_dir = local_settings.local_config_dir.clone().unwrap();
     
     if !local_config_dir.exists() {
-        eprintln!("Local config directory not found. Creating it.");
         fs::create_dir_all(&local_config_dir)?;
     }
     
@@ -145,13 +144,11 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !Path::new(&local_config_file).exists() {
-        eprintln!("Local config file '{:?}' does not exist. Creating it from default configuration.", local_config_file);
-
         let default_settings = crate::AppSettings::default();
-
         let serialized = toml::to_string(&default_settings)?;
         let mut config_map: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>> = std::collections::BTreeMap::new();
-
+        let mut toml_string = String::new();
+        
         for line in serialized.lines() {
             if let Some((key, value)) = line.split_once(" = ") {
                 let (section, key) = key.split_once('_').unwrap_or(("general", key));
@@ -161,7 +158,6 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let mut toml_string = String::new();
         for (section, entries) in config_map {
             toml_string.push_str(&format!("[{}]\n", section));
             for (key, value) in entries {
@@ -170,10 +166,8 @@ pub fn create_local_files() -> Result<(), Box<dyn std::error::Error>> {
             toml_string.push('\n');
         }
 
-        println!("Generated default configuration.");
-
         fs::write(&local_config_file, toml_string)?;
-        println!("Local config file created successfully.");
+        println!("\t- New config file created");
     }
 
     Ok(())
