@@ -1,9 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // copyright = "Copyright © 2023-2025 Control Owl"
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 // #![windows_subsystem = "windows"]
 // #![allow(non_snake_case)]
@@ -13,28 +11,26 @@
 // #![allow(dead_code)]
 // #![allow(unused_mut)]
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
-use std::{
-    fs::{self, File}, 
-    io::{self, BufRead, Write}, 
-    time::SystemTime
-};
-use hex;
-use rand::Rng;
-use gtk4::{self as gtk};
-use libadwaita as adw;
 use adw::prelude::*;
-use gtk::{gio, glib::clone, Stack, StackSidebar};
+use gtk::{Stack, StackSidebar, gio, glib::clone};
+use gtk4::{self as gtk};
+use hex;
+use libadwaita as adw;
+use rand::Rng;
+use std::{
+    fs::{self, File},
+    io::{self, BufRead, Write},
+    time::SystemTime,
+};
 
 mod anu;
 mod coin_db;
 mod dev;
+mod keys;
 mod os;
 mod test_vectors;
-mod keys;
 
 #[macro_use]
 extern crate rust_i18n;
@@ -44,65 +40,29 @@ const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-const APP_LANGUAGE: &'static [&'static str] = &[
-    "English", 
-    "Deutsch",
-    "Hrvatski",
-];
+const APP_LANGUAGE: &'static [&'static str] = &["English", "Deutsch", "Hrvatski"];
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
-const VALID_ENTROPY_SOURCES: &'static [&'static str] = &[
-    // "RNG",
-    "RNG+", 
-    "File",
-    "QRNG",
-];
-const VALID_WALLET_PURPOSE: &'static [&'static str] = &[
-    "Internal", 
-    "External", 
-];
-const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &[
-    "uint8", 
-    "uint16", 
-    "hex16",
-];
+const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["RNG+", "File", "QRNG"];
+const VALID_WALLET_PURPOSE: &'static [&'static str] = &["Internal", "External"];
+const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &["uint8", "uint16", "hex16"];
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
-
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
-const VALID_GUI_THEMES: &'static [&'static str] = &[
-    "System", 
-    "Light", 
-    "Dark",
-];
-const VALID_GUI_ICONS: &'static [&'static str] = &[
-    "Thin", 
-    "Bold", 
-    "Fill",
-];
-const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &[
-    "Name", 
-    "Symbol", 
-    "Index",
-];
-const APP_LOG_LEVEL: &'static [&'static str] = &[
-    "Standard", 
-    "Verbose",
-    "Ultimate",
-];
-
+const VALID_GUI_THEMES: &'static [&'static str] = &["System", "Light", "Dark"];
+const VALID_GUI_ICONS: &'static [&'static str] = &["Thin", "Bold", "Fill"];
+const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &["Name", "Symbol", "Index"];
+const APP_LOG_LEVEL: &'static [&'static str] = &["Standard", "Verbose", "Ultimate"];
 const GUI_IMAGE_EXTENSION: &str = "svg";
-
 #[cfg(any(target_os = "windows"))]
 const GUI_IMAGE_EXTENSION: &str = "png";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 lazy_static::lazy_static! {
     static ref APP_SETTINGS: std::sync::Arc<std::sync::RwLock<AppSettings>> = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::default()));
@@ -112,9 +72,7 @@ lazy_static::lazy_static! {
     static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 struct GuiState {
     gui_language: Option<String>,
@@ -123,7 +81,6 @@ struct GuiState {
     gui_log_status: Option<bool>,
     gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<std::sync::Arc<gtk::Button>>>>>,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
-
 }
 
 impl GuiState {
@@ -147,7 +104,7 @@ impl GuiState {
                 "Hrvatski" => "hr",
                 _ => "en",
             };
-        
+
             rust_i18n::set_locale(language_code);
         } else {
             rust_i18n::set_locale("en");
@@ -164,25 +121,29 @@ impl GuiState {
             "light"
         };
 
-        let gui_icons = self.gui_icon_theme.clone().unwrap_or(VALID_GUI_ICONS[0].to_string());
+        let gui_icons = self
+            .gui_icon_theme
+            .clone()
+            .unwrap_or(VALID_GUI_ICONS[0].to_string());
+
         let theme_base_path = std::path::Path::new("theme")
             .join("basic")
             .join(theme_subdir)
             .join(gui_icons);
 
         let extension = GUI_IMAGE_EXTENSION;
-        
+
         let icon_files = [
-            ("new", format!("new.{}",extension)),
-            ("open", format!("open.{}",extension)),
-            ("save", format!("save.{}",extension)),
-            ("about", format!("about.{}",extension)),
-            ("settings", format!("settings.{}",extension)),
-            ("log", format!("log.{}",extension)),
-            ("notif", format!("notif.{}",extension)),
-            ("random", format!("random.{}",extension)),
+            ("new", format!("new.{}", extension)),
+            ("open", format!("open.{}", extension)),
+            ("save", format!("save.{}", extension)),
+            ("about", format!("about.{}", extension)),
+            ("settings", format!("settings.{}", extension)),
+            ("log", format!("log.{}", extension)),
+            ("notif", format!("notif.{}", extension)),
+            ("random", format!("random.{}", extension)),
         ];
-        
+
         let mut icons = std::collections::HashMap::new();
         for (name, file) in icon_files.iter() {
             let icon_path = theme_base_path.join(file);
@@ -209,7 +170,7 @@ impl GuiState {
 
     fn reload_gui_theme(&mut self) {
         println!("[+] {}", &t!("log.reload_gui_theme").to_string());
-        
+
         if let Some(theme) = &self.gui_theme {
             let preferred_theme = match theme.as_str() {
                 "Light" => adw::ColorScheme::ForceLight,
@@ -222,27 +183,28 @@ impl GuiState {
             adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
             eprintln!("\t- Problem with GUI theme, revert to default theme");
         }
-
     }
 
     fn register_button(&self, name: String, button: std::sync::Arc<gtk::Button>) {
         println!("[+] {}", &t!("log.register_button").to_string());
 
         let mut button_map = self.gui_main_buttons.lock().unwrap();
-        button_map.entry(name.to_string()).or_insert_with(Vec::new).push(button);
+        button_map
+            .entry(name.to_string())
+            .or_insert_with(Vec::new)
+            .push(button);
 
         println!("\t- Button: {:?}", name)
     }
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 #[derive(serde::Serialize, Clone)]
 struct AppSettings {
     wallet_entropy_source: Option<String>,
     wallet_entropy_length: Option<u32>,
+    wallet_mnemonic_length: Option<u32>,
     wallet_bip: Option<u32>,
     wallet_address_count: Option<u32>,
     wallet_hardened_address: Option<bool>,
@@ -255,7 +217,6 @@ struct AppSettings {
     gui_language: Option<String>,
     gui_search: Option<String>,
     gui_notification_timeout: Option<u32>,
-    gui_mnemonic_length: Option<u32>,
     gui_log: Option<bool>,
     gui_log_level: Option<String>,
     anu_enabled: Option<bool>,
@@ -283,6 +244,7 @@ impl Default for AppSettings {
         AppSettings {
             wallet_entropy_source: Some("RNG+".to_string()),
             wallet_entropy_length: Some(256),
+            wallet_mnemonic_length: Some(512),
             wallet_bip: Some(44),
             wallet_address_count: Some(10),
             wallet_hardened_address: Some(true),
@@ -295,7 +257,6 @@ impl Default for AppSettings {
             gui_language: Some("English".to_string()),
             gui_search: Some("Name".to_string()),
             gui_notification_timeout: Some(5),
-            gui_mnemonic_length: Some(512),
             gui_log: Some(true),
             gui_log_level: Some("Standard".to_string()),
             anu_enabled: Some(false),
@@ -323,12 +284,12 @@ impl Default for AppSettings {
 impl AppSettings {
     fn load_settings() {
         println!("[+] {}", &t!("log.load_settings").to_string());
-        
+
         let settings = AppSettings::default();
-        
+
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
-        
+
         println!("\t- Settings file: {:?}", local_config_file);
 
         let config_str = match fs::read_to_string(&local_config_file) {
@@ -336,16 +297,19 @@ impl AppSettings {
             Err(err) => {
                 if err.kind() == std::io::ErrorKind::NotFound {
                     println!("\t- Config file not found, using default settings.");
-                    match os::create_local_files() {
+                    match os::check_local_config() {
                         Ok(_) => {
                             println!("\t- New config file created");
-                        },
+                        }
                         Err(err) => {
                             eprintln!("\t- New config file NOT created \n {}", err);
-                        },
+                        }
                     }
                 } else {
-                    eprintln!("\t- Failed to read local config file: {:?} \n Error: {:?}", local_config_file, err);
+                    eprintln!(
+                        "\t- Failed to read local config file: {:?} \n Error: {:?}",
+                        local_config_file, err
+                    );
                 }
                 String::new()
             }
@@ -356,24 +320,29 @@ impl AppSettings {
             toml::Value::Table(toml::value::Table::new())
         });
 
-
         fn get_str(section: &toml::Value, key: &str, default: Option<String>) -> Option<String> {
-            section.get(key).and_then(|v| v.as_str()).map(|s| s.to_string()).or(default)
+            section
+                .get(key)
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .or(default)
         }
 
         fn get_u32(section: &toml::Value, key: &str, default: Option<u32>) -> Option<u32> {
-            section.get(key).and_then(|v| v.as_integer()).map(|v| v as u32).or(default)
+            section
+                .get(key)
+                .and_then(|v| v.as_integer())
+                .map(|v| v as u32)
+                .or(default)
         }
 
         fn get_bool(section: &toml::Value, key: &str, default: Option<bool>) -> Option<bool> {
             section.get(key).and_then(|v| v.as_bool()).or(default)
         }
 
-        fn load_section(
-            config: &toml::Value, 
-            section_name: &str, 
-        ) -> toml::Value {
-            config.get(section_name)
+        fn load_section(config: &toml::Value, section_name: &str) -> toml::Value {
+            config
+                .get(section_name)
                 .cloned()
                 .unwrap_or_else(|| toml::Value::Table(toml::value::Table::new()))
         }
@@ -391,8 +360,11 @@ impl AppSettings {
         let gui_icons = get_str(&gui_section, "icons", settings.gui_icons);
         let gui_language = get_str(&gui_section, "language", settings.gui_language);
         let gui_search = get_str(&gui_section, "search", settings.gui_search);
-        let gui_notification_timeout = get_u32(&gui_section, "notification_timeout", settings.gui_notification_timeout);
-        let gui_mnemonic_length = get_u32(&gui_section, "mnemonic_length", settings.gui_mnemonic_length);
+        let gui_notification_timeout = get_u32(
+            &gui_section,
+            "notification_timeout",
+            settings.gui_notification_timeout,
+        );
         let gui_log = get_bool(&gui_section, "gui_log", settings.gui_log);
         let gui_log_level = get_str(&gui_section, "log_level", settings.gui_log_level);
 
@@ -405,18 +377,39 @@ impl AppSettings {
         println!("\t- Language: {:?}", gui_language);
         println!("\t- Search: {:?}", gui_search);
         println!("\t- Notification timeout: {:?}", gui_notification_timeout);
-        println!("\t- Mnemonic passphrase length: {:?}", gui_mnemonic_length);
         println!("\t- Log enabled: {:?}", gui_log);
         println!("\t- Log level: {:?}", gui_log_level);
 
-        let wallet_entropy_source = get_str(&wallet_section, "entropy_source", settings.wallet_entropy_source);
-        let wallet_entropy_length = get_u32(&wallet_section, "entropy_length", settings.wallet_entropy_length);
+        let wallet_entropy_source = get_str(
+            &wallet_section,
+            "entropy_source",
+            settings.wallet_entropy_source,
+        );
+        let wallet_entropy_length = get_u32(
+            &wallet_section,
+            "entropy_length",
+            settings.wallet_entropy_length,
+        );
+        let wallet_mnemonic_length = get_u32(
+            &gui_section,
+            "mnemonic_length",
+            settings.wallet_mnemonic_length,
+        );
         let wallet_bip = get_u32(&wallet_section, "bip", settings.wallet_bip);
-        let wallet_address_count = get_u32(&wallet_section, "address_count", settings.wallet_address_count);
-        let wallet_hardened_address = get_bool(&wallet_section, "hardened_address", settings.wallet_hardened_address);
+        let wallet_address_count = get_u32(
+            &wallet_section,
+            "address_count",
+            settings.wallet_address_count,
+        );
+        let wallet_hardened_address = get_bool(
+            &wallet_section,
+            "hardened_address",
+            settings.wallet_hardened_address,
+        );
 
         println!("\t- Entropy source: {:?}", wallet_entropy_source);
         println!("\t- Entropy length: {:?}", wallet_entropy_length);
+        println!("\t- Mnemonic passphrase length: {:?}", wallet_mnemonic_length);
         println!("\t- BIP: {:?}", wallet_bip);
         println!("\t- Address count: {:?}", wallet_address_count);
         println!("\t- Hard address: {:?}", wallet_hardened_address);
@@ -424,7 +417,8 @@ impl AppSettings {
         let anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
         let anu_data_format = get_str(&anu_section, "data_format", settings.anu_data_format);
         let anu_array_length = get_u32(&anu_section, "array_length", settings.anu_array_length);
-        let anu_hex_block_size = get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
+        let anu_hex_block_size =
+            get_u32(&anu_section, "hex_block_size", settings.anu_hex_block_size);
         let anu_log = get_bool(&anu_section, "log", settings.anu_log);
         let anu_timeout = get_u32(&anu_section, "timeout", settings.anu_timeout);
 
@@ -436,34 +430,63 @@ impl AppSettings {
         println!("\t- ANU timeout: {:?}", anu_timeout);
 
         let proxy_status = get_bool(&proxy_section, "status", settings.proxy_status);
-        let proxy_server_address = get_str(&proxy_section, "server_address", settings.proxy_server_address);
+        let proxy_server_address = get_str(
+            &proxy_section,
+            "server_address",
+            settings.proxy_server_address,
+        );
         let proxy_server_port = get_u32(&proxy_section, "server_port", settings.proxy_server_port);
         let proxy_use_pac = get_bool(&proxy_section, "use_pac", settings.proxy_use_pac);
-        let proxy_script_address = get_str(&proxy_section, "script_address", settings.proxy_script_address);
-        let proxy_login_credentials = get_bool(&proxy_section, "login_credentials", settings.proxy_login_credentials);
-        let proxy_login_username = get_str(&proxy_section, "login_username", settings.proxy_login_username);
-        let proxy_login_password = get_str(&proxy_section, "login_password", settings.proxy_login_password);
+        let proxy_script_address = get_str(
+            &proxy_section,
+            "script_address",
+            settings.proxy_script_address,
+        );
+        let proxy_login_credentials = get_bool(
+            &proxy_section,
+            "login_credentials",
+            settings.proxy_login_credentials,
+        );
+        let proxy_login_username = get_str(
+            &proxy_section,
+            "login_username",
+            settings.proxy_login_username,
+        );
+        let proxy_login_password = get_str(
+            &proxy_section,
+            "login_password",
+            settings.proxy_login_password,
+        );
         let proxy_use_ssl = get_bool(&proxy_section, "use_ssl", settings.proxy_use_ssl);
-        let proxy_ssl_certificate = get_str(&proxy_section, "ssl_certificate", settings.proxy_ssl_certificate);
-        let proxy_retry_attempts = get_u32(&proxy_section, "retry_attempts", settings.proxy_retry_attempts);
+        let proxy_ssl_certificate = get_str(
+            &proxy_section,
+            "ssl_certificate",
+            settings.proxy_ssl_certificate,
+        );
+        let proxy_retry_attempts = get_u32(
+            &proxy_section,
+            "retry_attempts",
+            settings.proxy_retry_attempts,
+        );
         let proxy_timeout = get_u32(&proxy_section, "timeout", settings.proxy_timeout);
-        
+
         println!("\t- Use proxy: {:?}", proxy_status);
         println!("\t- Proxy server address: {:?}", proxy_server_address);
         println!("\t- Proxy server port: {:?}", proxy_server_port);
         println!("\t- Use proxy PAC: {:?}", proxy_use_pac);
         println!("\t- Proxy script address: {:?}", proxy_script_address);
-        println!("\t- Use proxy login credentials: {:?}", proxy_login_credentials);
+        println!("\t- Use proxy login credentials: {:?}",proxy_login_credentials);
         println!("\t- Proxy username: {:?}", proxy_login_username);
         println!("\t- Proxy password: {:?}", proxy_login_password);
         println!("\t- Use proxy SSL: {:?}", proxy_use_ssl);
         println!("\t- Proxy SSL certificate: {:?}", proxy_ssl_certificate);
         println!("\t- Proxy retry attempts: {:?}", proxy_retry_attempts);
         println!("\t- Proxy timeout: {:?}", proxy_timeout);
-        
+
         let mut application_settings = APP_SETTINGS.write().unwrap();
         application_settings.wallet_entropy_source = wallet_entropy_source.clone();
         application_settings.wallet_entropy_length = wallet_entropy_length.clone();
+        application_settings.wallet_mnemonic_length = wallet_mnemonic_length.clone();
         application_settings.wallet_bip = wallet_bip.clone();
         application_settings.wallet_address_count = wallet_address_count.clone();
         application_settings.wallet_hardened_address = wallet_hardened_address.clone();
@@ -477,7 +500,6 @@ impl AppSettings {
         application_settings.gui_language = gui_language.clone();
         application_settings.gui_search = gui_search.clone();
         application_settings.gui_notification_timeout = gui_notification_timeout.clone();
-        application_settings.gui_mnemonic_length = gui_mnemonic_length.clone();
         application_settings.gui_log = gui_log.clone();
         application_settings.gui_log_level = gui_log_level.clone();
 
@@ -500,8 +522,6 @@ impl AppSettings {
         application_settings.proxy_ssl_certificate = proxy_ssl_certificate.clone();
         application_settings.proxy_retry_attempts = proxy_retry_attempts.clone();
         application_settings.proxy_timeout = proxy_timeout.clone();
-
-        
     }
 
     fn update_value(
@@ -520,7 +540,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "wallet_entropy_length" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -529,7 +549,16 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
+            "wallet_mnemonic_length" => {
+                if let Some(value) = new_value.as_integer() {
+                    let value = value as u32;
+                    if Some(value) != self.wallet_mnemonic_length {
+                        self.wallet_mnemonic_length = Some(value);
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
+                    }
+                }
+            }
             "wallet_bip" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -538,7 +567,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "wallet_address_count" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -547,7 +576,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "wallet_hardened_address" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.wallet_hardened_address {
@@ -555,7 +584,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_save_size" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.gui_save_size {
@@ -563,7 +592,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_last_width" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -572,7 +601,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_last_height" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -581,7 +610,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_maximized" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.gui_maximized {
@@ -589,7 +618,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_theme" => {
                 if let Some(new_theme) = new_value.as_str() {
                     if Some(new_theme.to_string()) != self.gui_theme {
@@ -601,13 +630,12 @@ impl AppSettings {
                             "Dark" => adw::ColorScheme::ForceDark,
                             _ => adw::ColorScheme::PreferLight,
                         };
-                
+
                         adw::StyleManager::default().set_color_scheme(preferred_theme);
 
                         if let Some(state) = gui_state {
                             let mut state = state.lock().unwrap();
                             state.gui_theme = Some(new_theme.to_string());
-
                         } else {
                             println!("State in gui_theme is None");
                         }
@@ -615,7 +643,7 @@ impl AppSettings {
                 } else {
                     eprintln!("Received invalid value for gui_theme: {:?}", new_value);
                 }
-            },
+            }
             "gui_icons" => {
                 if let Some(new_icons) = new_value.as_str() {
                     if Some(new_icons.to_string()) != self.gui_icons {
@@ -632,7 +660,7 @@ impl AppSettings {
                 } else {
                     eprintln!("Received invalid value for gui_icons: {:?}", new_value);
                 }
-            },
+            }
             "gui_language" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.gui_language {
@@ -640,7 +668,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_search" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.gui_search {
@@ -648,7 +676,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_notification_timeout" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -657,16 +685,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
-            "gui_mnemonic_length" => {
-                if let Some(value) = new_value.as_integer() {
-                    let value = value as u32;
-                    if Some(value) != self.gui_mnemonic_length {
-                        self.gui_mnemonic_length = Some(value);
-                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
-                    }
-                }
-            },
+            }
             "gui_log" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.gui_log {
@@ -682,7 +701,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "gui_log_level" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.gui_log_level {
@@ -690,7 +709,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "anu_enabled" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.anu_enabled {
@@ -698,7 +717,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "anu_data_format" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.anu_data_format {
@@ -706,7 +725,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "anu_array_length" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -715,7 +734,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "anu_hex_block_size" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -724,7 +743,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "anu_log" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.anu_log {
@@ -732,7 +751,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "anu_timeout" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -741,7 +760,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_status" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_status {
@@ -749,7 +768,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_server_address" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_server_address {
@@ -757,7 +776,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_server_port" => {
                 if let Some(value) = new_value.as_integer() {
                     let value = value as u32;
@@ -766,7 +785,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_use_pac" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_use_pac {
@@ -774,7 +793,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_script_address" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_script_address {
@@ -782,7 +801,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_login_credentials" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_login_credentials {
@@ -790,7 +809,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_login_username" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_login_username {
@@ -798,7 +817,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_login_password" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_login_password {
@@ -806,7 +825,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_use_ssl" => {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.proxy_use_ssl {
@@ -814,7 +833,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             "proxy_ssl_certificate" => {
                 if let Some(value) = new_value.as_str() {
                     if Some(value.to_string()) != self.proxy_ssl_certificate {
@@ -822,7 +841,7 @@ impl AppSettings {
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                     }
                 }
-            },
+            }
             _ => {}
         }
     }
@@ -833,24 +852,42 @@ impl AppSettings {
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
         let config_str = fs::read_to_string(&local_config_file)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to read config file: {}", e)))
+            .map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("\t- Failed to read config file: {}", e),
+                )
+            })
             .expect("\t- Problem with local config file");
-        
-        let mut doc = config_str.parse::<toml_edit::DocumentMut>()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to parse config string: {}", e)))
+
+        let mut doc = config_str
+            .parse::<toml_edit::DocumentMut>()
+            .map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("\t- Failed to parse config string: {}", e),
+                )
+            })
             .unwrap_or(toml_edit::DocumentMut::new());
-    
+
         {
-            let wallet_section = doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
-                if let toml_edit::Item::Table(wallet_table) = wallet_section {
-                wallet_table["entropy_source"] = toml_edit::value(self.wallet_entropy_source.clone().unwrap());
-                wallet_table["entropy_length"] = toml_edit::value(self.wallet_entropy_length.unwrap() as i64);
+            let wallet_section =
+                doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
+            if let toml_edit::Item::Table(wallet_table) = wallet_section {
+                wallet_table["entropy_source"] =
+                    toml_edit::value(self.wallet_entropy_source.clone().unwrap());
+                wallet_table["entropy_length"] =
+                    toml_edit::value(self.wallet_entropy_length.unwrap() as i64);
+                wallet_table["mnemonic_length"] =
+                    toml_edit::value(self.wallet_mnemonic_length.unwrap() as i64);
                 wallet_table["bip"] = toml_edit::value(self.wallet_bip.unwrap() as i64);
-                wallet_table["address_count"] = toml_edit::value(self.wallet_address_count.unwrap() as i64);
-                wallet_table["hardened_address"] = toml_edit::value(self.wallet_hardened_address.unwrap());
+                wallet_table["address_count"] =
+                    toml_edit::value(self.wallet_address_count.unwrap() as i64);
+                wallet_table["hardened_address"] =
+                    toml_edit::value(self.wallet_hardened_address.unwrap());
             }
         }
-    
+
         {
             let gui_section = doc["gui"].or_insert(toml_edit::Item::Table(Default::default()));
             if let toml_edit::Item::Table(gui_table) = gui_section {
@@ -862,57 +899,72 @@ impl AppSettings {
                 gui_table["icons"] = toml_edit::value(self.gui_icons.clone().unwrap());
                 gui_table["language"] = toml_edit::value(self.gui_language.clone().unwrap());
                 gui_table["search"] = toml_edit::value(self.gui_search.clone().unwrap());
-                gui_table["notification_timeout"] = toml_edit::value(self.gui_notification_timeout.unwrap() as i64);
-                gui_table["mnemonic_length"] = toml_edit::value(self.gui_mnemonic_length.unwrap() as i64);
+                gui_table["notification_timeout"] =
+                    toml_edit::value(self.gui_notification_timeout.unwrap() as i64);
                 gui_table["log"] = toml_edit::value(self.gui_log.unwrap());
                 gui_table["log_level"] = toml_edit::value(self.gui_log_level.clone().unwrap());
             }
         }
-    
+
         {
             let anu_section = doc["anu"].or_insert(toml_edit::Item::Table(Default::default()));
             if let toml_edit::Item::Table(anu_table) = anu_section {
                 anu_table["enabled"] = toml_edit::value(self.anu_enabled.unwrap());
                 anu_table["data_format"] = toml_edit::value(self.anu_data_format.clone().unwrap());
                 anu_table["array_length"] = toml_edit::value(self.anu_array_length.unwrap() as i64);
-                anu_table["hex_block_size"] = toml_edit::value(self.anu_hex_block_size.unwrap() as i64);
+                anu_table["hex_block_size"] =
+                    toml_edit::value(self.anu_hex_block_size.unwrap() as i64);
                 anu_table["log"] = toml_edit::value(self.anu_log.unwrap());
                 anu_table["timeout"] = toml_edit::value(self.anu_timeout.unwrap() as i64);
             }
         }
-    
+
         {
             let proxy_section = doc["proxy"].or_insert(toml_edit::Item::Table(Default::default()));
             if let toml_edit::Item::Table(proxy_table) = proxy_section {
                 proxy_table["status"] = toml_edit::value(self.proxy_status.clone().unwrap());
-                proxy_table["server_address"] = toml_edit::value(self.proxy_server_address.clone().unwrap());
-                proxy_table["server_port"] = toml_edit::value(self.proxy_server_port.unwrap() as i64);
+                proxy_table["server_address"] =
+                    toml_edit::value(self.proxy_server_address.clone().unwrap());
+                proxy_table["server_port"] =
+                    toml_edit::value(self.proxy_server_port.unwrap() as i64);
                 proxy_table["use_pac"] = toml_edit::value(self.proxy_use_pac.unwrap());
-                proxy_table["script_address"] = toml_edit::value(self.proxy_script_address.clone().unwrap());
-                proxy_table["login_credentials"] = toml_edit::value(self.proxy_login_credentials.unwrap());
-                proxy_table["login_username"] = toml_edit::value(self.proxy_login_username.clone().unwrap());
-                proxy_table["login_password"] = toml_edit::value(self.proxy_login_password.clone().unwrap());
+                proxy_table["script_address"] =
+                    toml_edit::value(self.proxy_script_address.clone().unwrap());
+                proxy_table["login_credentials"] =
+                    toml_edit::value(self.proxy_login_credentials.unwrap());
+                proxy_table["login_username"] =
+                    toml_edit::value(self.proxy_login_username.clone().unwrap());
+                proxy_table["login_password"] =
+                    toml_edit::value(self.proxy_login_password.clone().unwrap());
                 proxy_table["use_ssl"] = toml_edit::value(self.proxy_use_ssl.unwrap());
-                proxy_table["ssl_certificate"] = toml_edit::value(self.proxy_ssl_certificate.clone().unwrap());
+                proxy_table["ssl_certificate"] =
+                    toml_edit::value(self.proxy_ssl_certificate.clone().unwrap());
             }
         }
-    
+
         let toml_str = doc.to_string();
-    
+
         let mut file = fs::File::create(&local_config_file)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to create config file: {}", e)))
+            .map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("\t- Failed to create config file: {}", e),
+                )
+            })
             .expect("\t- Problem with local config file");
-        
+
         file.write_all(toml_str.as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("\t- Failed to write to config file: {}", e)))
+            .map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("\t- Failed to write to config file: {}", e),
+                )
+            })
             .expect("\t- Can not write to local config file");
-        
     }
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 #[derive(Clone)]
 struct WalletSettings {
@@ -936,30 +988,28 @@ struct WalletSettings {
 
 impl WalletSettings {
     fn new() -> Self {
-        Self { 
-            entropy_string: None, 
-            entropy_checksum: None, 
-            mnemonic_words: None, 
-            mnemonic_passphrase: None, 
-            seed: None, 
-            master_xprv: None, 
-            master_xpub: None, 
-            master_private_key_bytes: None, 
-            master_chain_code_bytes: None, 
-            master_public_key_bytes: None, 
-            coin_index: None, 
-            coin_name: None, 
-            wallet_import_format: None, 
-            public_key_hash: None, 
-            key_derivation: None, 
+        Self {
+            entropy_string: None,
+            entropy_checksum: None,
+            mnemonic_words: None,
+            mnemonic_passphrase: None,
+            seed: None,
+            master_xprv: None,
+            master_xpub: None,
+            master_private_key_bytes: None,
+            master_chain_code_bytes: None,
+            master_public_key_bytes: None,
+            coin_index: None,
+            coin_name: None,
+            wallet_import_format: None,
+            public_key_hash: None,
+            key_derivation: None,
             hash: None,
         }
     }
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 #[derive(Clone)]
 struct CryptoAddresses {
@@ -970,23 +1020,22 @@ struct CryptoAddresses {
     private_key: Option<String>,
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 struct AppMessages {
     gui_info_bar: Option<gtk::Revealer>,
-    message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
+    message_queue:
+        std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     processing: std::sync::Arc<std::sync::Mutex<bool>>,
 }
 
 impl AppMessages {
-    fn new(
-        info_bar: Option<gtk::Revealer>,
-    ) -> Self {
+    fn new(info_bar: Option<gtk::Revealer>) -> Self {
         Self {
             gui_info_bar: info_bar,
-            message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
+            message_queue: std::sync::Arc::new(std::sync::Mutex::new(
+                std::collections::VecDeque::new(),
+            )),
             processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
         }
     }
@@ -999,14 +1048,14 @@ impl AppMessages {
 
         let some_message = match last_message_in_queue {
             Some(message) => message,
-            None => &("".to_string(), gtk::MessageType::Info)
+            None => &("".to_string(), gtk::MessageType::Info),
         };
 
         let last_message = some_message.0.clone();
 
         if new_message != last_message {
             queue.push_back((new_message, message_type));
-            
+
             if !*self.processing.lock().unwrap() {
                 self.start_message_processor();
             }
@@ -1014,7 +1063,10 @@ impl AppMessages {
     }
 
     fn start_message_processor(&self) {
-        println!("[+] {}", &t!("log.app_messages.start_message_processor").to_string());
+        println!(
+            "[+] {}",
+            &t!("log.app_messages.start_message_processor").to_string()
+        );
 
         let info_bar = match &self.gui_info_bar {
             Some(info_bar) => info_bar.clone(),
@@ -1023,10 +1075,10 @@ impl AppMessages {
                 return;
             }
         };
-    
+
         let queue = self.message_queue.clone();
         let processing = self.processing.clone();
-    
+
         {
             let mut is_processing = processing.lock().unwrap();
             if *is_processing {
@@ -1039,12 +1091,12 @@ impl AppMessages {
             let queue = queue.clone();
             let info_bar = info_bar.clone();
             let processing = processing.clone();
-    
+
             move || {
                 let mut queue_lock = queue.lock().unwrap();
                 if let Some((message, message_type)) = queue_lock.pop_front() {
                     AppMessages::create_info_message(&info_bar, &message, message_type);
-    
+
                     let lock_app_settings = APP_SETTINGS.read().unwrap();
                     let timeout = lock_app_settings.gui_notification_timeout.unwrap();
 
@@ -1052,16 +1104,21 @@ impl AppMessages {
                         let queue = queue.clone();
                         let info_bar = info_bar.clone();
                         let processing = processing.clone();
-    
+
                         move || {
                             info_bar.set_reveal_child(false);
-    
-                            AppMessages::start_next_message(&queue, &info_bar, &processing, timeout);
-    
+
+                            AppMessages::start_next_message(
+                                &queue,
+                                &info_bar,
+                                &processing,
+                                timeout,
+                            );
+
                             glib::ControlFlow::Break
                         }
                     });
-    
+
                     glib::ControlFlow::Break
                 } else {
                     *processing.lock().unwrap() = false;
@@ -1072,27 +1129,31 @@ impl AppMessages {
     }
 
     fn start_next_message(
-        queue: &std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
+        queue: &std::sync::Arc<
+            std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>,
+        >,
         info_bar: &gtk::Revealer,
         processing: &std::sync::Arc<std::sync::Mutex<bool>>,
         timeout: u32,
     ) {
-        println!("[+] {}", &t!("log.app_messages.start_next_message").to_string());
+        println!(
+            "[+] {}",
+            &t!("log.app_messages.start_next_message").to_string()
+        );
 
         let mut queue_lock = queue.lock().unwrap();
         if let Some((message, message_type)) = queue_lock.pop_front() {
             AppMessages::create_info_message(info_bar, &message, message_type);
-    
+
             let queue = queue.clone();
             let info_bar = info_bar.clone();
             let processing = processing.clone();
-    
-            
+
             glib::timeout_add_local(std::time::Duration::from_secs(timeout as u64), move || {
                 info_bar.set_reveal_child(false);
-    
+
                 AppMessages::start_next_message(&queue, &info_bar, &processing, timeout);
-    
+
                 glib::ControlFlow::Break
             });
         } else {
@@ -1105,7 +1166,10 @@ impl AppMessages {
         message: &str,
         message_type: gtk::MessageType,
     ) {
-        println!("[+] {}", &t!("log.app_messages.create_info_message").to_string());
+        println!(
+            "[+] {}",
+            &t!("log.app_messages.create_info_message").to_string()
+        );
 
         let message_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
         let message_label = gtk::Label::new(Some(message));
@@ -1121,7 +1185,8 @@ impl AppMessages {
         let gesture = gtk::GestureClick::new();
 
         gesture.connect_pressed(clone!(
-            #[weak] revealer,
+            #[weak]
+            revealer,
             move |_gesture, _n_press, _x, _y| {
                 revealer.set_reveal_child(false);
             }
@@ -1133,13 +1198,10 @@ impl AppMessages {
         revealer.add_controller(gesture);
         revealer.set_child(Some(&message_box));
         revealer.set_reveal_child(true);
-
     }
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 struct AppLog {
     status: std::sync::Arc<std::sync::Mutex<bool>>,
@@ -1157,24 +1219,23 @@ impl AppLog {
     }
 
     fn initialize_app_log(
-        &mut self, 
+        &mut self,
         // log_button: gtk::Button,
         gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     ) {
         let status = self.status.clone();
         let is_active = status.lock().unwrap();
         println!("\t- AppLog status: {}", is_active);
-        
+
         let new_icon = match *is_active {
             true => "notif",
             false => "log",
         };
-        
+
         let lock_gui_state = gui_state.lock().unwrap();
-    
+
         if let Some(texture_map) = &lock_gui_state.gui_button_images {
             if let Some(new_texture) = texture_map.get(new_icon) {
-                
                 let mut lock_buttons = lock_gui_state.gui_main_buttons.lock().unwrap();
 
                 if let Some(log_buttons) = lock_buttons.get_mut("log") {
@@ -1197,9 +1258,7 @@ impl AppLog {
     }
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 #[derive(Debug, Clone, Copy)]
 struct DerivationPath {
@@ -1263,9 +1322,7 @@ impl FieldValue {
     }
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 #[tokio::main]
 async fn main() {
@@ -1275,10 +1332,10 @@ async fn main() {
 
     os::detect_os_and_user_dir();
 
-    if let Err(err) = os::create_local_files() {
+    if let Err(err) = os::check_local_config() {
         eprintln!("\t- Error creating local config files: {}", err);
     } else {
-        println!("\t- Local files created");  
+        println!("\t- Config file ready");
     }
 
     AppSettings::load_settings();
@@ -1286,28 +1343,25 @@ async fn main() {
     let application = adw::Application::builder()
         .application_id("wtf.r_o0_t.qr2m")
         .build();
-    
+
     let gui_state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
 
     application.connect_activate(clone!(
         #[strong] gui_state,
         move |app| {
-            create_main_window(
-                app.clone(),
-                gui_state.clone(),
-                Some(start_time),
-            );
+            create_main_window(app.clone(), gui_state.clone(), Some(start_time));
         }
     ));
-    
-    
 
     application.run();
 }
 
 fn print_program_info() {
     let current_time = SystemTime::now();
-    let timestamp = current_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+    let timestamp = current_time
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
 
     println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
     println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
@@ -1322,12 +1376,12 @@ fn print_program_info() {
 }
 
 fn setup_app_actions(
-    application: adw::Application, 
+    application: adw::Application,
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) {
     println!("[+] {}", &t!("log.setup_app_actions").to_string());
-    
+
     let new = gio::SimpleAction::new("new", None);
     let open = gio::SimpleAction::new("open", None);
     let save = gio::SimpleAction::new("save", None);
@@ -1336,16 +1390,12 @@ fn setup_app_actions(
     let quit = gio::SimpleAction::new("quit", None);
     let log = gio::SimpleAction::new("log", None);
     let test = gio::SimpleAction::new("test", None);
-    
+
     new.connect_activate(clone!(
         #[strong] application,
         #[strong] gui_state,
         move |_action, _parameter| {
-            create_main_window(
-                application.clone(),
-                gui_state.clone(),
-                None,
-            );
+            create_main_window(application.clone(), gui_state.clone(), None);
         }
     ));
 
@@ -1363,7 +1413,7 @@ fn setup_app_actions(
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
     });
-    
+
     log.connect_activate(clone!(
         #[strong] gui_state,
         move |_action, _parameter| {
@@ -1418,28 +1468,35 @@ fn create_main_window(
     application: adw::Application,
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     start_time: Option<std::time::Instant>,
-
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
-        .title(&format!("{} {}", APP_DESCRIPTION.unwrap(), APP_VERSION.unwrap()))
+        .title(&format!(
+            "{} {}",
+            APP_DESCRIPTION.unwrap(),
+            APP_VERSION.unwrap()
+        ))
         .show_menubar(true)
         .decorated(true)
         .build();
 
-    
     let lock_app_settings = APP_SETTINGS.read().unwrap();
     let window_width = lock_app_settings.gui_last_width.unwrap();
     let window_height = lock_app_settings.gui_last_height.unwrap();
+    let gui_maximized = lock_app_settings.gui_maximized.unwrap();
     let gui_language = lock_app_settings.gui_language.clone().unwrap();
 
-    window.set_width_request(window_width as i32);
-    window.set_height_request(window_height as i32);
-    
+    if gui_maximized {
+        window.set_maximized(true);
+    } else {
+        window.set_default_width(window_width as i32);
+        window.set_default_height(window_height as i32);
+    }
+
     os::switch_locale(&gui_language);
-    
+
     qr2m_lib::setup_css();
 
     let header_bar = gtk::HeaderBar::new();
@@ -1469,7 +1526,9 @@ fn create_main_window(
 
     for (name, shortcut) in button_tooltips {
         if let Some(button) = buttons.get(name) {
-            button.set_tooltip_text(Some(&t!(format!("UI.main.tooltips.{}", name), value = shortcut).to_string()));
+            button.set_tooltip_text(Some(
+                &t!(format!("UI.main.tooltips.{}", name), value = shortcut).to_string(),
+            ));
         }
     }
 
@@ -1494,7 +1553,8 @@ fn create_main_window(
     {
         let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
         settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
-            #[strong] gui_state,
+            #[strong]
+            gui_state,
             move |_| {
                 if let Ok(mut lock_gui_state) = gui_state.lock() {
                     lock_gui_state.reload_gui_icons();
@@ -1506,14 +1566,13 @@ fn create_main_window(
     {
         let mut lock_app_log = APP_LOG.lock().unwrap();
         lock_app_log.status = std::sync::Arc::new(std::sync::Mutex::new(app_log_status));
-        
+
         lock_app_log.initialize_app_log(gui_state.clone());
     }
 
-
-    let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(
-        Some(info_bar.clone()),
-    )));
+    let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(Some(
+        info_bar.clone(),
+    ))));
 
     setup_app_actions(
         application.clone(),
@@ -1527,24 +1586,27 @@ fn create_main_window(
     header_bar.pack_end(&*buttons["settings"]);
     header_bar.pack_end(&*buttons["about"]);
     header_bar.pack_end(&*buttons["log"]);
-    
 
     // JUMP: Action: Settings button action
     buttons["settings"].connect_clicked(clone!(
-        #[strong] gui_state,
-        #[strong] app_messages_state,
+        #[strong]
+        gui_state,
+        #[strong]
+        app_messages_state,
         move |_| {
-            let settings_window = create_settings_window(gui_state.clone(), app_messages_state.clone());
+            let settings_window =
+                create_settings_window(gui_state.clone(), app_messages_state.clone());
             settings_window.show();
         }
     ));
-    
+
     buttons["about"].connect_clicked(move |_| {
         create_about_window();
     });
 
     buttons["log"].connect_clicked(clone!(
-        #[strong] gui_state,
+        #[strong]
+        gui_state,
         move |_| {
             let log_window = create_log_window(gui_state.clone());
             log_window.show();
@@ -1552,234 +1614,264 @@ fn create_main_window(
     ));
 
     buttons["new"].connect_clicked(clone!(
-        #[strong] application,
-        #[strong] gui_state,
+        #[strong]
+        application,
+        #[strong]
+        gui_state,
         move |_| {
-            create_main_window(
-                application.clone(),
-                gui_state.clone(),
-                None,
-            );
+            create_main_window(application.clone(), gui_state.clone(), None);
         }
     ));
 
     buttons["save"].connect_clicked(move |_| {
         save_wallet_to_file();
     });
-    
 
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
 
     // JUMP: Sidebar 1: Seed
-    let entropy_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    entropy_main_box.set_margin_top(10);
-    entropy_main_box.set_margin_start(10);
-    entropy_main_box.set_margin_end(10);
-    entropy_main_box.set_margin_bottom(10);
+    let sidebar_seed_main_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(20)
+        .margin_bottom(10)
+        .margin_start(10)
+        .margin_top(10)
+        .margin_end(10)
+        .build();
 
-    // Header
-    let entropy_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let entropy_header_first_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let entropy_header_second_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let sidebar_seed_header_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let sidebar_seed_button_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .spacing(20)
+        .halign(gtk::Align::Center)
+        .build();
 
-    // Entropy source
-    let entropy_source_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let entropy_source_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.source").to_string()));
-    let anu_enabled = lock_app_settings.anu_enabled;
-    let valid_entropy_sources: Vec<&str> = if anu_enabled.unwrap() {
+    let sidebar_seed_result_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    
+    sidebar_seed_main_box.append(&sidebar_seed_header_box);
+    sidebar_seed_main_box.append(&sidebar_seed_button_box);
+    sidebar_seed_main_box.append(&sidebar_seed_result_box);
+
+    let sidebar_seed_header_entropy_options = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    let sidebar_seed_header_mnemonic_options = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    
+    // Entropy Source
+    let entropy_source_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(10)
+        .hexpand(true)
+        .build();
+
+    let entropy_source_frame = gtk::Frame::builder()
+        .label(&t!("UI.main.seed.entropy.source").to_string())
+        .hexpand(true)
+        .build();
+
+    let anu_enabled = lock_app_settings.anu_enabled.unwrap_or(false);
+    let valid_entropy_sources: Vec<&str> = if anu_enabled {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
     } else {
-        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
+        VALID_ENTROPY_SOURCES
+            .iter()
+            .filter(|&&x| x != "QRNG")
+            .cloned()
+            .collect()
     };
 
-    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
+    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+
+    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
-    
     let wallet_entropy_source = lock_app_settings.wallet_entropy_source.clone().unwrap();
     let default_entropy_source = valid_entropy_source_as_strings
         .iter()
-        .position(|s| *s == wallet_entropy_source) 
+        .position(|s| *s == wallet_entropy_source)
         .unwrap_or(0);
     
     entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
-    entropy_source_box.set_hexpand(true);
-    entropy_source_frame.set_hexpand(true);
-    
+
     // Entropy length
-    let entropy_length_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let entropy_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy.length").to_string()));
-    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
-    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
+    let entropy_length_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(20)
+        .hexpand(true)
+        .build();
     
+    let entropy_length_frame = gtk::Frame::builder()
+        .label(&t!("UI.main.seed.entropy.length").to_string())
+        .hexpand(true)
+        .build();
+
+    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+
+    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+
+    let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
     let wallet_entropy_length = lock_app_settings.wallet_entropy_length.unwrap();
     let default_entropy_length = valid_entropy_lengths_as_strings
         .iter()
         .position(|x| x.parse::<u32>().unwrap() == wallet_entropy_length)
         .unwrap_or(0);
-
+    
     entropy_length_dropdown.set_selected(default_entropy_length as u32);
-    entropy_length_box.set_hexpand(true);
-    entropy_length_frame.set_hexpand(true);
 
-    // RNG mnemonic passphrase length
-    let mnemonic_passphrase_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let mnemonic_passphrase_items_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let mnemonic_passphrase_scale_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    // Mnemonic length
+    let mnemonic_passphrase_length_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .spacing(10)
+        .build();
+
+    let mnemonic_passphrase_items_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .spacing(0)
+        .build();
+
+    let mnemonic_passphrase_scale_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(10)
+        .hexpand(true)
+        .build();
+
     let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let mnemonic_passphrase_length_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.length").to_string()));
+    let mnemonic_passphrase_length_frame = gtk::Frame::builder()
+        .label(&t!("UI.main.seed.mnemonic.length").to_string())
+        .hexpand(true)
+        .build();
+    
+    let default_mnemonic_length = lock_app_settings.wallet_mnemonic_length.unwrap();
     let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
-        8.0 * 32.0,
+        default_mnemonic_length as f64,
         8.0 * 2.0,
-        8.0 * 128.0,
+        8.0 * 128.0 * 4.0,
         1.0,
         100.0,
-        0.0,
+        0.0
     );
-    let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal, Some(&mnemonic_passphrase_adjustment));
+
+    let mnemonic_passphrase_scale = gtk::Scale::new(gtk::Orientation::Horizontal,Some(&mnemonic_passphrase_adjustment));
     let mnemonic_passphrase_length_info = gtk::Entry::new();
-    mnemonic_passphrase_items_box.set_hexpand(true);
-    mnemonic_passphrase_scale_box.set_hexpand(true);
-    mnemonic_passphrase_length_box.set_hexpand(true);
-    mnemonic_passphrase_length_frame.set_hexpand(true);
 
-    // let value = entropy_source_dropdown.selected() as usize;
-    // let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
-    // let source = selected_entropy_source_value.unwrap();
-
-    let default_mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap();
-    
     mnemonic_passphrase_length_info.set_editable(false);
     mnemonic_passphrase_length_info.set_width_request(50);
     mnemonic_passphrase_length_info.set_input_purpose(gtk::InputPurpose::Digits);
     mnemonic_passphrase_length_info.set_text(&default_mnemonic_length.to_string());
-    
-    // Mnemonic passphrase
+
     let mnemonic_passphrase_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    mnemonic_passphrase_main_box.set_hexpand(true);
+
     let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
     let mnemonic_passphrase_text = gtk::Entry::new();
-    
-    mnemonic_passphrase_main_box.set_hexpand(true);
     mnemonic_passphrase_text.set_hexpand(true);
 
-    // if *source == "RNG+" {
-    //     mnemonic_passphrase_length_box.set_visible(true);
-    //     random_mnemonic_passphrase_button.set_visible(true);
-    // } else {
-    //     mnemonic_passphrase_length_box.set_visible(false);
-    //     random_mnemonic_passphrase_button.set_visible(false);
-    // }
-
-    let seed_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-
-    seed_buttons_box.set_halign(gtk::Align::Center);
-
-    // Generate entropy button
-    let generate_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_entropy_button = gtk::Button::new();
     generate_entropy_button.set_width_request(200);
     generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
-    generate_entropy_box.set_halign(gtk::Align::Center);
-    generate_entropy_box.set_margin_top(10);
-    
-    // Delete entropy button
-    let delete_entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+
     let delete_entropy_button = gtk::Button::new();
     delete_entropy_button.set_width_request(200);
-    
     delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
-    delete_entropy_box.set_halign(gtk::Align::Center);
-    delete_entropy_box.set_margin_top(10);
 
-    // Body
-    let body_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    
-    // Entropy string
     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy").to_string()));
+    let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy")));
     let entropy_text = gtk::TextView::new();
-    
     entropy_text.set_vexpand(true);
     entropy_text.set_hexpand(true);
     entropy_text.set_wrap_mode(gtk::WrapMode::Char);
-    entropy_frame.set_child(Some(&entropy_text));
-    entropy_box.append(&entropy_frame);
     entropy_text.set_editable(false);
     entropy_text.set_left_margin(5);
     entropy_text.set_top_margin(5);
+    entropy_frame.set_child(Some(&entropy_text));
+    entropy_box.append(&entropy_frame);
 
-    // Mnemonic words
     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words").to_string()));
+    let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words")));
     let mnemonic_words_text = gtk::TextView::new();
-    
-    mnemonic_words_box.set_hexpand(true);
     mnemonic_words_text.set_vexpand(true);
     mnemonic_words_text.set_hexpand(true);
+    mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
     mnemonic_words_text.set_editable(false);
     mnemonic_words_text.set_left_margin(5);
     mnemonic_words_text.set_top_margin(5);
-    mnemonic_words_text.set_wrap_mode(gtk::WrapMode::Word);
-    
-    // Seed
+    mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
+    mnemonic_words_box.append(&mnemonic_words_frame);
+
     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed").to_string()));
+    let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed")));
     let seed_text = gtk::TextView::new();
-    
-    seed_box.set_hexpand(true);
-    seed_text.set_editable(false);
     seed_text.set_vexpand(true);
     seed_text.set_hexpand(true);
+    seed_text.set_wrap_mode(gtk::WrapMode::Char);
+    seed_text.set_editable(false);
     seed_text.set_left_margin(5);
     seed_text.set_top_margin(5);
-    seed_text.set_wrap_mode(gtk::WrapMode::Char);
+    seed_frame.set_child(Some(&seed_text));
+    seed_box.append(&seed_frame);
+    
 
-    // Connections
-    entropy_source_frame.set_child(Some(&entropy_source_dropdown));
-    entropy_length_frame.set_child(Some(&entropy_length_dropdown));
-    mnemonic_passphrase_length_frame.set_child(Some(&mnemonic_passphrase_items_box));
-    mnemonic_passphrase_length_box.append(&mnemonic_passphrase_length_frame);
+    mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
+    mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
+    
     mnemonic_passphrase_items_box.append(&mnemonic_passphrase_scale_box);
     mnemonic_passphrase_items_box.append(&mnemonic_passphrase_info_box);
-    mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
-    mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
-    generate_entropy_box.append(&generate_entropy_button);
-    delete_entropy_box.append(&delete_entropy_button);
-    entropy_source_box.append(&entropy_source_frame);
-    entropy_length_box.append(&entropy_length_frame);
-    entropy_header_first_box.append(&entropy_source_box);
-    entropy_header_first_box.append(&entropy_length_box);
-    entropy_header_second_box.append(&mnemonic_passphrase_main_box);
-    entropy_header_second_box.append(&mnemonic_passphrase_length_box);
-    entropy_header_box.append(&entropy_header_first_box);
-    entropy_header_box.append(&entropy_header_second_box);  
-    seed_buttons_box.append(&generate_entropy_box);
-    seed_buttons_box.append(&delete_entropy_box);
-    entropy_header_box.append(&seed_buttons_box);
-    mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
-    mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
+    
     mnemonic_passphrase_content_box.append(&mnemonic_passphrase_text);
     mnemonic_passphrase_content_box.append(&*buttons["random"]);
-    seed_frame.set_child(Some(&seed_text));
-    mnemonic_words_box.append(&mnemonic_words_frame);
-    mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
-    seed_box.append(&seed_frame);
-    body_box.append(&entropy_box);
-    body_box.append(&mnemonic_words_box);
-    body_box.append(&seed_box);
-    entropy_main_box.append(&entropy_header_box);
-    entropy_main_box.append(&body_box);
     
-    // Start Seed sidebar
-    stack.add_titled(
-        &entropy_main_box,
-        Some("sidebar-seed"), 
-        &t!("UI.main.seed").to_string());
+    entropy_length_frame.set_child(Some(&entropy_length_dropdown));
+    entropy_source_frame.set_child(Some(&entropy_source_dropdown));
+    
+    mnemonic_passphrase_length_frame.set_child(Some(&mnemonic_passphrase_items_box));
+    mnemonic_passphrase_frame.set_child(Some(&mnemonic_passphrase_content_box));
+    
+    entropy_source_box.append(&entropy_source_frame);
+    entropy_length_box.append(&entropy_length_frame);
+    
+    mnemonic_passphrase_main_box.append(&mnemonic_passphrase_frame);
+    mnemonic_passphrase_length_box.append(&mnemonic_passphrase_length_frame);
+    
+    sidebar_seed_header_entropy_options.append(&entropy_source_box);
+    sidebar_seed_header_entropy_options.append(&entropy_length_box);
+    
+    sidebar_seed_header_mnemonic_options.append(&mnemonic_passphrase_main_box);
+    sidebar_seed_header_mnemonic_options.append(&mnemonic_passphrase_length_box);
+    
 
+
+
+
+
+
+    sidebar_seed_header_box.append(&sidebar_seed_header_entropy_options);
+    sidebar_seed_header_box.append(&sidebar_seed_header_mnemonic_options);
+    
+    sidebar_seed_button_box.append(&generate_entropy_button);
+    sidebar_seed_button_box.append(&delete_entropy_button);
+
+    sidebar_seed_result_box.append(&entropy_box);
+    sidebar_seed_result_box.append(&mnemonic_words_box);
+    sidebar_seed_result_box.append(&seed_box);
+
+    stack.add_titled(
+        &sidebar_seed_main_box,
+        Some("sidebar-seed"),
+        &t!("UI.main.seed"),
+    );
 
     // JUMP: Sidebar 2: Coin
     let coin_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
@@ -1790,7 +1882,7 @@ fn create_main_window(
     coin_main_box.set_margin_start(10);
     coin_main_box.set_margin_end(10);
     coin_main_box.set_margin_bottom(10);
-    
+
     // JUMP: Filter coins
     // 0      not supported
     // 1      verified
@@ -1798,7 +1890,7 @@ fn create_main_window(
     // 3      in plan
     // Coin filter
     let coin_filter_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.filter").to_string()));
+    let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.filter")));
     let coin_filter_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     coin_filter_main_frame.set_child(Some(&coin_filter_content_box));
     coin_filter_main_box.append(&coin_filter_main_frame);
@@ -1807,37 +1899,60 @@ fn create_main_window(
     coin_filter_content_box.set_hexpand(true);
 
     let filter_top10_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_top10_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.top", value = 10).to_string());
+    let filter_top10_coins_button =
+        gtk::Button::with_label(&t!("UI.main.coin.filter.status.top", value = 10));
     filter_top10_coins_button_box.append(&filter_top10_coins_button);
     coin_filter_content_box.append(&filter_top10_coins_button_box);
     filter_top10_coins_button_box.set_hexpand(true);
-    
+
     let filter_top100_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_top100_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.top", value = 100).to_string());
+    let filter_top100_coins_button =
+        gtk::Button::with_label(&t!("UI.main.coin.filter.status.top", value = 100));
     filter_top100_coins_button_box.append(&filter_top100_coins_button);
     coin_filter_content_box.append(&filter_top100_coins_button_box);
     filter_top100_coins_button_box.set_hexpand(true);
-    
+
     let filter_verified_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.verified", value = coin_db::COIN_STATUS_VERIFIED).to_string());
+    let filter_verified_coins_button = gtk::Button::with_label(
+        &t!(
+            "UI.main.coin.filter.status.verified",
+            value = coin_db::COIN_STATUS_VERIFIED
+        )
+        .to_string(),
+    );
     filter_verified_coins_button_box.append(&filter_verified_coins_button);
     coin_filter_content_box.append(&filter_verified_coins_button_box);
     filter_verified_coins_button_box.set_hexpand(true);
-    
+
     let filter_not_verified_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_not_verified_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not_verified", value = coin_db::COIN_STATUS_NOT_VERIFIED).to_string());
+    let filter_not_verified_coins_button = gtk::Button::with_label(
+        &t!(
+            "UI.main.coin.filter.status.not_verified",
+            value = coin_db::COIN_STATUS_NOT_VERIFIED
+        )
+    );
     filter_not_verified_coins_button_box.append(&filter_not_verified_coins_button);
     coin_filter_content_box.append(&filter_not_verified_coins_button_box);
     filter_not_verified_coins_button_box.set_hexpand(true);
-    
+
     let filter_in_plan_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_in_plan_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.future", value = coin_db::COIN_STATUS_IN_PLAN).to_string());
+    let filter_in_plan_coins_button = gtk::Button::with_label(
+        &t!(
+            "UI.main.coin.filter.status.future",
+            value = coin_db::COIN_STATUS_IN_PLAN
+        )
+    );
     filter_in_plan_coins_button_box.append(&filter_in_plan_coins_button);
     coin_filter_content_box.append(&filter_in_plan_coins_button_box);
     filter_in_plan_coins_button_box.set_hexpand(true);
-    
+
     let filter_not_supported_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_not_supported_coins_button = gtk::Button::with_label(&t!("UI.main.coin.filter.status.not_supported", value = coin_db::COIN_STATUS_NOT_SUPPORTED).to_string());
+    let filter_not_supported_coins_button = gtk::Button::with_label(
+        &t!(
+            "UI.main.coin.filter.status.not_supported",
+            value = coin_db::COIN_STATUS_NOT_SUPPORTED
+        )
+    );
     filter_not_supported_coins_button_box.append(&filter_not_supported_coins_button);
     coin_filter_content_box.append(&filter_not_supported_coins_button_box);
     filter_not_supported_coins_button_box.set_hexpand(true);
@@ -1847,7 +1962,7 @@ fn create_main_window(
     let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.search").to_string()));
     let search_coin_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     coin_filter_main_frame.set_child(Some(&search_coin_content_box));
-    
+
     // Search entry
     let coin_search = gtk::SearchEntry::new();
     search_coin_content_box.append(&coin_search);
@@ -1855,25 +1970,33 @@ fn create_main_window(
 
     // Advance search
     let advance_search_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let advance_search_label = gtk::Label::new(Some(&t!("UI.main.coin.search.advance").to_string()));
+    let advance_search_label =
+        gtk::Label::new(Some(&t!("UI.main.coin.search.advance").to_string()));
     let advance_search_checkbox = gtk::CheckButton::new();
 
     advance_search_content_box.append(&advance_search_label);
     advance_search_content_box.append(&advance_search_checkbox);
     search_coin_content_box.append(&advance_search_content_box);
-    
+
     // Search filter
     let advance_search_filter_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let valid_coin_search_filter_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
-    let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings.iter().map(|s| s.as_ref()).collect();
-    let coin_search_filter_dropdown = gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
-    
+    let valid_coin_search_filter_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+    let valid_coin_search_filter_as_str_refs: Vec<&str> = valid_coin_search_filter_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+    let coin_search_filter_dropdown =
+        gtk::DropDown::from_strings(&valid_coin_search_filter_as_str_refs);
+
     let gui_search = lock_app_settings.gui_search.clone().unwrap();
     let default_coin_search_filter = valid_coin_search_filter_as_strings
         .iter()
-        .position(|s| *s == gui_search) 
+        .position(|s| *s == gui_search)
         .unwrap_or(0);
-    
+
     if let Ok(index) = default_coin_search_filter.try_into() {
         coin_search_filter_dropdown.set_selected(index);
     } else {
@@ -1885,7 +2008,13 @@ fn create_main_window(
     advance_search_filter_box.append(&coin_search_filter_dropdown);
     search_coin_content_box.append(&advance_search_filter_box);
     coin_main_content_box.append(&coin_filter_main_frame);
-    coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = valid_coin_search_filter_as_strings[default_coin_search_filter]).to_string()));
+    coin_search.set_placeholder_text(Some(
+        &t!(
+            "UI.main.coin.search.text",
+            value = valid_coin_search_filter_as_strings[default_coin_search_filter]
+        )
+        .to_string(),
+    ));
 
     // Coin treeview
     let scrolled_window = gtk::ScrolledWindow::new();
@@ -1899,7 +2028,7 @@ fn create_main_window(
     let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
     let coin_treeview = gtk::TreeView::new();
     let coin_treeview = std::rc::Rc::new(std::cell::RefCell::new(coin_treeview));
-    
+
     coin_treeview.borrow().set_vexpand(true);
     coin_treeview.borrow().set_headers_visible(true);
 
@@ -1923,7 +2052,7 @@ fn create_main_window(
     for (i, column_title) in columns.iter().enumerate() {
         let column = gtk::TreeViewColumn::new();
         let cell = gtk::CellRendererText::new();
-        
+
         column.set_title(column_title);
         column.pack_start(&cell, true);
         column.add_attribute(&cell, "text", i as i32);
@@ -1939,22 +2068,25 @@ fn create_main_window(
         if found_coin.status == "Verified" {
             let iter = filtered_store.append(None);
 
-            filtered_store.set(&iter, &[
-                (0, &found_coin.status),
-                (1, &found_coin.coin_index.to_string()),
-                (2, &found_coin.coin_symbol),
-                (3, &found_coin.coin_name),
-                (4, &found_coin.key_derivation),
-                (5, &found_coin.hash),
-                (6, &found_coin.private_header),
-                (7, &found_coin.public_header),
-                (8, &found_coin.public_key_hash),
-                (9, &found_coin.script_hash),
-                (10, &found_coin.wallet_import_format),
-                (11, &found_coin.evm),
-                (12, &found_coin.ucid),
-                (13, &found_coin.cmc_top),
-            ]);
+            filtered_store.set(
+                &iter,
+                &[
+                    (0, &found_coin.status),
+                    (1, &found_coin.coin_index.to_string()),
+                    (2, &found_coin.coin_symbol),
+                    (3, &found_coin.coin_name),
+                    (4, &found_coin.key_derivation),
+                    (5, &found_coin.hash),
+                    (6, &found_coin.private_header),
+                    (7, &found_coin.public_header),
+                    (8, &found_coin.public_key_hash),
+                    (9, &found_coin.script_hash),
+                    (10, &found_coin.wallet_import_format),
+                    (11, &found_coin.evm),
+                    (12, &found_coin.ucid),
+                    (13, &found_coin.cmc_top),
+                ],
+            );
         }
     }
 
@@ -1997,13 +2129,12 @@ fn create_main_window(
     master_keys_box.append(&master_xprv_frame);
     master_keys_box.append(&master_xpub_frame);
     coin_main_content_box.append(&master_keys_box);
-    
-    stack.add_titled(
-        &coin_main_box, 
-        Some("sidebar-coin"), 
-        &t!("UI.main.coin").to_string()
-    );
 
+    stack.add_titled(
+        &coin_main_box,
+        Some("sidebar-coin"),
+        &t!("UI.main.coin").to_string(),
+    );
 
     // JUMP: Sidebar 3: Address
     let main_address_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
@@ -2022,61 +2153,71 @@ fn create_main_window(
     let purpose_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let main_bip_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.bip").to_string()));
     let main_coin_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.coin").to_string()));
-    let main_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.address").to_string()));
-    let main_purpose_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.purpose").to_string()));
+    let main_address_frame =
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.address").to_string()));
+    let main_purpose_frame =
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.purpose").to_string()));
 
     main_bip_frame.set_hexpand(true);
     main_coin_frame.set_hexpand(true);
     main_address_frame.set_hexpand(true);
     main_purpose_frame.set_hexpand(true);
-    
-    let bip_hardened_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
-    let coin_hardened_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
-    let address_hardened_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
 
-    let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
+    let bip_hardened_frame =
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+    let coin_hardened_frame =
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+    let address_hardened_frame =
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation.hard").to_string()));
+
+    let valid_bip_as_string: Vec<String> = VALID_BIP_DERIVATIONS
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
     let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
-    
+
     let wallet_bip = lock_app_settings.wallet_bip.unwrap();
-    let default_index = VALID_BIP_DERIVATIONS.iter().position(|&x| x == wallet_bip).unwrap_or_else(|| {
-        eprintln!("\t- {}", &t!("error.bip.value", value = wallet_bip));
-        1
-    });
+    let default_index = VALID_BIP_DERIVATIONS
+        .iter()
+        .position(|&x| x == wallet_bip)
+        .unwrap_or_else(|| {
+            eprintln!("\t- {}", &t!("error.bip.value", value = wallet_bip));
+            1
+        });
 
     bip_dropdown.set_selected(default_index.try_into().unwrap());
-        bip_dropdown.set_hexpand(true);
-    
+    bip_dropdown.set_hexpand(true);
+
     let bip_hardened_checkbox = gtk::CheckButton::new();
     bip_hardened_checkbox.set_active(true);
     bip_hardened_checkbox.set_halign(gtk::Align::Center);
-    
+
     let coin_entry = gtk::Entry::new();
     coin_entry.set_editable(false);
     coin_entry.set_hexpand(true);
-    
+
     let coin_hardened_checkbox = gtk::CheckButton::new();
     coin_hardened_checkbox.set_active(true);
     coin_hardened_checkbox.set_halign(gtk::Align::Center);
-    
-    let adjustment = gtk::Adjustment::new(
-        0.0,
-        0.0,
-        WALLET_MAX_ADDRESSES as f64,
-        1.0,
-        100.0,
-        0.0,
-    );
-    
+
+    let adjustment = gtk::Adjustment::new(0.0, 0.0, WALLET_MAX_ADDRESSES as f64, 1.0, 100.0, 0.0);
+
     let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
     address_spinbutton.set_hexpand(true);
-    
+
     let address_hardened_checkbox = gtk::CheckButton::new();
     address_hardened_checkbox.set_active(true);
     address_hardened_checkbox.set_halign(gtk::Align::Center);
-    
-    let valid_wallet_purpose_as_strings: Vec<String> = VALID_WALLET_PURPOSE.iter().map(|&x| x.to_string()).collect();
-    let valid_wallet_purpose_as_ref: Vec<&str> = valid_wallet_purpose_as_strings.iter().map(|s| s.as_ref()).collect();
+
+    let valid_wallet_purpose_as_strings: Vec<String> = VALID_WALLET_PURPOSE
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+    let valid_wallet_purpose_as_ref: Vec<&str> = valid_wallet_purpose_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
     let purpose_dropdown = gtk::DropDown::from_strings(&valid_wallet_purpose_as_ref);
     purpose_dropdown.set_selected(0);
     purpose_dropdown.set_hexpand(true);
@@ -2087,9 +2228,10 @@ fn create_main_window(
 
     // Derivation label
     let derivation_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let derivation_label_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation").to_string()));
+    let derivation_label_frame =
+        gtk::Frame::new(Some(&t!("UI.main.address.derivation").to_string()));
     derivation_label_frame.set_hexpand(true);
-    
+
     let default_bip_label = if wallet_bip == 32 {
         main_purpose_frame.set_visible(false);
         format!("m/{}'/0'/0'", wallet_bip)
@@ -2097,7 +2239,7 @@ fn create_main_window(
         main_purpose_frame.set_visible(true);
         format!("m/{}'/0'/0'/0", wallet_bip)
     };
-    
+
     let derivation_label_text = gtk4::Label::builder()
         .label(&default_bip_label)
         .halign(gtk::Align::Center)
@@ -2105,46 +2247,32 @@ fn create_main_window(
         .css_classes(["large-title"])
         .build();
 
-
     let address_generation_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     address_generation_buttons_box.set_halign(gtk::Align::Center);
-    
+
     let generate_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let generate_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate").to_string());
     generate_addresses_button_box.append(&generate_addresses_button);
-
 
     let delete_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let delete_addresses_button = gtk::Button::with_label(&t!("UI.main.address.generate.clean").to_string());
     delete_addresses_button_box.append(&delete_addresses_button);
     delete_addresses_button_box.set_visible(false);
-    
-    let generator_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<(tokio::task::JoinHandle<()>, tokio::sync::watch::Sender<bool>)>));
+
+    let generator_handler = std::sync::Arc::new(std::sync::Mutex::new(
+        None::<(
+            tokio::task::JoinHandle<()>,
+            tokio::sync::watch::Sender<bool>,
+        )>,
+    ));
     let stop_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let stop_address_generation_button = gtk::Button::with_label(&t!("UI.main.address.generate.stop").to_string());
     stop_addresses_button_box.append(&stop_address_generation_button);
     stop_addresses_button_box.set_visible(false);
 
-
     address_generation_buttons_box.append(&generate_addresses_button_box);
     address_generation_buttons_box.append(&delete_addresses_button_box);
     address_generation_buttons_box.append(&stop_addresses_button_box);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // Address tree
     let address_scrolled_window = gtk::ScrolledWindow::new();
@@ -2168,14 +2296,13 @@ fn create_main_window(
     let address_treeview = gtk::TreeView::new();
     address_treeview.set_model(Some(&sorted_model));
 
-
     address_treeview.set_headers_visible(true);
     let columns = [
-        &t!("UI.main.address.table.coin").to_string(), 
-        &t!("UI.main.address.table.path").to_string(), 
-        &t!("UI.main.address.table.address").to_string(), 
-        &t!("UI.main.address.table.pub").to_string(), 
-        &t!("UI.main.address.table.priv").to_string()
+        &t!("UI.main.address.table.coin").to_string(),
+        &t!("UI.main.address.table.path").to_string(),
+        &t!("UI.main.address.table.address").to_string(),
+        &t!("UI.main.address.table.pub").to_string(),
+        &t!("UI.main.address.table.priv").to_string(),
     ];
 
     for (i, column_title) in columns.iter().enumerate() {
@@ -2191,7 +2318,6 @@ fn create_main_window(
     let address_options_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_options_content = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     address_options_box.append(&address_options_content);
-    
 
     // Address count
     let address_options_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.count").to_string()));
@@ -2206,7 +2332,7 @@ fn create_main_window(
         0.0,
     );
     let address_count_spinbutton = gtk::SpinButton::new(Some(&address_options_adjustment), 1.0, 0);
-    
+
     address_options_frame.set_child(Some(&address_options_address_count_box));
     address_options_address_count_box.append(&address_count_spinbutton);
 
@@ -2222,11 +2348,9 @@ fn create_main_window(
         0.0,
     );
     let address_start_spinbutton = gtk::SpinButton::new(Some(&address_start_adjustment), 1.0, 0);
-    
+
     address_start_frame.set_child(Some(&address_start_address_count_box));
     address_start_address_count_box.append(&address_start_spinbutton);
-
-    
 
     // Hardened address
     let address_options_hardened_address_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.hardened").to_string()));
@@ -2238,17 +2362,12 @@ fn create_main_window(
     address_options_hardened_address_box.set_halign(gtk4::Align::Center);
     address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
     address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
-    
-    
 
     // Address progress box
     let address_generation_progress_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let address_generation_progress_bar = gtk::ProgressBar::new();
     address_generation_progress_bar.set_hexpand(true);
     address_generation_progress_box.append(&address_generation_progress_bar);
-
-
-
 
     stop_address_generation_button.connect_clicked(clone!(
         #[strong] generator_handler,
@@ -2267,10 +2386,6 @@ fn create_main_window(
         }
     ));
 
-
-
-
-    // Connections
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
     coin_box.append(&coin_entry);
@@ -2300,12 +2415,11 @@ fn create_main_window(
     main_address_box.append(&address_treeview_box);
     main_address_box.append(&address_options_box);
     main_address_box.append(&address_generation_progress_box);
-    // main_address_box.append(&stop_addresses_button_box);
-    
+
     stack.add_titled(
         &main_address_box,
-        Some("sidebar-address"), 
-        &t!("UI.main.address").to_string()
+        Some("sidebar-address"),
+        &t!("UI.main.address").to_string(),
     );
 
     // JUMP: Action: Open Wallet
@@ -2321,15 +2435,15 @@ fn create_main_window(
             if !entropy.is_empty() {
                 println!(" ↳ Wallet entropy: {:?}", entropy);
                 entropy_text.buffer().set_text(&entropy);
-                
+
                 match passphrase {
                     Some(pass) => {
                         println!("\t- Mnemonic passphrase: {:?}", pass);
                         mnemonic_passphrase_text.buffer().set_text(&pass);
-                    },
+                    }
                     None => {
                         println!("\t- No Mnemonic passphrase available");
-                    },
+                    }
                 }
 
                 let buffer = entropy_text.buffer();
@@ -2349,19 +2463,19 @@ fn create_main_window(
                         264 => (256, 8),
                         _ => (0, 0),
                     };
-                
+
                     let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
 
-                    let seed = keys::generate_bip39_seed(&pre_entropy, &mnemonic_passphrase_text.buffer().text());
+                    let seed = keys::generate_bip39_seed(
+                        &pre_entropy,
+                        &mnemonic_passphrase_text.buffer().text(),
+                    );
                     let seed_hex = hex::encode(&seed[..]);
                     seed_text.buffer().set_text(&seed_hex.to_string());
-                    
+
                     println!("\t- Seed (hex): {:?}", seed_hex);
                 }
-
-
             }
-
         }
     ));
 
@@ -2379,34 +2493,34 @@ fn create_main_window(
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
-            let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
-            let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
+            let selected_entropy_source_value =
+                VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+            let selected_entropy_length_value =
+                VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
             let source = selected_entropy_source_value.unwrap().to_string();
-            let entropy_length = selected_entropy_length_value.unwrap(); 
+            let entropy_length = selected_entropy_length_value.unwrap();
 
-            let pre_entropy = keys::generate_entropy(
-                &source,
-                *entropy_length as u64,
-            );
-                
+            let pre_entropy = keys::generate_entropy(&source, *entropy_length as u64);
+
             if !pre_entropy.is_empty() {
-                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
+                let checksum =
+                    qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
                 println!("\t- Entropy checksum: {:?}", checksum);
 
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
 
                 println!("\t- Final entropy: {:?}", full_entropy);
                 entropy_text.buffer().set_text(&full_entropy);
-                
+
                 let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
                 mnemonic_words_text.buffer().set_text(&mnemonic_words);
-                
+
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
 
                 let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
-                
+
                 println!("\t- Seed (hex): {:?}", seed_hex);
 
                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
@@ -2418,11 +2532,13 @@ fn create_main_window(
 
                 master_private_key_text.buffer().set_text("");
                 master_public_key_text.buffer().set_text("");
-
             } else {
                 eprintln!("\t- {}", &t!("error.entropy.empty"));
                 let lock_app_messages = app_messages_state.lock().unwrap();
-                lock_app_messages.queue_message(t!("error.entropy.empty").to_string(), gtk::MessageType::Warning);
+                lock_app_messages.queue_message(
+                    t!("error.entropy.empty").to_string(),
+                    gtk::MessageType::Warning,
+                );
             }
         }
     ));
@@ -2435,7 +2551,6 @@ fn create_main_window(
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
         #[weak] address_store,
-        // #[weak] save_wallet_button,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
@@ -2444,8 +2559,9 @@ fn create_main_window(
             master_private_key_text.buffer().set_text("");
             master_public_key_text.buffer().set_text("");
             address_store.clear();
-    }));
-    
+        }
+    ));
+
     buttons["random"].connect_clicked(clone!(
         #[weak] mnemonic_passphrase_text,
         #[weak] mnemonic_passphrase_scale,
@@ -2453,8 +2569,8 @@ fn create_main_window(
             let scale_value = mnemonic_passphrase_scale.value() as u32;
 
             let mnemonic_rng_string: String = (0..scale_value)
-                        .map(|_| char::from(rand::rng().random_range(32..127)))
-                        .collect();
+                .map(|_| char::from(rand::rng().random_range(32..127)))
+                .collect();
             println!("\t- RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
             mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
         }
@@ -2504,7 +2620,7 @@ fn create_main_window(
                     let evm = model.get_value(&iter, 11);
                     let ucid = model.get_value(&iter, 12);
                     let cmc_top = model.get_value(&iter, 13);
-    
+
                     if let (
                         Ok(status),
                         Ok(coin_index),
@@ -2522,8 +2638,8 @@ fn create_main_window(
                         Ok(cmc_top),
                     ) = (
                         status.get::<String>(),
-                        coin_index.get::<String>(), 
-                        coin_symbol.get::<String>(), 
+                        coin_index.get::<String>(),
+                        coin_symbol.get::<String>(),
                         coin_name.get::<String>(),
                         key_derivation.get::<String>(),
                         hash.get::<String>(),
@@ -2538,7 +2654,7 @@ fn create_main_window(
                     ) {
                         master_private_key_text.buffer().set_text("");
                         master_public_key_text.buffer().set_text("");
-    
+
                         println!("\n#### Coin info ####");
                         println!("\t- status: {}", status);
                         println!("\t- index: {}", coin_index);
@@ -2559,42 +2675,47 @@ fn create_main_window(
                         let start_iter = buffer.start_iter();
                         let end_iter = buffer.end_iter();
                         let seed_string = buffer.text(&start_iter, &end_iter, true);
-                        
+
                         match keys::generate_master_keys(
-                            &seed_string, 
+                            &seed_string,
                             &private_header,
                             &public_header,
                         ) {
                             Ok(xprv) => {
                                 master_private_key_text.buffer().set_text(&xprv.0);
                                 master_public_key_text.buffer().set_text(&xprv.1);
-                            },
+                            }
                             Err(err) => {
                                 {
                                     let lock_gui_state = app_messages_state.lock().unwrap();
-                                    lock_gui_state.queue_message(t!("error.master.create").to_string(), gtk::MessageType::Warning);
-                                    
+                                    lock_gui_state.queue_message(
+                                        t!("error.master.create").to_string(),
+                                        gtk::MessageType::Warning,
+                                    );
                                 }
                                 eprintln!("\t- {}: {}", &t!("error.master.create"), err)
-                            },
+                            }
                         }
-    
+
                         coin_entry.set_text(&coin_index);
 
                         let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                         wallet_settings.public_key_hash = Some(public_key_hash.clone());
-                        wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
+                        wallet_settings.wallet_import_format =
+                            Some(wallet_import_format.to_string());
                         wallet_settings.key_derivation = Some(key_derivation.to_string());
                         wallet_settings.hash = Some(hash.to_string());
                         wallet_settings.coin_index = Some(coin_index.parse().unwrap());
                         wallet_settings.coin_name = Some(coin_name.parse().unwrap());
-                    }  
+                    }
                 }
             } else {
                 {
                     let app_messages_state = app_messages_state.lock().unwrap();
-                    app_messages_state.queue_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
-                    
+                    app_messages_state.queue_message(
+                        t!("error.entropy.seed").to_string(),
+                        gtk::MessageType::Warning,
+                    );
                 }
                 // let lock_state = gui_state.lock().unwrap();
                 // lock_state.show_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
@@ -2615,7 +2736,7 @@ fn create_main_window(
             let value = entropy_source_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(value);
             let source = selected_entropy_source_value.unwrap();
-    
+
             // if *source == "RNG+" {
             //     mnemonic_passphrase_length_box.set_visible(true);
             //     random_mnemonic_passphrase_button.set_visible(true);
@@ -2631,32 +2752,34 @@ fn create_main_window(
             }
         }
     ));
-    
+
     advance_search_checkbox.connect_active_notify(clone!(
         // #[weak] advance_search_checkbox,
         move |checkbox| {
-        if checkbox.is_active() {
-            advance_search_filter_box.set_visible(true);
-        } else {
-            
-            advance_search_filter_box.set_visible(false);
+            if checkbox.is_active() {
+                advance_search_filter_box.set_visible(true);
+            } else {
+                advance_search_filter_box.set_visible(false);
+            }
         }
-    }));
+    ));
 
     coin_search_filter_dropdown.connect_selected_notify(clone!(
         #[weak] coin_search,
         move |dropdown| {
             let selected: usize = dropdown.selected().try_into().unwrap_or(0);
-            coin_search.set_placeholder_text(Some(&t!("UI.main.coin.search.text", value = VALID_COIN_SEARCH_PARAMETER[selected])));
+            coin_search.set_placeholder_text(Some(&t!(
+                "UI.main.coin.search.text",
+                value = VALID_COIN_SEARCH_PARAMETER[selected]
+            )));
             coin_search.set_text("");
-    }));
-    
+        }
+    ));
+
     mnemonic_passphrase_text.connect_changed(clone!(
-        // #[weak] generate_entropy_button,
         #[weak] entropy_text,
         #[weak] mnemonic_words_text,
         #[weak] seed_text,
-        // #[weak] mnemonic_passphrase_length_info,
         move |mnemonic_passphrase_text| {
             let entropy_buffer = entropy_text.buffer();
             let start_iter = entropy_buffer.start_iter();
@@ -2668,7 +2791,10 @@ fn create_main_window(
                 let cut_entropy = entropy_length / 32;
                 let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
 
-                let seed = keys::generate_bip39_seed(&new_pre_entropy, &mnemonic_passphrase_text.buffer().text());
+                let seed = keys::generate_bip39_seed(
+                    &new_pre_entropy,
+                    &mnemonic_passphrase_text.buffer().text(),
+                );
                 let seed_hex = hex::encode(&seed[..]);
                 seed_text.buffer().set_text(&seed_hex.to_string());
 
@@ -2676,8 +2802,11 @@ fn create_main_window(
                 let mnemonic_words_buffer = mnemonic_words_text.buffer();
                 let start_iter = mnemonic_words_buffer.start_iter();
                 let end_iter = mnemonic_words_buffer.end_iter();
-                let final_mnemonic_words = mnemonic_words_buffer.text(&start_iter, &end_iter, false).to_string();
-                let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
+                let final_mnemonic_words = mnemonic_words_buffer
+                    .text(&start_iter, &end_iter, false)
+                    .to_string();
+                let final_mnemonic_passphrase =
+                    mnemonic_passphrase_text.buffer().text().to_string();
 
                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                 wallet_settings.entropy_string = Some(final_entropy);
@@ -2687,10 +2816,11 @@ fn create_main_window(
             }
         }
     ));
-    
+
     mnemonic_passphrase_scale.connect_value_changed(clone!(
         #[weak] mnemonic_passphrase_length_info,
-        #[weak(rename_to = random_mnemonic_passphrase_button)] buttons["random"],
+        #[weak(rename_to = random_mnemonic_passphrase_button)]
+        buttons["random"],
         move |mnemonic_passphrase_scale| {
             let scale_value = mnemonic_passphrase_scale.value() as u32;
             mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
@@ -2708,12 +2838,21 @@ fn create_main_window(
             coin_tree_store.borrow_mut().clear();
 
             let selected = coin_search_filter_dropdown.selected() as usize;
-            let selected_search_parameter = VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
-            let min_search_length = if selected_search_parameter == &"Index" { 1 } else { 2 };
+            let selected_search_parameter =
+                VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
+            let min_search_length = if selected_search_parameter == &"Index" {
+                1
+            } else {
+                2
+            };
 
             if search_text.len() >= min_search_length {
                 let store = coin_store.borrow();
-                let matching_coins = coin_db::fetch_coins_from_database(selected_search_parameter, &store, &search_text);
+                let matching_coins = coin_db::fetch_coins_from_database(
+                    selected_search_parameter,
+                    &store,
+                    &search_text,
+                );
 
                 if !matching_coins.is_empty() {
                     let store = coin_tree_store.borrow_mut();
@@ -2721,7 +2860,57 @@ fn create_main_window(
 
                     for found_coin in matching_coins {
                         let iter = store.append(None);
-                        store.set(&iter, &[
+                        store.set(
+                            &iter,
+                            &[
+                                (0, &found_coin.status),
+                                (1, &found_coin.coin_index.to_string()),
+                                (2, &found_coin.coin_symbol),
+                                (3, &found_coin.coin_name),
+                                (4, &found_coin.key_derivation),
+                                (5, &found_coin.hash),
+                                (6, &found_coin.private_header),
+                                (7, &found_coin.public_header),
+                                (8, &found_coin.public_key_hash),
+                                (9, &found_coin.script_hash),
+                                (10, &found_coin.wallet_import_format),
+                                (11, &found_coin.evm),
+                                (12, &found_coin.ucid),
+                                (13, &found_coin.cmc_top),
+                            ],
+                        );
+                    }
+                    coin_treeview.borrow().set_model(Some(&*store));
+                } else {
+                    coin_tree_store.borrow_mut().clear();
+                }
+            } else {
+                coin_tree_store.borrow_mut().clear();
+            }
+        }
+    });
+
+    filter_top10_coins_button.connect_clicked({
+        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
+        let coin_store = std::rc::Rc::clone(&coin_store);
+        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
+
+        move |_| {
+            let search_text = "10";
+            let search_parameter = "Cmc_top";
+            let store = coin_store.borrow();
+            let matching_coins =
+                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+
+            let store = coin_tree_store.borrow_mut();
+            store.clear();
+
+            if !matching_coins.is_empty() {
+                for found_coin in matching_coins {
+                    let iter = store.append(None);
+                    store.set(
+                        &iter,
+                        &[
                             (0, &found_coin.status),
                             (1, &found_coin.coin_index.to_string()),
                             (2, &found_coin.coin_symbol),
@@ -2736,51 +2925,8 @@ fn create_main_window(
                             (11, &found_coin.evm),
                             (12, &found_coin.ucid),
                             (13, &found_coin.cmc_top),
-                        ]);
-                    }
-                    coin_treeview.borrow().set_model(Some(&*store));
-                } else {
-                    coin_tree_store.borrow_mut().clear();
-                }
-            } else {
-                coin_tree_store.borrow_mut().clear();
-            }
-        }
-    });
-    
-    filter_top10_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
-        move |_| {
-            let search_text = "10";
-            let search_parameter = "Cmc_top";
-            let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
-
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
+                        ],
+                    );
                 }
                 coin_treeview.borrow().set_model(Some(&*store));
             } else {
@@ -2788,7 +2934,7 @@ fn create_main_window(
             }
         }
     });
-    
+
     filter_top100_coins_button.connect_clicked({
         let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
         let coin_store = std::rc::Rc::clone(&coin_store);
@@ -2798,7 +2944,8 @@ fn create_main_window(
             let search_text = "100";
             let search_parameter = "Cmc_top";
             let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins =
+                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -2806,22 +2953,25 @@ fn create_main_window(
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
                     let iter = store.append(None);
-                    store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
+                    store.set(
+                        &iter,
+                        &[
+                            (0, &found_coin.status),
+                            (1, &found_coin.coin_index.to_string()),
+                            (2, &found_coin.coin_symbol),
+                            (3, &found_coin.coin_name),
+                            (4, &found_coin.key_derivation),
+                            (5, &found_coin.hash),
+                            (6, &found_coin.private_header),
+                            (7, &found_coin.public_header),
+                            (8, &found_coin.public_key_hash),
+                            (9, &found_coin.script_hash),
+                            (10, &found_coin.wallet_import_format),
+                            (11, &found_coin.evm),
+                            (12, &found_coin.ucid),
+                            (13, &found_coin.cmc_top),
+                        ],
+                    );
                 }
                 coin_treeview.borrow().set_model(Some(&*store));
             } else {
@@ -2839,7 +2989,8 @@ fn create_main_window(
             let search_text = coin_db::VALID_COIN_STATUS_NAME[1];
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins =
+                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -2847,22 +2998,25 @@ fn create_main_window(
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
                     let iter = store.append(None);
-                    store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
+                    store.set(
+                        &iter,
+                        &[
+                            (0, &found_coin.status),
+                            (1, &found_coin.coin_index.to_string()),
+                            (2, &found_coin.coin_symbol),
+                            (3, &found_coin.coin_name),
+                            (4, &found_coin.key_derivation),
+                            (5, &found_coin.hash),
+                            (6, &found_coin.private_header),
+                            (7, &found_coin.public_header),
+                            (8, &found_coin.public_key_hash),
+                            (9, &found_coin.script_hash),
+                            (10, &found_coin.wallet_import_format),
+                            (11, &found_coin.evm),
+                            (12, &found_coin.ucid),
+                            (13, &found_coin.cmc_top),
+                        ],
+                    );
                 }
                 coin_treeview.borrow().set_model(Some(&*store));
             } else {
@@ -2880,7 +3034,8 @@ fn create_main_window(
             let search_text = coin_db::VALID_COIN_STATUS_NAME[2];
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins =
+                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -2888,22 +3043,25 @@ fn create_main_window(
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
                     let iter = store.append(None);
-                    store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
+                    store.set(
+                        &iter,
+                        &[
+                            (0, &found_coin.status),
+                            (1, &found_coin.coin_index.to_string()),
+                            (2, &found_coin.coin_symbol),
+                            (3, &found_coin.coin_name),
+                            (4, &found_coin.key_derivation),
+                            (5, &found_coin.hash),
+                            (6, &found_coin.private_header),
+                            (7, &found_coin.public_header),
+                            (8, &found_coin.public_key_hash),
+                            (9, &found_coin.script_hash),
+                            (10, &found_coin.wallet_import_format),
+                            (11, &found_coin.evm),
+                            (12, &found_coin.ucid),
+                            (13, &found_coin.cmc_top),
+                        ],
+                    );
                 }
                 coin_treeview.borrow().set_model(Some(&*store));
             } else {
@@ -2921,7 +3079,8 @@ fn create_main_window(
             let search_text = coin_db::VALID_COIN_STATUS_NAME[3];
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins =
+                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -2929,22 +3088,25 @@ fn create_main_window(
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
                     let iter = store.append(None);
-                    store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
+                    store.set(
+                        &iter,
+                        &[
+                            (0, &found_coin.status),
+                            (1, &found_coin.coin_index.to_string()),
+                            (2, &found_coin.coin_symbol),
+                            (3, &found_coin.coin_name),
+                            (4, &found_coin.key_derivation),
+                            (5, &found_coin.hash),
+                            (6, &found_coin.private_header),
+                            (7, &found_coin.public_header),
+                            (8, &found_coin.public_key_hash),
+                            (9, &found_coin.script_hash),
+                            (10, &found_coin.wallet_import_format),
+                            (11, &found_coin.evm),
+                            (12, &found_coin.ucid),
+                            (13, &found_coin.cmc_top),
+                        ],
+                    );
                 }
                 coin_treeview.borrow().set_model(Some(&*store));
             } else {
@@ -2962,7 +3124,8 @@ fn create_main_window(
             let search_text = coin_db::VALID_COIN_STATUS_NAME[0];
             let search_parameter = "Status";
             let store = coin_store.borrow();
-            let matching_coins = coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+            let matching_coins =
+                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -2970,22 +3133,25 @@ fn create_main_window(
             if !matching_coins.is_empty() {
                 for found_coin in matching_coins {
                     let iter = store.append(None);
-                    store.set(&iter, &[
-                        (0, &found_coin.status),
-                        (1, &found_coin.coin_index.to_string()),
-                        (2, &found_coin.coin_symbol),
-                        (3, &found_coin.coin_name),
-                        (4, &found_coin.key_derivation),
-                        (5, &found_coin.hash),
-                        (6, &found_coin.private_header),
-                        (7, &found_coin.public_header),
-                        (8, &found_coin.public_key_hash),
-                        (9, &found_coin.script_hash),
-                        (10, &found_coin.wallet_import_format),
-                        (11, &found_coin.evm),
-                        (12, &found_coin.ucid),
-                        (13, &found_coin.cmc_top),
-                    ]);
+                    store.set(
+                        &iter,
+                        &[
+                            (0, &found_coin.status),
+                            (1, &found_coin.coin_index.to_string()),
+                            (2, &found_coin.coin_symbol),
+                            (3, &found_coin.coin_name),
+                            (4, &found_coin.key_derivation),
+                            (5, &found_coin.hash),
+                            (6, &found_coin.private_header),
+                            (7, &found_coin.public_header),
+                            (8, &found_coin.public_key_hash),
+                            (9, &found_coin.script_hash),
+                            (10, &found_coin.wallet_import_format),
+                            (11, &found_coin.evm),
+                            (12, &found_coin.ucid),
+                            (13, &found_coin.cmc_top),
+                        ],
+                    );
                 }
                 coin_treeview.borrow().set_model(Some(&*store));
             } else {
@@ -3000,7 +3166,7 @@ fn create_main_window(
             let value = bip_dropdown.selected() as usize;
             let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(value);
             let bip = selected_entropy_source_value.unwrap();
-    
+
             if *bip == 32 {
                 main_purpose_frame.set_visible(false);
                 bip_hardened_frame.set_visible(false);
@@ -3008,30 +3174,36 @@ fn create_main_window(
                 main_purpose_frame.set_visible(true);
                 bip_hardened_frame.set_visible(true);
             }
-    
+
             let mut dp = DERIVATION_PATH.write().unwrap();
             dp.update_field("bip", Some(FieldValue::U32(*bip)));
             update_derivation_label(*dp, derivation_label_text)
         }
     ));
-        
+
     bip_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] bip_hardened_checkbox,
         move |_| {
             let mut dp = DERIVATION_PATH.write().unwrap();
-            dp.update_field("hardened_bip", Some(FieldValue::Bool(bip_hardened_checkbox.is_active())));
+            dp.update_field(
+                "hardened_bip",
+                Some(FieldValue::Bool(bip_hardened_checkbox.is_active())),
+            );
             update_derivation_label(*dp, derivation_label_text)
         }
     ));
-        
+
     coin_hardened_checkbox.connect_active_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] coin_hardened_checkbox,
         move |_| {
             let mut dp = DERIVATION_PATH.write().unwrap();
 
-            dp.update_field("hardened_coin", Some(FieldValue::Bool(coin_hardened_checkbox.is_active())));
+            dp.update_field(
+                "hardened_coin",
+                Some(FieldValue::Bool(coin_hardened_checkbox.is_active())),
+            );
             update_derivation_label(*dp, derivation_label_text)
         }
     ));
@@ -3042,11 +3214,14 @@ fn create_main_window(
         move |_| {
             let mut dp = DERIVATION_PATH.write().unwrap();
 
-            dp.update_field("hardened_address", Some(FieldValue::Bool(address_hardened_checkbox.is_active())));
+            dp.update_field(
+                "hardened_address",
+                Some(FieldValue::Bool(address_hardened_checkbox.is_active())),
+            );
             update_derivation_label(*dp, derivation_label_text)
         }
     ));
-        
+
     purpose_dropdown.connect_selected_notify(clone!(
         #[weak] derivation_label_text,
         #[weak] purpose_dropdown,
@@ -3066,7 +3241,7 @@ fn create_main_window(
             let coin_number = coin_entry.buffer().text();
             let ff = coin_number.as_str();
             let my_int = ff.parse::<u32>();
-            
+
             if my_int.is_ok() {
                 let mut dp = DERIVATION_PATH.write().unwrap();
                 dp.update_field("coin", Some(FieldValue::U32(my_int.unwrap())));
@@ -3082,7 +3257,7 @@ fn create_main_window(
             let address_number = address_spinbutton.text();
             let ff = address_number.as_str();
             let my_int = ff.parse::<u32>();
-            
+
             if my_int.is_ok() {
                 let mut dp = DERIVATION_PATH.write().unwrap();
                 dp.update_field("address", Some(FieldValue::U32(my_int.unwrap())));
@@ -3093,29 +3268,19 @@ fn create_main_window(
 
     address_count_spinbutton.connect_changed(clone!(
         #[weak] address_start_spinbutton,
-        move |address_count_spinbutton| {           
+        move |address_count_spinbutton| {
             let address_count = address_count_spinbutton.text();
             let address_count_str = address_count.as_str();
             let address_count_int = address_count_str.parse::<u32>().unwrap_or(0);
-
-
 
             let maximum;
             if address_count_int == 1 {
                 maximum = WALLET_MAX_ADDRESSES;
             } else {
                 maximum = WALLET_MAX_ADDRESSES - address_count_int;
-
             }
-            
-            let new_adjustment = gtk::Adjustment::new(
-                0.0,
-                0.0,
-                maximum as f64,
-                1.0,
-                10.0,
-                0.0,
-            );
+
+            let new_adjustment = gtk::Adjustment::new(0.0, 0.0, maximum as f64, 1.0, 10.0, 0.0);
 
             let old_status = address_start_spinbutton.text();
             let old_status_str = old_status.as_str();
@@ -3132,7 +3297,7 @@ fn create_main_window(
     ));
 
     // JUMP: Generate Addresses button
-// // Working version
+    // // Working version
     generate_addresses_button.connect_clicked(clone!(
         #[strong] address_store,
         #[strong] stop_addresses_button_box,
@@ -3332,7 +3497,7 @@ fn create_main_window(
     let main_window_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let main_sidebar_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let main_infobar_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    
+
     main_sidebar_box.append(&stack_sidebar);
     main_sidebar_box.append(&stack);
     main_infobar_box.append(&info_bar);
@@ -3340,28 +3505,59 @@ fn create_main_window(
     main_window_box.append(&main_sidebar_box);
     main_window_box.append(&main_infobar_box);
     main_window_box.set_hexpand(true);
-    
+
     {
         let lock_app_messages = app_messages_state.lock().unwrap();
         lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
-        
     }
 
     window.set_child(Some(&main_window_box));
+
+    window.connect_close_request({
+        let window = window.clone();
+        move |_| {
+            let gui_last_width = window.width() as i64;
+            let gui_last_height = window.height() as i64;
+            let gui_maximized = window.is_maximized();
+
+            let mut settings = APP_SETTINGS.write().unwrap();
+
+            let updates = [
+                (
+                    "gui_last_width",
+                    toml_edit::value(gui_last_width),
+                ),
+                (
+                    "gui_last_height",
+                    toml_edit::value(gui_last_height),
+                ),
+                (
+                    "gui_maximized",
+                    toml_edit::value(gui_maximized),
+                ),
+            ];
+
+            updates.iter().for_each(|(key, value)| {
+                settings.update_value(key, value.clone(), None);
+            });
+
+            AppSettings::save_settings(&*settings);
+            glib::Propagation::Proceed
+        }
+    });
+
     window.present();
 
     match start_time {
         Some(value) => {
             let elapsed = value.elapsed();
             println!("Application startup time: {:.2?}", elapsed);
-
-        },
+        }
         None => {}
     };
-
 }
 
-fn create_log_window(   
+fn create_log_window(
     _gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
     // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
@@ -3376,17 +3572,15 @@ fn create_log_window(
         .modal(false)
         .build();
 
-
-
     // let lock_gui_state = gui_state.lock().unwrap();
-    
+
     // if let Some(app_log) = &lock_gui_state.app_log {
     //     let mut lock_app_log = app_log.lock().unwrap();
-        
+
     //     if let Some(resources) = &lock_gui_state.app_resources {
     //         let lock_app_resources = resources.lock().unwrap();
     //         let new_icon = lock_app_resources.get_icon("bell");
-            
+
     //         let new_button = gtk::Button::new();
     //         new_button.set_child(new_icon);
 
@@ -3394,12 +3588,10 @@ fn create_log_window(
     //     };
     // };
 
-
     // let lock_button = lock_log.log_button.clone();
-    
+
     // let lock_resources = resources.lock().unwrap();
-    
-    
+
     // lock_button.clone().unwrap().set_child(lock_icon);
 
     log_window
@@ -3408,7 +3600,7 @@ fn create_log_window(
 fn create_settings_window(
     gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
-) -> gtk::ApplicationWindow { 
+) -> gtk::ApplicationWindow {
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
     let lock_app_settings = APP_SETTINGS.read().unwrap();
@@ -3424,7 +3616,7 @@ fn create_settings_window(
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
     stack_sidebar.set_stack(&stack);
-    
+
     // -.-. --- .--. -.-- .-. .. --. .... -
     // JUMP: Settings: Sidebar 1: General settings
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -3448,13 +3640,18 @@ fn create_settings_window(
     let default_gui_theme_color_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_theme_color_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_theme_color_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_theme_color_label = gtk::Label::new(Some(&t!("UI.settings.general.theme").to_string()));
-    let valid_gui_themes_as_strings: Vec<String> = VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
-    let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_gui_theme_color_label =
+        gtk::Label::new(Some(&t!("UI.settings.general.theme").to_string()));
+    let valid_gui_themes_as_strings: Vec<String> =
+        VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
     let gui_theme_dropdown = gtk::DropDown::from_strings(&valid_gui_themes_as_str_refs);
     let default_gui_theme = valid_gui_themes_as_strings
         .iter()
-        .position(|s| *s == lock_app_settings.gui_theme.clone().unwrap()) 
+        .position(|s| *s == lock_app_settings.gui_theme.clone().unwrap())
         .unwrap_or(0);
 
     gui_theme_dropdown.set_selected(default_gui_theme.try_into().unwrap());
@@ -3463,7 +3660,7 @@ fn create_settings_window(
     default_gui_theme_color_item_box.set_hexpand(true);
     default_gui_theme_color_item_box.set_margin_end(20);
     default_gui_theme_color_item_box.set_halign(gtk::Align::End);
-    
+
     default_gui_theme_color_label_box.append(&default_gui_theme_color_label);
     default_gui_theme_color_item_box.append(&gui_theme_dropdown);
     default_gui_theme_color_box.append(&default_gui_theme_color_label_box);
@@ -3474,13 +3671,18 @@ fn create_settings_window(
     let default_gui_icons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_icons_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_icons_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_icons_label = gtk::Label::new(Some(&t!("UI.settings.general.icons").to_string()));
-    let valid_gui_icons_as_strings: Vec<String> = VALID_GUI_ICONS.iter().map(|&x| x.to_string()).collect();
-    let valid_gui_icons_as_str_refs: Vec<&str> = valid_gui_icons_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_gui_icons_label =
+        gtk::Label::new(Some(&t!("UI.settings.general.icons").to_string()));
+    let valid_gui_icons_as_strings: Vec<String> =
+        VALID_GUI_ICONS.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_icons_as_str_refs: Vec<&str> = valid_gui_icons_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
     let gui_icons_dropdown = gtk::DropDown::from_strings(&valid_gui_icons_as_str_refs);
     let default_gui_icons = valid_gui_icons_as_strings
         .iter()
-        .position(|s| *s == lock_app_settings.gui_icons.clone().unwrap()) 
+        .position(|s| *s == lock_app_settings.gui_icons.clone().unwrap())
         .unwrap_or(0);
 
     gui_icons_dropdown.set_selected(default_gui_icons.try_into().unwrap());
@@ -3489,7 +3691,7 @@ fn create_settings_window(
     default_gui_icons_item_box.set_hexpand(true);
     default_gui_icons_item_box.set_margin_end(20);
     default_gui_icons_item_box.set_halign(gtk::Align::End);
-    
+
     default_gui_icons_label_box.append(&default_gui_icons_label);
     default_gui_icons_item_box.append(&gui_icons_dropdown);
     default_gui_icons_box.append(&default_gui_icons_label_box);
@@ -3500,13 +3702,19 @@ fn create_settings_window(
     let default_gui_language_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_language_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_language_label = gtk::Label::new(Some(&t!("UI.settings.general.language").to_string()));
-    let valid_gui_languages_as_strings: Vec<String> = APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
-    let valid_gui_languages_as_str_refs: Vec<&str> = valid_gui_languages_as_strings.iter().map(|s| s.as_ref()).collect();
-    let default_gui_language_dropdown = gtk::DropDown::from_strings(&valid_gui_languages_as_str_refs);
+    let default_gui_language_label =
+        gtk::Label::new(Some(&t!("UI.settings.general.language").to_string()));
+    let valid_gui_languages_as_strings: Vec<String> =
+        APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_languages_as_str_refs: Vec<&str> = valid_gui_languages_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+    let default_gui_language_dropdown =
+        gtk::DropDown::from_strings(&valid_gui_languages_as_str_refs);
     let default_gui_language = valid_gui_languages_as_strings
         .iter()
-        .position(|s| *s == lock_app_settings.gui_language.clone().unwrap()) 
+        .position(|s| *s == lock_app_settings.gui_language.clone().unwrap())
         .unwrap_or(0);
 
     default_gui_language_dropdown.set_selected(default_gui_language.try_into().unwrap());
@@ -3515,7 +3723,7 @@ fn create_settings_window(
     default_gui_language_item_box.set_hexpand(true);
     default_gui_language_item_box.set_margin_end(20);
     default_gui_language_item_box.set_halign(gtk::Align::End);
-    
+
     default_gui_language_label_box.append(&default_gui_language_label);
     default_gui_language_item_box.append(&default_gui_language_dropdown);
     default_gui_language_box.append(&default_gui_language_label_box);
@@ -3526,7 +3734,8 @@ fn create_settings_window(
     let window_save_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let window_save_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let save_window_size_label = gtk::Label::new(Some(&t!("UI.settings.general.save_window").to_string()));
+    let save_window_size_label =
+        gtk::Label::new(Some(&t!("UI.settings.general.save_window").to_string()));
     let save_window_size_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.gui_save_size.unwrap();
 
@@ -3546,13 +3755,21 @@ fn create_settings_window(
     let default_search_parameter_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_search_parameter_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_search_parameter_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_search_parameter_label = gtk::Label::new(Some(&t!("UI.settings.general.search").to_string()));
-    let valid_search_parameters_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER.iter().map(|&x| x.to_string()).collect();
-    let valid_search_parameters_as_str_refs: Vec<&str> = valid_search_parameters_as_strings.iter().map(|s| s.as_ref()).collect();
-    let default_search_parameter_dropdown = gtk::DropDown::from_strings(&valid_search_parameters_as_str_refs);
+    let default_search_parameter_label =
+        gtk::Label::new(Some(&t!("UI.settings.general.search").to_string()));
+    let valid_search_parameters_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+    let valid_search_parameters_as_str_refs: Vec<&str> = valid_search_parameters_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+    let default_search_parameter_dropdown =
+        gtk::DropDown::from_strings(&valid_search_parameters_as_str_refs);
     let default_search_parameter = valid_search_parameters_as_strings
         .iter()
-        .position(|s| *s == lock_app_settings.gui_search.clone().unwrap()) 
+        .position(|s| *s == lock_app_settings.gui_search.clone().unwrap())
         .unwrap_or(0);
 
     default_search_parameter_dropdown.set_selected(default_search_parameter.try_into().unwrap());
@@ -3561,7 +3778,7 @@ fn create_settings_window(
     default_search_parameter_item_box.set_hexpand(true);
     default_search_parameter_item_box.set_margin_end(20);
     default_search_parameter_item_box.set_halign(gtk::Align::End);
-    
+
     default_search_parameter_label_box.append(&default_search_parameter_label);
     default_search_parameter_item_box.append(&default_search_parameter_dropdown);
     default_search_parameter_box.append(&default_search_parameter_label_box);
@@ -3572,17 +3789,14 @@ fn create_settings_window(
     let notification_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let notification_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let notification_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let notification_timeout_label = gtk::Label::new(Some(&t!("UI.settings.wallet.notification_timeout").to_string()));
+    let notification_timeout_label = gtk::Label::new(Some(
+        &t!("UI.settings.wallet.notification_timeout").to_string(),
+    ));
     let notification_timeout = lock_app_settings.gui_notification_timeout.unwrap() as f64;
-    let notification_timeout_adjustment = gtk::Adjustment::new(
-        notification_timeout,
-        1.0,
-        120.0,
-        1.0,
-        10.0,
-        0.0,
-    );
-    let notification_timeout_spinbutton = gtk::SpinButton::new(Some(&notification_timeout_adjustment), 1.0, 0);
+    let notification_timeout_adjustment =
+        gtk::Adjustment::new(notification_timeout, 1.0, 120.0, 1.0, 10.0, 0.0);
+    let notification_timeout_spinbutton =
+        gtk::SpinButton::new(Some(&notification_timeout_adjustment), 1.0, 0);
 
     notification_timeout_spinbutton.set_size_request(200, 10);
     notification_timeout_box.set_hexpand(true);
@@ -3596,33 +3810,7 @@ fn create_settings_window(
     notification_timeout_box.append(&notification_timeout_item_box);
     content_general_box.append(&notification_timeout_box);
 
-    // Default mnemonic passphrase length
-    let mnemonic_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-    let mnemonic_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let mnemonic_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let mnemonic_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic_length").to_string()));
-    let mnemonic_length = lock_app_settings.gui_mnemonic_length.unwrap() as f64;
-    let mnemonic_length_adjustment = gtk::Adjustment::new(
-        mnemonic_length,
-        8.0 * 2.0,
-        8.0 * 128.0,
-        1.0,
-        100.0,
-        0.0,
-    );
-    let mnemonic_length_spinbutton = gtk::SpinButton::new(Some(&mnemonic_length_adjustment), 1.0, 0);
-
-    mnemonic_length_spinbutton.set_size_request(200, 10);
-    mnemonic_length_box.set_hexpand(true);
-    mnemonic_length_item_box.set_hexpand(true);
-    mnemonic_length_item_box.set_margin_end(20);
-    mnemonic_length_item_box.set_halign(gtk::Align::End);
-
-    mnemonic_length_label_box.append(&mnemonic_length_label);
-    mnemonic_length_item_box.append(&mnemonic_length_spinbutton);
-    mnemonic_length_box.append(&mnemonic_length_label_box);
-    mnemonic_length_box.append(&mnemonic_length_item_box);
-    content_general_box.append(&mnemonic_length_box);
+    
 
     // Log
     let enable_gui_log_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -3637,7 +3825,7 @@ fn create_settings_window(
     enable_gui_log_item_box.set_hexpand(true);
     enable_gui_log_item_box.set_margin_end(20);
     enable_gui_log_item_box.set_halign(gtk::Align::End);
-    
+
     enable_gui_log_label_box.append(&enable_gui_log_label);
     enable_gui_log_item_box.append(&enable_gui_log_checkbox);
     enable_gui_log_box.append(&enable_gui_log_label_box);
@@ -3648,13 +3836,19 @@ fn create_settings_window(
     let default_gui_log_level_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_gui_log_level_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_log_level_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_gui_log_level_label = gtk::Label::new(Some(&t!("UI.settings.general.log_level").to_string()));
-    let valid_gui_log_level_as_strings: Vec<String> = APP_LOG_LEVEL.iter().map(|&x| x.to_string()).collect();
-    let valid_gui_log_level_as_str_refs: Vec<&str> = valid_gui_log_level_as_strings.iter().map(|s| s.as_ref()).collect();
-    let default_gui_log_level_dropdown = gtk::DropDown::from_strings(&valid_gui_log_level_as_str_refs);
+    let default_gui_log_level_label =
+        gtk::Label::new(Some(&t!("UI.settings.general.log_level").to_string()));
+    let valid_gui_log_level_as_strings: Vec<String> =
+        APP_LOG_LEVEL.iter().map(|&x| x.to_string()).collect();
+    let valid_gui_log_level_as_str_refs: Vec<&str> = valid_gui_log_level_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+    let default_gui_log_level_dropdown =
+        gtk::DropDown::from_strings(&valid_gui_log_level_as_str_refs);
     let default_gui_log_level = valid_gui_log_level_as_strings
         .iter()
-        .position(|s| *s == lock_app_settings.gui_log_level.clone().unwrap()) 
+        .position(|s| *s == lock_app_settings.gui_log_level.clone().unwrap())
         .unwrap_or(0);
 
     default_gui_log_level_dropdown.set_selected(default_gui_log_level.try_into().unwrap());
@@ -3663,7 +3857,7 @@ fn create_settings_window(
     default_gui_log_level_item_box.set_hexpand(true);
     default_gui_log_level_item_box.set_margin_end(20);
     default_gui_log_level_item_box.set_halign(gtk::Align::End);
-    
+
     default_gui_log_level_label_box.append(&default_gui_log_level_label);
     default_gui_log_level_item_box.append(&default_gui_log_level_dropdown);
     default_gui_log_level_box.append(&default_gui_log_level_label_box);
@@ -3677,7 +3871,8 @@ fn create_settings_window(
     };
 
     enable_gui_log_checkbox.connect_active_notify(clone!(
-        #[weak] default_gui_log_level_box,
+        #[weak]
+        default_gui_log_level_box,
         move |cb| {
             default_gui_log_level_box.set_visible(cb.is_active());
         }
@@ -3686,7 +3881,7 @@ fn create_settings_window(
     stack.add_titled(
         &general_settings_box,
         Some("sidebar-settings-general"),
-        &t!("UI.settings.sidebar.general").to_string()
+        &t!("UI.settings.sidebar.general").to_string(),
     );
 
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -3695,7 +3890,7 @@ fn create_settings_window(
     let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet").to_string()));
     let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
+
     wallet_settings_box.set_margin_top(10);
     wallet_settings_box.set_margin_bottom(0);
     wallet_settings_box.set_margin_start(10);
@@ -3713,19 +3908,30 @@ fn create_settings_window(
     let valid_entropy_sources: Vec<&str> = if qrng_enabled {
         VALID_ENTROPY_SOURCES.iter().cloned().collect()
     } else {
-        VALID_ENTROPY_SOURCES.iter().filter(|&&x| x != "QRNG").cloned().collect()
+        VALID_ENTROPY_SOURCES
+            .iter()
+            .filter(|&&x| x != "QRNG")
+            .cloned()
+            .collect()
     };
 
     let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_source_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source").to_string()));
-    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_entropy_source_label =
+        gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source").to_string()));
+    let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+    let valid_entropy_source_as_str_refs: Vec<&str> = valid_entropy_source_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
     let entropy_source_dropdown = gtk::DropDown::from_strings(&valid_entropy_source_as_str_refs);
     let default_entropy_source = valid_entropy_source_as_strings
         .iter()
-        .position(|s| *s == lock_app_settings.wallet_entropy_source.clone().unwrap()) 
+        .position(|s| *s == lock_app_settings.wallet_entropy_source.clone().unwrap())
         .unwrap_or(0);
 
     entropy_source_dropdown.set_selected(default_entropy_source.try_into().unwrap());
@@ -3745,9 +3951,16 @@ fn create_settings_window(
     let default_entropy_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.length").to_string()));
-    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS.iter().map(|&x| x.to_string()).collect();
-    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_entropy_length_label =
+        gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.length").to_string()));
+    let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+    let valid_entropy_lengths_as_str_refs: Vec<&str> = valid_entropy_lengths_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
     let entropy_length_dropdown = gtk::DropDown::from_strings(&valid_entropy_lengths_as_str_refs);
     let default_entropy_length = valid_entropy_lengths_as_strings
         .iter()
@@ -3767,13 +3980,41 @@ fn create_settings_window(
     default_entropy_length_box.append(&default_entropy_length_item_box);
     content_wallet_box.append(&default_entropy_length_box);
 
+    // Default mnemonic passphrase length
+    let mnemonic_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let mnemonic_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_length_label =
+        gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic_length").to_string()));
+    let mnemonic_length = lock_app_settings.wallet_mnemonic_length.unwrap() as f64;
+    let mnemonic_length_adjustment =
+        gtk::Adjustment::new(mnemonic_length, 8.0 * 2.0, 8.0 * 128.0, 1.0, 100.0, 0.0);
+    let mnemonic_length_spinbutton =
+        gtk::SpinButton::new(Some(&mnemonic_length_adjustment), 1.0, 0);
+
+    mnemonic_length_spinbutton.set_size_request(200, 10);
+    mnemonic_length_box.set_hexpand(true);
+    mnemonic_length_item_box.set_hexpand(true);
+    mnemonic_length_item_box.set_margin_end(20);
+    mnemonic_length_item_box.set_halign(gtk::Align::End);
+
+    mnemonic_length_label_box.append(&mnemonic_length_label);
+    mnemonic_length_item_box.append(&mnemonic_length_spinbutton);
+    mnemonic_length_box.append(&mnemonic_length_label_box);
+    mnemonic_length_box.append(&mnemonic_length_item_box);
+    content_wallet_box.append(&mnemonic_length_box);
+
     // Default BIP
     let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_bip_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_bip_label = gtk::Label::new(Some(&t!("UI.settings.wallet.bip").to_string()));
-    let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS.iter().map(|&x| x.to_string()).collect();
-    let valid_bips_as_str_refs: Vec<&str> = valid_bips_as_strings.iter().map(|s| s.as_ref()).collect();
+    let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+    let valid_bips_as_str_refs: Vec<&str> =
+        valid_bips_as_strings.iter().map(|s| s.as_ref()).collect();
     let bip_dropdown = gtk::DropDown::from_strings(&valid_bips_as_str_refs);
     let default_bip = valid_bips_as_strings
         .iter()
@@ -3786,7 +4027,7 @@ fn create_settings_window(
     default_bip_item_box.set_hexpand(true);
     default_bip_item_box.set_margin_end(20);
     default_bip_item_box.set_halign(gtk::Align::End);
-    
+
     default_bip_label_box.append(&default_bip_label);
     default_bip_item_box.append(&bip_dropdown);
     default_bip_box.append(&default_bip_label_box);
@@ -3797,16 +4038,11 @@ fn create_settings_window(
     let default_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_address_count_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_address_count_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_address_count_label = gtk::Label::new(Some(&t!("UI.settings.wallet.address_count").to_string()));
+    let default_address_count_label =
+        gtk::Label::new(Some(&t!("UI.settings.wallet.address_count").to_string()));
     let default_address_count = lock_app_settings.wallet_address_count.unwrap() as f64;
-    let address_count_adjustment = gtk::Adjustment::new(
-        default_address_count,
-        1.0,
-        2147483647.0,
-        1.0,
-        10.0,
-        0.0,
-    );
+    let address_count_adjustment =
+        gtk::Adjustment::new(default_address_count, 1.0, 2147483647.0, 1.0, 10.0, 0.0);
     let address_count_spinbutton = gtk::SpinButton::new(Some(&address_count_adjustment), 1.0, 0);
 
     address_count_spinbutton.set_size_request(200, 10);
@@ -3825,7 +4061,8 @@ fn create_settings_window(
     let hardened_addresses_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let hardened_addresses_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let hardened_addresses_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let hardened_addresses_label = gtk::Label::new(Some(&t!("UI.settings.wallet.hardened").to_string()));
+    let hardened_addresses_label =
+        gtk::Label::new(Some(&t!("UI.settings.wallet.hardened").to_string()));
     let hardened_addresses_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.wallet_hardened_address.unwrap();
 
@@ -3842,11 +4079,10 @@ fn create_settings_window(
     content_wallet_box.append(&hardened_addresses_box);
 
     stack.add_titled(
-        &wallet_settings_box, 
-        Some("sidebar-settings-wallet"), 
-        &t!("UI.settings.sidebar.wallet").to_string()
+        &wallet_settings_box,
+        Some("sidebar-settings-wallet"),
+        &t!("UI.settings.sidebar.wallet").to_string(),
     );
-
 
     // -.-. --- .--. -.-- .-. .. --. .... -
     // JUMP: Settings: Sidebar 3: ANU settings
@@ -3909,13 +4145,22 @@ fn create_settings_window(
     let default_api_data_format_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_api_data_format_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_api_data_format_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.type").to_string()));
-    let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT.iter().map(|&x| x.to_string()).collect();
-    let valid_api_data_formats_as_str_refs: Vec<&str> = valid_api_data_formats_as_strings.iter().map(|s| s.as_ref()).collect();
+    let default_api_data_format_label =
+        gtk::Label::new(Some(&t!("UI.settings.anu.data.type").to_string()));
+    let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+    let valid_api_data_formats_as_str_refs: Vec<&str> = valid_api_data_formats_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
     let anu_data_format_dropdown = gtk::DropDown::from_strings(&valid_api_data_formats_as_str_refs);
     let default_api_data_format = valid_api_data_formats_as_strings
         .iter()
-        .position(|x| x.parse::<String>().unwrap() == lock_app_settings.anu_data_format.clone().unwrap())
+        .position(|x| {
+            x.parse::<String>().unwrap() == lock_app_settings.anu_data_format.clone().unwrap()
+        })
         .unwrap_or(0);
 
     anu_data_format_dropdown.set_selected(default_api_data_format.try_into().unwrap());
@@ -3924,7 +4169,7 @@ fn create_settings_window(
     default_api_data_format_item_box.set_hexpand(true);
     default_api_data_format_item_box.set_margin_end(20);
     default_api_data_format_item_box.set_halign(gtk::Align::End);
-    
+
     default_api_data_format_label_box.append(&default_api_data_format_label);
     default_api_data_format_item_box.append(&anu_data_format_dropdown);
     default_api_data_format_box.append(&default_api_data_format_label_box);
@@ -3935,20 +4180,22 @@ fn create_settings_window(
     let default_anu_array_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_array_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
+    let default_anu_array_length_label =
+        gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
     let mut default_array_length = lock_app_settings.anu_array_length.unwrap();
     default_array_length = std::cmp::max(1, default_array_length);
     default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
 
     let array_length_adjustment = gtk::Adjustment::new(
-        default_array_length as f64,       
+        default_array_length as f64,
         1 as f64,
         ANU_MAXIMUM_ARRAY_LENGTH as f64,
         1.0,
         10.0,
         0.0,
     );
-    let default_anu_array_length_spinbutton = gtk::SpinButton::new(Some(&array_length_adjustment), 1.0, 0);
+    let default_anu_array_length_spinbutton =
+        gtk::SpinButton::new(Some(&array_length_adjustment), 1.0, 0);
 
     default_anu_array_length_label_box.set_hexpand(true);
     default_anu_array_length_item_box.set_hexpand(true);
@@ -3961,13 +4208,14 @@ fn create_settings_window(
     default_anu_array_length_box.append(&default_anu_array_length_label_box);
     default_anu_array_length_box.append(&default_anu_array_length_item_box);
     content_anu_box.append(&default_anu_array_length_box);
-    
+
     // ANU hex block size
     let default_anu_hex_length_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_anu_hex_length_label = gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
-    
+    let default_anu_hex_length_label =
+        gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
+
     let mut default_hex_size = lock_app_settings.anu_hex_block_size.unwrap();
     default_hex_size = std::cmp::max(1, default_hex_size);
     default_hex_size = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_hex_size);
@@ -3980,7 +4228,8 @@ fn create_settings_window(
         10.0,
         0.0,
     );
-    let default_anu_hex_length_spinbutton = gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
+    let default_anu_hex_length_spinbutton =
+        gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
 
     default_anu_hex_length_label_box.set_hexpand(true);
     default_anu_hex_length_item_box.set_hexpand(true);
@@ -4020,11 +4269,13 @@ fn create_settings_window(
     let anu_connection_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let anu_connection_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let anu_connection_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let anu_connection_timeout_label = gtk::Label::new(Some(&t!("UI.settings.anu.timeout").to_string()));
+    let anu_connection_timeout_label =
+        gtk::Label::new(Some(&t!("UI.settings.anu.timeout").to_string()));
 
     let mut default_connection_timeout = lock_app_settings.anu_timeout.unwrap();
     default_connection_timeout = std::cmp::max(1, default_connection_timeout);
-    default_connection_timeout = std::cmp::min(ANU_MAXIMUM_CONNECTION_TIMEOUT, default_connection_timeout);
+    default_connection_timeout =
+        std::cmp::min(ANU_MAXIMUM_CONNECTION_TIMEOUT, default_connection_timeout);
 
     let anu_connection_timeout_adjustment = gtk::Adjustment::new(
         default_connection_timeout as f64,
@@ -4034,8 +4285,8 @@ fn create_settings_window(
         10.0,
         0.0,
     );
-    let anu_connection_timeout_spinbutton = gtk::SpinButton::new(Some(&anu_connection_timeout_adjustment), 1.0, 0);
-
+    let anu_connection_timeout_spinbutton =
+        gtk::SpinButton::new(Some(&anu_connection_timeout_adjustment), 1.0, 0);
 
     anu_connection_timeout_spinbutton.set_size_request(200, 10);
     anu_connection_timeout_label_box.set_hexpand(true);
@@ -4048,7 +4299,7 @@ fn create_settings_window(
     anu_connection_timeout_box.append(&anu_connection_timeout_label_box);
     anu_connection_timeout_box.append(&anu_connection_timeout_item_box);
     content_anu_box.append(&anu_connection_timeout_box);
-    
+
     // Actions
     let default_anu_hex_length_box_clone = default_anu_hex_length_box.clone();
     let anu_data_format_dropdown_clone = anu_data_format_dropdown.clone();
@@ -4070,10 +4321,10 @@ fn create_settings_window(
             default_anu_hex_length_box_clone.set_visible(false);
         }
     });
-    
 
     anu_data_format_dropdown.connect_selected_notify(clone!(
-        #[weak] default_anu_hex_length_box,
+        #[weak]
+        default_anu_hex_length_box,
         // #[weak] anu_data_format_dropdown,
         move |dd| {
             if dd.selected() as usize == 2 {
@@ -4084,24 +4335,22 @@ fn create_settings_window(
         }
     ));
 
-
     stack.add_titled(
-        &anu_settings_box, 
-        Some("sidebar-settings-anu"), 
-        &t!("UI.settings.sidebar.anu").to_string()
+        &anu_settings_box,
+        Some("sidebar-settings-anu"),
+        &t!("UI.settings.sidebar.anu").to_string(),
     );
-
 
     // -.-. --- .--. -.-- .-. .. --. .... -
     // JUMP: Settings: Sidebar 4: Proxy settings
     // -.-. --- .--. -.-- .-. .. --. .... -
     let scrolled_window = gtk::ScrolledWindow::new();
     scrolled_window.set_max_content_height(400);
-    
+
     let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let proxy_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.proxy").to_string()));
     let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
+
     proxy_settings_box.set_margin_top(10);
     proxy_settings_box.set_margin_bottom(0);
     proxy_settings_box.set_margin_start(10);
@@ -4149,7 +4398,7 @@ fn create_settings_window(
 
     // Proxy manual settings
     let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
+
     if proxy_status == true {
         proxy_manual_settings_box.set_visible(true);
     } else {
@@ -4160,7 +4409,8 @@ fn create_settings_window(
     let proxy_server_address_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_server_address_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_server_address_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_address_label = gtk::Label::new(Some(&t!("UI.settings.proxy.address").to_string()));
+    let proxy_server_address_label =
+        gtk::Label::new(Some(&t!("UI.settings.proxy.address").to_string()));
     let proxy_server_address_entry = gtk::Entry::new();
 
     proxy_server_address_entry.set_size_request(200, 10);
@@ -4175,7 +4425,6 @@ fn create_settings_window(
     proxy_server_address_box.append(&proxy_server_address_label_box);
     proxy_server_address_box.append(&proxy_server_address_item_box);
     proxy_manual_settings_box.append(&proxy_server_address_box);
-
 
     // Proxy server port
     let proxy_server_port_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
@@ -4197,15 +4446,16 @@ fn create_settings_window(
     proxy_server_port_box.append(&proxy_server_port_label_box);
     proxy_server_port_box.append(&proxy_server_port_item_box);
     proxy_manual_settings_box.append(&proxy_server_port_box);
-    
+
     // Use proxy credentials
     let use_proxy_credentials_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_credentials_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_credentials_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_credentials_label = gtk::Label::new(Some(&t!("UI.settings.proxy.creds").to_string()));
+    let use_proxy_credentials_label =
+        gtk::Label::new(Some(&t!("UI.settings.proxy.creds").to_string()));
     let use_proxy_credentials_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.proxy_login_credentials.unwrap();
-    
+
     use_proxy_credentials_checkbox.set_active(is_checked);
     use_proxy_credentials_label_box.set_hexpand(true);
     use_proxy_credentials_item_box.set_hexpand(true);
@@ -4220,7 +4470,7 @@ fn create_settings_window(
 
     // Proxy credentials
     let use_proxy_credentials_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    
+
     if lock_app_settings.proxy_login_credentials.unwrap() == true {
         use_proxy_credentials_content_box.set_visible(true);
     } else {
@@ -4278,7 +4528,7 @@ fn create_settings_window(
     let use_proxy_pac_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac").to_string()));
     let use_proxy_pac_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.proxy_use_pac.unwrap();
-    
+
     use_proxy_pac_checkbox.set_active(is_checked);
     use_proxy_pac_label_box.set_hexpand(true);
     use_proxy_pac_item_box.set_hexpand(true);
@@ -4293,7 +4543,7 @@ fn create_settings_window(
 
     // Proxy PAC
     let use_proxy_pac_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    
+
     if lock_app_settings.proxy_use_pac.unwrap() == true {
         use_proxy_pac_content_box.set_visible(true);
     } else {
@@ -4322,7 +4572,6 @@ fn create_settings_window(
 
     proxy_manual_settings_box.append(&use_proxy_pac_content_box);
 
-
     // Use proxy SSL
     let use_proxy_ssl_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_ssl_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -4330,7 +4579,7 @@ fn create_settings_window(
     let use_proxy_ssl_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl").to_string()));
     let use_proxy_ssl_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.proxy_use_ssl.unwrap();
-    
+
     use_proxy_ssl_checkbox.set_active(is_checked);
     use_proxy_ssl_label_box.set_hexpand(true);
     use_proxy_ssl_item_box.set_hexpand(true);
@@ -4345,7 +4594,7 @@ fn create_settings_window(
 
     // Proxy SSL certificate
     let use_proxy_ssl_certificate_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-    
+
     if lock_app_settings.proxy_use_ssl.unwrap() == true {
         use_proxy_ssl_certificate_content_box.set_visible(true);
     } else {
@@ -4356,7 +4605,8 @@ fn create_settings_window(
     let proxy_ssl_certificate_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_ssl_certificate_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_ssl_certificate_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_ssl_certificate_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl.path").to_string()));
+    let proxy_ssl_certificate_path_label =
+        gtk::Label::new(Some(&t!("UI.settings.proxy.ssl.path").to_string()));
     let proxy_ssl_certificate_path_entry = gtk::Entry::new();
 
     proxy_ssl_certificate_path_entry.set_size_request(200, 10);
@@ -4364,7 +4614,8 @@ fn create_settings_window(
     proxy_ssl_certificate_path_item_box.set_hexpand(true);
     proxy_ssl_certificate_path_item_box.set_margin_end(20);
     proxy_ssl_certificate_path_item_box.set_halign(gtk::Align::End);
-    proxy_ssl_certificate_path_entry.set_text(&lock_app_settings.proxy_ssl_certificate.clone().unwrap());
+    proxy_ssl_certificate_path_entry
+        .set_text(&lock_app_settings.proxy_ssl_certificate.clone().unwrap());
 
     proxy_ssl_certificate_path_label_box.append(&proxy_ssl_certificate_path_label);
     proxy_ssl_certificate_path_item_box.append(&proxy_ssl_certificate_path_entry);
@@ -4378,17 +4629,18 @@ fn create_settings_window(
     stack.add_titled(
         &scrolled_window,
         Some("sidebar-settings-proxy"),
-        &t!("UI.settings.sidebar.proxy").to_string()
+        &t!("UI.settings.sidebar.proxy").to_string(),
     );
 
     // Actions
     use_proxy_settings_checkbox.connect_active_notify(clone!(
-        #[weak] proxy_manual_settings_box,
+        #[weak]
+        proxy_manual_settings_box,
         move |dd| {
             let proxy_status = dd.is_active();
             // let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
             // let settings = value;
-            
+
             if proxy_status == true {
                 proxy_manual_settings_box.set_visible(true);
             } else {
@@ -4398,14 +4650,16 @@ fn create_settings_window(
     ));
 
     use_proxy_credentials_checkbox.connect_active_notify(clone!(
-        #[weak] use_proxy_credentials_content_box,
+        #[weak]
+        use_proxy_credentials_content_box,
         move |cb| {
             use_proxy_credentials_content_box.set_visible(cb.is_active());
         }
     ));
 
     use_proxy_pac_checkbox.connect_active_notify(clone!(
-        #[weak] use_proxy_pac_content_box,
+        #[weak]
+        use_proxy_pac_content_box,
         move |cb| {
             use_proxy_pac_content_box.set_visible(cb.is_active());
         }
@@ -4423,7 +4677,7 @@ fn create_settings_window(
     let main_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     main_content_box.append(&stack_sidebar);
     main_content_box.append(&stack);
-    
+
     // Buttons
     let main_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let left_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -4433,83 +4687,190 @@ fn create_settings_window(
     let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel").to_string());
     let default_button = gtk::Button::with_label(&t!("UI.element.button.default").to_string());
 
-
-
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
         #[weak] settings_window,
         #[strong] gui_state,
         #[weak] app_messages_state,
         move |_| {
-
             let mut settings = APP_SETTINGS.write().unwrap();
 
             let updates = [
-                ("wallet_entropy_source", toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize])),
-                ("wallet_entropy_length", toml_edit::value(VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64)),
-                ("wallet_bip", toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64)),
-                ("wallet_address_count", toml_edit::value(address_count_spinbutton.value_as_int() as i64)),
-                ("wallet_hardened_address", toml_edit::value(hardened_addresses_checkbox.is_active())),
-                ("gui_save_size", toml_edit::value(save_window_size_checkbox.is_active())),
-                ("gui_theme", toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize])),
-                ("gui_icons", toml_edit::value(VALID_GUI_ICONS[gui_icons_dropdown.selected() as usize])),
-                ("gui_language", toml_edit::value(APP_LANGUAGE[default_gui_language_dropdown.selected() as usize])),
-                ("gui_search", toml_edit::value(VALID_COIN_SEARCH_PARAMETER[default_search_parameter_dropdown.selected() as usize])),
-                ("gui_notification_timeout", toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64)),
-                ("gui_mnemonic_length", toml_edit::value(mnemonic_length_spinbutton.value_as_int() as i64)),
-                ("gui_log", toml_edit::value(enable_gui_log_checkbox.is_active())),
-                ("gui_log_level", toml_edit::value(APP_LOG_LEVEL[default_gui_log_level_dropdown.selected() as usize])),
-                ("anu_enabled", toml_edit::value(use_anu_api_checkbox.is_active())),
-                ("anu_log", toml_edit::value(log_anu_api_checkbox.is_active())),
-                ("anu_timeout", toml_edit::value(anu_connection_timeout_spinbutton.value_as_int() as i64)),
-                ("anu_data_format", toml_edit::value(VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize])),
-                ("anu_array_length", toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64)),
-                ("anu_hex_block_size", toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64)),
-                ("proxy_status", toml_edit::value(use_proxy_settings_checkbox.is_active())),
-                ("proxy_server_address", toml_edit::value(proxy_server_address_entry.text().to_string())),
-                ("proxy_server_port", toml_edit::value(proxy_server_port_entry.text().parse::<u32>().unwrap_or(8080) as i64)),
-                ("proxy_use_pac", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
-                ("proxy_script_address", toml_edit::value(proxy_pac_path_entry.text().to_string())),
-                ("proxy_login_credentials", toml_edit::value(use_proxy_credentials_checkbox.is_active())),
-                ("proxy_login_username", toml_edit::value(proxy_username_entry.text().to_string())),
-                ("proxy_login_password", toml_edit::value(proxy_password_entry.text().to_string())),
-                ("proxy_use_ssl", toml_edit::value(use_proxy_ssl_checkbox.is_active())),
-                ("proxy_ssl_certificate", toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string())),
+                (
+                    "wallet_entropy_source",
+                    toml_edit::value(
+                        VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize],
+                    ),
+                ),
+                (
+                    "wallet_entropy_length",
+                    toml_edit::value(
+                        VALID_ENTROPY_LENGTHS[entropy_length_dropdown.selected() as usize] as i64,
+                    ),
+                ),
+                (
+                    "wallet_bip",
+                    toml_edit::value(
+                        VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64,
+                    ),
+                ),
+                (
+                    "wallet_address_count",
+                    toml_edit::value(address_count_spinbutton.value_as_int() as i64),
+                ),
+                (
+                    "wallet_hardened_address",
+                    toml_edit::value(hardened_addresses_checkbox.is_active()),
+                ),
+                (
+                    "gui_save_size",
+                    toml_edit::value(save_window_size_checkbox.is_active()),
+                ),
+                (
+                    "gui_theme",
+                    toml_edit::value(VALID_GUI_THEMES[gui_theme_dropdown.selected() as usize]),
+                ),
+                (
+                    "gui_icons",
+                    toml_edit::value(VALID_GUI_ICONS[gui_icons_dropdown.selected() as usize]),
+                ),
+                (
+                    "gui_language",
+                    toml_edit::value(
+                        APP_LANGUAGE[default_gui_language_dropdown.selected() as usize],
+                    ),
+                ),
+                (
+                    "gui_search",
+                    toml_edit::value(
+                        VALID_COIN_SEARCH_PARAMETER
+                            [default_search_parameter_dropdown.selected() as usize],
+                    ),
+                ),
+                (
+                    "gui_notification_timeout",
+                    toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64),
+                ),
+                (
+                    "wallet_mnemonic_length",
+                    toml_edit::value(mnemonic_length_spinbutton.value_as_int() as i64),
+                ),
+                (
+                    "gui_log",
+                    toml_edit::value(enable_gui_log_checkbox.is_active()),
+                ),
+                (
+                    "gui_log_level",
+                    toml_edit::value(
+                        APP_LOG_LEVEL[default_gui_log_level_dropdown.selected() as usize],
+                    ),
+                ),
+                (
+                    "anu_enabled",
+                    toml_edit::value(use_anu_api_checkbox.is_active()),
+                ),
+                (
+                    "anu_log",
+                    toml_edit::value(log_anu_api_checkbox.is_active()),
+                ),
+                (
+                    "anu_timeout",
+                    toml_edit::value(anu_connection_timeout_spinbutton.value_as_int() as i64),
+                ),
+                (
+                    "anu_data_format",
+                    toml_edit::value(
+                        VALID_ANU_API_DATA_FORMAT[anu_data_format_dropdown.selected() as usize],
+                    ),
+                ),
+                (
+                    "anu_array_length",
+                    toml_edit::value(default_anu_array_length_spinbutton.value_as_int() as i64),
+                ),
+                (
+                    "anu_hex_block_size",
+                    toml_edit::value(default_anu_hex_length_spinbutton.value_as_int() as i64),
+                ),
+                (
+                    "proxy_status",
+                    toml_edit::value(use_proxy_settings_checkbox.is_active()),
+                ),
+                (
+                    "proxy_server_address",
+                    toml_edit::value(proxy_server_address_entry.text().to_string()),
+                ),
+                (
+                    "proxy_server_port",
+                    toml_edit::value(
+                        proxy_server_port_entry
+                            .text()
+                            .parse::<u32>()
+                            .unwrap_or(8080) as i64,
+                    ),
+                ),
+                (
+                    "proxy_use_pac",
+                    toml_edit::value(use_proxy_ssl_checkbox.is_active()),
+                ),
+                (
+                    "proxy_script_address",
+                    toml_edit::value(proxy_pac_path_entry.text().to_string()),
+                ),
+                (
+                    "proxy_login_credentials",
+                    toml_edit::value(use_proxy_credentials_checkbox.is_active()),
+                ),
+                (
+                    "proxy_login_username",
+                    toml_edit::value(proxy_username_entry.text().to_string()),
+                ),
+                (
+                    "proxy_login_password",
+                    toml_edit::value(proxy_password_entry.text().to_string()),
+                ),
+                (
+                    "proxy_use_ssl",
+                    toml_edit::value(use_proxy_ssl_checkbox.is_active()),
+                ),
+                (
+                    "proxy_ssl_certificate",
+                    toml_edit::value(proxy_ssl_certificate_path_entry.text().to_string()),
+                ),
             ];
-    
+
             updates.iter().for_each(|(key, value)| {
                 let gui_related = matches!(*key, "gui_theme" | "gui_log" | "gui_icons");
                 settings.update_value(key, value.clone(), gui_related.then(|| gui_state.clone()));
             });
-
 
             AppSettings::save_settings(&*settings);
 
             {
                 let lock_app_messages = app_messages_state.lock().unwrap();
                 lock_app_messages.queue_message(
-                    t!("UI.messages.dialog.settings_saved").to_string(), 
-                    gtk::MessageType::Info
+                    t!("UI.messages.dialog.settings_saved").to_string(),
+                    gtk::MessageType::Info,
                 );
             }
-            
+
             settings_window.close();
         }
     ));
-    
-    cancel_button.connect_clicked(clone!(
-        #[weak] settings_window,
-        move |_| {
-            settings_window.close()
-        }
-    ));
-    
-    default_button.connect_clicked(clone!(
-        #[weak] settings_window,
-        #[weak] app_messages_state,
-        #[strong] gui_state,
-        move |_| {
 
+    cancel_button.connect_clicked(clone!(
+        #[weak]
+        settings_window,
+        move |_| settings_window.close()
+    ));
+
+    default_button.connect_clicked(clone!(
+        #[weak]
+        settings_window,
+        #[weak]
+        app_messages_state,
+        #[strong]
+        gui_state,
+        move |_| {
             let dialog = gtk::MessageDialog::builder()
                 .modal(true)
                 .text("Do you really want to reset config?")
@@ -4517,43 +4878,56 @@ fn create_settings_window(
 
             dialog.add_button("Yes", gtk::ResponseType::Yes);
             dialog.add_button("No", gtk::ResponseType::No);
-            
+
             dialog.connect_response(clone!(
-                #[weak] settings_window,
-                #[weak] app_messages_state,
-                #[strong] gui_state,
+                #[weak]
+                settings_window,
+                #[weak]
+                app_messages_state,
+                #[strong]
+                gui_state,
                 move |dialog, response| {
                     match response {
                         gtk::ResponseType::Yes => {
                             let lock_app_messages = app_messages_state.lock().unwrap();
-                            
+
                             match reset_user_settings().unwrap().as_str() {
                                 "OK" => {
                                     dialog.close();
                                     settings_window.close();
-                                    
+
                                     AppSettings::load_settings();
-                                    adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
-                                    
-                                    let new_gui_state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
+                                    adw::StyleManager::default()
+                                        .set_color_scheme(adw::ColorScheme::PreferLight);
+
+                                    let new_gui_state = std::sync::Arc::new(std::sync::Mutex::new(
+                                        GuiState::default_config(),
+                                    ));
                                     let mut lock_new_gui_state = new_gui_state.lock().unwrap();
                                     let mut lock_gui_state = gui_state.lock().unwrap();
-                                    
+
                                     lock_gui_state.reload_gui_icons();
-                                    lock_new_gui_state.gui_main_buttons = lock_gui_state.gui_main_buttons.clone();
+                                    lock_new_gui_state.gui_main_buttons =
+                                        lock_gui_state.gui_main_buttons.clone();
                                     lock_new_gui_state.reload_gui_icons();
                                     lock_new_gui_state.apply_language();
-                                    
-                                    lock_app_messages.queue_message(t!("UI.messages.dialog.settings_reset").to_string(), gtk::MessageType::Info);
-                                },
+
+                                    lock_app_messages.queue_message(
+                                        t!("UI.messages.dialog.settings_reset").to_string(),
+                                        gtk::MessageType::Info,
+                                    );
+                                }
                                 _ => {
-                                    lock_app_messages.queue_message(t!("error.settings.reset").to_string(), gtk::MessageType::Error);
-                                },
+                                    lock_app_messages.queue_message(
+                                        t!("error.settings.reset").to_string(),
+                                        gtk::MessageType::Error,
+                                    );
+                                }
                             }
-                        },
+                        }
                         _ => {
                             dialog.close();
-                        },
+                        }
                     }
                 }
             ));
@@ -4565,7 +4939,7 @@ fn create_settings_window(
     main_buttons_box.append(&left_buttons_box);
     main_buttons_box.append(&right_buttons_box);
     left_buttons_box.append(&default_button);
-    
+
     right_buttons_box.append(&save_button);
     right_buttons_box.append(&cancel_button);
     main_buttons_box.set_margin_bottom(10);
@@ -4576,7 +4950,7 @@ fn create_settings_window(
     main_buttons_box.set_hexpand(true);
     left_buttons_box.set_hexpand(true);
     right_buttons_box.set_hexpand(true);
-    
+
     right_buttons_box.set_direction(gtk::TextDirection::Rtl);
     main_settings_box.append(&main_content_box);
     main_settings_box.append(&main_buttons_box);
@@ -4591,28 +4965,28 @@ fn reset_user_settings() -> Result<String, String> {
     {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
-        
+
         println!("\t- Local config file: {:?}", local_config_file);
-        
+
         match std::fs::remove_file(local_config_file) {
             Ok(_) => {
                 println!("\t- Local config file deleted");
-            },
+            }
             Err(err) => {
                 eprintln!("\t- Local config file NOT deleted \n Error: {}", err);
-            },
+            }
         };
     }
-    
-    match os::create_local_files() {
+
+    match os::check_local_config() {
         Ok(_) => {
             println!("\t- New config file created");
             Ok("OK".to_string())
-        },
+        }
         Err(err) => {
             eprintln!("\t- New config file NOT created \n {}", err);
             Err(err.to_string())
-        },
+        }
     }
 }
 
@@ -4621,22 +4995,23 @@ fn create_about_window() {
 
     let extension = Some(GUI_IMAGE_EXTENSION).unwrap_or("svg");
 
-    let pixy: gtk4::gdk::Texture = qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}",extension));
+    let pixy: gtk4::gdk::Texture =
+        qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}", extension));
     let logo_picture = gtk::Picture::new();
     logo_picture.set_paintable(Some(&pixy));
 
     let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
     let app_license = qr2m_lib::get_text_from_resources(&my_license.to_str().unwrap());
-    
+
     let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
     let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_str().unwrap());
-    
+
     let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
 
     let they_forced_me = [
         "This application uses GTK4 for its GUI.",
         "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
-        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
+        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab.",
     ];
     let comments = they_forced_me.join(" ");
 
@@ -4653,17 +5028,20 @@ fn create_about_window() {
         .license(licenses)
         .wrap_license(true)
         .comments(&t!("UI.about.description").to_string())
-        .logo(&logo_picture.paintable().unwrap_or(
-            gtk::gdk::Paintable::new_empty(32, 32))
+        .logo(
+            &logo_picture
+                .paintable()
+                .unwrap_or(gtk::gdk::Paintable::new_empty(32, 32)),
         )
         .comments(comments)
         .build();
 
     help_window.show();
-
 }
 
-fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>) -> (String, Option<String>) {
+fn open_wallet_from_file(
+    app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>,
+) -> (String, Option<String>) {
     println!("[+] {}", &t!("log.open_wallet_from_file").to_string());
 
     let open_context = glib::MainContext::default();
@@ -4683,16 +5061,17 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
     filter.add_pattern("*.qr2m");
     filter.set_name(Some("Wallet file (*.qr2m)"));
     open_dialog.add_filter(&filter);
-    
+
     let all_files_filter = gtk::FileFilter::new();
     all_files_filter.add_pattern("*");
     all_files_filter.set_name(Some("All files"));
     open_dialog.add_filter(&all_files_filter);
-    
 
     open_dialog.connect_response(clone!(
-        #[strong] open_loop,
-        #[strong] app_messages_state,
+        #[strong]
+        open_loop,
+        #[strong]
+        app_messages_state,
         move |open_dialog, response| {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = open_dialog.file() {
@@ -4710,17 +5089,27 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
                                     None => String::new(),
                                 };
 
-                                let file_entropy_string = format!("{}\n{}\n{}", version, entropy, passphrase);
+                                let file_entropy_string =
+                                    format!("{}\n{}\n{}", version, entropy, passphrase);
 
                                 if let Err(err) = tx.send(file_entropy_string) {
-                                    lock_state.queue_message(format!("{} : {}", t!("error.wallet.send"), err), gtk::MessageType::Error);
+                                    lock_state.queue_message(
+                                        format!("{} : {}", t!("error.wallet.send"), err),
+                                        gtk::MessageType::Error,
+                                    );
                                 } else {
-                                    lock_state.queue_message(t!("UI.messages.wallet.open").to_string(), gtk::MessageType::Info);
+                                    lock_state.queue_message(
+                                        t!("UI.messages.wallet.open").to_string(),
+                                        gtk::MessageType::Info,
+                                    );
                                     open_loop.quit();
                                 }
-                            },
+                            }
                             Err(err) => {
-                                lock_state.queue_message(format!("{} : {}", t!("error.wallet.process"), err), gtk::MessageType::Error);
+                                lock_state.queue_message(
+                                    format!("{} : {}", t!("error.wallet.process"), err),
+                                    gtk::MessageType::Error,
+                                );
 
                                 open_loop.quit();
                             }
@@ -4743,9 +5132,9 @@ fn open_wallet_from_file(app_messages_state: &std::sync::Arc<std::sync::Mutex<Ap
             let passphrase = parts.get(2).map(|s| s.to_string());
 
             // IMPLEMENT: Check entropy before importing
-            
+
             (entropy.unwrap_or_else(|| String::new()), passphrase)
-        },
+        }
         Err(_) => {
             // let lock_state = state.lock().unwrap();
             // lock_state.show_message(t!("error.wallet.open").to_string(), gtk::MessageType::Error);
@@ -4759,10 +5148,13 @@ fn save_wallet_to_file() {
 
     let save_context = glib::MainContext::default();
     let save_loop = glib::MainLoop::new(Some(&save_context), false);
-    
+
     let wallet_settings = WALLET_SETTINGS.lock().unwrap();
     let entropy_string = wallet_settings.entropy_string.clone().unwrap_or_default();
-    let mnemonic_passphrase = wallet_settings.mnemonic_passphrase.clone().unwrap_or_default();
+    let mnemonic_passphrase = wallet_settings
+        .mnemonic_passphrase
+        .clone()
+        .unwrap_or_default();
 
     let save_window = gtk::Window::new();
     let save_dialog = gtk::FileChooserNative::new(
@@ -4770,27 +5162,34 @@ fn save_wallet_to_file() {
         Some(&save_window),
         gtk::FileChooserAction::Save,
         Some(&t!("UI.element.button.save")),
-        Some(&t!("UI.element.button.cancel"))
+        Some(&t!("UI.element.button.cancel")),
     );
 
     let filter = gtk::FileFilter::new();
-    filter.add_pattern(&format!("*.{}",WALLET_DEFAULT_EXTENSION));
-    filter.set_name(Some(&format!("Wallet file (*.{})",WALLET_DEFAULT_EXTENSION)));
+    filter.add_pattern(&format!("*.{}", WALLET_DEFAULT_EXTENSION));
+    filter.set_name(Some(&format!(
+        "Wallet file (*.{})",
+        WALLET_DEFAULT_EXTENSION
+    )));
     save_dialog.add_filter(&filter);
-    
+
     let all_files_filter = gtk::FileFilter::new();
     all_files_filter.add_pattern("*");
     all_files_filter.set_name(Some("All files"));
     save_dialog.add_filter(&all_files_filter);
 
     save_dialog.connect_response(clone!(
-        #[strong] save_loop,
+        #[strong]
+        save_loop,
         move |save_dialog, response| {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = save_dialog.file() {
                     if let Some(path) = file.path() {
                         // TODO: Get data from WalletSettings struct
-                        let wallet_data = format!("version = {}\n{}\n{}", WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase);
+                        let wallet_data = format!(
+                            "version = {}\n{}\n{}",
+                            WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase
+                        );
 
                         std::fs::write(path, wallet_data).expect("Unable to write file");
                         save_loop.quit();
@@ -4805,7 +5204,7 @@ fn save_wallet_to_file() {
     save_loop.run();
 }
 
-fn update_derivation_label(dp: DerivationPath, label: gtk::Label, ) {
+fn update_derivation_label(dp: DerivationPath, label: gtk::Label) {
     println!("[+] {}", &t!("log.update_derivation_label").to_string());
 
     println!("\t- Derivation Path: {:?}", dp);
@@ -4817,30 +5216,34 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::Label, ) {
     if dp.hardened_bip.unwrap_or_default() {
         path.push_str(&format!("'"));
     }
-    
+
     path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
     if dp.hardened_coin.unwrap_or_default() {
         path.push_str(&format!("'"));
     }
-    
+
     path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
     if dp.hardened_address.unwrap_or_default() {
         path.push_str(&format!("'"));
     }
-        
-    if dp.bip.unwrap() != 32  {
+
+    if dp.bip.unwrap() != 32 {
         path.push_str(&format!("/{}", dp.purpose.unwrap_or_default()));
     }
-    
+
     println!("\t- Derivation path: {:?}", &path);
 
     label.set_text(&path);
 }
 
 fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<String>), String> {
-    println!("[+] {}", &t!("log.process_wallet_file_from_path").to_string());
+    println!(
+        "[+] {}",
+        &t!("log.process_wallet_file_from_path").to_string()
+    );
 
-    let file = File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
+    let file =
+        File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
     let mut lines = std::io::BufReader::new(file).lines();
 
     let version_line = match lines.next() {
@@ -4870,7 +5273,7 @@ fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<
             };
 
             Ok((version, entropy, passphrase))
-        },
+        }
         _ => Err(format!("Unsupported wallet version '{}'", version)),
     }
 }
@@ -4887,6 +5290,5 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
         Err("Error: Version line is malformed, expected 'version = X' format".to_string())
     }
 }
-
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

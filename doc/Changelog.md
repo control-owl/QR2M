@@ -2,6 +2,10 @@
 - new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
     - save quantum entropy as image
 
+# version 0.74.1
+- save gui window size
+- cleaning mess after rust formatter
+
 # version 0.74.0
 - beta proxy (not tested yet)
 - Rust 2024 edition
