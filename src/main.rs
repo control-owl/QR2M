@@ -1497,10 +1497,15 @@ fn create_main_window(
     let lock_app_settings = APP_SETTINGS.read().unwrap();
     let window_width = lock_app_settings.gui_last_width.unwrap();
     let window_height = lock_app_settings.gui_last_height.unwrap();
+    let gui_maximized = lock_app_settings.gui_maximized.unwrap();
     let gui_language = lock_app_settings.gui_language.clone().unwrap();
 
-    window.set_width_request(window_width as i32);
-    window.set_height_request(window_height as i32);
+    if gui_maximized {
+        window.set_maximized(true);
+    } else {
+        window.set_default_width(window_width as i32);
+        window.set_default_height(window_height as i32);
+    }
 
     os::switch_locale(&gui_language);
 
@@ -3320,10 +3325,8 @@ fn create_main_window(
     ));
 
     address_spinbutton.connect_changed(clone!(
-        #[weak]
-        derivation_label_text,
-        #[weak]
-        address_spinbutton,
+        #[weak] derivation_label_text,
+        #[weak] address_spinbutton,
         move |_| {
             let address_number = address_spinbutton.text();
             let ff = address_number.as_str();
@@ -3338,8 +3341,7 @@ fn create_main_window(
     ));
 
     address_count_spinbutton.connect_changed(clone!(
-        #[weak]
-        address_start_spinbutton,
+        #[weak] address_start_spinbutton,
         move |address_count_spinbutton| {
             let address_count = address_count_spinbutton.text();
             let address_count_str = address_count.as_str();
@@ -3551,14 +3553,10 @@ fn create_main_window(
     ));
 
     delete_addresses_button.connect_clicked(clone!(
-        #[weak]
-        address_store,
-        #[weak]
-        address_start_spinbutton,
-        #[weak]
-        address_generation_progress_bar,
-        #[strong]
-        delete_addresses_button_box,
+        #[weak] address_store,
+        #[weak] address_start_spinbutton,
+        #[weak] address_generation_progress_bar,
+        #[strong] delete_addresses_button_box,
         move |_| {
             address_store.clear();
             CRYPTO_ADDRESS.clear();
@@ -3592,21 +3590,24 @@ fn create_main_window(
     window.connect_close_request({
         let window = window.clone();
         move |_| {
-            let gui_last_width = window.width();
-            let gui_last_height = window.height();
-            
+            let gui_last_width = window.width() as i64;
+            let gui_last_height = window.height() as i64;
+            let gui_maximized = window.is_maximized();
 
-            dbg!(gui_last_width);
             let mut settings = APP_SETTINGS.write().unwrap();
 
             let updates = [
                 (
                     "gui_last_width",
-                    toml_edit::value(gui_last_width.to_string()),
+                    toml_edit::value(gui_last_width),
                 ),
                 (
                     "gui_last_height",
-                    toml_edit::value(gui_last_height.to_string()),
+                    toml_edit::value(gui_last_height),
+                ),
+                (
+                    "gui_maximized",
+                    toml_edit::value(gui_maximized),
                 ),
             ];
 
