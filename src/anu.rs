@@ -54,7 +54,7 @@ pub fn get_entropy_from_anu(
             //     None => false,
             // };
 
-            if log == true {
+            if log {
                 create_anu_timestamp(start_time);
                 write_api_response_to_log(&Some(anu_data.to_string()));
             }
@@ -76,23 +76,23 @@ pub fn get_entropy_from_anu(
         }
     };
 
-    if entropy.len() > entropy_length {
-        let original_len = entropy.len();
-        let mut rng = rand::rng();
-        let start_index = rng.random_range(0..original_len);
-
-        let trimmed_entropy = if start_index + entropy_length < original_len {
-            entropy[start_index..start_index + entropy_length].to_string()
-        } else {
-            entropy[start_index..].to_string()
-        };
-
-        return trimmed_entropy;
-    } else if entropy.len() == entropy_length {
-        return entropy.to_string();
-    } else {
-        eprintln!("{}", &t!("error.anu.short"));
-        return String::new();
+    match entropy.len().cmp(&entropy_length) {
+        std::cmp::Ordering::Greater => {
+            let mut rng = rand::rng();
+            let original_len = entropy.len();
+            let start_index = rng.random_range(0..original_len);
+    
+            if start_index + entropy_length < original_len {
+                entropy[start_index..start_index + entropy_length].to_string()
+            } else {
+                entropy[start_index..].to_string()
+            }
+        },
+        std::cmp::Ordering::Equal => entropy.to_string(),
+        std::cmp::Ordering::Less => {
+            eprintln!("{}", &t!("error.anu.short"));
+            String::new()
+        }
     }
 }
 

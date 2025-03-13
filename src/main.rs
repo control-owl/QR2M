@@ -16,7 +16,6 @@
 use adw::prelude::*;
 use gtk::{Stack, StackSidebar, gio, glib::clone};
 use gtk4::{self as gtk};
-use hex;
 use libadwaita as adw;
 use rand::Rng;
 use std::{
@@ -40,13 +39,13 @@ const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-const APP_LANGUAGE: &'static [&'static str] = &["English", "Deutsch", "Hrvatski"];
+const APP_LANGUAGE: &[&str] = &["English", "Deutsch", "Hrvatski"];
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
-const VALID_ENTROPY_SOURCES: &'static [&'static str] = &["RNG+", "File", "QRNG"];
-const VALID_WALLET_PURPOSE: &'static [&'static str] = &["Internal", "External"];
-const VALID_ANU_API_DATA_FORMAT: &'static [&'static str] = &["uint8", "uint16", "hex16"];
+const VALID_ENTROPY_SOURCES: &[&str] = &["RNG+", "File", "QRNG"];
+const VALID_WALLET_PURPOSE: &[&str] = &["Internal", "External"];
+const VALID_ANU_API_DATA_FORMAT: &[&str] = &["uint8", "uint16", "hex16"];
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
 const WALLET_MAX_ADDRESSES: u32 = 2147483647;
@@ -54,12 +53,12 @@ const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
 const WINDOW_SETTINGS_DEFAULT_HEIGHT: u32 = 500;
-const VALID_GUI_THEMES: &'static [&'static str] = &["System", "Light", "Dark"];
-const VALID_GUI_ICONS: &'static [&'static str] = &["Thin", "Bold", "Fill"];
-const VALID_COIN_SEARCH_PARAMETER: &'static [&'static str] = &["Name", "Symbol", "Index"];
-const APP_LOG_LEVEL: &'static [&'static str] = &["Standard", "Verbose", "Ultimate"];
+const VALID_GUI_THEMES: &[&str] = &["System", "Light", "Dark"];
+const VALID_GUI_ICONS: &[&str] = &["Thin", "Bold", "Fill"];
+const VALID_COIN_SEARCH_PARAMETER: &[&str] = &["Name", "Symbol", "Index"];
+const APP_LOG_LEVEL: &[&str] = &["Standard", "Verbose", "Ultimate"];
 const GUI_IMAGE_EXTENSION: &str = "svg";
-#[cfg(any(target_os = "windows"))]
+#[cfg(windows)]
 const GUI_IMAGE_EXTENSION: &str = "png";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -79,18 +78,18 @@ struct GuiState {
     gui_theme: Option<String>,
     gui_icon_theme: Option<String>,
     gui_log_status: Option<bool>,
-    gui_main_buttons: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<std::sync::Arc<gtk::Button>>>>>,
+    gui_main_buttons: std::rc::Rc<std::cell::RefCell<std::collections::HashMap<String, Vec<std::rc::Rc<gtk::Button>>>>>,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
 }
 
 impl GuiState {
     fn default_config() -> Self {
         Self {
-            gui_language: APP_LANGUAGE.get(0).map(|&s| s.to_string()),
-            gui_theme: VALID_GUI_THEMES.get(0).map(|&s| s.to_string()),
-            gui_icon_theme: VALID_GUI_ICONS.get(0).map(|&s| s.to_string()),
+            gui_language: APP_LANGUAGE.first().map(|s| s.to_string()),
+            gui_theme: VALID_GUI_THEMES.first().map(|s| s.to_string()),
+            gui_icon_theme: VALID_GUI_ICONS.first().map(|s| s.to_string()),
             gui_log_status: None,
-            gui_main_buttons: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            gui_main_buttons: std::rc::Rc::new(std::cell::RefCell::new(std::collections::HashMap::new())),
             gui_button_images: None,
         }
     }
@@ -154,7 +153,7 @@ impl GuiState {
 
         self.gui_button_images = Some(icons);
 
-        let button_map = self.gui_main_buttons.lock().unwrap();
+        let button_map = self.gui_main_buttons.borrow();
         if let Some(texture_map) = &self.gui_button_images {
             for (name, buttons) in button_map.iter() {
                 if let Some(texture) = texture_map.get(name.as_str()) {
@@ -185,10 +184,10 @@ impl GuiState {
         }
     }
 
-    fn register_button(&self, name: String, button: std::sync::Arc<gtk::Button>) {
+    fn register_button(&self, name: String, button: std::rc::Rc<gtk::Button>) {
         println!("[+] {}", &t!("log.register_button").to_string());
 
-        let mut button_map = self.gui_main_buttons.lock().unwrap();
+        let mut button_map = self.gui_main_buttons.borrow_mut();
         button_map
             .entry(name.to_string())
             .or_default()
@@ -528,7 +527,7 @@ impl AppSettings {
         &mut self,
         key: &str,
         new_value: toml_edit::Item,
-        gui_state: Option<std::sync::Arc<std::sync::Mutex<GuiState>>>,
+        gui_state: Option<std::rc::Rc<std::cell::RefCell<GuiState>>>,
     ) {
         // println!("[+] {}", &t!("log.app_settings.update_value").to_string());
 
@@ -634,7 +633,7 @@ impl AppSettings {
                         adw::StyleManager::default().set_color_scheme(preferred_theme);
 
                         if let Some(state) = gui_state {
-                            let mut state = state.lock().unwrap();
+                            let mut state = state.borrow_mut();
                             state.gui_theme = Some(new_theme.to_string());
                         } else {
                             println!("State in gui_theme is None");
@@ -650,7 +649,7 @@ impl AppSettings {
                         self.gui_icons = Some(new_icons.to_string());
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
                         if let Some(state) = gui_state {
-                            let mut state = state.lock().unwrap();
+                            let mut state = state.borrow_mut();
                             state.gui_icon_theme = self.gui_icons.clone();
                             state.reload_gui_icons();
                         } else {
@@ -692,7 +691,7 @@ impl AppSettings {
                         self.gui_log = Some(value);
 
                         if let Some(state) = gui_state {
-                            let mut gui_state_lock = state.lock().unwrap();
+                            let mut gui_state_lock = state.borrow_mut();
                             gui_state_lock.gui_log_status = Some(value);
                         } else {
                             println!("State in gui_theme is None");
@@ -1207,7 +1206,7 @@ impl AppLog {
     fn initialize_app_log(
         &mut self,
         // log_button: gtk::Button,
-        gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+        gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
     ) {
         let status = self.status.clone();
         let is_active = status.lock().unwrap();
@@ -1218,11 +1217,11 @@ impl AppLog {
             false => "log",
         };
 
-        let lock_gui_state = gui_state.lock().unwrap();
+        let lock_gui_state = gui_state.borrow();
 
         if let Some(texture_map) = &lock_gui_state.gui_button_images {
             if let Some(new_texture) = texture_map.get(new_icon) {
-                let mut lock_buttons = lock_gui_state.gui_main_buttons.lock().unwrap();
+                let mut lock_buttons = lock_gui_state.gui_main_buttons.borrow_mut();
 
                 if let Some(log_buttons) = lock_buttons.get_mut("log") {
                     for button in log_buttons.iter() {
@@ -1330,7 +1329,7 @@ async fn main() {
         .application_id("wtf.r_o0_t.qr2m")
         .build();
 
-    let gui_state = std::sync::Arc::new(std::sync::Mutex::new(GuiState::default_config()));
+    let gui_state = std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
 
     application.connect_activate(clone!(
         #[strong] gui_state,
@@ -1363,7 +1362,7 @@ fn print_program_info() {
 
 fn setup_app_actions(
     application: adw::Application,
-    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) {
     println!("[+] {}", &t!("log.setup_app_actions").to_string());
@@ -1452,7 +1451,7 @@ fn setup_app_actions(
 
 fn create_main_window(
     application: adw::Application,
-    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
     start_time: Option<std::time::Instant>,
 ) {
     println!("[+] {}", &t!("log.create_main_window").to_string());
@@ -1500,7 +1499,7 @@ fn create_main_window(
 
     for &name in &button_names {
         let button = gtk::Button::new();
-        buttons.insert(name.to_string(), std::sync::Arc::new(button));
+        buttons.insert(name.to_string(), std::rc::Rc::new(button));
     }
 
     let button_tooltips = [
@@ -1525,16 +1524,17 @@ fn create_main_window(
     let gui_icons = lock_app_settings.gui_icons.clone().unwrap();
     let app_log_status = lock_app_settings.gui_log.unwrap();
 
-    if let Ok(mut lock_gui_state) = gui_state.lock() {
+    {
+        let mut lock_gui_state = gui_state.borrow_mut();
         lock_gui_state.gui_language = Some(gui_language);
         lock_gui_state.gui_theme = Some(gui_theme);
         lock_gui_state.gui_icon_theme = Some(gui_icons);
         lock_gui_state.gui_log_status = Some(app_log_status);
-
+    
         for (name, button) in &buttons {
             lock_gui_state.register_button(name.clone(), button.clone());
         }
-
+    
         lock_gui_state.reload_gui_theme();
         lock_gui_state.reload_gui_icons();
     }
@@ -1542,12 +1542,10 @@ fn create_main_window(
     {
         let settings = gtk::Settings::default().expect("Failed to get GtkSettings");
         settings.connect_gtk_application_prefer_dark_theme_notify(clone!(
-            #[strong]
-            gui_state,
+            #[strong] gui_state,
             move |_| {
-                if let Ok(mut lock_gui_state) = gui_state.lock() {
-                    lock_gui_state.reload_gui_icons();
-                };
+                let mut lock_gui_state = gui_state.borrow_mut();
+                lock_gui_state.reload_gui_icons();
             }
         ));
     }
@@ -3535,7 +3533,7 @@ fn create_main_window(
 }
 
 fn create_log_window(
-    _gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
     // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
     // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) -> gtk::ApplicationWindow {
@@ -3549,33 +3547,16 @@ fn create_log_window(
         .modal(false)
         .build();
 
-    // let lock_gui_state = gui_state.lock().unwrap();
+    let lock_gui_state = gui_state.borrow_mut();
+    let new_log_button = std::rc::Rc::new(gtk::Button::new());
+    lock_gui_state.register_button("log".to_string(), new_log_button);
 
-    // if let Some(app_log) = &lock_gui_state.app_log {
-    //     let mut lock_app_log = app_log.lock().unwrap();
-
-    //     if let Some(resources) = &lock_gui_state.app_resources {
-    //         let lock_app_resources = resources.lock().unwrap();
-    //         let new_icon = lock_app_resources.get_icon("bell");
-
-    //         let new_button = gtk::Button::new();
-    //         new_button.set_child(new_icon);
-
-    //         lock_app_log.log_button.replace(new_button);
-    //     };
-    // };
-
-    // let lock_button = lock_log.log_button.clone();
-
-    // let lock_resources = resources.lock().unwrap();
-
-    // lock_button.clone().unwrap().set_child(lock_icon);
 
     log_window
 }
 
 fn create_settings_window(
-    gui_state: std::sync::Arc<std::sync::Mutex<GuiState>>,
+    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
     app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
 ) -> gtk::ApplicationWindow {
     println!("[+] {}", &t!("log.create_settings_window").to_string());
@@ -3895,8 +3876,7 @@ fn create_settings_window(
     let default_entropy_source_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_entropy_source_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_source_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_entropy_source_label =
-        gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source").to_string()));
+    let default_entropy_source_label = gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.source")));
     let valid_entropy_source_as_strings: Vec<String> = valid_entropy_sources
         .iter()
         .map(|&x| x.to_string())
@@ -3929,7 +3909,7 @@ fn create_settings_window(
     let default_entropy_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_entropy_length_label =
-        gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.length").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.wallet.entropy.length")));
     let valid_entropy_lengths_as_strings: Vec<String> = VALID_ENTROPY_LENGTHS
         .iter()
         .map(|&x| x.to_string())
@@ -3962,7 +3942,7 @@ fn create_settings_window(
     let mnemonic_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let mnemonic_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let mnemonic_length_label =
-        gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic_length").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic_length")));
     let mnemonic_length = lock_app_settings.wallet_mnemonic_length.unwrap() as f64;
     let mnemonic_length_adjustment =
         gtk::Adjustment::new(mnemonic_length, 8.0 * 2.0, 8.0 * 128.0, 1.0, 100.0, 0.0);
@@ -3985,7 +3965,7 @@ fn create_settings_window(
     let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_bip_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_bip_label = gtk::Label::new(Some(&t!("UI.settings.wallet.bip").to_string()));
+    let default_bip_label = gtk::Label::new(Some(&t!("UI.settings.wallet.bip")));
     let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS
         .iter()
         .map(|&x| x.to_string())
@@ -4016,7 +3996,7 @@ fn create_settings_window(
     let default_address_count_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_address_count_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_address_count_label =
-        gtk::Label::new(Some(&t!("UI.settings.wallet.address_count").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.wallet.address_count")));
     let default_address_count = lock_app_settings.wallet_address_count.unwrap() as f64;
     let address_count_adjustment =
         gtk::Adjustment::new(default_address_count, 1.0, 2147483647.0, 1.0, 10.0, 0.0);
@@ -4039,7 +4019,7 @@ fn create_settings_window(
     let hardened_addresses_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let hardened_addresses_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let hardened_addresses_label =
-        gtk::Label::new(Some(&t!("UI.settings.wallet.hardened").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.wallet.hardened")));
     let hardened_addresses_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.wallet_hardened_address.unwrap();
 
@@ -4058,14 +4038,14 @@ fn create_settings_window(
     stack.add_titled(
         &wallet_settings_box,
         Some("sidebar-settings-wallet"),
-        &t!("UI.settings.sidebar.wallet").to_string(),
+        &t!("UI.settings.sidebar.wallet"),
     );
 
     // -.-. --- .--. -.-- .-. .. --. .... -
     // JUMP: Settings: Sidebar 3: ANU settings
     // -.-. --- .--. -.-- .-. .. --. .... -
     let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu").to_string()));
+    let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu")));
     let content_anu_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
     anu_settings_box.set_margin_top(10);
@@ -4083,7 +4063,7 @@ fn create_settings_window(
     let use_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.use_anu").to_string()));
+    let use_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.use_anu")));
     let use_anu_api_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.anu_enabled.unwrap();
 
@@ -4103,7 +4083,7 @@ fn create_settings_window(
     let log_anu_api_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let log_anu_api_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let log_anu_api_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let log_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.log").to_string()));
+    let log_anu_api_label = gtk::Label::new(Some(&t!("UI.settings.anu.log")));
     let log_anu_api_checkbox = gtk::CheckButton::new();
 
     log_anu_api_checkbox.set_active(lock_app_settings.anu_log.unwrap());
@@ -4123,7 +4103,7 @@ fn create_settings_window(
     let default_api_data_format_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_api_data_format_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_api_data_format_label =
-        gtk::Label::new(Some(&t!("UI.settings.anu.data.type").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.anu.data.type")));
     let valid_api_data_formats_as_strings: Vec<String> = VALID_ANU_API_DATA_FORMAT
         .iter()
         .map(|&x| x.to_string())
@@ -4158,14 +4138,14 @@ fn create_settings_window(
     let default_anu_array_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_array_length_label =
-        gtk::Label::new(Some(&t!("UI.settings.anu.data.array").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.anu.data.array")));
     let mut default_array_length = lock_app_settings.anu_array_length.unwrap();
     default_array_length = std::cmp::max(1, default_array_length);
     default_array_length = std::cmp::min(ANU_MAXIMUM_ARRAY_LENGTH, default_array_length);
 
     let array_length_adjustment = gtk::Adjustment::new(
         default_array_length as f64,
-        1 as f64,
+        1.0,
         ANU_MAXIMUM_ARRAY_LENGTH as f64,
         1.0,
         10.0,
@@ -4191,7 +4171,7 @@ fn create_settings_window(
     let default_anu_hex_length_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_anu_hex_length_label =
-        gtk::Label::new(Some(&t!("UI.settings.anu.data.hex").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.anu.data.hex")));
 
     let mut default_hex_size = lock_app_settings.anu_hex_block_size.unwrap();
     default_hex_size = std::cmp::max(1, default_hex_size);
@@ -4247,7 +4227,7 @@ fn create_settings_window(
     let anu_connection_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let anu_connection_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let anu_connection_timeout_label =
-        gtk::Label::new(Some(&t!("UI.settings.anu.timeout").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.anu.timeout")));
 
     let mut default_connection_timeout = lock_app_settings.anu_timeout.unwrap();
     default_connection_timeout = std::cmp::max(1, default_connection_timeout);
@@ -4315,7 +4295,7 @@ fn create_settings_window(
     stack.add_titled(
         &anu_settings_box,
         Some("sidebar-settings-anu"),
-        &t!("UI.settings.sidebar.anu").to_string(),
+        &t!("UI.settings.sidebar.anu"),
     );
 
     // -.-. --- .--. -.-- .-. .. --. .... -
@@ -4325,7 +4305,7 @@ fn create_settings_window(
     scrolled_window.set_max_content_height(400);
 
     let proxy_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let proxy_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.proxy").to_string()));
+    let proxy_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.proxy")));
     let content_proxy_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
     proxy_settings_box.set_margin_top(10);
@@ -4346,12 +4326,12 @@ fn create_settings_window(
     let use_proxy_settings_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_settings_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_settings_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_settings_label = gtk::Label::new(Some(&t!("UI.settings.proxy.use").to_string()));
+    let use_proxy_settings_label = gtk::Label::new(Some(&t!("UI.settings.proxy.use")));
     // let valid_proxy_settings_as_strings: Vec<String> = VALID_PROXY_STATUS.iter().map(|&x| x.to_string()).collect();
     // let valid_proxy_settings_as_str_refs: Vec<&str> = valid_proxy_settings_as_strings.iter().map(|s| s.as_ref()).collect();
     let use_proxy_settings_checkbox = gtk::CheckButton::new();
 
-    let proxy_status = lock_app_settings.proxy_status.clone().unwrap();
+    let proxy_status = lock_app_settings.proxy_status.unwrap();
 
     use_proxy_settings_checkbox.set_active(proxy_status);
 
@@ -4376,7 +4356,7 @@ fn create_settings_window(
     // Proxy manual settings
     let proxy_manual_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    if proxy_status == true {
+    if proxy_status {
         proxy_manual_settings_box.set_visible(true);
     } else {
         proxy_manual_settings_box.set_visible(false);
@@ -4387,7 +4367,7 @@ fn create_settings_window(
     let proxy_server_address_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_server_address_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_server_address_label =
-        gtk::Label::new(Some(&t!("UI.settings.proxy.address").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.proxy.address")));
     let proxy_server_address_entry = gtk::Entry::new();
 
     proxy_server_address_entry.set_size_request(200, 10);
@@ -4407,7 +4387,7 @@ fn create_settings_window(
     let proxy_server_port_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_server_port_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_server_port_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_server_port_label = gtk::Label::new(Some(&t!("UI.settings.proxy.port").to_string()));
+    let proxy_server_port_label = gtk::Label::new(Some(&t!("UI.settings.proxy.port")));
     let proxy_server_port_entry = gtk::Entry::new();
 
     proxy_server_port_entry.set_size_request(200, 10);
@@ -4429,7 +4409,7 @@ fn create_settings_window(
     let use_proxy_credentials_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_credentials_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_credentials_label =
-        gtk::Label::new(Some(&t!("UI.settings.proxy.creds").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.proxy.creds")));
     let use_proxy_credentials_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.proxy_login_credentials.unwrap();
 
@@ -4448,7 +4428,7 @@ fn create_settings_window(
     // Proxy credentials
     let use_proxy_credentials_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-    if lock_app_settings.proxy_login_credentials.unwrap() == true {
+    if lock_app_settings.proxy_login_credentials.unwrap() {
         use_proxy_credentials_content_box.set_visible(true);
     } else {
         use_proxy_credentials_content_box.set_visible(false);
@@ -4458,7 +4438,7 @@ fn create_settings_window(
     let proxy_username_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_username_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_username_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_username_label = gtk::Label::new(Some(&t!("UI.settings.proxy.username").to_string()));
+    let proxy_username_label = gtk::Label::new(Some(&t!("UI.settings.proxy.username")));
     let proxy_username_entry = gtk::Entry::new();
 
     proxy_username_entry.set_size_request(200, 10);
@@ -4478,7 +4458,7 @@ fn create_settings_window(
     let proxy_password_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_password_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_password_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_password_label = gtk::Label::new(Some(&t!("UI.settings.proxy.password").to_string()));
+    let proxy_password_label = gtk::Label::new(Some(&t!("UI.settings.proxy.password")));
     let proxy_password_entry = gtk::PasswordEntry::new();
 
     proxy_password_entry.set_size_request(200, 10);
@@ -4502,7 +4482,7 @@ fn create_settings_window(
     let use_proxy_pac_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_pac_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_pac_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_pac_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac").to_string()));
+    let use_proxy_pac_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac")));
     let use_proxy_pac_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.proxy_use_pac.unwrap();
 
@@ -4521,7 +4501,7 @@ fn create_settings_window(
     // Proxy PAC
     let use_proxy_pac_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
 
-    if lock_app_settings.proxy_use_pac.unwrap() == true {
+    if lock_app_settings.proxy_use_pac.unwrap() {
         use_proxy_pac_content_box.set_visible(true);
     } else {
         use_proxy_pac_content_box.set_visible(false);
@@ -4531,7 +4511,7 @@ fn create_settings_window(
     let proxy_pac_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_pac_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_pac_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_pac_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac.path").to_string()));
+    let proxy_pac_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.pac.path")));
     let proxy_pac_path_entry = gtk::Entry::new();
 
     proxy_pac_path_entry.set_size_request(200, 10);
@@ -4553,7 +4533,7 @@ fn create_settings_window(
     let use_proxy_ssl_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let use_proxy_ssl_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let use_proxy_ssl_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let use_proxy_ssl_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl").to_string()));
+    let use_proxy_ssl_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl")));
     let use_proxy_ssl_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.proxy_use_ssl.unwrap();
 
@@ -4572,7 +4552,7 @@ fn create_settings_window(
     // Proxy SSL certificate
     let use_proxy_ssl_certificate_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
 
-    if lock_app_settings.proxy_use_ssl.unwrap() == true {
+    if lock_app_settings.proxy_use_ssl.unwrap() {
         use_proxy_ssl_certificate_content_box.set_visible(true);
     } else {
         use_proxy_ssl_certificate_content_box.set_visible(false);
@@ -4582,8 +4562,7 @@ fn create_settings_window(
     let proxy_ssl_certificate_path_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
     let proxy_ssl_certificate_path_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let proxy_ssl_certificate_path_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let proxy_ssl_certificate_path_label =
-        gtk::Label::new(Some(&t!("UI.settings.proxy.ssl.path").to_string()));
+    let proxy_ssl_certificate_path_label = gtk::Label::new(Some(&t!("UI.settings.proxy.ssl.path")));
     let proxy_ssl_certificate_path_entry = gtk::Entry::new();
 
     proxy_ssl_certificate_path_entry.set_size_request(200, 10);
@@ -4606,7 +4585,7 @@ fn create_settings_window(
     stack.add_titled(
         &scrolled_window,
         Some("sidebar-settings-proxy"),
-        &t!("UI.settings.sidebar.proxy").to_string(),
+        &t!("UI.settings.sidebar.proxy"),
     );
 
     // Actions
@@ -4618,7 +4597,7 @@ fn create_settings_window(
             // let selected_proxy_settings_value = VALID_PROXY_STATUS.get(value);
             // let settings = value;
 
-            if proxy_status == true {
+            if proxy_status {
                 proxy_manual_settings_box.set_visible(true);
             } else {
                 proxy_manual_settings_box.set_visible(false);
@@ -4660,9 +4639,9 @@ fn create_settings_window(
     let left_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let right_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
 
-    let save_button = gtk::Button::with_label(&t!("UI.element.button.save").to_string());
-    let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel").to_string());
-    let default_button = gtk::Button::with_label(&t!("UI.element.button.default").to_string());
+    let save_button = gtk::Button::with_label(&t!("UI.element.button.save"));
+    let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel"));
+    let default_button = gtk::Button::with_label(&t!("UI.element.button.default"));
 
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
@@ -4877,11 +4856,11 @@ fn create_settings_window(
                                     adw::StyleManager::default()
                                         .set_color_scheme(adw::ColorScheme::PreferLight);
 
-                                    let new_gui_state = std::sync::Arc::new(std::sync::Mutex::new(
+                                    let new_gui_state = std::rc::Rc::new(std::cell::RefCell::new(
                                         GuiState::default_config(),
                                     ));
-                                    let mut lock_new_gui_state = new_gui_state.lock().unwrap();
-                                    let mut lock_gui_state = gui_state.lock().unwrap();
+                                    let mut lock_new_gui_state = new_gui_state.borrow_mut();
+                                    let mut lock_gui_state = gui_state.borrow_mut();
 
                                     lock_gui_state.reload_gui_icons();
                                     lock_new_gui_state.gui_main_buttons =
@@ -5104,7 +5083,7 @@ fn open_wallet_from_file(
 
             // IMPLEMENT: Check entropy before importing
 
-            (entropy.unwrap_or_else(|| String::new()), passphrase)
+            (entropy.unwrap_or_default(), passphrase)
         }
         Err(_) => {
             // let lock_state = state.lock().unwrap();
@@ -5185,17 +5164,17 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::Label) {
 
     path.push_str(&format!("/{}", dp.bip.unwrap_or_default()));
     if dp.hardened_bip.unwrap_or_default() {
-        path.push_str(&format!("'").to_string());
+        path.push('\'')
     }
 
     path.push_str(&format!("/{}", dp.coin.unwrap_or_default()));
     if dp.hardened_coin.unwrap_or_default() {
-        path.push_str(&format!("'").to_string());
+        path.push('\'')
     }
 
     path.push_str(&format!("/{}", dp.address.unwrap_or_default()));
     if dp.hardened_address.unwrap_or_default() {
-        path.push_str(&format!("'").to_string());
+        path.push('\'')
     }
 
     if dp.bip.unwrap() != 32 {
@@ -5252,8 +5231,9 @@ fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<
 fn parse_wallet_version(line: &str) -> Result<u8, String> {
     println!("[+] {}", &t!("log.parse_wallet_version").to_string());
 
-    if line.starts_with("version = ") {
-        match line["version = ".len()..].parse::<u8>() {
+
+    if let Some(stripped) = line.strip_prefix("version = ") {
+        match stripped.parse::<u8>() {
             Ok(version) => Ok(version),
             Err(_) => Err("Error: Invalid version format, expected an integer".to_string()),
         }

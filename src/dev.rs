@@ -56,7 +56,7 @@ pub fn derive_from_path_ed25519(
         ).unwrap_or_default();
 
         private_key.clone().copy_from_slice(&derived.0);
-        private_key_array = derived.0.clone().try_into().expect("Incorrect private key length");
+        private_key_array = derived.0;
 
         chain_code.clone().copy_from_slice(&derived.1);
         public_key = derived.2.clone();

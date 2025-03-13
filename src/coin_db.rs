@@ -13,7 +13,7 @@ use gtk4 as gtk;
 const COINLIST_FILE: &str = "ECDB.csv";
 
 // Coin status 2024-11-16
-pub const VALID_COIN_STATUS_NAME: &'static [&'static str] = &[
+pub const VALID_COIN_STATUS_NAME: &[&str] = &[
     "Not supported", 
     "Verified", 
     "Not verified",
@@ -60,7 +60,7 @@ pub fn create_coin_store() -> Vec<CoinDatabase> {
     let mut coin_store = Vec::new();
 
     for result in rdr.records() {
-        let record = result.expect(&t!("error.csv.read").to_string());
+        let record = result.expect(&t!("error.csv.read"));
         
         let number_status = record[0].to_string();
         let status = match number_status.as_str() {
