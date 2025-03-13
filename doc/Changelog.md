@@ -7,7 +7,7 @@
 - cargo clippy (187 warnings)
 
 # version 0.74.2
-- remove cargo clippy warnings
+- remove cargo clippy warnings >100
 - cargo crates updated
 
 # version 0.74.1
