@@ -848,6 +848,7 @@ impl AppSettings {
 
     fn save_settings(&self) {
         println!("[+] {}", &t!("log.app_settings.save_settings").to_string());
+        
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
@@ -871,20 +872,14 @@ impl AppSettings {
             .unwrap_or(toml_edit::DocumentMut::new());
 
         {
-            let wallet_section =
-                doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
+            let wallet_section = doc["wallet"].or_insert(toml_edit::Item::Table(Default::default()));
             if let toml_edit::Item::Table(wallet_table) = wallet_section {
-                wallet_table["entropy_source"] =
-                    toml_edit::value(self.wallet_entropy_source.clone().unwrap());
-                wallet_table["entropy_length"] =
-                    toml_edit::value(self.wallet_entropy_length.unwrap() as i64);
-                wallet_table["mnemonic_length"] =
-                    toml_edit::value(self.wallet_mnemonic_length.unwrap() as i64);
+                wallet_table["entropy_source"] = toml_edit::value(self.wallet_entropy_source.clone().unwrap());
+                wallet_table["entropy_length"] = toml_edit::value(self.wallet_entropy_length.unwrap() as i64);
+                wallet_table["mnemonic_length"] = toml_edit::value(self.wallet_mnemonic_length.unwrap() as i64);
                 wallet_table["bip"] = toml_edit::value(self.wallet_bip.unwrap() as i64);
-                wallet_table["address_count"] =
-                    toml_edit::value(self.wallet_address_count.unwrap() as i64);
-                wallet_table["hardened_address"] =
-                    toml_edit::value(self.wallet_hardened_address.unwrap());
+                wallet_table["address_count"] = toml_edit::value(self.wallet_address_count.unwrap() as i64);
+                wallet_table["hardened_address"] = toml_edit::value(self.wallet_hardened_address.unwrap());
             }
         }
 
@@ -899,8 +894,7 @@ impl AppSettings {
                 gui_table["icons"] = toml_edit::value(self.gui_icons.clone().unwrap());
                 gui_table["language"] = toml_edit::value(self.gui_language.clone().unwrap());
                 gui_table["search"] = toml_edit::value(self.gui_search.clone().unwrap());
-                gui_table["notification_timeout"] =
-                    toml_edit::value(self.gui_notification_timeout.unwrap() as i64);
+                gui_table["notification_timeout"] = toml_edit::value(self.gui_notification_timeout.unwrap() as i64);
                 gui_table["log"] = toml_edit::value(self.gui_log.unwrap());
                 gui_table["log_level"] = toml_edit::value(self.gui_log_level.clone().unwrap());
             }
@@ -912,8 +906,7 @@ impl AppSettings {
                 anu_table["enabled"] = toml_edit::value(self.anu_enabled.unwrap());
                 anu_table["data_format"] = toml_edit::value(self.anu_data_format.clone().unwrap());
                 anu_table["array_length"] = toml_edit::value(self.anu_array_length.unwrap() as i64);
-                anu_table["hex_block_size"] =
-                    toml_edit::value(self.anu_hex_block_size.unwrap() as i64);
+                anu_table["hex_block_size"] = toml_edit::value(self.anu_hex_block_size.unwrap() as i64);
                 anu_table["log"] = toml_edit::value(self.anu_log.unwrap());
                 anu_table["timeout"] = toml_edit::value(self.anu_timeout.unwrap() as i64);
             }
@@ -923,22 +916,15 @@ impl AppSettings {
             let proxy_section = doc["proxy"].or_insert(toml_edit::Item::Table(Default::default()));
             if let toml_edit::Item::Table(proxy_table) = proxy_section {
                 proxy_table["status"] = toml_edit::value(self.proxy_status.clone().unwrap());
-                proxy_table["server_address"] =
-                    toml_edit::value(self.proxy_server_address.clone().unwrap());
-                proxy_table["server_port"] =
-                    toml_edit::value(self.proxy_server_port.unwrap() as i64);
+                proxy_table["server_address"] = toml_edit::value(self.proxy_server_address.clone().unwrap());
+                proxy_table["server_port"] = toml_edit::value(self.proxy_server_port.unwrap() as i64);
                 proxy_table["use_pac"] = toml_edit::value(self.proxy_use_pac.unwrap());
-                proxy_table["script_address"] =
-                    toml_edit::value(self.proxy_script_address.clone().unwrap());
-                proxy_table["login_credentials"] =
-                    toml_edit::value(self.proxy_login_credentials.unwrap());
-                proxy_table["login_username"] =
-                    toml_edit::value(self.proxy_login_username.clone().unwrap());
-                proxy_table["login_password"] =
-                    toml_edit::value(self.proxy_login_password.clone().unwrap());
+                proxy_table["script_address"] = toml_edit::value(self.proxy_script_address.clone().unwrap());
+                proxy_table["login_credentials"] = toml_edit::value(self.proxy_login_credentials.unwrap());
+                proxy_table["login_username"] = toml_edit::value(self.proxy_login_username.clone().unwrap());
+                proxy_table["login_password"] = toml_edit::value(self.proxy_login_password.clone().unwrap());
                 proxy_table["use_ssl"] = toml_edit::value(self.proxy_use_ssl.unwrap());
-                proxy_table["ssl_certificate"] =
-                    toml_edit::value(self.proxy_ssl_certificate.clone().unwrap());
+                proxy_table["ssl_certificate"] = toml_edit::value(self.proxy_ssl_certificate.clone().unwrap());
             }
         }
 
@@ -3520,35 +3506,21 @@ fn create_main_window(
             let gui_last_height = window.height() as i64;
             let gui_maximized = window.is_maximized();
 
-            // BUG: Mutex poison ???
-            let app_settings_lock = APP_SETTINGS.read().unwrap();
-            let gui_save_size = app_settings_lock.gui_save_size.unwrap();
+            let gui_save_size = {
+                let app_settings_lock = APP_SETTINGS.read().unwrap();
+                app_settings_lock.gui_save_size.unwrap()
+            };
 
             if gui_save_size {
-                {
+                std::thread::spawn(move || {
                     let mut settings = APP_SETTINGS.write().unwrap();
-                    let updates = [
-                        (
-                            "gui_last_width",
-                            toml_edit::value(gui_last_width),
-                        ),
-                        (
-                            "gui_last_height",
-                            toml_edit::value(gui_last_height),
-                        ),
-                        (
-                            "gui_maximized",
-                            toml_edit::value(gui_maximized),
-                        ),
-                    ];
-                    
-                    updates.iter().for_each(|(key, value)| {
-                        settings.update_value(key, value.clone(), None);
-                    });
-        
+                    settings.update_value("gui_last_width", toml_edit::value(gui_last_width), None);
+                    settings.update_value("gui_last_height", toml_edit::value(gui_last_height), None);
+                    settings.update_value("gui_maximized", toml_edit::value(gui_maximized), None);
                     AppSettings::save_settings(&*settings);
-                    glib::Propagation::Proceed
-                }
+                });
+                
+                glib::Propagation::Proceed
             } else {
                 glib::Propagation::Proceed
             }
