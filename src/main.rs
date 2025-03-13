@@ -1473,14 +1473,17 @@ fn create_main_window(
     let window_height = lock_app_settings.gui_last_height.unwrap();
     let gui_maximized = lock_app_settings.gui_maximized.unwrap();
     let gui_language = lock_app_settings.gui_language.clone().unwrap();
+    let save_gui_size = lock_app_settings.gui_save_size.clone().unwrap();
 
-    if gui_maximized {
-        window.set_maximized(true);
-    } else {
-        window.set_default_width(window_width as i32);
-        window.set_default_height(window_height as i32);
+    if save_gui_size {
+        if gui_maximized {
+            window.set_maximized(true);
+        } else {
+            window.set_default_width(window_width as i32);
+            window.set_default_height(window_height as i32);
+        }
     }
-
+    
     os::switch_locale(&gui_language);
 
     qr2m_lib::setup_css();
