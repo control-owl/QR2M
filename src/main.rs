@@ -191,7 +191,7 @@ impl GuiState {
         let mut button_map = self.gui_main_buttons.lock().unwrap();
         button_map
             .entry(name.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(button);
 
         println!("\t- Button: {:?}", name)
@@ -485,43 +485,43 @@ impl AppSettings {
 
         let mut application_settings = APP_SETTINGS.write().unwrap();
         application_settings.wallet_entropy_source = wallet_entropy_source.clone();
-        application_settings.wallet_entropy_length = wallet_entropy_length.clone();
-        application_settings.wallet_mnemonic_length = wallet_mnemonic_length.clone();
-        application_settings.wallet_bip = wallet_bip.clone();
-        application_settings.wallet_address_count = wallet_address_count.clone();
-        application_settings.wallet_hardened_address = wallet_hardened_address.clone();
+        application_settings.wallet_entropy_length = wallet_entropy_length;
+        application_settings.wallet_mnemonic_length = wallet_mnemonic_length;
+        application_settings.wallet_bip = wallet_bip;
+        application_settings.wallet_address_count = wallet_address_count;
+        application_settings.wallet_hardened_address = wallet_hardened_address;
 
-        application_settings.gui_save_size = gui_save_size.clone();
-        application_settings.gui_last_width = gui_last_width.clone();
-        application_settings.gui_last_height = gui_last_height.clone();
-        application_settings.gui_maximized = gui_maximized.clone();
+        application_settings.gui_save_size = gui_save_size;
+        application_settings.gui_last_width = gui_last_width;
+        application_settings.gui_last_height = gui_last_height;
+        application_settings.gui_maximized = gui_maximized;
         application_settings.gui_theme = gui_theme.clone();
         application_settings.gui_icons = gui_icons.clone();
         application_settings.gui_language = gui_language.clone();
         application_settings.gui_search = gui_search.clone();
-        application_settings.gui_notification_timeout = gui_notification_timeout.clone();
-        application_settings.gui_log = gui_log.clone();
+        application_settings.gui_notification_timeout = gui_notification_timeout;
+        application_settings.gui_log = gui_log;
         application_settings.gui_log_level = gui_log_level.clone();
 
-        application_settings.anu_enabled = anu_enabled.clone();
+        application_settings.anu_enabled = anu_enabled;
         application_settings.anu_data_format = anu_data_format.clone();
-        application_settings.anu_array_length = anu_array_length.clone();
-        application_settings.anu_hex_block_size = anu_hex_block_size.clone();
-        application_settings.anu_log = anu_log.clone();
-        application_settings.anu_timeout = anu_timeout.clone();
+        application_settings.anu_array_length = anu_array_length;
+        application_settings.anu_hex_block_size = anu_hex_block_size;
+        application_settings.anu_log = anu_log;
+        application_settings.anu_timeout = anu_timeout;
 
-        application_settings.proxy_status = proxy_status.clone();
+        application_settings.proxy_status = proxy_status;
         application_settings.proxy_server_address = proxy_server_address.clone();
-        application_settings.proxy_server_port = proxy_server_port.clone();
-        application_settings.proxy_use_pac = proxy_use_pac.clone();
+        application_settings.proxy_server_port = proxy_server_port;
+        application_settings.proxy_use_pac = proxy_use_pac;
         application_settings.proxy_script_address = proxy_script_address.clone();
-        application_settings.proxy_login_credentials = proxy_login_credentials.clone();
+        application_settings.proxy_login_credentials = proxy_login_credentials;
         application_settings.proxy_login_username = proxy_login_username.clone();
         application_settings.proxy_login_password = proxy_login_password.clone();
-        application_settings.proxy_use_ssl = proxy_use_ssl.clone();
+        application_settings.proxy_use_ssl = proxy_use_ssl;
         application_settings.proxy_ssl_certificate = proxy_ssl_certificate.clone();
-        application_settings.proxy_retry_attempts = proxy_retry_attempts.clone();
-        application_settings.proxy_timeout = proxy_timeout.clone();
+        application_settings.proxy_retry_attempts = proxy_retry_attempts;
+        application_settings.proxy_timeout = proxy_timeout;
     }
 
     fn update_value(
@@ -915,7 +915,7 @@ impl AppSettings {
         {
             let proxy_section = doc["proxy"].or_insert(toml_edit::Item::Table(Default::default()));
             if let toml_edit::Item::Table(proxy_table) = proxy_section {
-                proxy_table["status"] = toml_edit::value(self.proxy_status.clone().unwrap());
+                proxy_table["status"] = toml_edit::value(self.proxy_status.unwrap());
                 proxy_table["server_address"] = toml_edit::value(self.proxy_server_address.clone().unwrap());
                 proxy_table["server_port"] = toml_edit::value(self.proxy_server_port.unwrap() as i64);
                 proxy_table["use_pac"] = toml_edit::value(self.proxy_use_pac.unwrap());
@@ -1167,7 +1167,7 @@ impl AppMessages {
             _ => message_box.set_css_classes(&["info-message"]),
         }
 
-        let close_button = gtk::Button::with_label(&t!("UI.element.button.close").to_string());
+        let close_button = gtk::Button::with_label(&t!("UI.element.button.close"));
         let gesture = gtk::GestureClick::new();
 
         gesture.connect_pressed(clone!(
@@ -1473,7 +1473,7 @@ fn create_main_window(
     let window_height = lock_app_settings.gui_last_height.unwrap();
     let gui_maximized = lock_app_settings.gui_maximized.unwrap();
     let gui_language = lock_app_settings.gui_language.clone().unwrap();
-    let save_gui_size = lock_app_settings.gui_save_size.clone().unwrap();
+    let save_gui_size = lock_app_settings.gui_save_size.unwrap();
 
     if save_gui_size {
         if gui_maximized {
@@ -1696,7 +1696,7 @@ fn create_main_window(
         .build();
     
     let entropy_length_frame = gtk::Frame::builder()
-        .label(&t!("UI.main.seed.entropy.length").to_string())
+        .label(t!("UI.main.seed.entropy.length").to_string())
         .hexpand(true)
         .build();
 
@@ -1738,7 +1738,7 @@ fn create_main_window(
 
     let mnemonic_passphrase_info_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_passphrase_length_frame = gtk::Frame::builder()
-        .label(&t!("UI.main.seed.mnemonic.length").to_string())
+        .label(t!("UI.main.seed.mnemonic.length").to_string())
         .hexpand(true)
         .build();
     
@@ -1764,17 +1764,17 @@ fn create_main_window(
     mnemonic_passphrase_main_box.set_hexpand(true);
 
     let mnemonic_passphrase_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass").to_string()));
+    let mnemonic_passphrase_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.pass")));
     let mnemonic_passphrase_text = gtk::Entry::new();
     mnemonic_passphrase_text.set_hexpand(true);
 
     let generate_entropy_button = gtk::Button::new();
     generate_entropy_button.set_width_request(200);
-    generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+    generate_entropy_button.set_label(&t!("UI.main.seed.generate"));
 
     let delete_entropy_button = gtk::Button::new();
     delete_entropy_button.set_width_request(200);
-    delete_entropy_button.set_label(&t!("UI.main.seed.delete").to_string());
+    delete_entropy_button.set_label(&t!("UI.main.seed.delete"));
 
     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy")));
@@ -1907,7 +1907,6 @@ fn create_main_window(
             "UI.main.coin.filter.status.verified",
             value = coin_db::COIN_STATUS_VERIFIED
         )
-        .to_string(),
     );
     filter_verified_coins_button_box.append(&filter_verified_coins_button);
     coin_filter_content_box.append(&filter_verified_coins_button_box);
@@ -1948,7 +1947,7 @@ fn create_main_window(
     coin_main_content_box.append(&coin_filter_main_box);
 
     // Coin search
-    let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.search").to_string()));
+    let coin_filter_main_frame = gtk::Frame::new(Some(&t!("UI.main.coin.search")));
     let search_coin_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     coin_filter_main_frame.set_child(Some(&search_coin_content_box));
 
@@ -1959,8 +1958,7 @@ fn create_main_window(
 
     // Advance search
     let advance_search_content_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let advance_search_label =
-        gtk::Label::new(Some(&t!("UI.main.coin.search.advance").to_string()));
+    let advance_search_label = gtk::Label::new(Some(&t!("UI.main.coin.search.advance")));
     let advance_search_checkbox = gtk::CheckButton::new();
 
     advance_search_content_box.append(&advance_search_label);
@@ -2002,12 +2000,11 @@ fn create_main_window(
             "UI.main.coin.search.text",
             value = valid_coin_search_filter_as_strings[default_coin_search_filter]
         )
-        .to_string(),
     ));
 
     // Coin treeview
     let scrolled_window = gtk::ScrolledWindow::new();
-    let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin").to_string()));
+    let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin")));
 
     coin_db::create_coin_completion_model();
 
@@ -2408,7 +2405,7 @@ fn create_main_window(
     stack.add_titled(
         &main_address_box,
         Some("sidebar-address"),
-        &t!("UI.main.address").to_string(),
+        &t!("UI.main.address"),
     );
 
     // JUMP: Action: Open Wallet
@@ -2456,7 +2453,7 @@ fn create_main_window(
                     let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
 
                     let seed = keys::generate_bip39_seed(
-                        &pre_entropy,
+                        pre_entropy,
                         &mnemonic_passphrase_text.buffer().text(),
                     );
                     let seed_hex = hex::encode(&seed[..]);
@@ -2735,9 +2732,9 @@ fn create_main_window(
             // }
 
             if *source == "File" {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file").to_string());
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file"));
             } else {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate").to_string());
+                generate_entropy_button.set_label(&t!("UI.main.seed.generate"));
             }
         }
     ));
@@ -2889,7 +2886,7 @@ fn create_main_window(
             let search_parameter = "Cmc_top";
             let store = coin_store.borrow();
             let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -2934,7 +2931,7 @@ fn create_main_window(
             let search_parameter = "Cmc_top";
             let store = coin_store.borrow();
             let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -2979,7 +2976,7 @@ fn create_main_window(
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3024,7 +3021,7 @@ fn create_main_window(
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3069,7 +3066,7 @@ fn create_main_window(
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3114,7 +3111,7 @@ fn create_main_window(
             let search_parameter = "Status";
             let store = coin_store.borrow();
             let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, &search_text);
+                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
 
             let store = coin_tree_store.borrow_mut();
             store.clear();
@@ -3262,12 +3259,11 @@ fn create_main_window(
             let address_count_str = address_count.as_str();
             let address_count_int = address_count_str.parse::<u32>().unwrap_or(0);
 
-            let maximum;
-            if address_count_int == 1 {
-                maximum = WALLET_MAX_ADDRESSES;
+            let maximum = if address_count_int == 1 {
+                WALLET_MAX_ADDRESSES
             } else {
-                maximum = WALLET_MAX_ADDRESSES - address_count_int;
-            }
+                WALLET_MAX_ADDRESSES - address_count_int
+            };
 
             let new_adjustment = gtk::Adjustment::new(0.0, 0.0, maximum as f64, 1.0, 10.0, 0.0);
 
@@ -3365,7 +3361,7 @@ fn create_main_window(
                                 let hash = wallet_settings.hash.clone().unwrap_or_default();
                                 let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
                                 let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-                                let coin_index = wallet_settings.coin_index.clone().unwrap_or_default();
+                                let coin_index = wallet_settings.coin_index.unwrap_or_default();
             
                                 if let Ok((address, public_key, private_key)) = keys::generate_address(
                                     coin_index,
@@ -3520,7 +3516,7 @@ fn create_main_window(
                     settings.update_value("gui_last_width", toml_edit::value(gui_last_width), None);
                     settings.update_value("gui_last_height", toml_edit::value(gui_last_height), None);
                     settings.update_value("gui_maximized", toml_edit::value(gui_maximized), None);
-                    AppSettings::save_settings(&*settings);
+                    AppSettings::save_settings(&settings);
                 });
                 
                 glib::Propagation::Proceed
@@ -3532,12 +3528,9 @@ fn create_main_window(
 
     window.present();
 
-    match start_time {
-        Some(value) => {
-            let elapsed = value.elapsed();
-            println!("Application startup time: {:.2?}", elapsed);
-        }
-        None => {}
+    if let Some(value) = start_time {
+        let elapsed = value.elapsed();
+        println!("Application startup time: {:.2?}", elapsed);
     };
 }
 
@@ -3605,7 +3598,7 @@ fn create_settings_window(
     // JUMP: Settings: Sidebar 1: General settings
     // -.-. --- .--. -.-- .-. .. --. .... -
     let general_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let general_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.general").to_string()));
+    let general_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.general")));
     let content_general_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
     general_settings_box.set_margin_top(10);
@@ -3625,7 +3618,7 @@ fn create_settings_window(
     let default_gui_theme_color_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_theme_color_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_theme_color_label =
-        gtk::Label::new(Some(&t!("UI.settings.general.theme").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.general.theme")));
     let valid_gui_themes_as_strings: Vec<String> =
         VALID_GUI_THEMES.iter().map(|&x| x.to_string()).collect();
     let valid_gui_themes_as_str_refs: Vec<&str> = valid_gui_themes_as_strings
@@ -3656,7 +3649,7 @@ fn create_settings_window(
     let default_gui_icons_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_icons_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_icons_label =
-        gtk::Label::new(Some(&t!("UI.settings.general.icons").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.general.icons")));
     let valid_gui_icons_as_strings: Vec<String> =
         VALID_GUI_ICONS.iter().map(|&x| x.to_string()).collect();
     let valid_gui_icons_as_str_refs: Vec<&str> = valid_gui_icons_as_strings
@@ -3687,7 +3680,7 @@ fn create_settings_window(
     let default_gui_language_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_language_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_language_label =
-        gtk::Label::new(Some(&t!("UI.settings.general.language").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.general.language")));
     let valid_gui_languages_as_strings: Vec<String> =
         APP_LANGUAGE.iter().map(|&x| x.to_string()).collect();
     let valid_gui_languages_as_str_refs: Vec<&str> = valid_gui_languages_as_strings
@@ -3719,7 +3712,7 @@ fn create_settings_window(
     let window_save_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let window_save_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let save_window_size_label =
-        gtk::Label::new(Some(&t!("UI.settings.general.save_window").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.general.save_window")));
     let save_window_size_checkbox = gtk::CheckButton::new();
     let is_checked = lock_app_settings.gui_save_size.unwrap();
 
@@ -3740,7 +3733,7 @@ fn create_settings_window(
     let default_search_parameter_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_search_parameter_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_search_parameter_label =
-        gtk::Label::new(Some(&t!("UI.settings.general.search").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.general.search")));
     let valid_search_parameters_as_strings: Vec<String> = VALID_COIN_SEARCH_PARAMETER
         .iter()
         .map(|&x| x.to_string())
@@ -3774,7 +3767,7 @@ fn create_settings_window(
     let notification_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let notification_timeout_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let notification_timeout_label = gtk::Label::new(Some(
-        &t!("UI.settings.wallet.notification_timeout").to_string(),
+        &t!("UI.settings.wallet.notification_timeout"),
     ));
     let notification_timeout = lock_app_settings.gui_notification_timeout.unwrap() as f64;
     let notification_timeout_adjustment =
@@ -3800,11 +3793,11 @@ fn create_settings_window(
     let enable_gui_log_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let enable_gui_log_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let enable_gui_log_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let enable_gui_log_label = gtk::Label::new(Some(&t!("UI.main.log").to_string()));
+    let enable_gui_log_label = gtk::Label::new(Some(&t!("UI.main.log")));
     let enable_gui_log_checkbox = gtk::CheckButton::new();
     let enable_gui_log = lock_app_settings.gui_log.unwrap();
 
-    enable_gui_log_checkbox.set_active(enable_gui_log.try_into().unwrap());
+    enable_gui_log_checkbox.set_active(enable_gui_log);
     enable_gui_log_box.set_hexpand(true);
     enable_gui_log_item_box.set_hexpand(true);
     enable_gui_log_item_box.set_margin_end(20);
@@ -3821,7 +3814,7 @@ fn create_settings_window(
     let default_gui_log_level_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_log_level_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_gui_log_level_label =
-        gtk::Label::new(Some(&t!("UI.settings.general.log_level").to_string()));
+        gtk::Label::new(Some(&t!("UI.settings.general.log_level")));
     let valid_gui_log_level_as_strings: Vec<String> =
         APP_LOG_LEVEL.iter().map(|&x| x.to_string()).collect();
     let valid_gui_log_level_as_str_refs: Vec<&str> = valid_gui_log_level_as_strings
@@ -3848,7 +3841,7 @@ fn create_settings_window(
     default_gui_log_level_box.append(&default_gui_log_level_item_box);
     content_general_box.append(&default_gui_log_level_box);
 
-    if enable_gui_log == true {
+    if enable_gui_log {
         default_gui_log_level_box.set_visible(true);
     } else {
         default_gui_log_level_box.set_visible(false);
@@ -3865,14 +3858,14 @@ fn create_settings_window(
     stack.add_titled(
         &general_settings_box,
         Some("sidebar-settings-general"),
-        &t!("UI.settings.sidebar.general").to_string(),
+        &t!("UI.settings.sidebar.general"),
     );
 
     // -.-. --- .--. -.-- .-. .. --. .... -
     // JUMP: Settings: Sidebar 2: Wallet settings
     // -.-. --- .--. -.-- .-. .. --. .... -
     let wallet_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet").to_string()));
+    let wallet_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.wallet")));
     let content_wallet_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
     wallet_settings_box.set_margin_top(10);
@@ -3890,7 +3883,7 @@ fn create_settings_window(
     // Default entropy source
     let qrng_enabled = lock_app_settings.anu_enabled.unwrap();
     let valid_entropy_sources: Vec<&str> = if qrng_enabled {
-        VALID_ENTROPY_SOURCES.iter().cloned().collect()
+        VALID_ENTROPY_SOURCES.to_vec()
     } else {
         VALID_ENTROPY_SOURCES
             .iter()

@@ -315,7 +315,7 @@ pub fn generate_sha256_ripemd160_address(
     address_bytes.extend_from_slice(public_key_hash);
     address_bytes.extend(&hash);
 
-    let checksum = Sha256::digest(&Sha256::digest(&address_bytes));
+    let checksum = Sha256::digest(Sha256::digest(&address_bytes));
     let checksum = &checksum[0..4];
 
     let mut full_address_bytes = address_bytes.clone();
@@ -497,7 +497,7 @@ pub fn generate_entropy(
         },
         _ => {
             println!("{}", &t!("error.entropy.create.source"));
-            return String::new()
+            String::new()
         }
     }
 }
@@ -517,7 +517,7 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
         .collect();
     
     let wordlist_path = std::path::Path::new("coin").join(crate::WORDLIST_FILE);
-    let wordlist = qr2m_lib::get_text_from_resources(&wordlist_path.to_str().unwrap());
+    let wordlist = qr2m_lib::get_text_from_resources(wordlist_path.to_str().unwrap());
 
     let bad_word = t!("error.wordlist.word").to_string();
     let mnemonic_words_vector: Vec<&str> = wordlist.lines().collect();
@@ -546,7 +546,7 @@ pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     println!(" - Entropy: {:?}", entropy);
     println!(" - Passphrase: {:?}", passphrase);
 
-    let entropy_vector = qr2m_lib::convert_string_to_binary(&entropy);
+    let entropy_vector = qr2m_lib::convert_string_to_binary(entropy);
     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
         Ok(mnemonic) => mnemonic,
         Err(err) => {
@@ -611,11 +611,11 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
     }
     
     let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", value = "private").to_string());
+        .expect(&t!("error.master.parse.header", value = "private"));
     let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
-        .expect(&t!("error.master.parse.header", value = "public").to_string());
+        .expect(&t!("error.master.parse.header", value = "public"));
 
-    let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode").to_string());
+    let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode"));
     let message = "Bitcoin seed";
     let hmac_result = qr2m_lib::calculate_hmac_sha512_hash(message.as_bytes(), &seed_bytes);
     let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
@@ -635,8 +635,8 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
     
     let master_xprv = bs58::encode(&master_private_key).into_string();
     let secp = secp256k1::Secp256k1::new();
-    let master_secret_key = secp256k1::SecretKey::from_slice(&master_private_key_bytes)
-        .expect(&t!("error.master.create").to_string());
+    let master_secret_key = secp256k1::SecretKey::from_slice(master_private_key_bytes)
+        .expect(&t!("error.master.create"));
     let master_public_key_bytes = secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
     let mut master_public_key = Vec::new();
 
@@ -696,10 +696,10 @@ pub fn generate_address(
 
     let secp = secp256k1::Secp256k1::new();
 
-    let trimmed_public_key_hash = if public_key_hash.starts_with("0x") {
-        &public_key_hash[2..]
+    let trimmed_public_key_hash = if let Some(stripped) = public_key_hash.strip_prefix("0x") {
+        stripped
     } else {
-        &public_key_hash
+        public_key_hash
     };
 
     let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
@@ -710,9 +710,9 @@ pub fn generate_address(
     };
 
     let derived_child_keys = match key_derivation {
-        "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
-        "ed25519" => crate::dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, &derivation_path),
-        "N/A" | _ => {
+        "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, derivation_path),
+        "ed25519" => crate::dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, derivation_path),
+        _ => {
             return Err(format!("Unsupported key derivation method: {:?}", key_derivation))
         }
     }.expect("Can not derive child key");
@@ -730,7 +730,7 @@ pub fn generate_address(
             let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
             CryptoPublicKey::Ed25519(pub_key_bytes)
         },
-        "N/A" | _ => {
+        _ => {
             return Err(format!("Unsupported key derivation method: {:?}", key_derivation));
         }
     };
@@ -744,7 +744,7 @@ pub fn generate_address(
             CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
             CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
         },
-        "N/A" | _ => {
+        _ => {
             return Err(format!("Unsupported hash method: {:?}", hash));
         }
     };
@@ -763,7 +763,7 @@ pub fn generate_address(
             }
         },
         "ed25519" => crate::dev::generate_ed25519_address(&public_key),
-        "N/A" | _ => {
+        _ => {
             return Err(format!("Unsupported hash method: {:?}", hash));
         }
     };
@@ -774,8 +774,8 @@ pub fn generate_address(
     let priv_key_wif = create_private_key_for_address(
         Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
         Some(compressed),
-        Some(&wallet_import_format),
-        &hash,
+        Some(wallet_import_format),
+        hash,
     ).expect("Failed to convert private key to WIF");
 
     Ok((address.clone(), public_key_encoded.clone(), priv_key_wif.clone()))

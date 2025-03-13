@@ -72,7 +72,7 @@ pub fn create_coin_store() -> Vec<CoinDatabase> {
         }.to_string();
 
 
-        let coin_index: u32 = record[1].parse().expect(&t!("error.csv.parse", value = "coin_index").to_string());
+        let coin_index: u32 = record[1].parse().expect(&t!("error.csv.parse", value = "coin_index"));
         let coin_symbol = record[2].to_string();
         let coin_name = record[3].to_string();
         let key_derivation = record[4].to_string();
@@ -155,7 +155,7 @@ pub fn create_coin_completion_model() -> gtk::ListStore {
 
 pub fn fetch_coins_from_database<'a>(
     part: &'a str,
-    coin_store: &'a Vec<CoinDatabase>, 
+    coin_store: &'a [CoinDatabase], 
     target_value: &'a str
 ) -> Vec<&'a CoinDatabase> {
 
@@ -200,7 +200,7 @@ pub fn fetch_coins_from_database<'a>(
                 .filter(|&coin_type| coin_type.coin_index == target_value.parse().unwrap_or(0))
                 .collect()
         },
-        "Name" | _ => {
+        _ => {
             coin_store
                 .iter()
                 .filter(|&coin_type| coin_type.coin_name.to_lowercase().contains(target_value))
@@ -228,8 +228,7 @@ fn create_coin_database() -> Vec<CoinDatabase> {
 
     let coin_types: Vec<CoinDatabase> = rdr.records()
         .filter_map(|record| record.ok())
-        .enumerate()
-        .map(|(_index, record)| {
+        .map(|record| {
             let status: String = record.get(0).unwrap_or_default().to_string();
             let coin_index: u32 = record.get(1).unwrap_or_default().parse().unwrap();
             let coin_symbol: String = record.get(2).unwrap_or_default().to_string();

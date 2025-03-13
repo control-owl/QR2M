@@ -81,9 +81,9 @@ fn derive_child_key_ed25519(
     
     let mut hasher = Sha256::new();
     hasher.update(parent_key);
-    hasher.update(&index.to_be_bytes());
+    hasher.update(index.to_be_bytes());
     if hardened {
-        hasher.update(&[1u8; 1]);
+        hasher.update([1u8; 1]);
     }
     let result = hasher.finalize();
     
@@ -198,8 +198,8 @@ pub fn anu_window() -> gtk::ApplicationWindow {
 
     let lock_app_settings = crate::APP_SETTINGS.read().unwrap();
     let anu_data_type = lock_app_settings.anu_data_format.clone();
-    let anu_array_length = lock_app_settings.anu_array_length.clone();
-    let anu_hex_block_size = lock_app_settings.anu_hex_block_size.clone();
+    let anu_array_length = lock_app_settings.anu_array_length;
+    let anu_hex_block_size = lock_app_settings.anu_hex_block_size;
 
     let main_anu_window_box = gtk::Box::builder()
         .margin_bottom(10)
@@ -266,12 +266,12 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     anu_data_type_frame.set_child(Some(&anu_data_type_entry));
 
     let anu_array_length_entry = gtk::Entry::new();
-    anu_array_length_entry.set_text(&anu_array_length.clone().unwrap().to_string());
+    anu_array_length_entry.set_text(&anu_array_length.unwrap().to_string());
     anu_array_length_entry.set_editable(false);
     anu_array_length_frame.set_child(Some(&anu_array_length_entry));
 
     let anu_block_size_entry = gtk::Entry::new();
-    anu_block_size_entry.set_text(&anu_hex_block_size.clone().unwrap().to_string());
+    anu_block_size_entry.set_text(&anu_hex_block_size.unwrap().to_string());
     anu_block_size_entry.set_editable(false);
     anu_block_size_frame.set_child(Some(&anu_block_size_entry));
     
@@ -308,9 +308,9 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let fetch_handle = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
     let parse_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
 
-    let total_length = anu_array_length.clone().unwrap() as f64;
-    let block_size = anu_hex_block_size.clone().unwrap();
-    let total_hex_chars = total_length as f64 * block_size as f64 * 2.0;
+    let total_length = anu_array_length.unwrap() as f64;
+    let block_size = anu_hex_block_size.unwrap();
+    let total_hex_chars = total_length * block_size as f64 * 2.0;
     let received_chars = std::sync::Arc::new(std::sync::Mutex::new(0.0));
     let current_index = std::sync::Arc::new(std::sync::Mutex::new(0));
     let char_buffer = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
@@ -369,10 +369,10 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                     let mut chars = received_chars_clone.lock().unwrap();
                     let mut buffer = char_buffer_clone.lock().unwrap();
                     
-                    if chunk.starts_with("FINAL:") {
+                    if let Some(data) = chunk.strip_prefix("FINAL:") {
                         anu_status_entry_clone.set_text("Reconstructing quantum entropy ...");
 
-                        let json_data = &chunk[6..];
+                        let json_data = data;
                         
                         match serde_json::from_str::<AnuResponse>(json_data) {
                             Ok(anu_response) => {
@@ -402,14 +402,14 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                         }
                     } else {
                         buffer.push_str(&chunk);
-                        let block_size_chars = anu_hex_block_size.clone().unwrap() as usize * 2;
+                        let block_size_chars = anu_hex_block_size.unwrap() as usize * 2;
                         while buffer.len() >= block_size_chars {
                             let segment = buffer.drain(..block_size_chars).collect::<String>();
                             let pos = *index;
                             if pos < blocks.len() {
                                 blocks[pos].entry.set_text(&segment);
                                 let chars_received = segment.len() as f64 / 2.0;
-                                let target_chars = anu_hex_block_size.clone().unwrap() as f64;
+                                let target_chars = anu_hex_block_size.unwrap() as f64;
                                 let entry_progress = (chars_received / target_chars).min(1.0);
                                 blocks[pos].progress_bar.set_fraction(entry_progress);
                                 *chars += chars_received;
