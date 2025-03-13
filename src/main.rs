@@ -1170,8 +1170,7 @@ impl AppMessages {
         let gesture = gtk::GestureClick::new();
 
         gesture.connect_pressed(clone!(
-            #[weak]
-            revealer,
+            #[weak] revealer,
             move |_gesture, _n_press, _x, _y| {
                 revealer.set_reveal_child(false);
             }
@@ -1363,7 +1362,7 @@ fn print_program_info() {
 fn setup_app_actions(
     application: adw::Application,
     gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
-    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    app_messages_state: std::rc::Rc<std::cell::RefCell<AppMessages>>,
 ) {
     println!("[+] {}", &t!("log.setup_app_actions").to_string());
 
@@ -1557,7 +1556,7 @@ fn create_main_window(
         lock_app_log.initialize_app_log(gui_state.clone());
     }
 
-    let app_messages_state = std::sync::Arc::new(std::sync::Mutex::new(AppMessages::new(Some(
+    let app_messages_state = std::rc::Rc::new(std::cell::RefCell::new(AppMessages::new(Some(
         info_bar.clone(),
     ))));
 
@@ -1576,10 +1575,8 @@ fn create_main_window(
 
     // JUMP: Action: Settings button action
     buttons["settings"].connect_clicked(clone!(
-        #[strong]
-        gui_state,
-        #[strong]
-        app_messages_state,
+        #[strong] gui_state,
+        #[strong] app_messages_state,
         move |_| {
             let settings_window =
                 create_settings_window(gui_state.clone(), app_messages_state.clone());
@@ -1592,8 +1589,7 @@ fn create_main_window(
     });
 
     buttons["log"].connect_clicked(clone!(
-        #[strong]
-        gui_state,
+        #[strong] gui_state,
         move |_| {
             let log_window = create_log_window(gui_state.clone());
             log_window.show();
@@ -1601,10 +1597,8 @@ fn create_main_window(
     ));
 
     buttons["new"].connect_clicked(clone!(
-        #[strong]
-        application,
-        #[strong]
-        gui_state,
+        #[strong] application,
+        #[strong] gui_state,
         move |_| {
             create_main_window(application.clone(), gui_state.clone(), None);
         }
@@ -2408,11 +2402,11 @@ fn create_main_window(
 
     // JUMP: Action: Open Wallet
     buttons["open"].connect_clicked(clone!(
+        #[strong] app_messages_state,
         #[weak] entropy_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] mnemonic_words_text,
         #[weak] seed_text,
-        #[strong] app_messages_state,
         move |_| {
             let (entropy, passphrase) = open_wallet_from_file(&app_messages_state);
 
@@ -2465,6 +2459,7 @@ fn create_main_window(
 
     // JUMP: Action: Generate Seed button
     generate_entropy_button.connect_clicked(clone!(
+        #[strong] app_messages_state,
         #[weak] entropy_source_dropdown,
         #[weak] entropy_text,
         #[weak] entropy_length_dropdown,
@@ -2473,7 +2468,6 @@ fn create_main_window(
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
         #[weak] seed_text,
-        #[strong] app_messages_state,
         move |_| {
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
@@ -2518,7 +2512,7 @@ fn create_main_window(
                 master_public_key_text.buffer().set_text("");
             } else {
                 eprintln!("\t- {}", &t!("error.entropy.empty"));
-                let lock_app_messages = app_messages_state.lock().unwrap();
+                let lock_app_messages = app_messages_state.borrow();
                 lock_app_messages.queue_message(
                     t!("error.entropy.empty").to_string(),
                     gtk::MessageType::Warning,
@@ -2577,11 +2571,11 @@ fn create_main_window(
     // JUMP: Action: Generate Master Keys button
     generate_master_keys_button.connect_clicked(clone!(
         #[strong] coin_entry,
+        #[strong] app_messages_state,
         #[weak] seed_text,
         #[weak] coin_treeview,
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
-        #[strong] app_messages_state,
         move |_| {
             let buffer = seed_text.buffer();
             let start_iter = buffer.start_iter();
@@ -2671,7 +2665,7 @@ fn create_main_window(
                             }
                             Err(err) => {
                                 {
-                                    let lock_gui_state = app_messages_state.lock().unwrap();
+                                    let lock_gui_state = app_messages_state.borrow();
                                     lock_gui_state.queue_message(
                                         t!("error.master.create").to_string(),
                                         gtk::MessageType::Warning,
@@ -2695,7 +2689,7 @@ fn create_main_window(
                 }
             } else {
                 {
-                    let app_messages_state = app_messages_state.lock().unwrap();
+                    let app_messages_state = app_messages_state.borrow();
                     app_messages_state.queue_message(
                         t!("error.entropy.seed").to_string(),
                         gtk::MessageType::Warning,
@@ -3285,9 +3279,9 @@ fn create_main_window(
         #[strong] address_store,
         #[strong] stop_addresses_button_box,
         #[strong] generator_handler,
+        #[strong] app_messages_state,
         #[weak] derivation_label_text,
         #[weak] master_private_key_text,
-        #[strong] app_messages_state,
         #[weak] address_start_spinbutton,
         #[weak] address_count_spinbutton,
         #[weak] address_options_hardened_address_checkbox,
@@ -3300,7 +3294,7 @@ fn create_main_window(
             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
 
             if master_private_key_string.is_empty() {
-                let lock_app_messages = app_messages_state.lock().unwrap();
+                let lock_app_messages = app_messages_state.borrow();
                 lock_app_messages.queue_message(t!("error.address.master").to_string(), gtk::MessageType::Warning);
                 return;
             }
@@ -3346,13 +3340,13 @@ fn create_main_window(
                                 return;
                             }
             
-                            let full_address_derivation_path = if hardened_address {
+                            let derivation_path = if hardened_address {
                                 format!("{}/{}'", derivation_path, current_index)
                             } else {
                                 format!("{}/{}", derivation_path, current_index)
                             };
             
-                            if !existing_addresses.contains(&full_address_derivation_path) {
+                            if !existing_addresses.contains(&derivation_path) {
                                 let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
                                 let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
                                 let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
@@ -3361,19 +3355,22 @@ fn create_main_window(
                                 let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
                                 let coin_index = wallet_settings.coin_index.unwrap_or_default();
             
-                                if let Ok((address, public_key, private_key)) = keys::generate_address(
+
+                                let magic_ingredients = keys::AddressHocusPokus {
                                     coin_index,
-                                    &full_address_derivation_path,
+                                    derivation_path: derivation_path.clone(),
                                     master_private_key_bytes,
                                     master_chain_code_bytes,
-                                    &public_key_hash,
-                                    &key_derivation,
-                                    &wallet_import_format,
-                                    &hash,
-                                ) {
+                                    public_key_hash,
+                                    key_derivation,
+                                    wallet_import_format,
+                                    hash,
+                                };
+
+                                if let Ok((address, public_key, private_key)) = keys::generate_address(magic_ingredients) {
                                     let new_entry = CryptoAddresses {
                                         coin_name: Some(coin_name.clone()),
-                                        derivation_path: Some(full_address_derivation_path.clone()),
+                                        derivation_path: Some(derivation_path.clone()),
                                         address: Some(address.clone()),
                                         public_key: Some(public_key.clone()),
                                         private_key: Some(private_key.clone()),
@@ -3443,7 +3440,7 @@ fn create_main_window(
 
                                 println!("{}", message);
 
-                                let lock_app_messages = app_messages_state.lock().unwrap();
+                                let lock_app_messages = app_messages_state.borrow();
                                 lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
 
                                 stop_addresses_button_box.set_visible(false);
@@ -3490,7 +3487,7 @@ fn create_main_window(
     main_window_box.set_hexpand(true);
 
     {
-        let lock_app_messages = app_messages_state.lock().unwrap();
+        let lock_app_messages = app_messages_state.borrow();
         lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
     }
 
@@ -3557,7 +3554,7 @@ fn create_log_window(
 
 fn create_settings_window(
     gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
-    app_messages_state: std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    app_messages_state: std::rc::Rc<std::cell::RefCell<AppMessages>>,
 ) -> gtk::ApplicationWindow {
     println!("[+] {}", &t!("log.create_settings_window").to_string());
 
@@ -4802,7 +4799,7 @@ fn create_settings_window(
             AppSettings::save_settings(&settings);
 
             {
-                let lock_app_messages = app_messages_state.lock().unwrap();
+                let lock_app_messages = app_messages_state.borrow();
                 lock_app_messages.queue_message(
                     t!("UI.messages.dialog.settings_saved").to_string(),
                     gtk::MessageType::Info,
@@ -4845,7 +4842,7 @@ fn create_settings_window(
                 move |dialog, response| {
                     match response {
                         gtk::ResponseType::Yes => {
-                            let lock_app_messages = app_messages_state.lock().unwrap();
+                            let lock_app_messages = app_messages_state.borrow();
 
                             match reset_user_settings().unwrap().as_str() {
                                 "OK" => {
@@ -4993,7 +4990,7 @@ fn create_about_window() {
 }
 
 fn open_wallet_from_file(
-    app_messages_state: &std::sync::Arc<std::sync::Mutex<AppMessages>>,
+    app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMessages>>,
 ) -> (String, Option<String>) {
     println!("[+] {}", &t!("log.open_wallet_from_file").to_string());
 
@@ -5021,10 +5018,8 @@ fn open_wallet_from_file(
     open_dialog.add_filter(&all_files_filter);
 
     open_dialog.connect_response(clone!(
-        #[strong]
-        open_loop,
-        #[strong]
-        app_messages_state,
+        #[strong] open_loop,
+        #[strong] app_messages_state,
         move |open_dialog, response| {
             if response == gtk::ResponseType::Accept {
                 if let Some(file) = open_dialog.file() {
@@ -5033,7 +5028,7 @@ fn open_wallet_from_file(
                         println!("\t- Wallet file chosen: {:?}", file_path);
 
                         let result = process_wallet_file_from_path(&file_path);
-                        let lock_state = app_messages_state.lock().unwrap();
+                        let lock_state = app_messages_state.borrow();
 
                         match result {
                             Ok((version, entropy, password)) => {

@@ -6,6 +6,10 @@
 - export addresses
 - mnemonic passphrase upper limit in settings
 
+# version 0.74.4
+- cargo clippy - no warnings any more
+- generating 1000 addresses - 3.05s
+
 # version 0.74.3
 - cargo clippy - 3 warnings
 
