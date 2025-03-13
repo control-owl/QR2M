@@ -35,7 +35,7 @@ pub fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
         .chars()
         .collect::<Vec<char>>()
         .chunks(8)
-        .map(|chunk| chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - '0' as u8)))
+        .map(|chunk| chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - b'0')))
         .collect()
 }
 
@@ -56,10 +56,9 @@ pub fn calculate_double_sha256_hash(input: &[u8]) -> Vec<u8> {
     let first_hash = hasher.finalize();
     
     let mut hasher = Sha256::new();
-    hasher.update(&first_hash);
-    let final_hash = hasher.finalize().to_vec();
+    hasher.update(first_hash);
 
-    final_hash
+    hasher.finalize().to_vec()
 }
 
 pub fn calculate_sha256_and_ripemd160_hash(input: &[u8]) -> Vec<u8> {
@@ -68,10 +67,9 @@ pub fn calculate_sha256_and_ripemd160_hash(input: &[u8]) -> Vec<u8> {
     let hash = hasher.finalize();
     
     let mut ripemd = ripemd::Ripemd160::new();
-    ripemd.update(&hash);
-    let final_hash = ripemd.finalize().to_vec();
-
-    final_hash
+    ripemd.update(hash);
+    
+    ripemd.finalize().to_vec()
 }
 
 pub fn calculate_hmac_sha512_hash(key: &[u8], data: &[u8]) -> Vec<u8> {
@@ -106,7 +104,7 @@ pub fn calculate_hmac_sha512_hash(key: &[u8], data: &[u8]) -> Vec<u8> {
     let inner_hash = hasher.finalize();
     let mut hasher = Sha512::new();
     hasher.update(&outer_pad);
-    hasher.update(&inner_hash);
+    hasher.update(inner_hash);
     let final_hash = hasher.finalize().to_vec();
 
     assert_eq!(final_hash.len(), HASH_SIZE, "Final hash length mismatch");
@@ -116,14 +114,14 @@ pub fn calculate_hmac_sha512_hash(key: &[u8], data: &[u8]) -> Vec<u8> {
 
 pub fn calculate_checksum_for_master_keys(data: &[u8]) -> [u8; 4] {
     let hash = Sha256::digest(data);
-    let double_hash = Sha256::digest(&hash);
+    let double_hash = Sha256::digest(hash);
     let mut checksum = [0u8; 4];
     checksum.copy_from_slice(&double_hash[..4]);
     checksum
 }
 
 pub fn calculate_checksum_for_entropy(entropy: &str, entropy_length: &u32) -> String {
-    let entropy_binary = convert_string_to_binary(&entropy);
+    let entropy_binary = convert_string_to_binary(entropy);
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
     let checksum_length = entropy_length / 32;
     let entropy_checksum: String = hash_raw_binary.chars().take(checksum_length.try_into().unwrap()).collect();
@@ -259,9 +257,7 @@ pub fn generate_empty_texture() -> gtk::gdk::Texture {
     
     empty_pixbuf.fill(0x070410FF);
 
-    let texture = gtk::gdk::Texture::for_pixbuf(&empty_pixbuf);
-
-    texture
+    gtk::gdk::Texture::for_pixbuf(&empty_pixbuf)
 }
 
 pub fn setup_css() {

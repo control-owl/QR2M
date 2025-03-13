@@ -1,10 +1,22 @@
 # Next version
 - new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
-    - save quantum entropy as image
+- save quantum entropy as image
+- copy buttons
+- save addresses to wallet file
+- export addresses
+- mnemonic passphrase upper limit in settings
+
+# version 0.74.3
+- cargo clippy - 3 warnings
+
+# version 0.74.2
+- cargo clippy - 100 warnings
+- cargo crates updated
 
 # version 0.74.1
 - save gui window size
 - cleaning mess after rust formatter
+- cargo clippy - 187 warnings
 
 # version 0.74.0
 - beta proxy (not tested yet)

@@ -122,7 +122,7 @@ pub fn switch_locale(lang: &str) {
     match lang {
         "Deutsch" => rust_i18n::set_locale("de"),
         "Hrvatski" => rust_i18n::set_locale("hr"),
-        "English"| _ => rust_i18n::set_locale("en"),
+        _ => rust_i18n::set_locale("en"),
     }
 
     println!(" - Language: {:?}", lang);
@@ -153,7 +153,7 @@ pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
             if let Some((key, value)) = line.split_once(" = ") {
                 let (section, key) = key.split_once('_').unwrap_or(("general", key));
                 config_map.entry(section.to_string())
-                    .or_insert_with(std::collections::BTreeMap::new)
+                    .or_default()
                     .insert(key.to_string(), value.to_string());
             }
         }
