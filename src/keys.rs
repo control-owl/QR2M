@@ -23,6 +23,7 @@ use std::{
 use crate::APP_SETTINGS;
 
 pub type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
+type MasterPrivateKey = (String, String, Vec<u8>, Vec<u8>, Vec<u8>);
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -598,7 +599,9 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
     entropy
 }
 
-pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<(String, String, Vec<u8>, Vec<u8>, Vec<u8>), String> {
+
+
+pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<MasterPrivateKey, String> {
     println!("[+] {}", &t!("log.derive_master_keys").to_string());
     println!(" - Private header: {:?}", private_header);
     println!(" - Public header: {:?}", public_header);
@@ -680,26 +683,18 @@ pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_hea
     ))
 }
 
-pub fn generate_address(
-    coin_index: u32,
-    derivation_path: &str,
-    master_private_key_bytes: Vec<u8>,
-    master_chain_code_bytes: Vec<u8>,
-    public_key_hash: &str,
-    key_derivation: &str,
-    wallet_import_format: &str,
-    hash: &str,
- ) -> Result<(String, String, String), String> {
+pub fn generate_address(ingredients: AddressHocusPokus) -> Result<(String, String, String), String> {
     println!("[+] {}", &t!("log.generate_address").to_string());
 
-    println!("\t- derivation_path: {:?}", derivation_path);
+    
+    println!("\t- derivation_path: {:?}", ingredients.derivation_path);
 
     let secp = secp256k1::Secp256k1::new();
 
-    let trimmed_public_key_hash = if let Some(stripped) = public_key_hash.strip_prefix("0x") {
+    let trimmed_public_key_hash = if let Some(stripped) = ingredients.public_key_hash.strip_prefix("0x") {
         stripped
     } else {
-        public_key_hash
+        &ingredients.public_key_hash
     };
 
     let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
@@ -709,15 +704,15 @@ pub fn generate_address(
         },
     };
 
-    let derived_child_keys = match key_derivation {
-        "secp256k1" => derive_from_path_secp256k1(&master_private_key_bytes, &master_chain_code_bytes, derivation_path),
-        "ed25519" => crate::dev::derive_from_path_ed25519(&master_private_key_bytes, &master_chain_code_bytes, derivation_path),
+    let derived_child_keys = match ingredients.key_derivation.as_str() {
+        "secp256k1" => derive_from_path_secp256k1(&ingredients.master_private_key_bytes, &ingredients.master_chain_code_bytes, &ingredients.derivation_path),
+        "ed25519" => crate::dev::derive_from_path_ed25519(&ingredients.master_private_key_bytes, &ingredients.master_chain_code_bytes, &ingredients.derivation_path),
         _ => {
-            return Err(format!("Unsupported key derivation method: {:?}", key_derivation))
+            return Err(format!("Unsupported key derivation method: {:?}", ingredients.key_derivation))
         }
     }.expect("Can not derive child key");
 
-    let public_key = match key_derivation {
+    let public_key = match ingredients.key_derivation.as_str() {
         "secp256k1" => {
             let secp_pub_key = secp256k1::PublicKey::from_secret_key(
                 &secp,
@@ -731,11 +726,11 @@ pub fn generate_address(
             CryptoPublicKey::Ed25519(pub_key_bytes)
         },
         _ => {
-            return Err(format!("Unsupported key derivation method: {:?}", key_derivation));
+            return Err(format!("Unsupported key derivation method: {:?}", ingredients.key_derivation));
         }
     };
 
-    let public_key_encoded = match hash {
+    let public_key_encoded = match ingredients.hash.as_str() {
         "sha256" | "sha256+ripemd160" => match &public_key {
             CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
             CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
@@ -745,15 +740,15 @@ pub fn generate_address(
             CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
         },
         _ => {
-            return Err(format!("Unsupported hash method: {:?}", hash));
+            return Err(format!("Unsupported hash method: {:?}", ingredients.hash));
         }
     };
 
-    let address = match hash {
+    let address = match ingredients.hash.as_str() {
         "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
         "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
         "sha256+ripemd160" => match generate_sha256_ripemd160_address(
-            coin_index, 
+            ingredients.coin_index, 
             &public_key, 
             &public_key_hash_vec
         ) {
@@ -764,7 +759,7 @@ pub fn generate_address(
         },
         "ed25519" => crate::dev::generate_ed25519_address(&public_key),
         _ => {
-            return Err(format!("Unsupported hash method: {:?}", hash));
+            return Err(format!("Unsupported hash method: {:?}", ingredients.hash));
         }
     };
 
@@ -774,8 +769,8 @@ pub fn generate_address(
     let priv_key_wif = create_private_key_for_address(
         Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
         Some(compressed),
-        Some(wallet_import_format),
-        hash,
+        Some(&ingredients.wallet_import_format),
+        &ingredients.hash,
     ).expect("Failed to convert private key to WIF");
 
     Ok((address.clone(), public_key_encoded.clone(), priv_key_wif.clone()))
@@ -919,3 +914,13 @@ pub fn generate_address(
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+pub struct AddressHocusPokus {
+    pub coin_index: u32,
+    pub derivation_path: String,
+    pub master_private_key_bytes: Vec<u8>,
+    pub master_chain_code_bytes: Vec<u8>,
+    pub public_key_hash: String,
+    pub key_derivation: String,
+    pub wallet_import_format: String,
+    pub hash: String,
+}
