@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "ANU QRNG"
 // copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2025-02-19"
+// version = "2025-03-13"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

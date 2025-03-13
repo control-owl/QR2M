@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "Cryptographic keys"
 // copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2025-02-19"
+// version = "2025-03-13"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -24,6 +24,17 @@ use crate::APP_SETTINGS;
 
 pub type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 type MasterPrivateKey = (String, String, Vec<u8>, Vec<u8>, Vec<u8>);
+
+pub struct AddressHocusPokus {
+    pub coin_index: u32,
+    pub derivation_path: String,
+    pub master_private_key_bytes: Vec<u8>,
+    pub master_chain_code_bytes: Vec<u8>,
+    pub public_key_hash: String,
+    pub key_derivation: String,
+    pub wallet_import_format: String,
+    pub hash: String,
+}
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -599,8 +610,6 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
     entropy
 }
 
-
-
 pub fn generate_master_keys(seed: &str, mut private_header: &str, mut public_header: &str) -> Result<MasterPrivateKey, String> {
     println!("[+] {}", &t!("log.derive_master_keys").to_string());
     println!(" - Private header: {:?}", private_header);
@@ -774,153 +783,8 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<(String, Strin
     ).expect("Failed to convert private key to WIF");
 
     Ok((address.clone(), public_key_encoded.clone(), priv_key_wif.clone()))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // // let mut addr_lock = CRYPTO_ADDRESS.lock().unwrap();
-    // // let current_len = addr_lock.len();
-    // // let current_count = address_count_int;
-    // // let last_value;
-
-    // // if (current_len + address_count_int) >= WALLET_MAX_ADDRESSES as usize {
-    // //     last_value = current_count as usize;
-    // // } else {
-    // //     last_value = current_len + address_count_int;
-    // // }
-
-    // // for mut i in current_len..last_value {
-    //     // i=i+address_start_point_int;
-        
-    //     let full_path = if hardened {
-    //         format!("{}/{}'", derivation_path, i)
-    //     } else {
-    //         format!("{}/{}", derivation_path, i)
-    //     };
-
-    //     
-
-    //     let public_key = match key_derivation {
-    //         "secp256k1" => {
-    //             let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-    //                 &secp,
-    //                 &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")
-    //             );
-    //             keys::CryptoPublicKey::Secp256k1(secp_pub_key)
-    //         },
-    //         "ed25519" => {
-    //             let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-    //             let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-    //             keys::CryptoPublicKey::Ed25519(pub_key_bytes)
-    //         },
-    //         "N/A" | _ => {
-    //             println!("Unsupported key derivation method: {:?}", key_derivation);
-    //             return;
-    //         }
-    //     };
-
-    //     let public_key_encoded = match hash {
-    //         "sha256" | "sha256+ripemd160" => match &public_key {
-    //             keys::CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-    //             keys::CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
-    //         },
-    //         "keccak256" => match &public_key {
-    //             keys::CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
-    //             keys::CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
-    //         },
-    //         "N/A" | _ => {
-    //             println!("Unsupported hash method: {:?}", hash);
-    //             return;
-    //         }
-    //     };
-        
-    //     let address = match hash {
-    //         "sha256" => keys::generate_address_sha256(&public_key, &public_key_hash_vec),
-    //         "keccak256" => keys::generate_address_keccak256(&public_key, &public_key_hash_vec),
-    //         "sha256+ripemd160" => match keys::generate_sha256_ripemd160_address(
-    //             coin_index, 
-    //             &public_key, 
-    //             &public_key_hash_vec
-    //         ) {
-    //             Ok(addr) => addr,
-    //             Err(e) => {
-    //                 println!("Error generating address: {}", e);
-    //                 return;
-    //             }
-    //         },
-    //         "ed25519" => dev::generate_ed25519_address(&public_key),
-    //         "N/A" | _ => {
-    //             println!("Unsupported hash method: {:?}", hash);
-    //             return;
-    //         }
-    //     };
-
-    //     println!("Crypto address: {:?}", address);
-
-        
-        
-    //     
-        
-
-        
-        
-        // let new_entry = CryptoAddresses {
-        //     coin_name: Some(coin_name.clone().to_string()),
-        //     derivation_path: Some(full_path.clone()),
-        //     address: Some(address.clone()),
-        //     public_key: Some(public_key_encoded.clone()),
-        //     private_key: Some(priv_key_wif.clone()),
-        // }; 
-
-        // if !addr_lock.iter().any(|addr| 
-        //     addr.coin_name == new_entry.coin_name &&
-        //     addr.derivation_path == new_entry.derivation_path &&
-        //     addr.address == new_entry.address &&
-        //     addr.public_key == new_entry.public_key &&
-        //     addr.private_key == new_entry.private_key
-        // ) {
-        //     addr_lock.push(new_entry);
-        //     let iter = address_store.append();
-        //     address_store.set(
-        //         &iter,
-        //         &[
-        //             (0, &coin_name),
-        //             (1, &full_path),
-        //             (2, &address),
-        //             (3, &public_key_encoded),
-        //             (4, &priv_key_wif),
-        //         ],
-        //     );
-        //     println!("New address added.");
-        // } else {
-        //     println!("Duplicate address found, not adding.");
-        // }
-        
-    // }
 }
+
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-pub struct AddressHocusPokus {
-    pub coin_index: u32,
-    pub derivation_path: String,
-    pub master_private_key_bytes: Vec<u8>,
-    pub master_chain_code_bytes: Vec<u8>,
-    pub public_key_hash: String,
-    pub key_derivation: String,
-    pub wallet_import_format: String,
-    pub hash: String,
-}

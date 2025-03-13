@@ -3319,91 +3319,142 @@ fn create_main_window(
             
             let (tx, rx) = std::sync::mpsc::channel();
             let (tp, rp) = std::sync::mpsc::channel();
-            let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
+            let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
 
 
+            let cpu_threads = num_cpus::get();
+            dbg!(cpu_threads);
+            let addresses_per_thread = address_count_int / cpu_threads;
+            let extra_addresses = address_count_int % cpu_threads;
+            let existing_addresses: std::sync::Arc<std::sync::Mutex<std::collections::HashSet<String>>> = std::sync::Arc::new(
+                std::sync::Mutex::new(
+                    CRYPTO_ADDRESS
+                        .iter()
+                        .filter_map(|addr| addr.derivation_path.clone())
+                        .collect()
+                )
+            );
+
+            let generated_addresses = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let progress_status = std::sync::Arc::new(std::sync::Mutex::new(0.0));
             let start_time = std::time::Instant::now();
 
             let address_loop = tokio::spawn(async move {
-                let existing_addresses: std::collections::HashSet<String> = CRYPTO_ADDRESS
-                    .iter()
-                    .filter_map(|addr| addr.derivation_path.clone())
-                    .collect();
-            
-                let mut generated_count = 0;
-                let mut current_index = address_start_point_int;
-            
-                while generated_count < address_count_int {
-                    tokio::select! {
-                        _ = async {} => {
-                            if current_index > WALLET_MAX_ADDRESSES as usize {
+                let mut handles = vec![];
+                let mut current_start = address_start_point_int;
+                let cancel_rx = std::sync::Arc::new(tokio::sync::Mutex::new(cancel_rx));
+    
+                for thread_id in 0..cpu_threads {
+                    let num_addresses = if thread_id < extra_addresses {
+                        addresses_per_thread + 1
+                    } else {
+                        addresses_per_thread
+                    };
+    
+                    if num_addresses == 0 {
+                        continue;
+                    }
+    
+                    let tx = tx.clone();
+                    let tp = tp.clone();
+                    let existing_addresses = existing_addresses.clone();
+                    let cancel_rx = cancel_rx.clone();
+                    let wallet_settings = wallet_settings.clone();
+                    let derivation_path = derivation_path.clone();
+                    let coin_name = coin_name.clone();
+                    let start_index = current_start;
+                    let generated_addresses = generated_addresses.clone();
+                    let progress_status = progress_status.clone();
+
+                    let handle = tokio::spawn(async move {
+                        let mut generated_count = 0;
+                        let mut current_index = start_index;
+                        let total_to_generate = num_addresses;
+    
+                        while generated_count < total_to_generate {
+                            let cancel_rx = cancel_rx.lock().await;
+                            if *cancel_rx.borrow() {
+                                println!("Address generation aborted (thread {})", thread_id);
+                                let _ = tp.send(1.0);
                                 return;
                             }
-            
+                            drop(cancel_rx);
+    
+                            if current_index > WALLET_MAX_ADDRESSES as usize {
+                                break;
+                            }
+    
                             let derivation_path = if hardened_address {
                                 format!("{}/{}'", derivation_path, current_index)
                             } else {
                                 format!("{}/{}", derivation_path, current_index)
                             };
-            
-                            if !existing_addresses.contains(&derivation_path) {
-                                let master_private_key_bytes = wallet_settings.master_private_key_bytes.clone().unwrap_or_default();
-                                let master_chain_code_bytes = wallet_settings.master_chain_code_bytes.clone().unwrap_or_default();
-                                let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-                                let hash = wallet_settings.hash.clone().unwrap_or_default();
-                                let wallet_import_format = wallet_settings.wallet_import_format.clone().unwrap_or_default();
-                                let public_key_hash = wallet_settings.public_key_hash.clone().unwrap_or_default();
-                                let coin_index = wallet_settings.coin_index.unwrap_or_default();
-            
-
-                                let magic_ingredients = keys::AddressHocusPokus {
-                                    coin_index,
-                                    derivation_path: derivation_path.clone(),
-                                    master_private_key_bytes,
-                                    master_chain_code_bytes,
-                                    public_key_hash,
-                                    key_derivation,
-                                    wallet_import_format,
-                                    hash,
+    
+                            {
+                                let existing = existing_addresses.lock().unwrap();
+                                if existing.contains(&derivation_path) {
+                                    current_index += 1;
+                                    continue;
+                                }
+                            }
+    
+                            let magic_ingredients = keys::AddressHocusPokus {
+                                coin_index: wallet_settings.coin_index.unwrap_or_default(),
+                                derivation_path: derivation_path.clone(),
+                                master_private_key_bytes: wallet_settings.master_private_key_bytes.clone().unwrap_or_default(),
+                                master_chain_code_bytes: wallet_settings.master_chain_code_bytes.clone().unwrap_or_default(),
+                                public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
+                                key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
+                                wallet_import_format: wallet_settings.wallet_import_format.clone().unwrap_or_default(),
+                                hash: wallet_settings.hash.clone().unwrap_or_default(),
+                            };
+    
+                            if let Ok((address, public_key, private_key)) = keys::generate_address(magic_ingredients) {
+                                {
+                                    let mut existing = existing_addresses.lock().unwrap();
+                                    existing.insert(derivation_path.clone());
+                                }
+    
+                                let new_entry = CryptoAddresses {
+                                    coin_name: Some(coin_name.clone()),
+                                    derivation_path: Some(derivation_path.clone()),
+                                    address: Some(address.clone()),
+                                    public_key: Some(public_key.clone()),
+                                    private_key: Some(private_key.clone()),
                                 };
+    
+                                CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
+    
+                                if tx.send(new_entry).is_err() {
+                                    break;
+                                }
+    
+                                generated_count += 1;
+                                let current_total = generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
 
-                                if let Ok((address, public_key, private_key)) = keys::generate_address(magic_ingredients) {
-                                    let new_entry = CryptoAddresses {
-                                        coin_name: Some(coin_name.clone()),
-                                        derivation_path: Some(derivation_path.clone()),
-                                        address: Some(address.clone()),
-                                        public_key: Some(public_key.clone()),
-                                        private_key: Some(private_key.clone()),
-                                    };
-            
-                                    CRYPTO_ADDRESS.insert(current_index as u32, new_entry.clone());
-            
-                                    if tx.send(new_entry).is_err() {
-                                        break;
-                                    }
-            
-                                    generated_count += 1;
-            
-                                    let progress_value = if address_count_int > 0 {
-                                        (generated_count as f64) / (address_count_int as f64)
-                                    } else {
-                                        0.0
-                                    };
-            
-                                    let _ = tp.send(progress_value);
+                                let new_progress = if address_count_int > 0 {
+                                    (current_total as f64) / (address_count_int as f64)
+                                } else {
+                                    0.0
+                                };
+    
+                                let mut last = progress_status.lock().unwrap();
+                                if new_progress > *last + 0.01 || new_progress >= 1.0 {
+                                    *last = new_progress;
+                                    let _ = tp.send(new_progress);
                                 }
                             }
                             current_index += 1;
                         }
-
-                        _ = cancel_rx.changed() => {
-                            println!("Address generation aborted (async).");
-                            let _ = tp.send(1.0);
-                            return;
-                        }
-                    }
+                    });
+    
+                    handles.push(handle);
+                    current_start += num_addresses;
                 }
-            
+    
+                for handle in handles {
+                    handle.await.unwrap();
+                }
                 let _ = tp.send(1.0);
             });
 
