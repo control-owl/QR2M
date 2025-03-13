@@ -6,21 +6,25 @@
 - export addresses
 - mnemonic passphrase upper limit in settings
 
+# version 0.75.0 - King Kong, Cheech & Chong
+- address generation - multi-thread
+- benchmark: generating 1000 addresses - 677.20ms
+
 # version 0.74.4
-- cargo clippy - no warnings any more
-- generating 1000 addresses - 3.05s
+- cargo clippy: no warnings any more
+- benchmark: generating 1000 addresses - 3.05s
 
 # version 0.74.3
-- cargo clippy - 3 warnings
+- cargo clippy: 3 warnings
 
 # version 0.74.2
-- cargo clippy - 100 warnings
+- cargo clippy: 100 warnings
 - cargo crates updated
 
 # version 0.74.1
 - save gui window size
 - cleaning mess after rust formatter
-- cargo clippy - 187 warnings
+- cargo clippy: 187 warnings
 
 # version 0.74.0
 - beta proxy (not tested yet)

@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "Extended Crypto-asset DataBase (ECDB)"
 // copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2024-11-16"
+// version = "2025-03-13"
 
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
