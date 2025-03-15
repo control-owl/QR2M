@@ -1,0 +1,44 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Check Rust
+      run: |
+        rustc --version
+        cargo --version
+        echo $PATH
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
+        
+    - name: Check GTK4
+      run: pkg-config --modversion gtk4 || echo "GTK4 missing"
+
+    - name: Clean Cargo cache
+      run: cargo clean
+
+    - name: Cargo build
+      run: cargo build --verbose
+
+    - name: Cargo test
+      run: cargo test --verbose
