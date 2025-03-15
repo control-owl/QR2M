@@ -17,13 +17,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-4-dev libadwaita-1-dev
 
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --features gtk4/v4_18
 
     - name: Run tests
       run: cargo test --verbose
