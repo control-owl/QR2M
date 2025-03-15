@@ -20,7 +20,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libglib2.0-dev libgio2.0-cil-dev libgtk-4-dev
+        sudo apt-get install -y libgtk-4-dev
 
     - name: Build
       run: cargo build --verbose
