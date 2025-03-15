@@ -37,6 +37,9 @@ jobs:
     - name: Clean Cargo cache
       run: cargo clean
 
+    - name: Cargo update
+      run: cargo update
+
     - name: Cargo build
       run: cargo build --verbose
 

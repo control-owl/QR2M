@@ -33,6 +33,13 @@
     border: 1px solid #ff6666;
 }
 
+
+.empty-image {
+    background-color: #070410;
+    border: 1px solid #014070;
+}
+
+
 /* .button {
     padding: 5px;
 

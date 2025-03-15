@@ -173,19 +173,18 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
             let loader = gdk_pixbuf::PixbufLoader::new();
             
             if loader.write(&image_bytes).is_ok() {
-                if let Some(pixbuf) = loader.pixbuf() {
-                    let picture = gtk::Picture::for_pixbuf(&pixbuf);
-                    picture.set_size_request(
-                        APP_DEFAULT_BUTTON_WIDTH as i32,
-                        APP_DEFAULT_BUTTON_HEIGHT as i32,
-                    );
-                    return picture;
-                }
-                
-                match loader.close() {
-                    Ok(_) => {},
-                    Err(error) => {eprintln!("Error by get_picture_from_resources: {:?}", error)},
-                };
+                let texture = gtk::gdk::Texture::from_bytes(&image_bytes)
+                    .map_err(|err| format!("Failed to create texture: {}", err))
+                    .unwrap();
+
+                let picture = gtk::Picture::for_paintable(&texture);
+
+                picture.set_size_request(
+                    APP_DEFAULT_BUTTON_WIDTH as i32,
+                    APP_DEFAULT_BUTTON_HEIGHT as i32,
+                );
+
+                return picture
             }
             generate_empty_picture()
         }
@@ -235,13 +234,15 @@ pub fn generate_empty_picture() -> gtk::Picture {
     ).expect("Failed to create empty pixbuf");
     
     empty_pixbuf.fill(0x070410FF);
+    
+    let picture = gtk::Picture::new();
 
-    let picture = gtk::Picture::for_pixbuf(&empty_pixbuf);
     picture.set_size_request(
         APP_DEFAULT_BUTTON_WIDTH as i32,
         APP_DEFAULT_BUTTON_HEIGHT as i32,
     );
 
+    picture.add_css_class("empty-image");
     picture
 }
 
@@ -262,16 +263,19 @@ pub fn generate_empty_texture() -> gtk::gdk::Texture {
 
 pub fn setup_css() {
     let provider = gtk::CssProvider::new();
-    let css_path = std::path::Path::new("theme").join("style.css");
-    let css_path_str = css_path.to_str().expect("Failed to convert path to string");
-    let css_content = get_text_from_resources(css_path_str);
 
-    if css_content.is_empty() {
-        eprintln!("Failed to load CSS from resources.");
-    } else {
-        provider.load_from_data(&css_content);
-    }
+    let css_theme = match RES_DIR.get_file(std::path::Path::new("theme").join("style.css")) {
+        Some(css_file) => {
+            css_file.contents_utf8().unwrap_or_default()
+        },
+        None => {
+            eprintln!("CSS theme file not found");
+            ""
+        },
+    };
 
+    provider.load_from_string(css_theme);
+    
     gtk::style_context_add_provider_for_display(
         &gtk::gdk::Display::default().expect("Error initializing display"),
         &provider,
