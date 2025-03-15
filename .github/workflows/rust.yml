@@ -20,25 +20,25 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
+    - name: Check Rust
+      run: |
+        rustc --version
+        cargo --version
+        echo $PATH
+        
     - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
         
-    - name: Check GTK installation
+    - name: Check GTK4
       run: pkg-config --modversion gtk4 || echo "GTK4 missing"
-
-    - name: Debug Environment
-      run: |
-        rustc --version
-        cargo --version
-        echo $PATH
 
     - name: Clean Cargo cache
       run: cargo clean
 
-    - name: Build with features
-      run: cargo build --verbose --features "v4_18"
+    - name: Cargo build
+      run: cargo build --verbose
 
-    - name: Run tests
+    - name: Cargo test
       run: cargo test --verbose
