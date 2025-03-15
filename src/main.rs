@@ -5131,9 +5131,12 @@ fn open_wallet_from_file(
 
             (entropy.unwrap_or_default(), passphrase)
         }
-        Err(_) => {
-            // let lock_state = state.lock().unwrap();
-            // lock_state.show_message(t!("error.wallet.open").to_string(), gtk::MessageType::Error);
+        Err(err) => {
+            let lock_state = app_messages_state.borrow();
+            lock_state.queue_message(
+                format!("{} : {}", t!("error.wallet.open"), err),
+                gtk::MessageType::Error,
+            );
             (String::new(), None)
         }
     }
