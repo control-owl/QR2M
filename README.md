@@ -49,7 +49,7 @@ Ensure you have the following installed:
 #### On Linux
 Install GTK4 with:
 ```bash
-sudo apt install libgtk-4-dev
+sudo apt install libgtk-4-dev libadwaita
 ```
 
 #### On macOS
