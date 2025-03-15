@@ -6,6 +6,14 @@
 - export addresses
 - mnemonic passphrase upper limit in settings
 
+# version 0.76.0
+- after enabling gtk4 crate features, 129 gtk4 warnings showed
+- upgraded element: gtk::FileChooserNative
+    - 126 gtk4 warnings left
+- upgraded element: gtk4::CssProvider::load_from_data
+    - 123 gtk4 warnings left
+
+
 # version 0.75.0 - King Kong, Cheech & Chong
 - address generation - multi-thread
 - benchmark: generating 1000 addresses - 677.20ms

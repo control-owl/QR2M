@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "QR2M"
-version = "0.74.5"
+version = "0.76.0"
 dependencies = [
  "bip39",
  "bs58",

@@ -1402,7 +1402,7 @@ fn setup_app_actions(
         #[strong] gui_state,
         move |_action, _parameter| {
             let log_window = create_log_window(gui_state.clone());
-            log_window.show()
+            log_window.present()
         }
     ));
 
@@ -1411,7 +1411,7 @@ fn setup_app_actions(
         #[weak] app_messages_state,
         move |_action, _parameter| {
             let settings_window = create_settings_window(gui_state.clone(), app_messages_state);
-            settings_window.show();
+            settings_window.present();
         }
     ));
 
@@ -1427,7 +1427,7 @@ fn setup_app_actions(
         // #[weak] app_messages_state,
         move |_action, _parameter| {
             let anu_window = dev::anu_window();
-            anu_window.show();
+            anu_window.present();
         }
     ));
 

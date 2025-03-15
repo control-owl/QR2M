@@ -368,7 +368,7 @@ pub fn generate_entropy(
 
             println!(" - RNG Entropy: {:?}", rng_entropy_string);
 
-            let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap(); // This locks the Mutex
+            let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
             wallet_settings.entropy_string = Some(rng_entropy_string.clone());
 
             rng_entropy_string
@@ -456,53 +456,56 @@ pub fn generate_entropy(
         "File" => {
             let open_context = glib::MainContext::default();
             let open_loop = glib::MainLoop::new(Some(&open_context), false);
-            let (tx, rx) = std::sync::mpsc::channel();
+            let (tx, rx) = std::sync::mpsc::channel::<String>();
             
-            let open_window = gtk::Window::new();          
-            let open_dialog = gtk::FileChooserNative::new(
-                Some(t!("UI.dialog.open").to_string().as_str()),
-                Some(&open_window),
-                gtk::FileChooserAction::Open,
-                Some(&t!("UI.element.button.open")),
-                Some(&t!("UI.element.button.cancel"))
-            );
-    
-            open_dialog.connect_response(clone!(
-                #[strong] open_loop,
-                move |open_dialog, response| {
-                    if response == gtk::ResponseType::Accept {
-                        if let Some(file) = open_dialog.file() {
+            let open_dialog = gtk::FileDialog::builder()
+                .title("Select file")
+                .build();
+
+            let loop_clone = open_loop.clone();
+
+            open_dialog.open(
+                None::<&gtk::Window>,
+                None::<&gtk::gio::Cancellable>,
+                move |result| {
+                    match result {
+                        Ok(file) => {
                             if let Some(path) = file.path() {
                                 let file_path = path.to_string_lossy().to_string();
                                 println!(" - Entropy file name: {:?}", file_path);
-                                
+                    
                                 let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
-                                
+                    
+                                let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
+                                wallet_settings.entropy_string = Some(file_entropy_string.clone());
+
                                 if let Err(err) = tx.send(file_entropy_string) {
-                                    println!("{}", &t!("error.mpsc.send", value = err));
+                                    eprintln!("{}", &t!("error.mpsc.send", value = err));
                                 } else {
-                                    open_loop.quit();
+                                    println!("Sent");
+                                    loop_clone.quit();
                                 }
                             }
                         }
+                        Err(err) => {
+                            eprintln!("{}", &t!("error.entropy.create.file"));
+                            eprintln!("File dialog error: {}", err);
+                            loop_clone.quit();
+                        }
                     }
-                    open_dialog.destroy();
-                    open_loop.quit();
-                }
-            ));
-            
-            open_dialog.show();
+                },
+            );
+
             open_loop.run();
             
             match rx.recv() {
                 Ok(received_file_entropy_string) => {
-                    let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
-                    wallet_settings.entropy_string = Some(received_file_entropy_string.clone());
-
+                    println!("Received entropy: {}", received_file_entropy_string);
                     received_file_entropy_string
                 },
-                Err(_) => {
-                    println!("{}", &t!("error.entropy.create.file"));
+                Err(err) => {
+                    eprintln!("{}", &t!("error.entropy.create.file"));
+                    eprintln!("Failed to receive entropy: {}", err);
                     String::new()
                 }
             }
