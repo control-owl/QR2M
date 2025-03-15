@@ -23,10 +23,22 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgtk-4-dev libadwaita-1-dev
+        sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
+        
+    - name: Check GTK installation
+      run: pkg-config --modversion gtk4 || echo "GTK4 missing"
 
-    - name: Build
-      run: cargo build --verbose --features gtk4/v4_18
+    - name: Debug Environment
+      run: |
+        rustc --version
+        cargo --version
+        echo $PATH
+
+    - name: Clean Cargo cache
+      run: cargo clean
+
+    - name: Build with features
+      run: cargo build --verbose --features "v4_18"
 
     - name: Run tests
       run: cargo test --verbose
