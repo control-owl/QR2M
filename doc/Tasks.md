@@ -68,15 +68,16 @@
 - [x] uint8 parsing
 - [ ] uint16 parsing
 - [ ] hex16 parsing
+- [ ] show warning by enabling ANU
 
 ---
 
 ### Advance
 
 - [ ] buy USB QRNG and make support for it
-- [x] log output
+- [ ] log output
 - [x] translate app to another language
-- [ ] multi-threading
+- [x] multi-threading
 - [x] extend bip44-extended-coin-list.csv with:
     - [x] status + icon
     - [x] top100
@@ -85,3 +86,5 @@
 - [ ] basic view: show only minimum 
 - [ ] learn WebAssembly and create web app version
 - [ ] Tiger style
+- [ ] Check if new version is available
+- [ ] diskless version
