@@ -1,13 +1,17 @@
 # Next version
 - new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
-- save quantum entropy as image
+    - save quantum entropy as image
 - copy buttons
 - save addresses to wallet file
 - export addresses
 - mnemonic passphrase upper limit in settings
 
+# version 0.76.3
+- upgraded open and save wallet dialogs
+    - 25 gtk4 warnings left
+
 # version 0.76.2
-- upgraded element: gtk::TreeStore
+- upgraded element: Coins: gtk::TreeStore
     - 35 gtk4 warnings left
 - cargo features --dev
 
@@ -21,7 +25,6 @@
     - 126 gtk4 warnings left
 - upgraded element: gtk4::CssProvider::load_from_data
     - 123 gtk4 warnings left
-
 
 # version 0.75.0 - King Kong, Cheech & Chong
 - address generation - multi-thread
