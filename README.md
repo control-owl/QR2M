@@ -12,6 +12,8 @@
 Copyright  [2023-2025]  Control Owl
 ```
 
+[![Rust](https://github.com/control-owl/QR2M/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/rust.yml)
+
 **QR2M** is a **cryptographic key generator** built with **Rust** and **GTK4**. It supports generating secure addresses for +250 crypto coins. Designed with versatility in mind, QR2M allows entropy generation from multiple sources: hardware-based **RNG**, ANU quantum RNG (**QRNG**), and user-provided **files**. While it is not a cryptocurrency wallet yet, it lays the groundwork for potential RPC connection support in future updates. Application is translated to English, German and Croatian.
 
 ## Table of Contents

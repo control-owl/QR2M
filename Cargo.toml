@@ -44,8 +44,8 @@ native-tls = "0.2.14"           # ANU
 reqwest = { version = "0.12.14", features = ["json"] } # ANU
 
 
-[build-dependencies]    # Windows
-winres = "0.1.12"       # exe icon and description  
+[build-dependencies]            # Windows
+winres = "0.1.12"               # exe icon and description  
 
 
 [package.metadata.winres]
