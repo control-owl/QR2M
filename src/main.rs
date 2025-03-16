@@ -23,6 +23,7 @@ use std::{
     io::{self, BufRead, Write},
     time::SystemTime,
 };
+// use gtk::prelude::*;
 
 mod anu;
 mod coin_db;
@@ -2033,10 +2034,11 @@ fn create_main_window(
     let sorter = coin_db::create_sorter();
     let sort_model = gtk::SortListModel::new(Some(filter_model.clone()), Some(sorter));
 
-    let selection_model = gtk::SingleSelection::new(Some(sort_model));
-    let column_view = gtk::ColumnView::new(Some(selection_model.clone()));
+    let coin_selection_model = gtk::SingleSelection::new(Some(sort_model.clone()));
+    let column_view = gtk::ColumnView::new(Some(coin_selection_model.clone()));
 
-    let single_selection = selection_model
+    let coin_single_selection = coin_selection_model
+        .clone()
         .downcast::<gtk::SingleSelection>()
         .expect("The selection model is not a SingleSelection");
     
@@ -2107,11 +2109,11 @@ fn create_main_window(
     coin_frame.set_child(Some(&scrolled_window));
     coin_main_content_box.append(&coin_frame);
 
-    let selection_model = column_view.model().unwrap();
+    // let selection_model = column_view.model().unwrap();
     
-    single_selection.connect_selection_changed(move |single_selection, _, _| {
-        if let Some(selected_item) = single_selection.selected_item() {
-            let coin = selected_item
+    coin_single_selection.connect_selection_changed(move |coin_single_selection, _, _| {
+        if let Some(selected_coin) = coin_single_selection.selected_item() {
+            let coin = selected_coin
                 .downcast::<coin_db::CoinDatabase>()
                 .expect("The selected item is not a CoinDatabase");
             println!("Selected coin: {}", coin.property::<String>("coin-name"));
@@ -2304,22 +2306,31 @@ fn create_main_window(
     address_treeview_frame.set_hexpand(true);
     address_treeview_frame.set_vexpand(true);
 
-    let address_store = gtk::ListStore::new(&[
-        gtk4::glib::Type::STRING, // Coin
-        gtk4::glib::Type::STRING, // Derivation Path
-        gtk4::glib::Type::STRING, // Address
-        gtk4::glib::Type::STRING, // Public Key
-        gtk4::glib::Type::STRING, // Private Key
-    ]);
+    let address_store = gtk::gio::ListStore::new::<AddressDatabase>();
 
-    let sorted_model = gtk::TreeModelSort::with_model(&address_store);
-    sorted_model.set_sort_column_id(gtk4::SortColumn::Index(0), gtk::SortType::Ascending);
-    sorted_model.set_sort_column_id(gtk4::SortColumn::Index(1), gtk::SortType::Ascending);
+    let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
+        let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
+        let entry2 = obj2.downcast_ref::<AddressDatabase>().unwrap();
+    
+        let coin1 = entry1.property::<String>("coin");
+        let coin2 = entry2.property::<String>("coin");
+        let path1 = entry1.property::<String>("path");
+        let path2 = entry2.property::<String>("path");
+    
+        if coin1 != coin2 {
+            coin1.cmp(&coin2).into()
+        } else {
+            path1.cmp(&path2).into()
+        }
+    });
 
-    let address_treeview = gtk::TreeView::new();
-    address_treeview.set_model(Some(&sorted_model));
+    let address_sorted_model = gtk::SortListModel::new(Some(address_store.clone()), Some(sorter));
+    let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
+    let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
 
-    address_treeview.set_headers_visible(true);
+    address_treeview.set_show_column_separators(true);
+    address_treeview.set_show_row_separators(true);
+
     let columns = [
         &t!("UI.main.address.table.coin"),
         &t!("UI.main.address.table.path"),
@@ -2327,13 +2338,33 @@ fn create_main_window(
         &t!("UI.main.address.table.pub"),
         &t!("UI.main.address.table.priv"),
     ];
-
+    
     for (i, column_title) in columns.iter().enumerate() {
-        let column = gtk::TreeViewColumn::new();
-        let cell = gtk::CellRendererText::new();
-        column.set_title(column_title);
-        column.pack_start(&cell, true);
-        column.add_attribute(&cell, "text", i as i32);
+        let factory = gtk::SignalListItemFactory::new();
+        factory.connect_setup(move |_factory, list_item| {
+            let list_item = list_item.downcast_ref::<gtk::ListItem>().expect("Needs to be ListItem");
+            let label = gtk::Label::new(None);
+            list_item.set_child(Some(&label));
+        });
+
+        factory.connect_bind(move |_factory, list_item| {
+            let list_item = list_item.downcast_ref::<gtk::ListItem>().expect("Needs to be ListItem");
+            let label = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
+            let entry = list_item.item().unwrap().downcast::<AddressDatabase>().unwrap();
+
+            let text = match i {
+                0 => entry.property::<String>("coin"),
+                1 => entry.property::<String>("path"),
+                2 => entry.property::<String>("address"),
+                3 => entry.property::<String>("public-key"),
+                4 => entry.property::<String>("private-key"),
+                _ => unreachable!(),
+            };
+            label.set_text(&text);
+        });
+
+        let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
+        column.set_expand(true);
         address_treeview.append_column(&column);
     }
 
@@ -2568,13 +2599,13 @@ fn create_main_window(
     ));
 
     delete_entropy_button.connect_clicked(clone!(
+        #[strong] address_store,
         #[weak] entropy_text,
         #[weak] mnemonic_words_text,
         #[weak] mnemonic_passphrase_text,
         #[weak] seed_text,
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
-        #[weak] address_store,
         move |_| {
             mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
@@ -2582,7 +2613,7 @@ fn create_main_window(
             seed_text.buffer().set_text("");
             master_private_key_text.buffer().set_text("");
             master_public_key_text.buffer().set_text("");
-            address_store.clear();
+            address_store.remove_all();
         }
     ));
 
@@ -2618,7 +2649,7 @@ fn create_main_window(
     generate_master_keys_button.connect_clicked(clone!(
         #[strong] coin_entry,
         #[strong] app_messages_state,
-        #[strong] selection_model,
+        #[strong] coin_selection_model,
         #[weak] seed_text,
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
@@ -2629,7 +2660,7 @@ fn create_main_window(
             let text = buffer.text(&start_iter, &end_iter, false);
 
 
-            let single_selection = selection_model.clone()
+            let single_selection = coin_selection_model.clone()
                 .downcast::<gtk::SingleSelection>()
                 .expect("The selection model is not a SingleSelection");
 
@@ -3267,17 +3298,15 @@ fn create_main_window(
                 #[strong] delete_addresses_button_box,
                 move || {
                     while let Ok(new_entry) = rx.try_recv() {
-                        let iter = address_store.append();
-                        address_store.set(
-                            &iter,
-                            &[
-                                (0, &new_entry.coin_name.clone().unwrap_or_default()),
-                                (1, &new_entry.derivation_path.clone().unwrap_or_default()),
-                                (2, &new_entry.address.clone().unwrap_or_default()),
-                                (3, &new_entry.public_key.clone().unwrap_or_default()),
-                                (4, &new_entry.private_key.clone().unwrap_or_default()),
-                            ],
+                        let entry = AddressDatabase::new(
+                            &new_entry.coin_name.clone().unwrap_or_default(),
+                            &new_entry.derivation_path.clone().unwrap_or_default(),
+                            &new_entry.address.clone().unwrap_or_default(),
+                            &new_entry.public_key.clone().unwrap_or_default(),
+                            &new_entry.private_key.clone().unwrap_or_default(),
                         );
+                        
+                        address_store.append(&entry);
                     }
             
                     while let Ok(progress) = rp.try_recv() {
@@ -3309,12 +3338,12 @@ fn create_main_window(
     ));
 
     delete_addresses_button.connect_clicked(clone!(
-        #[weak] address_store,
+        #[strong] address_store,
+        #[weak] delete_addresses_button_box,
         #[weak] address_start_spinbutton,
         #[weak] address_generation_progress_bar,
-        #[strong] delete_addresses_button_box,
         move |_| {
-            address_store.clear();
+            address_store.remove_all();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
             address_generation_progress_bar.set_show_text(false);
@@ -4866,7 +4895,7 @@ fn open_wallet_from_file(
                         println!("\t- Wallet file chosen: {:?}", file_path);
 
                         match process_wallet_file_from_path(&file_path) {
-                            Ok((version, entropy, password)) => {
+                            Ok((_version, entropy, password)) => {
                                 let passphrase = password.map(|s| s.to_string());
                                 let lock_app_messages = app_messages_state_open.borrow();
                                 if tx.send(Some((entropy, passphrase.clone()))).is_err() {
@@ -5096,3 +5125,95 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+mod implementation {
+    use glib::{
+        prelude::*,
+        subclass::{
+            object::ObjectImpl, 
+            types::ObjectSubclass
+        },
+        ParamSpecBuilderExt,
+    };
+
+    #[derive(Default)]
+    pub struct AddressDatabase {
+        pub coin: std::cell::RefCell<String>,
+        pub path: std::cell::RefCell<String>,
+        pub address: std::cell::RefCell<String>,
+        pub public_key: std::cell::RefCell<String>,
+        pub private_key: std::cell::RefCell<String>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for AddressDatabase {
+        const NAME: &'static str = "AddressDatabase";
+
+        type Type = super::AddressDatabase;
+        type ParentType = glib::Object;
+    }
+
+    impl ObjectImpl for AddressDatabase {
+        fn properties() -> &'static [glib::ParamSpec] {
+            static PROPERTIES: std::sync::OnceLock<Vec<glib::ParamSpec>> = std::sync::OnceLock::new();
+            
+            PROPERTIES.get_or_init(|| {
+                vec![
+                    glib::ParamSpecString::builder("coin").blurb("Coin").flags(glib::ParamFlags::READWRITE).build(),
+                    glib::ParamSpecString::builder("path").blurb("Derivation path").flags(glib::ParamFlags::READWRITE).build(),
+                    glib::ParamSpecString::builder("address").blurb("Address").flags(glib::ParamFlags::READWRITE).build(),
+                    glib::ParamSpecString::builder("public-key").blurb("Public key").flags(glib::ParamFlags::READWRITE).build(),
+                    glib::ParamSpecString::builder("private-key").blurb("Private key").flags(glib::ParamFlags::READWRITE).build(),
+                ]
+            })
+        }
+
+        fn set_property(&self, _id: usize, value: &glib::Value, specification: &glib::ParamSpec) {
+            match specification.name() {
+                "coin" => *self.coin.borrow_mut() = value.get().unwrap_or_default(),
+                "path" => *self.path.borrow_mut() = value.get().unwrap_or_default(),
+                "address" => *self.address.borrow_mut() = value.get().unwrap_or_default(),
+                "public-key" => *self.public_key.borrow_mut() = value.get().unwrap_or_default(),
+                "private-key" => *self.private_key.borrow_mut() = value.get().unwrap_or_default(),
+                _ => eprintln!("Unknown property"),
+            }
+        }
+
+        fn property(&self, _id: usize, specification: &glib::ParamSpec) -> glib::Value {
+            match specification.name() {
+                "coin" => self.coin.borrow().to_value(),
+                "path" => self.path.borrow().to_value(),
+                "address" => self.address.borrow().to_value(),
+                "public-key" => self.public_key.borrow().to_value(),
+                "private-key" => self.private_key.borrow().to_value(),
+                _ => unimplemented!(),
+            }
+        }
+    }
+}
+
+glib::wrapper! {
+    pub struct AddressDatabase(ObjectSubclass<implementation::AddressDatabase>);
+}
+
+impl AddressDatabase {
+    pub fn new(
+        coin: &str,
+        path: &str,
+        address: &str,
+        public_key: &str,
+        private_key: &str,
+    ) -> Self {
+        let builder = glib::Object::builder::<AddressDatabase>()
+            .property("coin", coin)
+            .property("path", path)
+            .property("address", address)
+            .property("public-key", public_key)
+            .property("private-key", private_key);
+
+        builder.build()
+    }
+}
+
+

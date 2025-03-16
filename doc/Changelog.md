@@ -1,10 +1,6 @@
-# Next version
-- new project: N.E.E.D.L.E. - Next Entropy Event: Deriving Logic from Exuberance
-    - save quantum entropy as image
-- copy buttons
-- save addresses to wallet file
-- export addresses
-- mnemonic passphrase upper limit in settings
+# version 0.77.0
+- upgraded all gtk deprecated elements
+- no gtk nor clippy warnings nor errors
 
 # version 0.76.3
 - upgraded open and save wallet dialogs
