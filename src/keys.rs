@@ -42,6 +42,7 @@ pub struct AddressHocusPokus {
 
 pub enum CryptoPublicKey {
     Secp256k1(secp256k1::PublicKey),
+    #[cfg(feature = "dev")]
     Ed25519(ed25519_dalek::VerifyingKey),
 }
 
@@ -257,6 +258,7 @@ pub fn generate_address_sha256(
 
     let public_key_bytes = match public_key {
         CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
+        #[cfg(feature = "dev")]
         CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
     };
     
@@ -287,12 +289,14 @@ pub fn generate_address_keccak256(
 ) -> String {
     let public_key_bytes = match public_key {
         CryptoPublicKey::Secp256k1(key) => key.serialize_uncompressed().to_vec(),
+        #[cfg(feature = "dev")]
         CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
     };
     println!("Public key bytes: {:?}", &public_key_bytes);
 
     let public_key_slice = match public_key {
         CryptoPublicKey::Secp256k1(_) => &public_key_bytes[1..],
+        #[cfg(feature = "dev")]
         CryptoPublicKey::Ed25519(_) => &public_key_bytes[..],
     };
 
@@ -317,6 +321,7 @@ pub fn generate_sha256_ripemd160_address(
 ) -> Result<String, Box<dyn std::error::Error>> {
     let public_key_bytes = match public_key {
         CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),
+        #[cfg(feature = "dev")]
         CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
     };
     println!("Public key bytes: {:?}", &public_key_bytes);
@@ -718,6 +723,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<(String, Strin
 
     let derived_child_keys = match ingredients.key_derivation.as_str() {
         "secp256k1" => derive_from_path_secp256k1(&ingredients.master_private_key_bytes, &ingredients.master_chain_code_bytes, &ingredients.derivation_path),
+        #[cfg(feature = "dev")]
         "ed25519" => crate::dev::derive_from_path_ed25519(&ingredients.master_private_key_bytes, &ingredients.master_chain_code_bytes, &ingredients.derivation_path),
         _ => {
             return Err(format!("Unsupported key derivation method: {:?}", ingredients.key_derivation))
@@ -732,6 +738,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<(String, Strin
             );
             CryptoPublicKey::Secp256k1(secp_pub_key)
         },
+        #[cfg(feature = "dev")]
         "ed25519" => {
             let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
             let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
@@ -745,10 +752,12 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<(String, Strin
     let public_key_encoded = match ingredients.hash.as_str() {
         "sha256" | "sha256+ripemd160" => match &public_key {
             CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+            #[cfg(feature = "dev")]
             CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
         },
         "keccak256" => match &public_key {
             CryptoPublicKey::Secp256k1(public_key) => format!("0x{}", hex::encode(public_key.serialize())),
+            #[cfg(feature = "dev")]
             CryptoPublicKey::Ed25519(public_key) => format!("0x{}", hex::encode(public_key.to_bytes())),
         },
         _ => {
@@ -769,6 +778,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<(String, Strin
                 return Err(format!("Error generating address: {}", e));
             }
         },
+        #[cfg(feature = "dev")]
         "ed25519" => crate::dev::generate_ed25519_address(&public_key),
         _ => {
             return Err(format!("Unsupported hash method: {:?}", ingredients.hash));

@@ -26,10 +26,11 @@ use std::{
 
 mod anu;
 mod coin_db;
-mod dev;
 mod keys;
 mod os;
 mod test_vectors;
+#[cfg(feature = "dev")]
+mod dev;
 
 #[macro_use]
 extern crate rust_i18n;
@@ -1422,6 +1423,7 @@ fn setup_app_actions(
         }
     ));
 
+    #[cfg(feature = "dev")]
     test.connect_activate(clone!(
         // #[strong] gui_state,
         // #[weak] app_messages_state,
@@ -1994,84 +1996,118 @@ fn create_main_window(
         )
     ));
 
+
+
+
+
+
+
+
+
+
     // Coin treeview
+    // Trying to migrate TreeStore to GObject
     let scrolled_window = gtk::ScrolledWindow::new();
     let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin")));
 
     coin_db::create_coin_completion_model();
 
     let coin_store = coin_db::create_coin_store();
-    let coin_store = std::rc::Rc::new(std::cell::RefCell::new(coin_store));
-    let coin_tree_store = gtk4::TreeStore::new(&[glib::Type::STRING; 14]);
-    let coin_tree_store = std::rc::Rc::new(std::cell::RefCell::new(coin_tree_store));
-    let coin_treeview = gtk::TreeView::new();
-    let coin_treeview = std::rc::Rc::new(std::cell::RefCell::new(coin_treeview));
+    let cmc_top_filter = coin_db::create_filter("Cmc_top", "100");
+    let status_filter = coin_db::create_filter("Status", "Verified");
+    let combined_filter = gtk::EveryFilter::new();
+    
+    combined_filter.append(cmc_top_filter);
+    combined_filter.append(status_filter);
 
-    coin_treeview.borrow().set_vexpand(true);
-    coin_treeview.borrow().set_headers_visible(true);
+    let filter_model = gtk::FilterListModel::new(Some(coin_store), Some(combined_filter));
+    let sorter = coin_db::create_sorter();
+    let sort_model = gtk::SortListModel::new(Some(filter_model.clone()), Some(sorter));
+
+    let selection_model = gtk::SingleSelection::new(Some(sort_model));
+    let column_view = gtk::ColumnView::new(Some(selection_model.clone()));
+
+    let single_selection = selection_model
+        .downcast::<gtk::SingleSelection>()
+        .expect("The selection model is not a SingleSelection");
+    
+    column_view.set_vexpand(true);
+    column_view.set_show_column_separators(true);
 
     let columns = [
-        &t!("UI.main.database.column.status").to_string(),
-        &t!("UI.main.database.column.index").to_string(),
-        &t!("UI.main.database.column.symbol").to_string(),
-        &t!("UI.main.database.column.coin").to_string(),
-        &t!("UI.main.database.column.key_derivation").to_string(),
-        &t!("UI.main.database.column.hash").to_string(),
-        &t!("UI.main.database.column.priv_header").to_string(),
-        &t!("UI.main.database.column.pub_header").to_string(),
-        &t!("UI.main.database.column.pub_hash").to_string(),
-        &t!("UI.main.database.column.script").to_string(),
-        &t!("UI.main.database.column.wif").to_string(),
-        &t!("UI.main.database.column.evm").to_string(),
-        &t!("UI.main.database.column.UCID").to_string(),
-        &t!("UI.main.database.column.cmc").to_string(),
+        ("status", &t!("UI.main.database.column.status").to_string()),
+        ("coin-index", &t!("UI.main.database.column.index").to_string()),
+        ("coin-symbol", &t!("UI.main.database.column.symbol").to_string()),
+        ("coin-name", &t!("UI.main.database.column.coin").to_string()),
+        ("key-derivation", &t!("UI.main.database.column.key_derivation").to_string()),
+        ("hash", &t!("UI.main.database.column.hash").to_string()),
+        ("private-header", &t!("UI.main.database.column.priv_header").to_string()),
+        ("public-header", &t!("UI.main.database.column.pub_header").to_string()),
+        ("public-key-hash", &t!("UI.main.database.column.pub_hash").to_string()),
+        ("script-hash", &t!("UI.main.database.column.script").to_string()),
+        ("wallet-import-format", &t!("UI.main.database.column.wif").to_string()),
+        ("evm", &t!("UI.main.database.column.evm").to_string()),
+        ("ucid", &t!("UI.main.database.column.UCID").to_string()),
+        ("cmc-top", &t!("UI.main.database.column.cmc").to_string()),
     ];
 
-    for (i, column_title) in columns.iter().enumerate() {
-        let column = gtk::TreeViewColumn::new();
-        let cell = gtk::CellRendererText::new();
+    let create_string_factory = |property: &str| {
+        let property = property.to_string();
+        let factory = gtk::SignalListItemFactory::new();
+        factory.connect_setup(move |_, list_item| {
+            let list_item = list_item.downcast_ref::<gtk::ListItem>().expect("Needs to be ListItem");
+            let label = gtk::Label::new(None);
+            list_item.set_child(Some(&label));
+        });
+        factory.connect_bind(move |_, list_item| {
+            let list_item = list_item.downcast_ref::<gtk::ListItem>().expect("Needs to be ListItem");
+            let item = list_item.item().unwrap().downcast::<coin_db::CoinDatabase>().unwrap();
+            let label = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
+            let value = item.property::<String>(&property);
+            label.set_text(&value);
+        });
+        factory
+    };
 
-        column.set_title(column_title);
-        column.pack_start(&cell, true);
-        column.add_attribute(&cell, "text", i as i32);
-        coin_treeview.borrow().append_column(&column);
+    for (property, title) in columns.iter() {
+        let factory = if *property == "coin-index" {
+            let factory = gtk::SignalListItemFactory::new();
+            factory.connect_setup(move |_, list_item| {
+                let list_item = list_item.downcast_ref::<gtk::ListItem>().expect("Needs to be ListItem");
+                let label = gtk::Label::new(None);
+                list_item.set_child(Some(&label));
+            });
+            factory.connect_bind(move |_, list_item| {
+                let list_item = list_item.downcast_ref::<gtk::ListItem>().expect("Needs to be ListItem");
+                let item = list_item.item().unwrap().downcast::<coin_db::CoinDatabase>().unwrap();
+                let label = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
+                let value = item.property::<u32>("coin-index").to_string();
+                label.set_text(&value);
+            });
+            factory
+        } else {
+            create_string_factory(property)
+        };
+    
+        let column = gtk::ColumnViewColumn::new(Some(title), Some(factory));
+        column.set_resizable(true);
+        column_view.append_column(&column);
     }
 
-    let full_store = coin_store.borrow();
-    let verified_coins = coin_db::fetch_coins_from_database("Cmc_top", &full_store, "100");
-    let filtered_store = coin_tree_store.borrow_mut();
-
-    for found_coin in verified_coins {
-        // Check if the coin's status is verified
-        if found_coin.status == "Verified" {
-            let iter = filtered_store.append(None);
-
-            filtered_store.set(
-                &iter,
-                &[
-                    (0, &found_coin.status),
-                    (1, &found_coin.coin_index.to_string()),
-                    (2, &found_coin.coin_symbol),
-                    (3, &found_coin.coin_name),
-                    (4, &found_coin.key_derivation),
-                    (5, &found_coin.hash),
-                    (6, &found_coin.private_header),
-                    (7, &found_coin.public_header),
-                    (8, &found_coin.public_key_hash),
-                    (9, &found_coin.script_hash),
-                    (10, &found_coin.wallet_import_format),
-                    (11, &found_coin.evm),
-                    (12, &found_coin.ucid),
-                    (13, &found_coin.cmc_top),
-                ],
-            );
-        }
-    }
-
-    coin_treeview.borrow().set_model(Some(&*filtered_store));
-    scrolled_window.set_child(Some(&*coin_treeview.borrow()));
+    scrolled_window.set_child(Some(&column_view));
     coin_frame.set_child(Some(&scrolled_window));
     coin_main_content_box.append(&coin_frame);
+
+    let selection_model = column_view.model().unwrap();
+    
+    single_selection.connect_selection_changed(move |single_selection, _, _| {
+        if let Some(selected_item) = single_selection.selected_item() {
+            let coin = selected_item
+                .downcast::<coin_db::CoinDatabase>()
+                .expect("The selected item is not a CoinDatabase");
+            println!("Selected coin: {}", coin.property::<String>("coin-name"));
+        }
+    });
 
     // Generate master keys button
     let generate_master_keys_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -2400,6 +2436,7 @@ fn create_main_window(
         &t!("UI.main.address"),
     );
 
+
     // JUMP: Action: Open Wallet
     buttons["open"].connect_clicked(clone!(
         #[strong] app_messages_state,
@@ -2572,8 +2609,8 @@ fn create_main_window(
     generate_master_keys_button.connect_clicked(clone!(
         #[strong] coin_entry,
         #[strong] app_messages_state,
+        #[strong] selection_model,
         #[weak] seed_text,
-        #[weak] coin_treeview,
         #[weak] master_private_key_text,
         #[weak] master_public_key_text,
         move |_| {
@@ -2582,110 +2619,82 @@ fn create_main_window(
             let end_iter = buffer.end_iter();
             let text = buffer.text(&start_iter, &end_iter, false);
 
+
+            let single_selection = selection_model.clone()
+                .downcast::<gtk::SingleSelection>()
+                .expect("The selection model is not a SingleSelection");
+
             if !text.is_empty() {
-                if let Some((model, iter)) = coin_treeview.borrow().selection().selected() {
-                    let status = model.get_value(&iter, 0);
-                    let coin_index = model.get_value(&iter, 1);
-                    let coin_symbol = model.get_value(&iter, 2);
-                    let coin_name = model.get_value(&iter, 3);
-                    let key_derivation = model.get_value(&iter, 4);
-                    let hash = model.get_value(&iter, 5);
-                    let private_header = model.get_value(&iter, 6);
-                    let public_header = model.get_value(&iter, 7);
-                    let public_key_hash = model.get_value(&iter, 8);
-                    let script_hash = model.get_value(&iter, 9);
-                    let wallet_import_format = model.get_value(&iter, 10);
-                    let evm = model.get_value(&iter, 11);
-                    let ucid = model.get_value(&iter, 12);
-                    let cmc_top = model.get_value(&iter, 13);
+                if let Some(model) = single_selection.selected_item() {
+                    let status = model.property::<String>("status");
+                    let coin_index = model.property::<u32>("coin-index");
+                    let coin_symbol = model.property::<String>("coin-symbol");
+                    let coin_name = model.property::<String>("coin-name");
+                    let key_derivation = model.property::<String>("key-derivation");
+                    let hash = model.property::<String>("hash");
+                    let private_header = model.property::<String>("private-header");
+                    let public_header = model.property::<String>("public-header");
+                    let public_key_hash = model.property::<String>("public-key-hash");
+                    let script_hash = model.property::<String>("script-hash");
+                    let wallet_import_format = model.property::<String>("wallet-import-format");
+                    let evm = model.property::<String>("evm");
+                    let ucid = model.property::<String>("ucid");
+                    let cmc_top = model.property::<String>("cmc-top");
 
-                    if let (
-                        Ok(status),
-                        Ok(coin_index),
-                        Ok(coin_symbol),
-                        Ok(coin_name),
-                        Ok(key_derivation),
-                        Ok(hash),
-                        Ok(private_header),
-                        Ok(public_header),
-                        Ok(public_key_hash),
-                        Ok(script_hash),
-                        Ok(wallet_import_format),
-                        Ok(evm),
-                        Ok(ucid),
-                        Ok(cmc_top),
-                    ) = (
-                        status.get::<String>(),
-                        coin_index.get::<String>(),
-                        coin_symbol.get::<String>(),
-                        coin_name.get::<String>(),
-                        key_derivation.get::<String>(),
-                        hash.get::<String>(),
-                        private_header.get::<String>(),
-                        public_header.get::<String>(),
-                        public_key_hash.get::<String>(),
-                        script_hash.get::<String>(),
-                        wallet_import_format.get::<String>(),
-                        evm.get::<String>(),
-                        ucid.get::<String>(),
-                        cmc_top.get::<String>(),
+                    master_private_key_text.buffer().set_text("");
+                    master_public_key_text.buffer().set_text("");
+
+                    println!("\n#### Coin info ####");
+                    println!("\t- status: {}", status);
+                    println!("\t- index: {}", coin_index);
+                    println!("\t- coin_symbol: {}", coin_symbol);
+                    println!("\t- coin_name: {}", coin_name);
+                    println!("\t- key_derivation: {}", key_derivation);
+                    println!("\t- hash: {}", hash);
+                    println!("\t- private_header: {}", private_header);
+                    println!("\t- public_header: {}", public_header);
+                    println!("\t- public_key_hash: {}", public_key_hash);
+                    println!("\t- script_hash: {}", script_hash);
+                    println!("\t- wallet_import_format: {}", wallet_import_format);
+                    println!("\t- EVM: {}", evm);
+                    println!("\t- UCID: {}", ucid);
+                    println!("\t- cmc_top: {}", cmc_top);
+
+                    let buffer = seed_text.buffer();
+                    let start_iter = buffer.start_iter();
+                    let end_iter = buffer.end_iter();
+                    let seed_string = buffer.text(&start_iter, &end_iter, true);
+
+                    match keys::generate_master_keys(
+                        &seed_string,
+                        &private_header,
+                        &public_header,
                     ) {
-                        master_private_key_text.buffer().set_text("");
-                        master_public_key_text.buffer().set_text("");
-
-                        println!("\n#### Coin info ####");
-                        println!("\t- status: {}", status);
-                        println!("\t- index: {}", coin_index);
-                        println!("\t- coin_symbol: {}", coin_symbol);
-                        println!("\t- coin_name: {}", coin_name);
-                        println!("\t- key_derivation: {}", key_derivation);
-                        println!("\t- hash: {}", hash);
-                        println!("\t- private_header: {}", private_header);
-                        println!("\t- public_header: {}", public_header);
-                        println!("\t- public_key_hash: {}", public_key_hash);
-                        println!("\t- script_hash: {}", script_hash);
-                        println!("\t- wallet_import_format: {}", wallet_import_format);
-                        println!("\t- EVM: {}", evm);
-                        println!("\t- UCID: {}", ucid);
-                        println!("\t- cmc_top: {}", cmc_top);
-
-                        let buffer = seed_text.buffer();
-                        let start_iter = buffer.start_iter();
-                        let end_iter = buffer.end_iter();
-                        let seed_string = buffer.text(&start_iter, &end_iter, true);
-
-                        match keys::generate_master_keys(
-                            &seed_string,
-                            &private_header,
-                            &public_header,
-                        ) {
-                            Ok(xprv) => {
-                                master_private_key_text.buffer().set_text(&xprv.0);
-                                master_public_key_text.buffer().set_text(&xprv.1);
-                            }
-                            Err(err) => {
-                                {
-                                    let lock_gui_state = app_messages_state.borrow();
-                                    lock_gui_state.queue_message(
-                                        t!("error.master.create").to_string(),
-                                        gtk::MessageType::Warning,
-                                    );
-                                }
-                                eprintln!("\t- {}: {}", &t!("error.master.create"), err)
-                            }
+                        Ok(xprv) => {
+                            master_private_key_text.buffer().set_text(&xprv.0);
+                            master_public_key_text.buffer().set_text(&xprv.1);
                         }
-
-                        coin_entry.set_text(&coin_index);
-
-                        let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-                        wallet_settings.public_key_hash = Some(public_key_hash.clone());
-                        wallet_settings.wallet_import_format =
-                            Some(wallet_import_format.to_string());
-                        wallet_settings.key_derivation = Some(key_derivation.to_string());
-                        wallet_settings.hash = Some(hash.to_string());
-                        wallet_settings.coin_index = Some(coin_index.parse().unwrap());
-                        wallet_settings.coin_name = Some(coin_name.parse().unwrap());
+                        Err(err) => {
+                            {
+                                let lock_gui_state = app_messages_state.borrow();
+                                lock_gui_state.queue_message(
+                                    t!("error.master.create").to_string(),
+                                    gtk::MessageType::Warning,
+                                );
+                            }
+                            eprintln!("\t- {}: {}", &t!("error.master.create"), err)
+                        }
                     }
+
+                    coin_entry.set_text(&coin_index.to_string());
+
+                    let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+                    wallet_settings.public_key_hash = Some(public_key_hash.clone());
+                    wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
+                    wallet_settings.key_derivation = Some(key_derivation.to_string());
+                    wallet_settings.hash = Some(hash.to_string());
+                    wallet_settings.coin_index = Some(coin_index);
+                    wallet_settings.coin_name = Some(coin_name.parse().unwrap());
                 }
             } else {
                 {
@@ -2797,8 +2806,7 @@ fn create_main_window(
 
     mnemonic_passphrase_scale.connect_value_changed(clone!(
         #[weak] mnemonic_passphrase_length_info,
-        #[weak(rename_to = random_mnemonic_passphrase_button)]
-        buttons["random"],
+        #[weak(rename_to = random_mnemonic_passphrase_button)] buttons["random"],
         move |mnemonic_passphrase_scale| {
             let scale_value = mnemonic_passphrase_scale.value() as u32;
             mnemonic_passphrase_length_info.set_text(&scale_value.to_string());
@@ -2807,334 +2815,106 @@ fn create_main_window(
     ));
 
     coin_search.connect_search_changed({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+        let filter_model = filter_model.clone();
         move |coin_search| {
             let search_text = coin_search.text().to_lowercase();
-            coin_tree_store.borrow_mut().clear();
-
             let selected = coin_search_filter_dropdown.selected() as usize;
-            let selected_search_parameter =
-                VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
-            let min_search_length = if selected_search_parameter == &"Index" {
-                1
-            } else {
-                2
-            };
-
+            let selected_search_parameter = VALID_COIN_SEARCH_PARAMETER.get(selected).unwrap_or(&"Name");
+            let min_search_length = if selected_search_parameter == &"Index" { 1 } else { 2 };
+    
             if search_text.len() >= min_search_length {
-                let store = coin_store.borrow();
-                let matching_coins = coin_db::fetch_coins_from_database(
-                    selected_search_parameter,
-                    &store,
-                    &search_text,
-                );
-
-                if !matching_coins.is_empty() {
-                    let store = coin_tree_store.borrow_mut();
-                    store.clear();
-
-                    for found_coin in matching_coins {
-                        let iter = store.append(None);
-                        store.set(
-                            &iter,
-                            &[
-                                (0, &found_coin.status),
-                                (1, &found_coin.coin_index.to_string()),
-                                (2, &found_coin.coin_symbol),
-                                (3, &found_coin.coin_name),
-                                (4, &found_coin.key_derivation),
-                                (5, &found_coin.hash),
-                                (6, &found_coin.private_header),
-                                (7, &found_coin.public_header),
-                                (8, &found_coin.public_key_hash),
-                                (9, &found_coin.script_hash),
-                                (10, &found_coin.wallet_import_format),
-                                (11, &found_coin.evm),
-                                (12, &found_coin.ucid),
-                                (13, &found_coin.cmc_top),
-                            ],
-                        );
+                let filter = gtk::CustomFilter::new(move |obj| {
+                    let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
+                    match *selected_search_parameter {
+                        "Name" => coin
+                            .property::<String>("coin-name")
+                            .to_lowercase()
+                            .contains(&search_text),
+                        "Index" => coin
+                            .property::<u32>("coin-index")
+                            .to_string()
+                            .contains(&search_text),
+                        "Status" => coin
+                            .property::<String>("status")
+                            .to_lowercase()
+                            .contains(&search_text),
+                        "Symbol" => coin
+                            .property::<String>("coin-symbol")
+                            .to_lowercase()
+                            .contains(&search_text),
+                        _ => false,
                     }
-                    coin_treeview.borrow().set_model(Some(&*store));
-                } else {
-                    coin_tree_store.borrow_mut().clear();
-                }
-            } else {
-                coin_tree_store.borrow_mut().clear();
+                });
+                filter_model.set_filter(Some(&filter));
+            // } else {
+                // filter_model.set_filter(None);
             }
         }
     });
 
     filter_top10_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+        let filter_model = filter_model.clone();
         move |_| {
-            let search_text = "10";
-            let search_parameter = "Cmc_top";
-            let store = coin_store.borrow();
-            let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
-
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(
-                        &iter,
-                        &[
-                            (0, &found_coin.status),
-                            (1, &found_coin.coin_index.to_string()),
-                            (2, &found_coin.coin_symbol),
-                            (3, &found_coin.coin_name),
-                            (4, &found_coin.key_derivation),
-                            (5, &found_coin.hash),
-                            (6, &found_coin.private_header),
-                            (7, &found_coin.public_header),
-                            (8, &found_coin.public_key_hash),
-                            (9, &found_coin.script_hash),
-                            (10, &found_coin.wallet_import_format),
-                            (11, &found_coin.evm),
-                            (12, &found_coin.ucid),
-                            (13, &found_coin.cmc_top),
-                        ],
-                    );
-                }
-                coin_treeview.borrow().set_model(Some(&*store));
-            } else {
-                store.clear();
-            }
+            let filter = gtk::CustomFilter::new(|obj| {
+                let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
+                coin.property::<String>("cmc-top") == "10"
+            });
+            filter_model.set_filter(Some(&filter));
         }
     });
 
     filter_top100_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+        let filter_model = filter_model.clone();
         move |_| {
-            let search_text = "100";
-            let search_parameter = "Cmc_top";
-            let store = coin_store.borrow();
-            let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
-
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(
-                        &iter,
-                        &[
-                            (0, &found_coin.status),
-                            (1, &found_coin.coin_index.to_string()),
-                            (2, &found_coin.coin_symbol),
-                            (3, &found_coin.coin_name),
-                            (4, &found_coin.key_derivation),
-                            (5, &found_coin.hash),
-                            (6, &found_coin.private_header),
-                            (7, &found_coin.public_header),
-                            (8, &found_coin.public_key_hash),
-                            (9, &found_coin.script_hash),
-                            (10, &found_coin.wallet_import_format),
-                            (11, &found_coin.evm),
-                            (12, &found_coin.ucid),
-                            (13, &found_coin.cmc_top),
-                        ],
-                    );
-                }
-                coin_treeview.borrow().set_model(Some(&*store));
-            } else {
-                store.clear();
-            }
+            let filter = gtk::CustomFilter::new(|obj| {
+                let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
+                coin.property::<String>("cmc-top") == "100" || coin.property::<String>("cmc-top") == "10"
+            });
+            filter_model.set_filter(Some(&filter));
         }
     });
 
     filter_verified_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+        let filter_model = filter_model.clone();
         move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[1];
-            let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
-
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(
-                        &iter,
-                        &[
-                            (0, &found_coin.status),
-                            (1, &found_coin.coin_index.to_string()),
-                            (2, &found_coin.coin_symbol),
-                            (3, &found_coin.coin_name),
-                            (4, &found_coin.key_derivation),
-                            (5, &found_coin.hash),
-                            (6, &found_coin.private_header),
-                            (7, &found_coin.public_header),
-                            (8, &found_coin.public_key_hash),
-                            (9, &found_coin.script_hash),
-                            (10, &found_coin.wallet_import_format),
-                            (11, &found_coin.evm),
-                            (12, &found_coin.ucid),
-                            (13, &found_coin.cmc_top),
-                        ],
-                    );
-                }
-                coin_treeview.borrow().set_model(Some(&*store));
-            } else {
-                store.clear();
-            }
+            let filter = gtk::CustomFilter::new(|obj| {
+                let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
+                coin.property::<String>("status") == coin_db::VALID_COIN_STATUS_NAME[1]
+            });
+            filter_model.set_filter(Some(&filter));
         }
     });
 
     filter_not_verified_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+        let filter_model = filter_model.clone();
         move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[2];
-            let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
-
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(
-                        &iter,
-                        &[
-                            (0, &found_coin.status),
-                            (1, &found_coin.coin_index.to_string()),
-                            (2, &found_coin.coin_symbol),
-                            (3, &found_coin.coin_name),
-                            (4, &found_coin.key_derivation),
-                            (5, &found_coin.hash),
-                            (6, &found_coin.private_header),
-                            (7, &found_coin.public_header),
-                            (8, &found_coin.public_key_hash),
-                            (9, &found_coin.script_hash),
-                            (10, &found_coin.wallet_import_format),
-                            (11, &found_coin.evm),
-                            (12, &found_coin.ucid),
-                            (13, &found_coin.cmc_top),
-                        ],
-                    );
-                }
-                coin_treeview.borrow().set_model(Some(&*store));
-            } else {
-                store.clear();
-            }
+            let filter = gtk::CustomFilter::new(|obj| {
+                let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
+                coin.property::<String>("status") == coin_db::VALID_COIN_STATUS_NAME[2]
+            });
+            filter_model.set_filter(Some(&filter));
         }
     });
 
     filter_in_plan_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+        let filter_model = filter_model.clone();
         move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[3];
-            let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
-
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(
-                        &iter,
-                        &[
-                            (0, &found_coin.status),
-                            (1, &found_coin.coin_index.to_string()),
-                            (2, &found_coin.coin_symbol),
-                            (3, &found_coin.coin_name),
-                            (4, &found_coin.key_derivation),
-                            (5, &found_coin.hash),
-                            (6, &found_coin.private_header),
-                            (7, &found_coin.public_header),
-                            (8, &found_coin.public_key_hash),
-                            (9, &found_coin.script_hash),
-                            (10, &found_coin.wallet_import_format),
-                            (11, &found_coin.evm),
-                            (12, &found_coin.ucid),
-                            (13, &found_coin.cmc_top),
-                        ],
-                    );
-                }
-                coin_treeview.borrow().set_model(Some(&*store));
-            } else {
-                store.clear();
-            }
+            let filter = gtk::CustomFilter::new(|obj| {
+                let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
+                coin.property::<String>("status") == coin_db::VALID_COIN_STATUS_NAME[3]
+            });
+            filter_model.set_filter(Some(&filter));
         }
     });
 
     filter_not_supported_coins_button.connect_clicked({
-        let coin_tree_store = std::rc::Rc::clone(&coin_tree_store);
-        let coin_store = std::rc::Rc::clone(&coin_store);
-        let coin_treeview = std::rc::Rc::clone(&coin_treeview);
-
+        let filter_model = filter_model.clone();
         move |_| {
-            let search_text = coin_db::VALID_COIN_STATUS_NAME[0];
-            let search_parameter = "Status";
-            let store = coin_store.borrow();
-            let matching_coins =
-                coin_db::fetch_coins_from_database(search_parameter, &store, search_text);
-
-            let store = coin_tree_store.borrow_mut();
-            store.clear();
-
-            if !matching_coins.is_empty() {
-                for found_coin in matching_coins {
-                    let iter = store.append(None);
-                    store.set(
-                        &iter,
-                        &[
-                            (0, &found_coin.status),
-                            (1, &found_coin.coin_index.to_string()),
-                            (2, &found_coin.coin_symbol),
-                            (3, &found_coin.coin_name),
-                            (4, &found_coin.key_derivation),
-                            (5, &found_coin.hash),
-                            (6, &found_coin.private_header),
-                            (7, &found_coin.public_header),
-                            (8, &found_coin.public_key_hash),
-                            (9, &found_coin.script_hash),
-                            (10, &found_coin.wallet_import_format),
-                            (11, &found_coin.evm),
-                            (12, &found_coin.ucid),
-                            (13, &found_coin.cmc_top),
-                        ],
-                    );
-                }
-                coin_treeview.borrow().set_model(Some(&*store));
-            } else {
-                store.clear();
-            }
+            let filter = gtk::CustomFilter::new(|obj| {
+                let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
+                coin.property::<String>("status") == coin_db::VALID_COIN_STATUS_NAME[0]
+            });
+            filter_model.set_filter(Some(&filter));
         }
     });
 
@@ -3310,6 +3090,14 @@ fn create_main_window(
             delete_addresses_button_box.set_visible(false);
 
             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+            let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+
+            if key_derivation != "secp256k1" {
+                let lock_app_messages = app_messages_state.borrow();
+                lock_app_messages.queue_message(t!("error.address.unsupported").to_string(), gtk::MessageType::Error);
+                return;
+            }
+
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
             let address_start_point = address_start_spinbutton.text();
@@ -3323,7 +3111,7 @@ fn create_main_window(
 
 
             let cpu_threads = num_cpus::get();
-            dbg!(cpu_threads);
+            // dbg!(cpu_threads);
             let addresses_per_thread = address_count_int / cpu_threads;
             let extra_addresses = address_count_int % cpu_threads;
             let existing_addresses: std::sync::Arc<std::sync::Mutex<std::collections::HashSet<String>>> = std::sync::Arc::new(
@@ -3443,6 +3231,8 @@ fn create_main_window(
                                     *last = new_progress;
                                     let _ = tp.send(new_progress);
                                 }
+                            } else {
+                                break
                             }
                             current_index += 1;
                         }
@@ -3523,6 +3313,9 @@ fn create_main_window(
             delete_addresses_button_box.set_visible(false);
         }
     ));
+
+
+
 
     // Main sidebar
     let main_window_box = gtk::Box::new(gtk::Orientation::Vertical, 0);

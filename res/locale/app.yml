@@ -618,6 +618,10 @@ error:
       en: "There are no more addresses"
       de: "Es sind keine Adressen mehr vorhanden"
       hr: "Nema više adresa"
+    unsupported:
+      en: "Unsupported coin"
+      de: "Nicht unterstützte Münze"
+      hr: "Nepodržani coin"
   wallet:
     open:
       en: "Failed to read wallet file"

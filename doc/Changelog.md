@@ -6,6 +6,11 @@
 - export addresses
 - mnemonic passphrase upper limit in settings
 
+# version 0.76.2
+- upgraded element: gtk::TreeStore
+    - 35 gtk4 warnings left
+- cargo features --dev
+
 # version 0.76.1
 - upgraded element: gtk::MessageDialog
     - 109 gtk4 warnings left
