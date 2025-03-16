@@ -1580,7 +1580,7 @@ fn create_main_window(
         move |_| {
             let settings_window =
                 create_settings_window(gui_state.clone(), app_messages_state.clone());
-            settings_window.show();
+            settings_window.present();
         }
     ));
 
@@ -1592,7 +1592,7 @@ fn create_main_window(
         #[strong] gui_state,
         move |_| {
             let log_window = create_log_window(gui_state.clone());
-            log_window.show();
+            log_window.present();
         }
     ));
 
@@ -4862,66 +4862,59 @@ fn create_settings_window(
     ));
 
     cancel_button.connect_clicked(clone!(
-        #[weak]
-        settings_window,
+        #[weak] settings_window,
         move |_| settings_window.close()
     ));
 
     default_button.connect_clicked(clone!(
-        #[weak]
-        settings_window,
-        #[weak]
-        app_messages_state,
-        #[strong]
-        gui_state,
+        #[weak] settings_window,
+        #[weak] app_messages_state,
+        #[strong] gui_state,
         move |_| {
-            let dialog = gtk::MessageDialog::builder()
+            let dialog = gtk::AlertDialog::builder()
                 .modal(true)
-                .text("Do you really want to reset config?")
+                .message("Reset Configuration")
+                .detail("Do you really want to reset config?")
+                .buttons(gtk::glib::StrV::from(vec!["Cancel", "OK"]))
                 .build();
 
-            dialog.add_button("Yes", gtk::ResponseType::Yes);
-            dialog.add_button("No", gtk::ResponseType::No);
+            let gui_state = gui_state.clone();
 
-            dialog.connect_response(clone!(
-                #[weak]
-                settings_window,
-                #[weak]
-                app_messages_state,
-                #[strong]
-                gui_state,
-                move |dialog, response| {
+
+            dialog.choose(
+                Some(&settings_window.clone()),
+                None::<&gio::Cancellable>,
+                move |response| {
                     match response {
-                        gtk::ResponseType::Yes => {
+                        Ok(1) => {
                             let lock_app_messages = app_messages_state.borrow();
-
-                            match reset_user_settings().unwrap().as_str() {
-                                "OK" => {
-                                    dialog.close();
+    
+                            match reset_user_settings() {
+                                Ok(result) if result == "OK" => {
                                     settings_window.close();
-
+    
                                     AppSettings::load_settings();
                                     adw::StyleManager::default()
                                         .set_color_scheme(adw::ColorScheme::PreferLight);
-
+    
                                     let new_gui_state = std::rc::Rc::new(std::cell::RefCell::new(
                                         GuiState::default_config(),
                                     ));
                                     let mut lock_new_gui_state = new_gui_state.borrow_mut();
                                     let mut lock_gui_state = gui_state.borrow_mut();
-
+    
                                     lock_gui_state.reload_gui_icons();
                                     lock_new_gui_state.gui_main_buttons =
                                         lock_gui_state.gui_main_buttons.clone();
                                     lock_new_gui_state.reload_gui_icons();
                                     lock_new_gui_state.apply_language();
-
+    
                                     lock_app_messages.queue_message(
                                         t!("UI.messages.dialog.settings_reset").to_string(),
                                         gtk::MessageType::Info,
                                     );
                                 }
-                                _ => {
+                                Ok(_) | Err(_) => {
                                     lock_app_messages.queue_message(
                                         t!("error.settings.reset").to_string(),
                                         gtk::MessageType::Error,
@@ -4930,13 +4923,11 @@ fn create_settings_window(
                             }
                         }
                         _ => {
-                            dialog.close();
+                            eprintln!("Reset canceled");
                         }
                     }
                 }
-            ));
-
-            dialog.show();
+            );
         }
     ));
 
