@@ -1994,7 +1994,17 @@ fn create_main_window(
         )
     ));
 
+
+
+
+
+
+
+
+
+
     // Coin treeview
+    // Trying to migrate TreeStore to GObject
     let scrolled_window = gtk::ScrolledWindow::new();
     let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin")));
 

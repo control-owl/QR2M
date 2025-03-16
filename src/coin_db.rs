@@ -208,7 +208,6 @@ pub fn fetch_coins_from_database<'a>(
         },
     };
 
-    // Sort the result by cmc_top in ascending order
     result.sort_by_key(|coin| coin.cmc_top.parse::<usize>().unwrap_or(usize::MAX));
 
     result
