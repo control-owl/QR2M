@@ -1374,6 +1374,7 @@ fn setup_app_actions(
     let settings = gio::SimpleAction::new("settings", None);
     let quit = gio::SimpleAction::new("quit", None);
     let log = gio::SimpleAction::new("log", None);
+    #[cfg(feature = "dev")]
     let test = gio::SimpleAction::new("test", None);
 
     new.connect_activate(clone!(
@@ -1391,9 +1392,12 @@ fn setup_app_actions(
         }
     ));
 
-    save.connect_activate(|_action, _parameter| {
-        save_wallet_to_file();
-    });
+    save.connect_activate(clone!(
+        #[weak] app_messages_state,
+        move |_action, _parameter| {
+            save_wallet_to_file(&app_messages_state);
+        }
+    ));
 
     about.connect_activate(move |_action, _parameter| {
         create_about_window();
@@ -1439,6 +1443,7 @@ fn setup_app_actions(
     application.set_accels_for_action("app.about", &["F1"]);
     application.set_accels_for_action("app.settings", &["F5"]);
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    #[cfg(feature = "dev")]
     application.set_accels_for_action("app.test", &["<Primary>T"]);
 
     application.add_action(&new);
@@ -1447,6 +1452,7 @@ fn setup_app_actions(
     application.add_action(&about);
     application.add_action(&settings);
     application.add_action(&quit);
+    #[cfg(feature = "dev")]
     application.add_action(&test);
 }
 
@@ -1606,9 +1612,12 @@ fn create_main_window(
         }
     ));
 
-    buttons["save"].connect_clicked(move |_| {
-        save_wallet_to_file();
-    });
+    buttons["save"].connect_clicked(clone!(
+        #[strong] app_messages_state,
+        move |_| {
+            save_wallet_to_file(&app_messages_state.clone());
+        }
+    ));
 
     let stack = Stack::new();
     let stack_sidebar = StackSidebar::new();
@@ -4697,8 +4706,7 @@ fn create_settings_window(
                                     let mut lock_gui_state = gui_state.borrow_mut();
     
                                     lock_gui_state.reload_gui_icons();
-                                    lock_new_gui_state.gui_main_buttons =
-                                        lock_gui_state.gui_main_buttons.clone();
+                                    lock_new_gui_state.gui_main_buttons = lock_gui_state.gui_main_buttons.clone();
                                     lock_new_gui_state.reload_gui_icons();
                                     lock_new_gui_state.apply_language();
     
@@ -4821,7 +4829,7 @@ fn create_about_window() {
         .comments(comments)
         .build();
 
-    help_window.show();
+    help_window.present();
 }
 
 fn open_wallet_from_file(
@@ -4831,89 +4839,75 @@ fn open_wallet_from_file(
 
     let open_context = glib::MainContext::default();
     let open_loop = glib::MainLoop::new(Some(&open_context), false);
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = std::sync::mpsc::channel::<Option<(String, Option<String>)>>();
 
     let open_window = gtk::Window::new();
-    let open_dialog = gtk::FileChooserNative::new(
-        Some("Open Wallet File"),
-        Some(&open_window),
-        gtk::FileChooserAction::Open,
-        Some("Open"),
-        Some("Cancel"),
-    );
+    let open_dialog = gtk::FileDialog::builder()
+        .title("Open Wallet File")
+        .modal(true)
+        .build();
 
     let filter = gtk::FileFilter::new();
     filter.add_pattern("*.qr2m");
     filter.set_name(Some("Wallet file (*.qr2m)"));
-    open_dialog.add_filter(&filter);
+    open_dialog.set_default_filter(Some(&filter));
 
-    let all_files_filter = gtk::FileFilter::new();
-    all_files_filter.add_pattern("*");
-    all_files_filter.set_name(Some("All files"));
-    open_dialog.add_filter(&all_files_filter);
-
-    open_dialog.connect_response(clone!(
-        #[strong] open_loop,
-        #[strong] app_messages_state,
-        move |open_dialog, response| {
-            if response == gtk::ResponseType::Accept {
-                if let Some(file) = open_dialog.file() {
+    let app_messages_state_open = app_messages_state.clone();
+    
+    let open_loop_clone = open_loop.clone();
+    open_dialog.open(
+        Some(&open_window),
+        None::<&gio::Cancellable>,
+        move |response| {
+            match response {
+                Ok(file) => {
                     if let Some(path) = file.path() {
                         let file_path = path.to_string_lossy().to_string();
                         println!("\t- Wallet file chosen: {:?}", file_path);
 
-                        let result = process_wallet_file_from_path(&file_path);
-                        let lock_state = app_messages_state.borrow();
-
-                        match result {
+                        match process_wallet_file_from_path(&file_path) {
                             Ok((version, entropy, password)) => {
-                                let passphrase = password.unwrap_or_default();
-
-                                let file_entropy_string =
-                                    format!("{}\n{}\n{}", version, entropy, passphrase);
-
-                                if let Err(err) = tx.send(file_entropy_string) {
-                                    lock_state.queue_message(
-                                        format!("{} : {}", t!("error.wallet.send"), err),
+                                let passphrase = password.map(|s| s.to_string());
+                                let lock_app_messages = app_messages_state_open.borrow();
+                                if tx.send(Some((entropy, passphrase.clone()))).is_err() {
+                                    lock_app_messages.queue_message(
+                                        format!("{} : {}", t!("error.wallet.send"), "Channel send failed"),
                                         gtk::MessageType::Error,
                                     );
                                 } else {
-                                    lock_state.queue_message(
+                                    lock_app_messages.queue_message(
                                         t!("UI.messages.wallet.open").to_string(),
                                         gtk::MessageType::Info,
                                     );
-                                    open_loop.quit();
                                 }
                             }
                             Err(err) => {
-                                lock_state.queue_message(
+                                let lock_app_messages = app_messages_state_open.borrow();
+                                lock_app_messages.queue_message(
                                     format!("{} : {}", t!("error.wallet.process"), err),
                                     gtk::MessageType::Error,
                                 );
-
-                                open_loop.quit();
+                                let _ = tx.send(None);
                             }
                         }
+                    } else {
+                        let _ = tx.send(None);
                     }
                 }
+                Err(_) => {
+                    let _ = tx.send(None);
+                }
             }
-            open_dialog.destroy();
-            open_loop.quit();
-        }
-    ));
+            open_loop_clone.quit();
+        },
+    );
 
-    open_dialog.show();
     open_loop.run();
 
     match rx.recv() {
-        Ok(file_entropy_string) => {
-            let parts: Vec<&str> = file_entropy_string.split("\n").collect();
-            let entropy = parts.get(1).map(|s| s.to_string());
-            let passphrase = parts.get(2).map(|s| s.to_string());
-
-            // IMPLEMENT: Check entropy before importing
-
-            (entropy.unwrap_or_default(), passphrase)
+        Ok(Some((entropy, passphrase))) => (entropy, passphrase),
+        Ok(None) => {
+            (String::new(), None)
         }
         Err(err) => {
             let lock_state = app_messages_state.borrow();
@@ -4926,7 +4920,9 @@ fn open_wallet_from_file(
     }
 }
 
-fn save_wallet_to_file() {
+fn save_wallet_to_file(
+    app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMessages>>,
+) {
     println!("[+] {}", &t!("log.save_wallet_to_file").to_string());
 
     let save_context = glib::MainContext::default();
@@ -4940,13 +4936,11 @@ fn save_wallet_to_file() {
         .unwrap_or_default();
 
     let save_window = gtk::Window::new();
-    let save_dialog = gtk::FileChooserNative::new(
-        Some(t!("UI.dialog.save").to_string().as_str()),
-        Some(&save_window),
-        gtk::FileChooserAction::Save,
-        Some(&t!("UI.element.button.save")),
-        Some(&t!("UI.element.button.cancel")),
-    );
+    let save_dialog = gtk::FileDialog::builder()
+        .title(t!("UI.dialog.save").to_string())
+        .modal(true)
+        .accept_label(t!("UI.element.button.save").to_string())
+        .build();
 
     let filter = gtk::FileFilter::new();
     filter.add_pattern(&format!("*.{}", WALLET_DEFAULT_EXTENSION));
@@ -4954,36 +4948,62 @@ fn save_wallet_to_file() {
         "Wallet file (*.{})",
         WALLET_DEFAULT_EXTENSION
     )));
-    save_dialog.add_filter(&filter);
+    save_dialog.set_default_filter(Some(&filter));
 
-    let all_files_filter = gtk::FileFilter::new();
-    all_files_filter.add_pattern("*");
-    all_files_filter.set_name(Some("All files"));
-    save_dialog.add_filter(&all_files_filter);
+    let app_messages_state_clone = app_messages_state.clone();
+    let save_loop_clone = save_loop.clone();
 
-    save_dialog.connect_response(clone!(
-        #[strong]
-        save_loop,
-        move |save_dialog, response| {
-            if response == gtk::ResponseType::Accept {
-                if let Some(file) = save_dialog.file() {
+    save_dialog.save(
+        Some(&save_window),
+        None::<&gio::Cancellable>,
+        move |response| {
+            match response {
+                Ok(file) => {
                     if let Some(path) = file.path() {
-                        // TODO: Get data from WalletSettings struct
+                        let path_with_extension = if path.extension()
+                            .map(|ext| ext.to_string_lossy().to_string())
+                            .unwrap_or_default() != WALLET_DEFAULT_EXTENSION
+                        {
+                            path.with_extension(WALLET_DEFAULT_EXTENSION)
+                        } else {
+                            path
+                        };
+
                         let wallet_data = format!(
                             "version = {}\n{}\n{}",
                             WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase
                         );
 
-                        std::fs::write(path, wallet_data).expect("Unable to write file");
-                        save_loop.quit();
+                        match std::fs::write(&path_with_extension, &wallet_data) {
+                            Ok(_) => {
+                                let lock_app_messages = app_messages_state_clone.borrow();
+                                lock_app_messages.queue_message(
+                                    t!("UI.messages.wallet.save").to_string(),
+                                    gtk::MessageType::Info,
+                                );
+                            }
+                            Err(err) => {
+                                let lock_app_messages = app_messages_state_clone.borrow();
+                                lock_app_messages.queue_message(
+                                    format!("{} : {}", t!("error.wallet.save"), err),
+                                    gtk::MessageType::Error,
+                                );
+                            }
+                        }
                     }
                 }
+                Err(err) => {
+                    let lock_app_messages = app_messages_state_clone.borrow();
+                    lock_app_messages.queue_message(
+                        format!("{} : {}", t!("error.wallet.cancel"), err),
+                        gtk::MessageType::Error,
+                    );
+                }
             }
-            save_dialog.destroy();
-            save_loop.quit();
-        }
-    ));
-    save_dialog.show();
+            save_loop_clone.quit();
+        },
+    );
+
     save_loop.run();
 }
 
