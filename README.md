@@ -12,6 +12,8 @@
 Copyright  [2023-2025]  Control Owl
 ```
 
+[![Rust](https://github.com/control-owl/QR2M/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/rust.yml)
+
 **QR2M** is a **cryptographic key generator** built with **Rust** and **GTK4**. It supports generating secure addresses for +250 crypto coins. Designed with versatility in mind, QR2M allows entropy generation from multiple sources: hardware-based **RNG**, ANU quantum RNG (**QRNG**), and user-provided **files**. While it is not a cryptocurrency wallet yet, it lays the groundwork for potential RPC connection support in future updates. Application is translated to English, German and Croatian.
 
 ## Table of Contents
@@ -37,49 +39,7 @@ Copyright  [2023-2025]  Control Owl
 
 ## Installation
 
-To set up **QR2M** on your system, follow these steps:
-
-### Prerequisites
-
-Ensure you have the following installed:
-
-- **Rust** (latest stable version)
-- **GTK4** development libraries
-
-#### On Linux
-Install GTK4 with:
-```bash
-sudo apt install libgtk-4-dev libadwaita-1-dev
-```
-
-#### On macOS
-Install GTK4 via Homebrew:
-```bash
-brew install gtk4
-```
-
-#### On Windows
-Refer to the [GTK Windows Installation Guide](https://www.gtk.org/docs/installations/windows) for setting up GTK4.
-
-### Clone the Repository
-
-```bash
-git clone https://github.com/control-owl/QR2M.git
-cd QR2M
-```
-
-### Build the Project
-
-```bash
-cargo build --release
-```
-
-### Run the Application
-
-```bash
-cargo run --release
-```
-
+- Check wiki [How to install QR2M](https://github.com/control-owl/QR2M/wiki/Installation#how-to-install-qr2m)
 
 ## Usage
 
@@ -88,15 +48,15 @@ cargo run --release
 
 2. **Select the Entropy Source**:
    - Choose from the available entropy sources:
-     - **RNG**: Use your system’s random number generator.
-     - **RNG+**: Use your system’s random number generator to generate entropy and random mnemonic passphrase
-     - **QRNG**: Utilize a quantum random number generator provided from [ANU (Australian National University)](https://qrng.anu.edu.au/).
-     - **File**: Provide any file to generate entropy.
+      - **RNG+**: Use your system’s random number generator to generate entropy and random mnemonic passphrase
+      - **File**: Provide any file to generate entropy.
+      - **QRNG**: Utilize a quantum random number generator provided from [ANU (Australian National University)](https://qrng.anu.edu.au/).
+         - ANU is disabled in settings by default
 
 3. **Set Entropy Length**:
     - Specify the length of the entropy to be generated based on your chosen entropy source.
 
-4. **Optional Mnemonic Passphrase**:
+4. **Mnemonic Passphrase**:
     - Enter an optional passphrase for added security, which will be used to generate the mnemonic.
 
 5. **Generate Seed**:
@@ -136,7 +96,7 @@ cargo run --release
 
 ## Documentation
 
-[Project documentation](doc/)
+[Wiki](https://github.com/control-owl/QR2M/wiki)
 
 
 # Support Me

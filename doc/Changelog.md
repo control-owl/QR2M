@@ -1,3 +1,6 @@
+# version 0.77.1
+- happy birthday my son, live long and prosper
+
 # version 0.77.0
 - upgraded all gtk deprecated elements
 - no gtk nor clippy warnings nor errors
