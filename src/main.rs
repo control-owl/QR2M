@@ -69,7 +69,7 @@ lazy_static::lazy_static! {
     static ref APP_SETTINGS: std::sync::Arc<std::sync::RwLock<AppSettings>> = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::default()));
     static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
-    static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<u64, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
+    static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<String, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
     static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
 }
 
@@ -1000,7 +1000,7 @@ impl WalletSettings {
 
 #[derive(Clone)]
 struct CryptoAddresses {
-    id: Option<u64>,
+    id: Option<String>,
     coin_name: Option<String>,
     derivation_path: Option<String>,
     address: Option<String>,
@@ -1012,8 +1012,7 @@ struct CryptoAddresses {
 
 struct AppMessages {
     gui_info_bar: Option<gtk::Revealer>,
-    message_queue:
-        std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
+    message_queue: std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     processing: std::sync::Arc<std::sync::Mutex<bool>>,
 }
 
@@ -2368,9 +2367,10 @@ fn create_main_window(
 
         let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
         column.set_expand(true);
-        if i == 0 {
-            column.set_visible(false);
-        }
+        // TODO: remove in production
+        // if i == 0 {
+        //     column.set_visible(false);
+        // }
         address_treeview.append_column(&column);
     }
 
@@ -3148,6 +3148,8 @@ fn create_main_window(
             let hardened_address = address_options_hardened_address_checkbox.is_active();
             let address_start_point = address_start_spinbutton.text();
             let mut address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
+
+
             let address_count = address_count_spinbutton.text();
             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
             
@@ -3158,7 +3160,7 @@ fn create_main_window(
             let cpu_threads = num_cpus::get();
 
             // TODO: Increase in production
-            let generating_threads = if (address_count_int * 10) < cpu_threads {
+            let generating_threads = if address_count_int <= cpu_threads {
                 1
             } else {
                 cpu_threads
@@ -3166,17 +3168,10 @@ fn create_main_window(
 
             let addresses_per_thread = address_count_int / generating_threads;
             let extra_addresses = address_count_int % generating_threads;
-            let existing_addresses: std::sync::Arc<std::sync::Mutex<std::collections::HashSet<u64>>> = std::sync::Arc::new(
-                std::sync::Mutex::new(
-                    CRYPTO_ADDRESS
-                        .iter()
-                        .filter_map(|addr| addr.id)
-                        .collect()
-                )
-            );
 
             let generated_addresses = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
             let progress_status = std::sync::Arc::new(std::sync::Mutex::new(0.0));
+
             let start_time = std::time::Instant::now();
 
             let address_loop = tokio::spawn(async move {
@@ -3196,7 +3191,6 @@ fn create_main_window(
     
                     let tx = tx.clone();
                     let tp = tp.clone();
-                    let existing_addresses = existing_addresses.clone();
                     let cancel_rx = cancel_rx.clone();
                     let wallet_settings = wallet_settings.clone();
                     let derivation_path = derivation_path.clone();
@@ -3228,20 +3222,12 @@ fn create_main_window(
                             };
     
                             
-                            let coin_path_id = derivation_path_to_integer(&derivation_path).unwrap_or_default();
-                            println!("COIN DERIVATION: {:?}", coin_path_id);
-                            {
-                                let existing = existing_addresses.lock().unwrap();
-                                if existing.contains(&coin_path_id) {
-                                    current_index += 1;
-                                    continue;
-                                }
-                            }
+                            let coin_path_id = derivation_path_to_integer(&derivation_path);
 
                             let mut batch: Vec<CryptoAddresses> = Vec::new();
 
-                            match CRYPTO_ADDRESS.entry(coin_path_id) {
-                                dashmap::mapref::entry::Entry::Vacant(_) => {
+                            match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
+                                dashmap::mapref::entry::Entry::Vacant(entry) => {
                                     let magic_ingredients = keys::AddressHocusPokus {
                                         coin_index: wallet_settings.coin_index.unwrap_or_default(),
                                         derivation_path: derivation_path.clone(),
@@ -3253,15 +3239,9 @@ fn create_main_window(
                                         hash: wallet_settings.hash.clone().unwrap_or_default(),
                                     };
                                     
-                                    if let Ok((address, public_key, private_key)) = keys::generate_address(magic_ingredients) {
-
-                                        {
-                                            let mut existing = existing_addresses.lock().unwrap();
-                                            existing.insert(coin_path_id);
-                                        }
-            
+                                    if let Ok((address, public_key, private_key)) = keys::generate_address(magic_ingredients) {         
                                         let new_entry = CryptoAddresses {
-                                            id: Some(coin_path_id),
+                                            id: Some(coin_path_id.clone()),
                                             coin_name: Some(coin_name.clone()),
                                             derivation_path: Some(derivation_path.clone()),
                                             address: Some(address.clone()),
@@ -3274,7 +3254,7 @@ fn create_main_window(
             
                                         if batch.len() >= (generating_threads * 10) {
                                             tx.send(batch.clone()).unwrap_or_default();
-                                            // batch = Vec::new();
+                                            batch = Vec::new();
                                         }
             
                                         let current_total = generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
@@ -3293,13 +3273,13 @@ fn create_main_window(
         
                                         generated_count += 1;
                                         current_index += 1;
-                                    // } else {
-                                    //     break
                                     }
 
                                 },
                                 dashmap::mapref::entry::Entry::Occupied(_) => {
+                                    current_index += 1;
                                     continue;
+                                    
                                 }
                             }
                             
@@ -3330,12 +3310,18 @@ fn create_main_window(
                 #[strong] stop_addresses_button_box,
                 #[strong] delete_addresses_button_box,
                 move || {
-                    if let Ok(new_entry) = rx.try_recv() {
+                    while let Ok(new_entry) = rx.try_recv() {
                         let entries: Vec<AddressDatabase> = new_entry
                             .into_iter()
                             .filter(|new_coin| {
                                 let id = new_coin.clone().id.unwrap_or_default();
-                                matches!(CRYPTO_ADDRESS.entry(id), dashmap::mapref::entry::Entry::Vacant(_))
+                                if CRYPTO_ADDRESS.contains_key(&id) {
+                                    println!("Duplicate skip {:?}", id);
+                                    false
+                                } else {
+                                    CRYPTO_ADDRESS.insert(id.clone(), new_coin.clone());
+                                    true
+                                }
                             })
                             .map(|new_coin| {
                                 AddressDatabase::new(
@@ -3352,30 +3338,55 @@ fn create_main_window(
                         address_store.extend_from_slice(&entries);
                     }
             
+                    let mut finished = false;
                     while let Ok(progress) = rp.try_recv() {
                         address_generation_progress_bar.set_fraction(progress);
             
                         if progress >= 1.0 {
-                            {
-                                let duration = start_time.elapsed();
-                                let message = format!("Address generation completed in {:.2?}", duration);
-
-                                println!("{}", message);
-
-                                let lock_app_messages = app_messages_state.borrow();
-                                lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
-
-                                stop_addresses_button_box.set_visible(false);
-                                delete_addresses_button_box.set_visible(true);
-                                
-                            }
-                            return glib::ControlFlow::Break;
+                            finished = true;
                         }
+                    }
+            
+                    if finished {
+                        while let Ok(new_entry) = rx.try_recv() {
+                            let entries: Vec<AddressDatabase> = new_entry
+                                .into_iter()
+                                .filter(|new_coin| {
+                                    let id = new_coin.clone().id.unwrap_or_default();
+                                    matches!(CRYPTO_ADDRESS.entry(id), dashmap::mapref::entry::Entry::Vacant(_))
+                                })
+                                .map(|new_coin| {
+                                    AddressDatabase::new(
+                                        &new_coin.id.unwrap_or_default().to_string(),
+                                        &new_coin.coin_name.clone().unwrap_or_default(),
+                                        &new_coin.derivation_path.clone().unwrap_or_default(),
+                                        &new_coin.address.clone().unwrap_or_default(),
+                                        &new_coin.public_key.clone().unwrap_or_default(),
+                                        &new_coin.private_key.clone().unwrap_or_default(),
+                                    )
+                                })
+                                .collect();
+            
+                            address_store.extend_from_slice(&entries);
+                        }
+            
+                        let duration = start_time.elapsed();
+                        let message = format!("Address generation completed in {:.2?}", duration);
+                        println!("{}", message);
+            
+                        let lock_app_messages = app_messages_state.borrow();
+                        lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+            
+                        stop_addresses_button_box.set_visible(false);
+                        delete_addresses_button_box.set_visible(true);
+            
+                        return glib::ControlFlow::Break;
                     }
             
                     glib::ControlFlow::Continue
                 }
             ));
+            
         }
     ));
 
@@ -5265,15 +5276,16 @@ impl AddressDatabase {
 }
 
 
-fn derivation_path_to_integer(path: &str) -> Result<u64, &'static str> {
+fn derivation_path_to_integer(path: &str) -> String {
     if !path.starts_with("m/") {
-        return Err("Path must start with 'm/'");
+        return String::new()
     }
 
     let segments: Vec<&str> = path[2..].split('/').collect();
 
     if segments.len() > 5 {
-        return Err("Too many segments for u64");
+        eprintln!("Too many segments for u64");
+        return String::new()
     }
 
     let mut result: u64 = 0;
@@ -5281,7 +5293,7 @@ fn derivation_path_to_integer(path: &str) -> Result<u64, &'static str> {
     for (i, segment) in segments.iter().enumerate() {
         let is_hardened = segment.ends_with('\'');
         let num_str = segment.trim_end_matches('\'');
-        let index: u32 = num_str.parse().map_err(|_| "Invalid number in path")?;
+        let index: u32 = num_str.parse().unwrap_or_default();
 
         let value = if is_hardened {
             index + 0x80000000
@@ -5292,5 +5304,5 @@ fn derivation_path_to_integer(path: &str) -> Result<u64, &'static str> {
         result |= (value as u64) << (48 - i * 12);
     }
 
-    Ok(result)
+    result.to_string()
 }
