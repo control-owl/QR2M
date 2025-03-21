@@ -1,3 +1,10 @@
+# version 0.77.2
+- libadwaita cargo upgrade
+- again I lost parts of my code...
+- improved address generation with dashmap
+- improved logic with addresses, I think so :D
+
+
 # version 0.77.1
 - happy birthday my son, live long and prosper
 

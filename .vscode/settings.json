@@ -102,4 +102,6 @@
     "winres"
   ],
   "window.newWindowProfile": "ro0t",
+  "rust-analyzer.check.command": "clippy",
+  "editor.comments.ignoreEmptyLines": false,
 }

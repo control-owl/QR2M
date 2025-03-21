@@ -27,6 +27,23 @@ pub const VALID_COIN_STATUS_NAME: &[&str] = &[
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+#[derive(Debug, Clone, Default)]
+pub struct CryptoCoin {
+    pub status: String,
+    pub coin_index: u32,
+    pub coin_symbol: String,
+    pub coin_name: String,
+    pub key_derivation: String,
+    pub hash: String,
+    pub private_header: String,
+    pub public_header: String,
+    pub public_key_hash: String,
+    pub script_hash: String,
+    pub wallet_import_format: String,
+    pub evm: String,
+    pub ucid: String,
+    pub cmc_top: String,
+}
 
 mod implementation {
     use glib::{
@@ -38,22 +55,11 @@ mod implementation {
         ParamSpecBuilderExt,
     };
 
+    use super::CryptoCoin;
+
     #[derive(Default)]
     pub struct CoinDatabase {
-        pub status: std::cell::RefCell<String>,
-        pub coin_index: std::cell::RefCell<u32>,
-        pub coin_symbol: std::cell::RefCell<String>,
-        pub coin_name: std::cell::RefCell<String>,
-        pub key_derivation: std::cell::RefCell<String>,
-        pub hash: std::cell::RefCell<String>,
-        pub private_header: std::cell::RefCell<String>,
-        pub public_header: std::cell::RefCell<String>,
-        pub public_key_hash: std::cell::RefCell<String>,
-        pub script_hash: std::cell::RefCell<String>,
-        pub wallet_import_format: std::cell::RefCell<String>,
-        pub evm: std::cell::RefCell<String>,
-        pub ucid: std::cell::RefCell<String>,
-        pub cmc_top: std::cell::RefCell<String>,
+        pub data: std::cell::RefCell<CryptoCoin>,
     }
 
     #[glib::object_subclass]
@@ -90,40 +96,40 @@ mod implementation {
 
         fn set_property(&self, _id: usize, value: &glib::Value, specification: &glib::ParamSpec) {
             match specification.name() {
-                "status" => *self.status.borrow_mut() = value.get().unwrap_or_default(),
-                "coin-index" => *self.coin_index.borrow_mut() = value.get().unwrap_or_default(),
-                "coin-symbol" => *self.coin_symbol.borrow_mut() = value.get().unwrap_or_default(),
-                "coin-name" => *self.coin_name.borrow_mut() = value.get().unwrap_or_default(),
-                "key-derivation" => *self.key_derivation.borrow_mut() = value.get().unwrap_or_default(),
-                "hash" => *self.hash.borrow_mut() = value.get().unwrap_or_default(),
-                "private-header" => *self.private_header.borrow_mut() = value.get().unwrap_or_default(),
-                "public-header" => *self.public_header.borrow_mut() = value.get().unwrap_or_default(),
-                "public-key-hash" => *self.public_key_hash.borrow_mut() = value.get().unwrap_or_default(),
-                "script-hash" => *self.script_hash.borrow_mut() = value.get().unwrap_or_default(),
-                "wallet-import-format" => *self.wallet_import_format.borrow_mut() = value.get().unwrap_or_default(),
-                "evm" => *self.evm.borrow_mut() = value.get().unwrap_or_default(),
-                "ucid" => *self.ucid.borrow_mut() = value.get().unwrap_or_default(),
-                "cmc-top" => *self.cmc_top.borrow_mut() = value.get().unwrap_or_default(),
+                "status" => self.data.borrow_mut().status = value.get().unwrap_or_default(),
+                "coin-index" => self.data.borrow_mut().coin_index = value.get().unwrap_or_default(),
+                "coin-symbol" => self.data.borrow_mut().coin_symbol = value.get().unwrap_or_default(),
+                "coin-name" => self.data.borrow_mut().coin_name = value.get().unwrap_or_default(),
+                "key-derivation" => self.data.borrow_mut().key_derivation = value.get().unwrap_or_default(),
+                "hash" => self.data.borrow_mut().hash = value.get().unwrap_or_default(),
+                "private-header" => self.data.borrow_mut().private_header = value.get().unwrap_or_default(),
+                "public-header" => self.data.borrow_mut().public_header = value.get().unwrap_or_default(),
+                "public-key-hash" => self.data.borrow_mut().public_key_hash = value.get().unwrap_or_default(),
+                "script-hash" => self.data.borrow_mut().script_hash = value.get().unwrap_or_default(),
+                "wallet-import-format" => self.data.borrow_mut().wallet_import_format = value.get().unwrap_or_default(),
+                "evm" => self.data.borrow_mut().evm = value.get().unwrap_or_default(),
+                "ucid" => self.data.borrow_mut().ucid = value.get().unwrap_or_default(),
+                "cmc-top" => self.data.borrow_mut().cmc_top = value.get().unwrap_or_default(),
                 _ => eprintln!("Unknown property"),
             }
         }
 
         fn property(&self, _id: usize, specification: &glib::ParamSpec) -> glib::Value {
             match specification.name() {
-                "status" => self.status.borrow().to_value(),
-                "coin-index" => self.coin_index.borrow().to_value(),
-                "coin-symbol" => self.coin_symbol.borrow().to_value(),
-                "coin-name" => self.coin_name.borrow().to_value(),
-                "key-derivation" => self.key_derivation.borrow().to_value(),
-                "hash" => self.hash.borrow().to_value(),
-                "private-header" => self.private_header.borrow().to_value(),
-                "public-header" => self.public_header.borrow().to_value(),
-                "public-key-hash" => self.public_key_hash.borrow().to_value(),
-                "script-hash" => self.script_hash.borrow().to_value(),
-                "wallet-import-format" => self.wallet_import_format.borrow().to_value(),
-                "evm" => self.evm.borrow().to_value(),
-                "ucid" => self.ucid.borrow().to_value(),
-                "cmc-top" => self.cmc_top.borrow().to_value(),
+                "status" => self.data.borrow_mut().status.to_value(),
+                "coin-index" => self.data.borrow_mut().coin_index.to_value(),
+                "coin-symbol" => self.data.borrow_mut().coin_symbol.to_value(),
+                "coin-name" => self.data.borrow_mut().coin_name.to_value(),
+                "key-derivation" => self.data.borrow_mut().key_derivation.to_value(),
+                "hash" => self.data.borrow_mut().hash.to_value(),
+                "private-header" => self.data.borrow_mut().private_header.to_value(),
+                "public-header" => self.data.borrow_mut().public_header.to_value(),
+                "public-key-hash" => self.data.borrow_mut().public_key_hash.to_value(),
+                "script-hash" => self.data.borrow_mut().script_hash.to_value(),
+                "wallet-import-format" => self.data.borrow_mut().wallet_import_format.to_value(),
+                "evm" => self.data.borrow_mut().evm.to_value(),
+                "ucid" => self.data.borrow_mut().ucid.to_value(),
+                "cmc-top" => self.data.borrow_mut().cmc_top.to_value(),
                 _ => unimplemented!(),
             }
         }
@@ -135,37 +141,22 @@ glib::wrapper! {
 }
 
 impl CoinDatabase {
-    pub fn new(
-        status: &str,
-        coin_index: u32,
-        coin_symbol: &str,
-        coin_name: &str,
-        key_derivation: &str,
-        hash: &str,
-        private_header: &str,
-        public_header: &str,
-        public_key_hash: &str,
-        script_hash: &str,
-        wallet_import_format: &str,
-        evm: &str,
-        ucid: &str,
-        cmc_top: &str,
-    ) -> Self {
+    pub fn new(crypto_coin: CryptoCoin) -> Self {
         let builder = glib::Object::builder::<CoinDatabase>()
-            .property("status", status)
-            .property("coin-index", coin_index)
-            .property("coin-symbol", coin_symbol)
-            .property("coin-name", coin_name)
-            .property("key-derivation", key_derivation)
-            .property("hash", hash)
-            .property("private-header", private_header)
-            .property("public-header", public_header)
-            .property("public-key-hash", public_key_hash)
-            .property("script-hash", script_hash)
-            .property("wallet-import-format", wallet_import_format)
-            .property("evm", evm)
-            .property("ucid", ucid)
-            .property("cmc-top", cmc_top);
+            .property("status", crypto_coin.status)
+            .property("coin-index", crypto_coin.coin_index)
+            .property("coin-symbol", crypto_coin.coin_symbol)
+            .property("coin-name", crypto_coin.coin_name)
+            .property("key-derivation", crypto_coin.key_derivation)
+            .property("hash", crypto_coin.hash)
+            .property("private-header", crypto_coin.private_header)
+            .property("public-header", crypto_coin.public_header)
+            .property("public-key-hash", crypto_coin.public_key_hash)
+            .property("script-hash", crypto_coin.script_hash)
+            .property("wallet-import-format", crypto_coin.wallet_import_format)
+            .property("evm", crypto_coin.evm)
+            .property("ucid", crypto_coin.ucid)
+            .property("cmc-top", crypto_coin.cmc_top);
 
         builder.build()
     }
@@ -211,23 +202,24 @@ pub fn create_coin_store() -> gtk::gio::ListStore {
         let ucid = record[12].to_string();
         let cmc_top = record[13].to_string();
 
-        
-        let coin = CoinDatabase::new(
-            &status,
+        let crypto_coin = CryptoCoin {
+            status,
             coin_index,
-            &coin_symbol,
-            &coin_name,
-            &key_derivation,
-            &hash,
-            &private_header,
-            &public_header,
-            &public_key_hash,
-            &script_hash,
-            &wallet_import_format,
-            &evm,
-            &ucid,
-            &cmc_top,
-        );
+            coin_symbol,
+            coin_name,
+            key_derivation,
+            hash,
+            private_header,
+            public_header,
+            public_key_hash,
+            script_hash,
+            wallet_import_format,
+            evm,
+            ucid,
+            cmc_top,
+        };
+        
+        let coin = CoinDatabase::new(crypto_coin);
 
         store.append(&coin);
     }
@@ -315,22 +307,24 @@ fn create_coin_database() -> Vec<CoinDatabase> {
             let ucid: String = record.get(12).unwrap_or_default().to_string();
             let cmc_top: String = record.get(13).unwrap_or_default().to_string();
 
-            CoinDatabase::new(
-                &status,
+            let crypto_coin = CryptoCoin {
+                status,
                 coin_index,
-                &coin_symbol,
-                &coin_name,
-                &key_derivation,
-                &hash,
-                &private_header,
-                &public_header,
-                &public_key_hash,
-                &script_hash,
-                &wallet_import_format,
-                &evm,
-                &ucid,
-                &cmc_top,
-            )
+                coin_symbol,
+                coin_name,
+                key_derivation,
+                hash,
+                private_header,
+                public_header,
+                public_key_hash,
+                script_hash,
+                wallet_import_format,
+                evm,
+                ucid,
+                cmc_top,
+            };
+
+            CoinDatabase::new(crypto_coin)
         }).collect();
 
     coin_types
