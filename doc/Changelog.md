@@ -1,3 +1,6 @@
+# version 0.77.3
+- improved address generation
+
 # version 0.77.2
 - libadwaita cargo upgrade
 - again I lost parts of my code...
