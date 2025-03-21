@@ -3201,6 +3201,8 @@ fn create_main_window(
                     let handle = tokio::spawn(async move {
                         let mut generated_count = 0;
                         let mut current_index = address_start_point_int;
+                        let mut buffered_addresses = 0;
+                        let mut batch: Vec<CryptoAddresses> = Vec::new();
                         
                         while generated_count < num_addresses {
                             let cancel_rx = cancel_rx.lock().await;
@@ -3222,12 +3224,14 @@ fn create_main_window(
                             };
     
                             
-                            let coin_path_id = derivation_path_to_integer(&derivation_path);
+                            let coin_path_id = match derivation_path_to_integer(&derivation_path) {
+                                Ok(value) => value,
+                                Err(err) => return,
+                            };
 
-                            let mut batch: Vec<CryptoAddresses> = Vec::new();
 
                             match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
-                                dashmap::mapref::entry::Entry::Vacant(entry) => {
+                                dashmap::mapref::entry::Entry::Vacant(_) => {
                                     let magic_ingredients = keys::AddressHocusPokus {
                                         coin_index: wallet_settings.coin_index.unwrap_or_default(),
                                         derivation_path: derivation_path.clone(),
@@ -3249,12 +3253,13 @@ fn create_main_window(
                                             private_key: Some(private_key.clone()),
                                         };
             
-                                        // entry.insert(new_entry.clone());
+                                        // dbg!(buffered_addresses);
+
                                         batch.push(new_entry);
-            
-                                        if batch.len() >= (generating_threads * 10) {
+
+                                        if buffered_addresses >= (generating_threads * 5) || buffered_addresses >= address_count_int {
                                             tx.send(batch.clone()).unwrap_or_default();
-                                            batch = Vec::new();
+                                            // batch = Vec::new();
                                         }
             
                                         let current_total = generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
@@ -3270,7 +3275,9 @@ fn create_main_window(
                                             *last = new_progress;
                                             let _ = tp.send(new_progress);
                                         }
-        
+                                        
+
+                                        buffered_addresses += 1;
                                         generated_count += 1;
                                         current_index += 1;
                                     }
@@ -3283,12 +3290,12 @@ fn create_main_window(
                                 }
                             }
                             
-                            if !batch.is_empty() {
-                                tx.send(batch).unwrap_or_default()
-                            }
-                            println!("Thread {} generating derivation_path: {}", thread_id, &derivation_path);
                             
                         }
+                        if !batch.is_empty() {
+                            tx.send(batch).unwrap_or_default()
+                        }
+                        println!("Thread {} generating derivation_path: {}", thread_id, &derivation_path);
                     });
     
                     handles.push(handle);
@@ -3314,73 +3321,45 @@ fn create_main_window(
                         let entries: Vec<AddressDatabase> = new_entry
                             .into_iter()
                             .filter(|new_coin| {
-                                let id = new_coin.clone().id.unwrap_or_default();
-                                if CRYPTO_ADDRESS.contains_key(&id) {
-                                    println!("Duplicate skip {:?}", id);
+                                let id = new_coin.id.as_deref().unwrap_or("");
+                                if CRYPTO_ADDRESS.contains_key(id) {
                                     false
                                 } else {
-                                    CRYPTO_ADDRESS.insert(id.clone(), new_coin.clone());
+                                    CRYPTO_ADDRESS.insert(id.to_owned(), new_coin.clone());
                                     true
                                 }
                             })
-                            .map(|new_coin| {
+                            .map(|mut new_coin| {
                                 AddressDatabase::new(
-                                    &new_coin.id.unwrap_or_default().to_string(),
-                                    &new_coin.coin_name.clone().unwrap_or_default(),
-                                    &new_coin.derivation_path.clone().unwrap_or_default(),
-                                    &new_coin.address.clone().unwrap_or_default(),
-                                    &new_coin.public_key.clone().unwrap_or_default(),
-                                    &new_coin.private_key.clone().unwrap_or_default(),
+                                    &new_coin.id.take().unwrap_or_default(),
+                                    &new_coin.coin_name.take().unwrap_or_default(),
+                                    &new_coin.derivation_path.take().unwrap_or_default(),
+                                    &new_coin.address.take().unwrap_or_default(),
+                                    &new_coin.public_key.take().unwrap_or_default(),
+                                    &new_coin.private_key.take().unwrap_or_default(),
                                 )
                             })
                             .collect();
-            
+                    
                         address_store.extend_from_slice(&entries);
                     }
             
-                    let mut finished = false;
                     while let Ok(progress) = rp.try_recv() {
                         address_generation_progress_bar.set_fraction(progress);
             
                         if progress >= 1.0 {
-                            finished = true;
+                            let duration = start_time.elapsed();
+                            let message = format!("Address generation completed in {:.2?}", duration);
+                            println!("{}", message);
+                
+                            let lock_app_messages = app_messages_state.borrow();
+                            lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+                
+                            stop_addresses_button_box.set_visible(false);
+                            delete_addresses_button_box.set_visible(true);
+                
+                            return glib::ControlFlow::Break;
                         }
-                    }
-            
-                    if finished {
-                        while let Ok(new_entry) = rx.try_recv() {
-                            let entries: Vec<AddressDatabase> = new_entry
-                                .into_iter()
-                                .filter(|new_coin| {
-                                    let id = new_coin.clone().id.unwrap_or_default();
-                                    matches!(CRYPTO_ADDRESS.entry(id), dashmap::mapref::entry::Entry::Vacant(_))
-                                })
-                                .map(|new_coin| {
-                                    AddressDatabase::new(
-                                        &new_coin.id.unwrap_or_default().to_string(),
-                                        &new_coin.coin_name.clone().unwrap_or_default(),
-                                        &new_coin.derivation_path.clone().unwrap_or_default(),
-                                        &new_coin.address.clone().unwrap_or_default(),
-                                        &new_coin.public_key.clone().unwrap_or_default(),
-                                        &new_coin.private_key.clone().unwrap_or_default(),
-                                    )
-                                })
-                                .collect();
-            
-                            address_store.extend_from_slice(&entries);
-                        }
-            
-                        let duration = start_time.elapsed();
-                        let message = format!("Address generation completed in {:.2?}", duration);
-                        println!("{}", message);
-            
-                        let lock_app_messages = app_messages_state.borrow();
-                        lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
-            
-                        stop_addresses_button_box.set_visible(false);
-                        delete_addresses_button_box.set_visible(true);
-            
-                        return glib::ControlFlow::Break;
                     }
             
                     glib::ControlFlow::Continue
@@ -5276,16 +5255,15 @@ impl AddressDatabase {
 }
 
 
-fn derivation_path_to_integer(path: &str) -> String {
+fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {
     if !path.starts_with("m/") {
-        return String::new()
+        return Err("Path must start with 'm/'");
     }
 
     let segments: Vec<&str> = path[2..].split('/').collect();
 
     if segments.len() > 5 {
-        eprintln!("Too many segments for u64");
-        return String::new()
+        return Err("Too many segments for u64");
     }
 
     let mut result: u64 = 0;
@@ -5293,7 +5271,7 @@ fn derivation_path_to_integer(path: &str) -> String {
     for (i, segment) in segments.iter().enumerate() {
         let is_hardened = segment.ends_with('\'');
         let num_str = segment.trim_end_matches('\'');
-        let index: u32 = num_str.parse().unwrap_or_default();
+        let index: u32 = num_str.parse().map_err(|_| "Invalid number in path")?;
 
         let value = if is_hardened {
             index + 0x80000000
@@ -5304,5 +5282,5 @@ fn derivation_path_to_integer(path: &str) -> String {
         result |= (value as u64) << (48 - i * 12);
     }
 
-    result.to_string()
+    Ok(result.to_string())
 }
