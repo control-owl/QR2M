@@ -3226,7 +3226,7 @@ fn create_main_window(
                             
                             let coin_path_id = match derivation_path_to_integer(&derivation_path) {
                                 Ok(value) => value,
-                                Err(err) => return,
+                                Err(_) => return,
                             };
 
 
