@@ -1,3 +1,11 @@
+# version 0.78.0
+- I finally discovered #[cfg(debug_assertions)]
+- new: 3 build systems
+    - cargo build
+    - cargo build --anu
+    - cargo build --dev
+- #[cfg(debug_assertions)]
+
 # version 0.77.3
 - improved address generation
 
