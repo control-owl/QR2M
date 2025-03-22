@@ -3075,12 +3075,12 @@ fn create_main_window(
         move |address_count_spinbutton| {
             let address_count = address_count_spinbutton.text();
             let address_count_str = address_count.as_str();
-            let total_addresses_int = address_count_str.parse::<u32>().unwrap_or(0);
+            let address_count_int = address_count_str.parse::<u32>().unwrap_or(0);
 
-            let maximum = if total_addresses_int == 1 {
+            let maximum = if address_count_int == 1 {
                 WALLET_MAX_ADDRESSES
             } else {
-                WALLET_MAX_ADDRESSES - total_addresses_int
+                WALLET_MAX_ADDRESSES - address_count_int
             };
 
             let new_adjustment = gtk::Adjustment::new(0.0, 0.0, maximum as f64, 1.0, 10.0, 0.0);
@@ -3147,11 +3147,11 @@ fn create_main_window(
             let derivation_path = derivation_label_text.text();
             let hardened_address = address_options_hardened_address_checkbox.is_active();
             let address_start_point = address_start_spinbutton.text();
-            let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
+            let mut address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
 
 
             let address_count = address_count_spinbutton.text();
-            let total_addresses_int = address_count.parse::<usize>().unwrap_or(1);
+            let address_count_int = address_count.parse::<usize>().unwrap_or(1);
             
             let (tx, rx) = std::sync::mpsc::channel();
             let (tp, rp) = std::sync::mpsc::channel();
@@ -3160,27 +3160,35 @@ fn create_main_window(
             let cpu_threads = num_cpus::get();
 
             // TODO: Increase in production
-            let generating_threads = if total_addresses_int <= cpu_threads {
+            let generating_threads = if address_count_int <= cpu_threads {
                 1
             } else {
                 cpu_threads
             };
 
-            // let addresses_per_thread = total_addresses_int / generating_threads;
-            // let extra_addresses = total_addresses_int % generating_threads;
+            let addresses_per_thread = address_count_int / generating_threads;
+            let extra_addresses = address_count_int % generating_threads;
 
-            let current_index = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(address_start_point_int));
             let generated_addresses = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
             let progress_status = std::sync::Arc::new(std::sync::Mutex::new(0.0));
-            let batch_size = 10;
 
             let start_time = std::time::Instant::now();
 
             let address_loop = tokio::spawn(async move {
                 let mut handles = vec![];
                 let cancel_rx = std::sync::Arc::new(tokio::sync::Mutex::new(cancel_rx));
-
+    
                 for thread_id in 0..generating_threads {
+                    let num_addresses = if thread_id < extra_addresses {
+                        addresses_per_thread + 1
+                    } else {
+                        addresses_per_thread
+                    };
+    
+                    if num_addresses == 0 {
+                        continue;
+                    }
+    
                     let tx = tx.clone();
                     let tp = tp.clone();
                     let cancel_rx = cancel_rx.clone();
@@ -3189,10 +3197,14 @@ fn create_main_window(
                     let coin_name = coin_name.clone();
                     let generated_addresses = generated_addresses.clone();
                     let progress_status = progress_status.clone();
-                    let current_index = current_index.clone();  
 
                     let handle = tokio::spawn(async move {
-                        loop {
+                        let mut generated_count = 0;
+                        let mut current_index = address_start_point_int;
+                        let mut buffered_addresses = 0;
+                        let mut batch: Vec<CryptoAddresses> = Vec::new();
+                        
+                        while generated_count < num_addresses {
                             let cancel_rx = cancel_rx.lock().await;
                             if *cancel_rx.borrow() {
                                 println!("Address generation aborted (thread {})", thread_id);
@@ -3200,83 +3212,94 @@ fn create_main_window(
                                 return;
                             }
                             drop(cancel_rx);
-
-                            let mut start = current_index.fetch_add(batch_size, std::sync::atomic::Ordering::Relaxed);
-                            if start >= address_start_point_int + total_addresses_int {
+    
+                            if current_index > WALLET_MAX_ADDRESSES as usize {
                                 break;
                             }
-
-                            let mut end = std::cmp::min(start + batch_size, address_start_point_int + total_addresses_int);
-                            let batch_count = end - start;
-
-                            let mut batch = Vec::new();
-
-                            for index in start..end {
-                                let derivation_path = if hardened_address {
-                                    format!("{}/{}'", derivation_path, index)
-                                } else {
-                                    format!("{}/{}", derivation_path, index)
-                                };
-        
-                                
-                                let coin_path_id = match derivation_path_to_integer(&derivation_path) {
-                                    Ok(value) => value,
-                                    Err(_) => return,
-                                };
-
-                                match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
-                                    dashmap::mapref::entry::Entry::Vacant(_) => {
-                                        let magic_ingredients = keys::AddressHocusPokus {
-                                            coin_index: wallet_settings.coin_index.unwrap_or_default(),
-                                            derivation_path: derivation_path.clone(),
-                                            master_private_key_bytes: wallet_settings.master_private_key_bytes.clone().unwrap_or_default(),
-                                            master_chain_code_bytes: wallet_settings.master_chain_code_bytes.clone().unwrap_or_default(),
-                                            public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
-                                            key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
-                                            wallet_import_format: wallet_settings.wallet_import_format.clone().unwrap_or_default(),
-                                            hash: wallet_settings.hash.clone().unwrap_or_default(),
-                                        };
-                                        
-                                        if let Ok((address, public_key, private_key)) = keys::generate_address(magic_ingredients) {         
-                                            let new_entry = CryptoAddresses {
-                                                id: Some(coin_path_id.clone()),
-                                                coin_name: Some(coin_name.clone()),
-                                                derivation_path: Some(derivation_path.clone()),
-                                                address: Some(address.clone()),
-                                                public_key: Some(public_key.clone()),
-                                                private_key: Some(private_key.clone()),
-                                            };
-                
-                                            batch.push(new_entry);
-                                        }
     
-                                    },
-                                    dashmap::mapref::entry::Entry::Occupied(_) => {
-                                        current_index.fetch_add(10, std::sync::atomic::Ordering::Relaxed) + 10 ;
+                            let derivation_path = if hardened_address {
+                                format!("{}/{}'", derivation_path, current_index)
+                            } else {
+                                format!("{}/{}", derivation_path, current_index)
+                            };
+    
+                            
+                            let coin_path_id = match derivation_path_to_integer(&derivation_path) {
+                                Ok(value) => value,
+                                Err(_) => return,
+                            };
 
-                                        continue;
+
+                            match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
+                                dashmap::mapref::entry::Entry::Vacant(_) => {
+                                    let magic_ingredients = keys::AddressHocusPokus {
+                                        coin_index: wallet_settings.coin_index.unwrap_or_default(),
+                                        derivation_path: derivation_path.clone(),
+                                        master_private_key_bytes: wallet_settings.master_private_key_bytes.clone().unwrap_or_default(),
+                                        master_chain_code_bytes: wallet_settings.master_chain_code_bytes.clone().unwrap_or_default(),
+                                        public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
+                                        key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
+                                        wallet_import_format: wallet_settings.wallet_import_format.clone().unwrap_or_default(),
+                                        hash: wallet_settings.hash.clone().unwrap_or_default(),
+                                    };
+                                    
+                                    if let Ok((address, public_key, private_key)) = keys::generate_address(magic_ingredients) {         
+                                        let new_entry = CryptoAddresses {
+                                            id: Some(coin_path_id.clone()),
+                                            coin_name: Some(coin_name.clone()),
+                                            derivation_path: Some(derivation_path.clone()),
+                                            address: Some(address.clone()),
+                                            public_key: Some(public_key.clone()),
+                                            private_key: Some(private_key.clone()),
+                                        };
+            
+                                        // dbg!(buffered_addresses);
+
+                                        batch.push(new_entry);
+
+                                        if buffered_addresses >= (generating_threads * 5) || buffered_addresses >= address_count_int {
+                                            tx.send(batch.clone()).unwrap_or_default();
+                                            // batch = Vec::new();
+                                        }
+            
+                                        let current_total = generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                                        
+                                        let new_progress = if address_count_int > 0 {
+                                            (current_total as f64) / (address_count_int as f64)
+                                        } else {
+                                            0.0
+                                        };
+            
+                                        let mut last = progress_status.lock().unwrap();
+                                        if new_progress > *last + 0.01 || new_progress >= 1.0 {
+                                            *last = new_progress;
+                                            let _ = tp.send(new_progress);
+                                        }
+                                        
+
+                                        buffered_addresses += 1;
+                                        generated_count += 1;
+                                        current_index += 1;
                                     }
+
+                                },
+                                dashmap::mapref::entry::Entry::Occupied(_) => {
+                                    current_index += 1;
+                                    continue;
+                                    
                                 }
                             }
-
-                        
-                        
-                            if !batch.is_empty() {
-                                tx.send(batch).unwrap_or_default()
-                            }
-                        
-                            let this_batch = generated_addresses.fetch_add(batch_count, std::sync::atomic::Ordering::Relaxed) + batch_count;
-                            let new_progress = (this_batch as f64) / (total_addresses_int as f64);
-                            let mut last = progress_status.lock().unwrap();
                             
-                            if new_progress > *last + 0.01 || new_progress >= 1.0 {
-                                *last = new_progress;
-                                let _ = tp.send(new_progress);
-                            }
+                            
                         }
+                        if !batch.is_empty() {
+                            tx.send(batch).unwrap_or_default()
+                        }
+                        println!("Thread {} generating derivation_path: {}", thread_id, &derivation_path);
                     });
     
                     handles.push(handle);
+                    address_start_point_int += num_addresses;
                 }
     
                 for handle in handles {
