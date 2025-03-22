@@ -41,7 +41,9 @@ jobs:
       run: cargo update
 
     - name: Cargo build
+      if: github.ref == 'refs/heads/master'
       run: cargo build --verbose
 
     - name: Cargo test
+      if: github.ref == 'refs/heads/tester'
       run: cargo test --verbose
