@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -124,10 +124,10 @@ jobs:
           ./appimagetool AppDir QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.AppImage
 
       - name: Package .deb
-        run: cargo deb
+        run: cargo deb --target ${{ matrix.target }} --no-build
 
       - name: Package .rpm
-        run: cargo rpm build
+        run: cargo rpm build --target ${{ matrix.target }}
 
       - name: Generate SHA256 checksum
         run: sha256sum QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.AppImage > QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.sha256
