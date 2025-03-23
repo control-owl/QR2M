@@ -58,7 +58,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   check:
-    needs: versioning
+    needs: [setup, versioning]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -100,7 +100,7 @@ jobs:
         run: cargo install cargo-outdated && cargo outdated --exit-code 1
 
   build:
-    needs: [check, versioning]
+    needs: [setup, check, versioning]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -143,7 +143,7 @@ jobs:
             target/${{ matrix.target }}/release/*.rpm
   
   release_notes:
-    needs: [build, versioning]
+    needs: [setup, build, versioning]
     runs-on: ubuntu-latest
     steps:
       - name: Generate Release Notes
