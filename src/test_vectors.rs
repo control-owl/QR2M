@@ -3,9 +3,7 @@
 // copyright = "Copyright © 2023-2025 Control Owl"
 // version = "2024-12-09"
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 struct _EntropyMnemonicVector {
     entropy: &'static str,
@@ -72,7 +70,6 @@ mod tests {
             },
         ];
 
-
         for vector in entropy_mnemonic_vectors {
             let mnemonic = crate::keys::generate_mnemonic_words(vector.entropy);
             assert_eq!(mnemonic, vector.mnemonic);
@@ -127,17 +124,26 @@ mod tests {
         for vector in test_vectors {
             match crate::keys::generate_master_keys(vector.seed, "0x0488ADE4", "0x0488B21E") {
                 Ok((
-                    master_xprv, 
+                    master_xprv,
                     master_xpub,
-                    master_private_key, 
-                    master_chain_code, 
-                    master_public_key, 
+                    master_private_key,
+                    master_chain_code,
+                    master_public_key,
                 )) => {
                     assert_eq!(master_xprv, vector.expected_master_xprv);
                     assert_eq!(master_xpub, vector.expected_master_xpub);
-                    assert_eq!(hex::encode(master_private_key), vector.expected_master_private_key);
-                    assert_eq!(hex::encode(master_chain_code), vector.expected_master_chain_code);
-                    assert_eq!(hex::encode(master_public_key), vector.expected_master_public_key);
+                    assert_eq!(
+                        hex::encode(master_private_key),
+                        vector.expected_master_private_key
+                    );
+                    assert_eq!(
+                        hex::encode(master_chain_code),
+                        vector.expected_master_chain_code
+                    );
+                    assert_eq!(
+                        hex::encode(master_public_key),
+                        vector.expected_master_public_key
+                    );
                 }
                 Err(e) => panic!("Error deriving keys: {}", e),
             }
@@ -222,32 +228,35 @@ mod tests {
         ];
 
         for vector in test_vectors {
-            
+            let master_private_key_bytes =
+                hex::decode(vector.master_private_key).expect("can not decode master_private_key");
+            let master_chain_code_bytes =
+                hex::decode(vector.master_chain_code).expect("can not decode master_chain_code");
 
-            let master_private_key_bytes = hex::decode(vector.master_private_key).expect("can not decode master_private_key");
-            let master_chain_code_bytes = hex::decode(vector.master_chain_code).expect("can not decode master_chain_code");
-    
             match crate::keys::derive_child_key_secp256k1(
                 &master_private_key_bytes,
                 &master_chain_code_bytes,
                 vector.index,
                 vector.hardened,
             ) {
-                Some((
-                    child_private_key_bytes, 
-                    child_chain_code_bytes, 
-                    child_public_key_bytes,
-                )) => {
-                    assert_eq!(hex::encode(child_private_key_bytes), vector.expected_child_private_key_bytes);
-                    assert_eq!(hex::encode(child_chain_code_bytes), vector.expected_child_chain_code_bytes);
-                    assert_eq!(hex::encode(child_public_key_bytes), vector.expected_child_public_key_bytes);
+                Some((child_private_key_bytes, child_chain_code_bytes, child_public_key_bytes)) => {
+                    assert_eq!(
+                        hex::encode(child_private_key_bytes),
+                        vector.expected_child_private_key_bytes
+                    );
+                    assert_eq!(
+                        hex::encode(child_chain_code_bytes),
+                        vector.expected_child_chain_code_bytes
+                    );
+                    assert_eq!(
+                        hex::encode(child_public_key_bytes),
+                        vector.expected_child_public_key_bytes
+                    );
                 }
                 None => panic!("Error deriving keys"),
             }
         }
     }
-
 }
-
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

@@ -3,27 +3,24 @@
 // copyright = "Copyright © 2023-2025 Control Owl"
 // version = "2025-03-23"
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
 use csv::ReaderBuilder;
-use gtk4 as gtk;
 use glib::prelude::*;
+use gtk4 as gtk;
 
 const COINLIST_FILE: &str = "ECDB.csv";
-pub const COIN_STATUS_NOT_SUPPORTED: u32 = 899;     // ECDB Status: 0
-pub const COIN_STATUS_VERIFIED: u32 = 254;          // ECDB Status: 1
-pub const COIN_STATUS_NOT_VERIFIED: u32 = 10;       // ECDB Status: 2
-pub const COIN_STATUS_IN_PLAN: u32 = 12;            // ECDB Status: 3
+pub const COIN_STATUS_NOT_SUPPORTED: u32 = 899; // ECDB Status: 0
+pub const COIN_STATUS_VERIFIED: u32 = 254; // ECDB Status: 1
+pub const COIN_STATUS_NOT_VERIFIED: u32 = 10; // ECDB Status: 2
+pub const COIN_STATUS_IN_PLAN: u32 = 12; // ECDB Status: 3
 pub const VALID_COIN_STATUS_NAME: &[&str] = &[
     // Coin status 2024-11-16
-    "Not supported", 
-    "Verified", 
+    "Not supported",
+    "Verified",
     "Not verified",
     "Not yet",
 ];
-
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -47,12 +44,9 @@ pub struct CryptoCoin {
 
 mod implementation {
     use glib::{
-        prelude::*,
-        subclass::{
-            object::ObjectImpl, 
-            types::ObjectSubclass
-        },
         ParamSpecBuilderExt,
+        prelude::*,
+        subclass::{object::ObjectImpl, types::ObjectSubclass},
     };
 
     use super::CryptoCoin;
@@ -72,24 +66,69 @@ mod implementation {
 
     impl ObjectImpl for CoinDatabase {
         fn properties() -> &'static [glib::ParamSpec] {
-            static PROPERTIES: std::sync::OnceLock<Vec<glib::ParamSpec>> = std::sync::OnceLock::new();
-            
+            static PROPERTIES: std::sync::OnceLock<Vec<glib::ParamSpec>> =
+                std::sync::OnceLock::new();
+
             PROPERTIES.get_or_init(|| {
                 vec![
-                    glib::ParamSpecString::builder("status").blurb("Status").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecUInt::builder("coin-index").blurb("Coin Index").minimum(0).maximum(u32::MAX).flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("coin-symbol").blurb("Coin Symbol").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("coin-name").blurb("Coin Name").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("key-derivation").blurb("Key Derivation").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("hash").blurb("Hash").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("private-header").blurb("Private Header").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("public-header").blurb("Public Header").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("public-key-hash").blurb("Public Key Hash").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("script-hash").blurb("Script Hash").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("wallet-import-format").blurb("Wallet Import Format").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("evm").blurb("EVM").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("ucid").blurb("UCID").flags(glib::ParamFlags::READWRITE).build(),
-                    glib::ParamSpecString::builder("cmc-top").blurb("CMC Top").flags(glib::ParamFlags::READWRITE).build(),
+                    glib::ParamSpecString::builder("status")
+                        .blurb("Status")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecUInt::builder("coin-index")
+                        .blurb("Coin Index")
+                        .minimum(0)
+                        .maximum(u32::MAX)
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("coin-symbol")
+                        .blurb("Coin Symbol")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("coin-name")
+                        .blurb("Coin Name")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("key-derivation")
+                        .blurb("Key Derivation")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("hash")
+                        .blurb("Hash")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("private-header")
+                        .blurb("Private Header")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("public-header")
+                        .blurb("Public Header")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("public-key-hash")
+                        .blurb("Public Key Hash")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("script-hash")
+                        .blurb("Script Hash")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("wallet-import-format")
+                        .blurb("Wallet Import Format")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("evm")
+                        .blurb("EVM")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("ucid")
+                        .blurb("UCID")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("cmc-top")
+                        .blurb("CMC Top")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
                 ]
             })
         }
@@ -98,15 +137,29 @@ mod implementation {
             match specification.name() {
                 "status" => self.data.borrow_mut().status = value.get().unwrap_or_default(),
                 "coin-index" => self.data.borrow_mut().coin_index = value.get().unwrap_or_default(),
-                "coin-symbol" => self.data.borrow_mut().coin_symbol = value.get().unwrap_or_default(),
+                "coin-symbol" => {
+                    self.data.borrow_mut().coin_symbol = value.get().unwrap_or_default()
+                }
                 "coin-name" => self.data.borrow_mut().coin_name = value.get().unwrap_or_default(),
-                "key-derivation" => self.data.borrow_mut().key_derivation = value.get().unwrap_or_default(),
+                "key-derivation" => {
+                    self.data.borrow_mut().key_derivation = value.get().unwrap_or_default()
+                }
                 "hash" => self.data.borrow_mut().hash = value.get().unwrap_or_default(),
-                "private-header" => self.data.borrow_mut().private_header = value.get().unwrap_or_default(),
-                "public-header" => self.data.borrow_mut().public_header = value.get().unwrap_or_default(),
-                "public-key-hash" => self.data.borrow_mut().public_key_hash = value.get().unwrap_or_default(),
-                "script-hash" => self.data.borrow_mut().script_hash = value.get().unwrap_or_default(),
-                "wallet-import-format" => self.data.borrow_mut().wallet_import_format = value.get().unwrap_or_default(),
+                "private-header" => {
+                    self.data.borrow_mut().private_header = value.get().unwrap_or_default()
+                }
+                "public-header" => {
+                    self.data.borrow_mut().public_header = value.get().unwrap_or_default()
+                }
+                "public-key-hash" => {
+                    self.data.borrow_mut().public_key_hash = value.get().unwrap_or_default()
+                }
+                "script-hash" => {
+                    self.data.borrow_mut().script_hash = value.get().unwrap_or_default()
+                }
+                "wallet-import-format" => {
+                    self.data.borrow_mut().wallet_import_format = value.get().unwrap_or_default()
+                }
                 "evm" => self.data.borrow_mut().evm = value.get().unwrap_or_default(),
                 "ucid" => self.data.borrow_mut().ucid = value.get().unwrap_or_default(),
                 "cmc-top" => self.data.borrow_mut().cmc_top = value.get().unwrap_or_default(),
@@ -164,7 +217,9 @@ impl CoinDatabase {
 
 pub fn create_coin_store() -> gtk::gio::ListStore {
     let resource_path = std::path::Path::new("coin").join(COINLIST_FILE);
-    let path_str = resource_path.to_str().expect("Failed to convert path to string");
+    let path_str = resource_path
+        .to_str()
+        .expect("Failed to convert path to string");
     let csv_content = qr2m_lib::get_text_from_resources(path_str);
 
     if csv_content.is_empty() {
@@ -172,12 +227,14 @@ pub fn create_coin_store() -> gtk::gio::ListStore {
         return gtk::gio::ListStore::new::<CoinDatabase>();
     }
 
-    let mut rdr = ReaderBuilder::new().has_headers(true).from_reader(std::io::Cursor::new(csv_content));
+    let mut rdr = ReaderBuilder::new()
+        .has_headers(true)
+        .from_reader(std::io::Cursor::new(csv_content));
     let store = gtk::gio::ListStore::new::<CoinDatabase>();
 
     for result in rdr.records() {
         let record = result.expect(&t!("error.csv.read"));
-        
+
         let number_status = record[0].to_string();
         let status = match number_status.as_str() {
             "0" => VALID_COIN_STATUS_NAME[0],
@@ -185,10 +242,12 @@ pub fn create_coin_store() -> gtk::gio::ListStore {
             "2" => VALID_COIN_STATUS_NAME[2],
             "3" => VALID_COIN_STATUS_NAME[3],
             _ => "Unknown status",
-        }.to_string();
+        }
+        .to_string();
 
-
-        let coin_index: u32 = record[1].parse().expect(&t!("error.csv.parse", value = "coin_index"));
+        let coin_index: u32 = record[1]
+            .parse()
+            .expect(&t!("error.csv.parse", value = "coin_index"));
         let coin_symbol = record[2].to_string();
         let coin_name = record[3].to_string();
         let key_derivation = record[4].to_string();
@@ -218,7 +277,7 @@ pub fn create_coin_store() -> gtk::gio::ListStore {
             ucid,
             cmc_top,
         };
-        
+
         let coin = CoinDatabase::new(crypto_coin);
 
         store.append(&coin);
@@ -229,7 +288,7 @@ pub fn create_coin_store() -> gtk::gio::ListStore {
 
 pub fn create_coin_completion_model() -> gtk::gio::ListStore {
     let crypto_coins = create_coin_database();
-    let store =  gtk::gio::ListStore::new::<CoinDatabase>();
+    let store = gtk::gio::ListStore::new::<CoinDatabase>();
 
     for item in crypto_coins.iter() {
         store.append(item);
@@ -243,20 +302,32 @@ pub fn create_filter(part: &str, target_value: &str) -> gtk::CustomFilter {
     let target_value = target_value.to_string();
 
     let filter_func = move |item: &glib::Object| {
-        let coin = item.downcast_ref::<CoinDatabase>().expect("Failed to downcast to CoinDatabase");
+        let coin = item
+            .downcast_ref::<CoinDatabase>()
+            .expect("Failed to downcast to CoinDatabase");
         match part.as_str() {
             "Cmc_top" => match target_value.as_str() {
                 "10" => coin.property::<String>("cmc-top").to_lowercase() == "10",
                 "100" => {
                     let cmc_top = coin.property::<String>("cmc-top").to_lowercase();
                     cmc_top == "10" || cmc_top == "100"
-                },
-                _ => coin.property::<String>("cmc-top").to_lowercase() == target_value.to_lowercase(),
+                }
+                _ => {
+                    coin.property::<String>("cmc-top").to_lowercase() == target_value.to_lowercase()
+                }
             },
-            "Status" => coin.property::<String>("status").to_lowercase() == target_value.to_lowercase(),
+            "Status" => {
+                coin.property::<String>("status").to_lowercase() == target_value.to_lowercase()
+            }
             "Index" => coin.property::<u32>("coin-index").to_string() == target_value,
-            "Symbol" => coin.property::<String>("coin-symbol").to_lowercase().contains(&target_value.to_lowercase()),
-            _ => coin.property::<String>("coin-name").to_lowercase().contains(&target_value.to_lowercase()),
+            "Symbol" => coin
+                .property::<String>("coin-symbol")
+                .to_lowercase()
+                .contains(&target_value.to_lowercase()),
+            _ => coin
+                .property::<String>("coin-name")
+                .to_lowercase()
+                .contains(&target_value.to_lowercase()),
         }
     };
 
@@ -281,15 +352,18 @@ fn create_coin_database() -> Vec<CoinDatabase> {
     let resource_path = std::path::Path::new("coin").join("ECDB.csv");
     let resource_path_str = resource_path.to_str().unwrap_or_default();
     let csv_content = qr2m_lib::get_text_from_resources(resource_path_str);
-    
+
     if csv_content.is_empty() {
         eprintln!("Error: Failed to retrieve CSV file from resources.");
         return Vec::new();
     }
 
-    let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_reader(csv_content.as_bytes());
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .from_reader(csv_content.as_bytes());
 
-    let coin_types: Vec<CoinDatabase> = rdr.records()
+    let coin_types: Vec<CoinDatabase> = rdr
+        .records()
         .filter_map(|record| record.ok())
         .map(|record| {
             let status: String = record.get(0).unwrap_or_default().to_string();
@@ -325,11 +399,10 @@ fn create_coin_database() -> Vec<CoinDatabase> {
             };
 
             CoinDatabase::new(crypto_coin)
-        }).collect();
+        })
+        .collect();
 
     coin_types
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-

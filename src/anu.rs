@@ -3,18 +3,16 @@
 // copyright = "Copyright © 2023-2025 Control Owl"
 // version = "2025-03-13"
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
-use std::{
-    fs::{self, File}, 
-    io::{BufRead, BufReader, Read, Write}, 
-    net::{TcpStream,ToSocketAddrs}, 
-    path::Path, 
-    time::{Duration, SystemTime}
-};
 use rand::Rng;
+use std::{
+    fs::{self, File},
+    io::{BufRead, BufReader, Read, Write},
+    net::{TcpStream, ToSocketAddrs},
+    path::Path,
+    time::{Duration, SystemTime},
+};
 
 use crate::os::LOCAL_SETTINGS;
 
@@ -24,26 +22,19 @@ const ANU_API_URL: &str = "qrng.anu.edu.au:80";
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 60;
 const ANU_REQUEST_INTERVAL_SECONDS: i64 = 120;
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
 pub fn get_entropy_from_anu(
-    entropy_length: usize, 
-    data_format: &str, 
-    array_length: u32, 
+    entropy_length: usize,
+    data_format: &str,
+    array_length: u32,
     hex_block_size: u32,
     log: bool,
 ) -> String {
     let start_time = SystemTime::now();
     let (sender, receiver) = std::sync::mpsc::channel();
 
-    fetch_anu_qrng_data(
-        data_format, 
-        array_length, 
-        hex_block_size,
-        sender
-    );
+    fetch_anu_qrng_data(data_format, array_length, hex_block_size, sender);
 
     let anu_data = receiver.recv().unwrap();
 
@@ -67,7 +58,7 @@ pub fn get_entropy_from_anu(
         "uint8" => {
             let uint8 = extract_uint8_data(&anu_data);
             process_uint8_data(&uint8)
-        },
+        }
         "uint16" => todo!(),
         "hex16" => todo!(),
         _ => {
@@ -81,13 +72,13 @@ pub fn get_entropy_from_anu(
             let mut rng = rand::rng();
             let original_len = entropy.len();
             let start_index = rng.random_range(0..original_len);
-    
+
             if start_index + entropy_length < original_len {
                 entropy[start_index..start_index + entropy_length].to_string()
             } else {
                 entropy[start_index..].to_string()
             }
-        },
+        }
         std::cmp::Ordering::Equal => entropy.to_string(),
         std::cmp::Ordering::Less => {
             eprintln!("{}", &t!("error.anu.short"));
@@ -100,82 +91,88 @@ fn fetch_anu_qrng_data(
     data_format: &str,
     array_length: u32,
     block_size: u32,
-    sender: std::sync::mpsc::Sender<Option<String>>
+    sender: std::sync::mpsc::Sender<Option<String>>,
 ) {
     let data_format_owned = data_format.to_string();
 
     // std::thread::spawn(move || {
-        let current_time = SystemTime::now();
-        let last_request_time = load_last_anu_request().unwrap();
-        let elapsed = current_time.duration_since(last_request_time).unwrap_or(Duration::from_secs(0));
-        let wait_duration = Duration::from_secs(ANU_REQUEST_INTERVAL_SECONDS as u64);
+    let current_time = SystemTime::now();
+    let last_request_time = load_last_anu_request().unwrap();
+    let elapsed = current_time
+        .duration_since(last_request_time)
+        .unwrap_or(Duration::from_secs(0));
+    let wait_duration = Duration::from_secs(ANU_REQUEST_INTERVAL_SECONDS as u64);
 
-        if elapsed < wait_duration {
-            let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
-            
-            eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
-            sender.send(Some(String::new())).unwrap();
-            
+    if elapsed < wait_duration {
+        let remaining_seconds = wait_duration.as_secs() - elapsed.as_secs();
 
-            // let info_bar = crate::
-            // crate::create_info_message(
-            //     &crate::gtk::Revealer::new(),
-            //     &t!("error.anu.timeout", value = remaining_seconds).to_string(),
-            //     crate::gtk::MessageType::Warning,
-            // );
-            return;
-        }
+        eprintln!("{}", &t!("error.anu.timeout", value = remaining_seconds));
+        sender.send(Some(String::new())).unwrap();
 
-        let mut socket_addr = ANU_API_URL
-            .to_socket_addrs()
-            .map_err(|e| format!("Socket address parsing error: {}", e))
-            .unwrap();
-        
-        let socket_addr = socket_addr
-            .next()
-            .ok_or("No socket addresses found for ANU API URL")
-            .unwrap();
+        // let info_bar = crate::
+        // crate::create_info_message(
+        //     &crate::gtk::Revealer::new(),
+        //     &t!("error.anu.timeout", value = remaining_seconds).to_string(),
+        //     crate::gtk::MessageType::Warning,
+        // );
+        return;
+    }
 
-        let mut stream = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS))
-            .map_err(|e| format!("Connection error: {}", e))
-            .unwrap();
+    let mut socket_addr = ANU_API_URL
+        .to_socket_addrs()
+        .map_err(|e| format!("Socket address parsing error: {}", e))
+        .unwrap();
 
-        let anu_request = format!(
+    let socket_addr = socket_addr
+        .next()
+        .ok_or("No socket addresses found for ANU API URL")
+        .unwrap();
+
+    let mut stream = TcpStream::connect_timeout(
+        &socket_addr,
+        Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS),
+    )
+    .map_err(|e| format!("Connection error: {}", e))
+    .unwrap();
+
+    let anu_request = format!(
             "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
             data_format_owned, array_length, block_size
         )
         .into_bytes();
 
-        stream.write_all(&anu_request)
-            .map_err(|e| format!("Write error: {}", e))
-            .unwrap();
+    stream
+        .write_all(&anu_request)
+        .map_err(|e| format!("Write error: {}", e))
+        .unwrap();
 
-        stream.flush()
-            .map_err(|e| format!("Flush error: {}", e))
-            .unwrap();
+    stream
+        .flush()
+        .map_err(|e| format!("Flush error: {}", e))
+        .unwrap();
 
-        let mut response = String::new();
-        let mut buffer = [0; 256];
-        let mut chunks = Vec::new();
+    let mut response = String::new();
+    let mut buffer = [0; 256];
+    let mut chunks = Vec::new();
 
-        loop {
-            match stream.read(&mut buffer) {
-                Ok(bytes_read) if bytes_read > 0 => {
-                    let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
-                    // print!("{}", chunk);
-                    response.push_str(&chunk);
-                    chunks.push(chunk.to_string());
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(bytes_read) if bytes_read > 0 => {
+                let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
+                // print!("{}", chunk);
+                response.push_str(&chunk);
+                chunks.push(chunk.to_string());
 
-                    if chunk.ends_with("\r\n\r\n") {
-                        break;
-                    }
+                if chunk.ends_with("\r\n\r\n") {
+                    break;
                 }
-                Ok(_) | Err(_) => break,
             }
+            Ok(_) | Err(_) => break,
         }
+    }
 
-        let combined_response = chunks.concat();
-        sender.send(Some(combined_response)).unwrap();
+    let combined_response = chunks.concat();
+    sender.send(Some(combined_response)).unwrap();
     // });
 }
 
@@ -201,19 +198,24 @@ fn create_anu_timestamp(time: SystemTime) {
     let local_settings = LOCAL_SETTINGS.lock().unwrap();
     let local_temp_dir = local_settings.local_temp_dir.clone().unwrap();
     let local_anu_timestamp_file = std::path::Path::new(&local_temp_dir).join(ANU_TIMESTAMP_FILE);
-    
+
     println!("local_anu_timestamp_file: {:?}", local_anu_timestamp_file);
 
-
-    let timestamp = time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs().to_string();
+    let timestamp = time
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        .to_string();
 
     if let Some(parent) = Path::new(&local_anu_timestamp_file).parent() {
         fs::create_dir_all(parent).expect("Can not create log directory");
     }
 
-    let mut file = File::create(local_anu_timestamp_file).expect("Can not create ANU timestamp file");
+    let mut file =
+        File::create(local_anu_timestamp_file).expect("Can not create ANU timestamp file");
 
-    file.write_all(timestamp.as_bytes()).expect("Can not write to ANU timestamp file");
+    file.write_all(timestamp.as_bytes())
+        .expect("Can not write to ANU timestamp file");
 }
 
 fn write_api_response_to_log(response: &Option<String>) {
@@ -322,11 +324,7 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 
     let binary_string = data
         .iter()
-        .flat_map(|byte| {
-            format!("{:08b}", byte)
-                .chars()
-                .collect::<Vec<_>>()
-        })
+        .flat_map(|byte| format!("{:08b}", byte).chars().collect::<Vec<_>>())
         .collect::<String>();
 
     binary_string
@@ -366,6 +364,5 @@ fn process_uint8_data(data: &Option<Vec<u8>>) -> String {
 //     }
 //     hex_strings
 // }
-
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

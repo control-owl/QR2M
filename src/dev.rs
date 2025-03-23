@@ -3,15 +3,13 @@
 // copyright = "Copyright © 2023-2025 Control Owl"
 // version = "2025-03-13"
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
-use sha2::{Digest, Sha256};
+use adw::prelude::*;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use gtk4 as gtk;
 use libadwaita as adw;
-use adw::prelude::*;
+use sha2::{Digest, Sha256};
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -40,20 +38,14 @@ pub fn derive_from_path_ed25519(
 
         let hardened = part.ends_with("'");
         let index: u32 = match part.trim_end_matches("'").parse() {
-            Ok(index) => {
-                index
-            },
+            Ok(index) => index,
             Err(_) => {
                 eprintln!("Error: Unable to parse index from path part: {}", part);
                 return None;
             }
         };
-        let derived = derive_child_key_ed25519(
-            &private_key, 
-            &chain_code, 
-            index, 
-            hardened
-        ).unwrap_or_default();
+        let derived = derive_child_key_ed25519(&private_key, &chain_code, index, hardened)
+            .unwrap_or_default();
 
         private_key.clone().copy_from_slice(&derived.0);
         private_key_array = derived.0;
@@ -73,12 +65,12 @@ fn derive_child_key_ed25519(
     hardened: bool,
 ) -> crate::keys::DerivationResult {
     println!("Deriving ed25519 child key");
-    
+
     println!("parent_key: {:?}", &parent_key);
     println!("parent_chain_code: {:?}", &parent_chain_code);
     println!("index: {:?}", &index);
     println!("hardened: {:?}", &hardened);
-    
+
     let mut hasher = Sha256::new();
     hasher.update(parent_key);
     hasher.update(index.to_be_bytes());
@@ -86,30 +78,29 @@ fn derive_child_key_ed25519(
         hasher.update([1u8; 1]);
     }
     let result = hasher.finalize();
-    
+
     if result.len() != 64 {
         eprintln!("len is not 64, it is: {}", result.len());
         return None;
     }
-    
+
     let mut child_private_key_bytes: [u8; 32] = [0; 32];
     let mut child_chain_code_bytes: [u8; 32] = [0; 32];
-    
+
     child_private_key_bytes.copy_from_slice(&result[..32]);
     child_chain_code_bytes.copy_from_slice(&result[32..]);
 
     let secret_key = SigningKey::from_bytes(&child_private_key_bytes).to_bytes();
-    let public_key = VerifyingKey::from_bytes(&secret_key).unwrap_or_default().to_bytes().to_vec();
-    
+    let public_key = VerifyingKey::from_bytes(&secret_key)
+        .unwrap_or_default()
+        .to_bytes()
+        .to_vec();
+
     println!("child_private_key_bytes: {:?}", &secret_key);
     println!("child_chain_code_bytes: {:?}", &child_chain_code_bytes);
     println!("child_public_key_bytes: {:?}", &public_key);
 
-    Some((
-        secret_key,
-        child_chain_code_bytes,
-        public_key,
-    ))
+    Some((secret_key, child_chain_code_bytes, public_key))
 }
 
 pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> String {
@@ -120,11 +111,12 @@ pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> St
             Vec::new()
         }
     };
-    
-    let hash = Sha256::digest(&public_key_bytes);
-    bs58::encode(hash).with_alphabet(bs58::Alphabet::BITCOIN).into_string()
-}
 
+    let hash = Sha256::digest(&public_key_bytes);
+    bs58::encode(hash)
+        .with_alphabet(bs58::Alphabet::BITCOIN)
+        .into_string()
+}
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -150,13 +142,18 @@ const QRNG_MIN_ARRAY: u32 = 2;
 const TCP_REQUEST_TIMEOUT_SECONDS: u64 = 10;
 const ANU_API_URL: &str = "qrng.anu.edu.au:443";
 
-
 fn create_boxes(n: Option<u32>) -> Vec<BlockEntry> {
     let mut blocks = Vec::new();
 
     let array_size = match n {
-        Some(value) => {if value < QRNG_MIN_ARRAY {QRNG_MIN_ARRAY} else {value}},
-        None => QRNG_MIN_ARRAY
+        Some(value) => {
+            if value < QRNG_MIN_ARRAY {
+                QRNG_MIN_ARRAY
+            } else {
+                value
+            }
+        }
+        None => QRNG_MIN_ARRAY,
     };
 
     for i in 0..array_size {
@@ -195,7 +192,6 @@ pub fn anu_window() -> gtk::ApplicationWindow {
         .modal(true)
         .build();
 
-
     let lock_app_settings = crate::APP_SETTINGS.read().unwrap();
     let anu_data_type = lock_app_settings.anu_data_format.clone();
     let anu_array_length = lock_app_settings.anu_array_length;
@@ -218,21 +214,20 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let content_header_box_progress = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let scroll_window = gtk::ScrolledWindow::new();
     let anu_progress = gtk::ProgressBar::new();
-    
+
     let anu_status_frame = gtk::Frame::new(Some("ANU status"));
     let anu_data_type_frame = gtk::Frame::new(Some("ANU data type"));
     let anu_array_length_frame = gtk::Frame::new(Some("ANU array length"));
     let anu_block_size_frame = gtk::Frame::new(Some("ANU block size"));
     // let anu_progress_frame = gtk::Frame::new(Some("ANU progress"));
 
-
     main_anu_window_box.append(&main_header_box);
     main_anu_window_box.append(&scroll_window);
-    
+
     main_header_box.append(&content_header_box);
     main_header_box.append(&content_header_box_progress);
     main_header_box.set_hexpand(true);
-    
+
     content_header_box.append(&content_header_box_status);
     content_header_box.append(&content_header_box_data_type);
     content_header_box.append(&content_header_box_array_length);
@@ -243,7 +238,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     content_header_box_status.append(&anu_array_length_frame);
     content_header_box_status.append(&anu_block_size_frame);
     content_header_box_progress.append(&anu_progress);
-    
+
     scroll_window.set_hexpand(true);
     scroll_window.set_vexpand(true);
 
@@ -274,12 +269,12 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     anu_block_size_entry.set_text(&anu_hex_block_size.unwrap().to_string());
     anu_block_size_entry.set_editable(false);
     anu_block_size_frame.set_child(Some(&anu_block_size_entry));
-    
+
     let main_container = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let blocks = create_boxes(anu_array_length);
-    
+
     let blocks_rc = std::rc::Rc::new(std::cell::RefCell::new(blocks));
-    
+
     for block in blocks_rc.borrow().iter() {
         main_container.append(&block.container);
     }
@@ -301,9 +296,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     main_anu_window_box.append(&main_button_box);
     window.set_child(Some(&main_anu_window_box));
 
-
     // Hocus - Pokus
-    
 
     let fetch_handle = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
     let parse_handler = std::sync::Arc::new(std::sync::Mutex::new(None::<glib::JoinHandle<()>>));
@@ -316,16 +309,26 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     let char_buffer = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
 
     new_button.connect_clicked(glib::clone!(
-        #[strong] fetch_handle,
-        #[strong] parse_handler,
-        #[strong] blocks_rc,
-        #[strong] current_index,
-        #[strong] received_chars,
-        #[strong] anu_progress,
-        #[strong] anu_status_entry,
+        #[strong]
+        fetch_handle,
+        #[strong]
+        parse_handler,
+        #[strong]
+        blocks_rc,
+        #[strong]
+        current_index,
+        #[strong]
+        received_chars,
+        #[strong]
+        anu_progress,
+        #[strong]
+        anu_status_entry,
         move |_| {
-            let (tx, mut rx): (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) = tokio::sync::mpsc::channel(100);
-            let current_index_clone = current_index.clone();           
+            let (tx, mut rx): (
+                tokio::sync::mpsc::Sender<String>,
+                tokio::sync::mpsc::Receiver<String>,
+            ) = tokio::sync::mpsc::channel(100);
+            let current_index_clone = current_index.clone();
             let blocks = blocks_rc.borrow();
 
             for block in blocks.iter() {
@@ -338,7 +341,7 @@ pub fn anu_window() -> gtk::ApplicationWindow {
             anu_progress.set_fraction(0.0);
             anu_status_entry.set_text("Starting...");
             anu_progress.set_show_text(true);
-    
+
             if let Some(handle) = fetch_handle.lock().unwrap().take() {
                 handle.abort();
                 println!("Previous fetch aborted.");
@@ -368,12 +371,12 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                     let mut index = current_index_clone.lock().unwrap();
                     let mut chars = received_chars_clone.lock().unwrap();
                     let mut buffer = char_buffer_clone.lock().unwrap();
-                    
+
                     if let Some(data) = chunk.strip_prefix("FINAL:") {
                         anu_status_entry_clone.set_text("Reconstructing quantum entropy ...");
 
                         let json_data = data;
-                        
+
                         match serde_json::from_str::<AnuResponse>(json_data) {
                             Ok(anu_response) => {
                                 if anu_response.success {
@@ -428,8 +431,10 @@ pub fn anu_window() -> gtk::ApplicationWindow {
     ));
 
     cancel_button.connect_clicked(glib::clone!(
-        #[strong] fetch_handle,
-        #[strong] parse_handler,
+        #[strong]
+        fetch_handle,
+        #[strong]
+        parse_handler,
         move |_| {
             if let Some(handle) = fetch_handle.lock().unwrap().take() {
                 println!("ANU fetch canceled");
@@ -441,11 +446,13 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                 handle.abort();
             }
         }
-    ));  
+    ));
 
     window.connect_close_request(glib::clone!(
-        #[strong] fetch_handle,
-        #[strong] parse_handler,
+        #[strong]
+        fetch_handle,
+        #[strong]
+        parse_handler,
         move |_| {
             if let Some(handle) = fetch_handle.lock().unwrap().take() {
                 println!("aborting async task on window close...");
@@ -460,15 +467,14 @@ pub fn anu_window() -> gtk::ApplicationWindow {
             glib::Propagation::Proceed
         }
     ));
-    
+
     window
 }
 
 use std::{
-    io::{Read, Write}, 
-    net::ToSocketAddrs, 
+    io::{Read, Write},
+    net::ToSocketAddrs,
 };
-
 
 fn filter_chunked_body(chunk: &str) -> String {
     let mut filtered = String::new();
@@ -503,7 +509,10 @@ fn fetch_anu_qrng_data(
 ) {
     let data_format_owned = data_format.to_string();
 
-    println!("Starting fetch_anu_qrng_data: format={}, length={}, size={}", data_format, array_length, block_size);
+    println!(
+        "Starting fetch_anu_qrng_data: format={}, length={}, size={}",
+        data_format, array_length, block_size
+    );
 
     tokio::spawn(async move {
         match std::net::TcpStream::connect_timeout(
@@ -521,8 +530,11 @@ fn fetch_anu_qrng_data(
                             data_format_owned, array_length, block_size
                         ).into_bytes();
 
-                        println!("Sending request: {:?}", String::from_utf8_lossy(&anu_request));
-                        
+                        println!(
+                            "Sending request: {:?}",
+                            String::from_utf8_lossy(&anu_request)
+                        );
+
                         if stream.write_all(&anu_request).is_ok() && stream.flush().is_ok() {
                             let mut buffer = [0; 2048];
                             let mut response = Vec::new();
@@ -539,8 +551,15 @@ fn fetch_anu_qrng_data(
                                         if !headers_done {
                                             if chunk.contains("\r\n\r\n") {
                                                 headers_done = true;
-                                                let header_end = response.windows(4).position(|w| w == b"\r\n\r\n").unwrap() + 4;
-                                                let body_start = String::from_utf8_lossy(&response[header_end..]).to_string();
+                                                let header_end = response
+                                                    .windows(4)
+                                                    .position(|w| w == b"\r\n\r\n")
+                                                    .unwrap()
+                                                    + 4;
+                                                let body_start = String::from_utf8_lossy(
+                                                    &response[header_end..],
+                                                )
+                                                .to_string();
                                                 json_buffer = filter_chunked_body(&body_start);
                                                 if sender.send(body_start).await.is_err() {
                                                     eprintln!("Failed to send body_start");
@@ -558,27 +577,47 @@ fn fetch_anu_qrng_data(
 
                                         if headers_done && json_buffer.contains('}') {
                                             println!("Full JSON assembled: {}", json_buffer);
-                                            match serde_json::from_str::<AnuResponse>(&json_buffer) {
+                                            match serde_json::from_str::<AnuResponse>(&json_buffer)
+                                            {
                                                 Ok(anu_response) => {
                                                     if anu_response.success {
                                                         println!("Parsed JSON: {:?}", anu_response);
-                                                        if sender.send(format!("FINAL:{}", json_buffer)).await.is_err() {
-                                                            println!("Failed to send final response");
+                                                        if sender
+                                                            .send(format!("FINAL:{}", json_buffer))
+                                                            .await
+                                                            .is_err()
+                                                        {
+                                                            println!(
+                                                                "Failed to send final response"
+                                                            );
                                                         }
                                                         break;
                                                     } else {
-                                                        println!("API returned success: false: {:?}", anu_response);
+                                                        println!(
+                                                            "API returned success: false: {:?}",
+                                                            anu_response
+                                                        );
                                                         break;
                                                     }
                                                 }
                                                 Err(e) => {
-                                                    println!("JSON parsing failed: {}. Buffer: {}", e, json_buffer);
+                                                    println!(
+                                                        "JSON parsing failed: {}. Buffer: {}",
+                                                        e, json_buffer
+                                                    );
                                                 }
                                             }
                                         }
                                     }
                                     Ok(0) => {
-                                        if sender.send(format!("ERROR: Stream closed by server. \nLast chunk: {}", json_buffer)).await.is_err() {
+                                        if sender
+                                            .send(format!(
+                                                "ERROR: Stream closed by server. \nLast chunk: {}",
+                                                json_buffer
+                                            ))
+                                            .await
+                                            .is_err()
+                                        {
                                             println!("Stream closed by server");
                                         }
                                         break;
@@ -607,25 +646,15 @@ fn fetch_anu_qrng_data(
     });
 }
 
-
-
-
-
-
-
-
-
-
-
-// 
+//
 // async fn get_qrng(
-//     anu_data_type: Option<String>, 
-//     anu_array_length: Option<u32>, 
+//     anu_data_type: Option<String>,
+//     anu_array_length: Option<u32>,
 //     anu_hex_block_size: Option<u32>
 // ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
 //     println!("function get_qrng");
 //     let mut client_builder = reqwest::Client::builder();
-//     
+//
 //     let lock_app_settings = crate::APP_SETTINGS.read();
 //     let cccc = lock_app_settings.unwrap().clone();
 //     let proxy_status = cccc.proxy_status.clone().unwrap();
@@ -637,7 +666,7 @@ fn fetch_anu_qrng_data(
 //     let proxy_login_password = cccc.proxy_login_password.clone().unwrap();
 //     let proxy_use_pac = cccc.proxy_use_pac.clone().unwrap();
 //     let proxy_ssl_certificate = cccc.proxy_ssl_certificate.clone().unwrap();
-// 
+//
 //     if proxy_status {
 //         let proxy_address = format!(
 //             "{}://{}:{}",
@@ -645,56 +674,56 @@ fn fetch_anu_qrng_data(
 //             proxy_server_address,
 //             proxy_server_port,
 //         );
-//         
+//
 //         let mut proxy = reqwest::Proxy::all(proxy_address)?;
-//         
+//
 //         if proxy_login_credentials {
 //             proxy = proxy.basic_auth(
 //                 &proxy_login_username,
 //                 &proxy_login_password,
 //             );
 //         }
-//         
+//
 //         client_builder = client_builder.proxy(proxy);
 //     }
-//     
+//
 //     if proxy_use_pac {
 //         // reqwest does not support PAC files - fuck
 //         println!("Warning: PAC support is limited - using direct connection");
 //     }
-//     
+//
 //     if proxy_use_ssl && !proxy_ssl_certificate.is_empty() {
 //         let cert = reqwest::Certificate::from_pem(
 //             proxy_ssl_certificate.as_bytes()
 //         )?;
 //         client_builder = client_builder.add_root_certificate(cert);
 //     }
-//     
+//
 //     let client = client_builder.build()?;
 //     println!("Client: {:?}", client);
-//     
+//
 //     let url = format!(
 //         "https://qrng.anu.edu.au/API/jsonI.php?length={}&type={}&size={}",
-//         anu_array_length.unwrap_or(QRNG_MIN_ARRAY), 
-//         anu_data_type.unwrap_or("hex16".to_string()), 
+//         anu_array_length.unwrap_or(QRNG_MIN_ARRAY),
+//         anu_data_type.unwrap_or("hex16".to_string()),
 //         anu_hex_block_size.unwrap_or(anu_hex_block_size.clone().unwrap())
 //     );
-// 
+//
 //     println!("ANU URL: {:?}", url);
-// 
+//
 //     let response = client
 //         .get(&url)
 //         .send()
 //         .await?
 //         .json::<AnuResponse>()
 //         .await?;
-// 
+//
 //     println!("API Response: {:?}", response);
-// 
-// 
+//
+//
 //     if !response.success {
 //         return Err("API request failed".into());
 //     }
-// 
+//
 //     Ok(response.data)
 // }

@@ -5,6 +5,5 @@ fn main() {
         res.set_icon("res/logo/app.ico");
         res.set_manifest_file("res/app.manifest");
         res.compile().expect("Failed to compile win resources")
-
     }
 }
