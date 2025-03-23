@@ -1713,7 +1713,7 @@ fn create_main_window(
     info_bar.add_css_class("info-bar");
     window.set_titlebar(Some(&header_bar));
 
-    let button_names = ["new", "open", "save", "about", "settings", "log", "random"];
+    let button_names = ["new", "open", "save", "about", "settings", "random", #[cfg(feature = "dev")] "log"];
     let mut buttons = std::collections::HashMap::new();
 
     for &name in &button_names {

@@ -58,7 +58,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config musl-tools
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
           cargo update
 
       - name: Cache Cargo dependencies
@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+        target: [x86_64-unknown-linux-gnu] #x86_64-unknown-linux-musl
         features: ["", "full"]
     steps:
       - uses: actions/checkout@v4
@@ -109,7 +109,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config musl-tools libglib2.0-dev
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
 
       - name: Build Release
         run: cargo build --release --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
