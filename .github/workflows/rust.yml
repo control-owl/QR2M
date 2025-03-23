@@ -1,32 +1,73 @@
-name: Rust
+name: Rust Linux build
 
 on:
   push:
-    branches: [ "master", "tester" ]
-    tags: [ "v*.*.*" ]
+    branches:
+      - master
   pull_request:
-    branches: [ "master", "tester" ]
-
-permissions:
-  contents: write
+    branches:
+      - master
+  workflow_dispatch:
+  release:
+    types: [created]
 
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: write
+
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update 
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config musl-tools
+          cargo install cargo-audit cargo-outdated cargo-deb cargo-rpm
+  
+  versioning:
+    needs: setup
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from Cargo.toml
+        id: extract_version
+        run: |
+          VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git tag v${{ steps.extract_version.outputs.version }} || echo "Tag already exists"
+          git push origin v${{ steps.extract_version.outputs.version }} || echo "Tag push failed (may already exist)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   check:
+    needs: versioning
     runs-on: ubuntu-latest
     strategy:
       matrix:
         features: ["", "anu", "dev"]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - name: Install system dependencies (Linux)
-        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Cache Cargo dependencies
         uses: actions/cache@v3
         with:
@@ -35,66 +76,105 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.features }}
+
       - name: Run Clippy
         run: cargo clippy --all-targets --verbose --locked --features "${{ matrix.features }}" -- -D warnings
+
       - name: Run Cargo check
-        run: cargo check --verbose --locked --features "${{ matrix.features }}" -- -D warnings
+        run: cargo check --verbose --locked --features "${{ matrix.features }}"
+
       - name: Run tests
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      - name: Audit dependencies
-        run: cargo audit
 
-  build-and-release:
-    needs: check
-    runs-on: ${{ matrix.os }}
+      - name: Audit dependencies
+        run: cargo audit --deny warnings
+
+      - name: Check licenses and bans
+        run: cargo deny check
+
+      - name: Run cargo fmt
+        run: cargo fmt -- --check
+
+      - name: Check outdated dependencies
+        run: cargo outdated --exit-code 1
+
+  build:
+    needs: [check, versioning]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-    if: startsWith(github.ref, 'refs/tags/v')
+        target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+        features: ["", "anu", "dev"]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Install system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
-      - name: Install system dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: brew install gtk4 libadwaita pkg-config
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v3
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Build (Release)
-        run: cargo build --release --verbose --locked -- -D warnings
-      - name: Rename executable
-        run: mv target/release/QR2M target/release/QR2M-${{ github.ref_name }}-${{ matrix.os }}
-      - name: Compress executable
-        run: tar -czf target/release/QR2M-${{ github.ref_name }}-${{ matrix.os }}.tar.gz -C target/release QR2M-${{ github.ref_name }}-${{ matrix.os }}
+          targets: ${{ matrix.target }}
+
+      - name: Build Release
+        run: cargo build --release --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
+
+      - name: Package AppImage
+        run: |
+          curl -Lo appimagetool https://github.com/AppImage/AppImageKit/releases/latest/download/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          mkdir -p AppDir/usr/bin
+          cp target/${{ matrix.target }}/release/QR2M AppDir/usr/bin/QR2M
+          ./appimagetool AppDir QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.AppImage
+
+      - name: Package .deb
+        run: cargo deb
+
+      - name: Package .rpm
+        run: cargo rpm build
+
       - name: Generate SHA256 checksum
-        run: sha256sum target/release/QR2M-${{ github.ref_name }}-${{ matrix.os }}.tar.gz > target/release/QR2M-${{ github.ref_name }}-${{ matrix.os }}.sha256
-      - name: Generate release notes
+        run: sha256sum QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.AppImage > QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.sha256
+
+      - name: Store Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Linux-Binaries-${{ matrix.target }}-${{ matrix.features }}
+          path: |
+            QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.AppImage
+            QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}.sha256
+            target/${{ matrix.target }}/release/*.deb
+            target/${{ matrix.target }}/release/*.rpm
+  
+  release_notes:
+    needs: [build, versioning]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Release Notes
         id: changelog
         run: |
-          echo "Release Notes for ${{ github.ref_name }}" > release_notes.txt
+          echo "Release Notes for v${{ needs.versioning.outputs.version }}" > release_notes.txt
           echo "Commits since last tag:" >> release_notes.txt
-          git log $(git describe --tags --abbrev=0 @^)..@ --oneline >> release_notes.txt
+          git log $(git describe --tags --abbrev=0 @^)..@ --oneline >> release_notes.txt || echo "No previous tag found"
           echo "release_body<<EOF" >> $GITHUB_OUTPUT
           cat release_notes.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      - name: Upload executable to release
+
+      - name: Store Release Notes
+        uses: actions/upload-artifact@v3
+        with:
+          name: Release-Notes
+          path: release_notes.txt
+  
+  release:
+    needs: [build, release_notes, versioning]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            target/release/QR2M-${{ github.ref_name }}-${{ matrix.os }}.tar.gz
-            target/release/QR2M-${{ github.ref_name }}-${{ matrix.os }}.sha256
-          name: Release ${{ github.ref_name }}
-          body: ${{ steps.changelog.outputs.release_body }}
+          files: artifacts/**/*
+          name: Release v${{ needs.versioning.outputs.version }}
+          body_path: artifacts/Release-Notes/release_notes.txt
           draft: false
           prerelease: false
         env:

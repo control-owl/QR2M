@@ -1,10 +1,12 @@
 # version 0.78.0
 - I finally discovered #[cfg(debug_assertions)]
 - new: 3 build systems
-    - cargo build
-    - cargo build --anu
-    - cargo build --dev
-- #[cfg(debug_assertions)]
+    - cargo build           (Build all stable features)
+    - cargo build --anu     (Build without ANU and QRNG)
+    - cargo build --dev     (Only for development and testing)
+- I discovered for GitHub Workflows and releases
+    - I did not know you can automate them, wow
+    - First release try :D
 
 # version 0.77.3
 - improved address generation
