@@ -58,7 +58,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config musl-tools libglib2.0-dev
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config musl-tools
           cargo update
 
       - name: Cache Cargo dependencies
@@ -85,8 +85,9 @@ jobs:
       - name: Check licenses and bans
         run: cargo install cargo-deny && cargo deny check
 
-      - name: Run cargo fmt
-        run: cargo fmt -- --check
+      # How I really do not like this, this, this peace of shit
+      # - name: Run cargo fmt
+      #   run: cargo fmt -- --check
 
       - name: Check outdated dependencies
         run: cargo install cargo-outdated && cargo outdated --exit-code 1

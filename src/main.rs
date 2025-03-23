@@ -1538,7 +1538,12 @@ fn print_program_info() {
     println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
-    println!("{} {} ({} features)", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap(), feature);
+    println!(
+        "{} {} ({} features)",
+        &APP_DESCRIPTION.unwrap(),
+        &APP_VERSION.unwrap(),
+        feature
+    );
     println!("Start time (UNIX): {:?}", &timestamp.to_string());
     println!(
         "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-."
@@ -1666,9 +1671,9 @@ fn create_main_window(
 ) {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.create_main_window").to_string());
-    
+
     let feature = get_active_app_feature();
-    
+
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
         .title(format!(
@@ -5709,6 +5714,6 @@ fn get_active_app_feature() -> &'static str {
     } else if cfg!(feature = "full") {
         "Full"
     } else {
-        "Basic" 
+        "Basic"
     }
 }
