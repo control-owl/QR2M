@@ -1,7 +1,7 @@
 ### Main window
 
 #### Old tasks
-- [ ] Stop generating addresses
+- [x] Stop generating addresses
 - [x] master private key (xprv)
 - [x] master public key (xpub)
 - [x] child keys
@@ -54,7 +54,7 @@
     - [x] write settings file
     - [x] local settings ($HOME)
 - [x] set theme color in settings
-- [ ] proxy support
+- [x] proxy support
 - [x] verify local config before applying it, if missing get from default
 - [ ] log directory (file chooser dialog)
 - [x] notification timeout

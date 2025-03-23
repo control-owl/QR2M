@@ -3,17 +3,14 @@
 // copyright = "Copyright © 2023-2025 Control Owl"
 // version = "2025-03-13"
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
-use std::{
-    env,
-    path::{Path, PathBuf},
-    fs,
-    io::{self},
-};
 use crate::APP_NAME;
+use std::{
+    env, fs,
+    io::{self},
+    path::{Path, PathBuf},
+};
 
 const APP_LOCAL_CONFIG_FILE: &str = "qr2m.conf";
 const APP_LOCAL_TEMP_FILE: &str = "qr2m.log";
@@ -32,9 +29,7 @@ pub struct LocalSettings {
     // pub local_do_not_show_file: Option<PathBuf>,
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 pub fn detect_os_and_user_dir() {
     println!("[+] {}", &t!("log.detecting_local_os").to_string());
@@ -44,7 +39,8 @@ pub fn detect_os_and_user_dir() {
         "macos" => "macos",
         "linux" => "linux",
         _ => "unknown",
-    }.to_string();
+    }
+    .to_string();
 
     let app_name = APP_NAME.unwrap();
 
@@ -55,23 +51,24 @@ pub fn detect_os_and_user_dir() {
     let local_config_dir = match os.as_str() {
         "windows" => {
             // C:\Users\<Username>\AppData\Roaming\<AppName>\
-            let mut path = PathBuf::from(env::var("APPDATA").unwrap_or_else(|_| "C:\\".to_string()));
+            let mut path =
+                PathBuf::from(env::var("APPDATA").unwrap_or_else(|_| "C:\\".to_string()));
             path.push(app_name);
             path
-        },
+        }
         "linux" => {
             // /home/<Username>/.config/<AppName>/
             let mut path = PathBuf::from(env::var("HOME").unwrap_or_else(|_| "/".to_string()));
             path.push(".config");
             path.push(app_name);
             path
-        },
+        }
         "macos" => {
             // /home/<Username>/<AppName>/
             let mut path = PathBuf::from(env::var("HOME").unwrap_or_else(|_| "/".to_string()));
             path.push(app_name);
             path
-        },
+        }
         _ => PathBuf::from("/"),
     };
 
@@ -81,21 +78,36 @@ pub fn detect_os_and_user_dir() {
         match fs::read_link(&local_config_dir) {
             Ok(target) => {
                 if target.is_dir() {
-                    if fs::metadata(&target).map(|m| m.permissions().readonly()).unwrap_or(true) {
+                    if fs::metadata(&target)
+                        .map(|m| m.permissions().readonly())
+                        .unwrap_or(true)
+                    {
                         eprintln!("\t- Symlink target is not writable: {:?}", &target);
-                        (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
+                        (
+                            local_temp_dir.clone(),
+                            local_temp_dir.join(APP_LOCAL_CONFIG_FILE),
+                        )
                     } else {
                         println!("\t- Using writable symlink target: {:?}", &target);
                         (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
                     }
                 } else {
                     eprintln!("\t- Symlink does not point to a directory: {:?}", &target);
-                    (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
+                    (
+                        local_temp_dir.clone(),
+                        local_temp_dir.join(APP_LOCAL_CONFIG_FILE),
+                    )
                 }
-            },
+            }
             Err(e) => {
-                eprintln!("\t- Failed to read symlink target: {:?}\n\tError: {}", &local_config_dir, e);
-                (local_temp_dir.clone(), local_temp_dir.join(APP_LOCAL_CONFIG_FILE))
+                eprintln!(
+                    "\t- Failed to read symlink target: {:?}\n\tError: {}",
+                    &local_config_dir, e
+                );
+                (
+                    local_temp_dir.clone(),
+                    local_temp_dir.join(APP_LOCAL_CONFIG_FILE),
+                )
             }
         }
     } else {
@@ -134,25 +146,31 @@ pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
     let local_settings = LOCAL_SETTINGS.lock().unwrap();
     let local_config_file = local_settings.local_config_file.clone().unwrap();
     let local_config_dir = local_settings.local_config_dir.clone().unwrap();
-    
+
     if !local_config_dir.exists() {
         fs::create_dir_all(&local_config_dir)?;
     }
-    
+
     if !is_directory_writable(&local_config_dir)? {
-        return Err(io::Error::new(io::ErrorKind::PermissionDenied, "Directory not writable").into());
+        return Err(
+            io::Error::new(io::ErrorKind::PermissionDenied, "Directory not writable").into(),
+        );
     }
 
     if !Path::new(&local_config_file).exists() {
         let default_settings = crate::AppSettings::default();
         let serialized = toml::to_string(&default_settings)?;
-        let mut config_map: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>> = std::collections::BTreeMap::new();
+        let mut config_map: std::collections::BTreeMap<
+            String,
+            std::collections::BTreeMap<String, String>,
+        > = std::collections::BTreeMap::new();
         let mut toml_string = String::new();
-        
+
         for line in serialized.lines() {
             if let Some((key, value)) = line.split_once(" = ") {
                 let (section, key) = key.split_once('_').unwrap_or(("general", key));
-                config_map.entry(section.to_string())
+                config_map
+                    .entry(section.to_string())
                     .or_default()
                     .insert(key.to_string(), value.to_string());
             }
@@ -187,6 +205,5 @@ fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
         Err(_) => Ok(false),
     }
 }
-
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

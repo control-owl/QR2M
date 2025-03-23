@@ -1,3 +1,22 @@
+# version 0.78.0
+- I finally discovered #[cfg(debug_assertions)]
+- new: 3 build systems
+    - cargo build           (Build basic features)
+    - cargo build --full    (Build with QRNG feature)
+    - cargo build --dev     (Only for development and testing)
+- I discovered for GitHub Workflows and releases
+    - I did not know you can automate them, wow
+    - First release try :D
+
+# version 0.77.3
+- improved address generation
+
+# version 0.77.2
+- libadwaita cargo upgrade
+- again I lost parts of my code...
+- improved address generation with dashmap
+- improved logic with addresses, I think so :D
+
 # version 0.77.1
 - happy birthday my son, live long and prosper
 

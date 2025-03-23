@@ -3,14 +3,12 @@
 // copyright = "Copyright © 2023-2025 Control Owl"
 // version = "2025-03-13"
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
-use sha2::{Digest, Sha256, Sha512};
-use include_dir::{include_dir, Dir};
-use gtk4 as gtk;
 use gtk::{gdk_pixbuf, glib, prelude::*};
+use gtk4 as gtk;
+use include_dir::{Dir, include_dir};
+use sha2::{Digest, Sha256, Sha512};
 
 const APP_DEFAULT_BUTTON_HEIGHT: u8 = 24;
 const APP_DEFAULT_BUTTON_WIDTH: u8 = 24;
@@ -19,9 +17,7 @@ const APP_IMAGE_HAS_ALPHA: bool = true;
 
 pub static RES_DIR: Dir<'_> = include_dir!("res");
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 pub fn convert_binary_to_string(input_value: &[u8]) -> String {
     input_value
@@ -35,13 +31,15 @@ pub fn convert_string_to_binary(input_value: &str) -> Vec<u8> {
         .chars()
         .collect::<Vec<char>>()
         .chunks(8)
-        .map(|chunk| chunk.iter().fold(0, |acc, &bit| (acc << 1) | (bit as u8 - b'0')))
+        .map(|chunk| {
+            chunk
+                .iter()
+                .fold(0, |acc, &bit| (acc << 1) | (bit as u8 - b'0'))
+        })
         .collect()
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 pub fn calculate_sha256_hash(data: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
@@ -54,7 +52,7 @@ pub fn calculate_double_sha256_hash(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input);
     let first_hash = hasher.finalize();
-    
+
     let mut hasher = Sha256::new();
     hasher.update(first_hash);
 
@@ -65,10 +63,10 @@ pub fn calculate_sha256_and_ripemd160_hash(input: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input);
     let hash = hasher.finalize();
-    
+
     let mut ripemd = ripemd::Ripemd160::new();
     ripemd.update(hash);
-    
+
     ripemd.finalize().to_vec()
 }
 
@@ -124,7 +122,10 @@ pub fn calculate_checksum_for_entropy(entropy: &str, entropy_length: &u32) -> St
     let entropy_binary = convert_string_to_binary(entropy);
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
     let checksum_length = entropy_length / 32;
-    let entropy_checksum: String = hash_raw_binary.chars().take(checksum_length.try_into().unwrap()).collect();
+    let entropy_checksum: String = hash_raw_binary
+        .chars()
+        .take(checksum_length.try_into().unwrap())
+        .collect();
     entropy_checksum
 }
 
@@ -145,9 +146,7 @@ pub fn is_valid_entropy(full_entropy: &str) -> bool {
         && entropy.chars().all(|c| c == '0' || c == '1')
 }
 
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 pub fn get_text_from_resources(file_name: &str) -> String {
     match RES_DIR.get_file(file_name) {
@@ -171,7 +170,7 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
             let image_data = file.contents();
             let image_bytes = glib::Bytes::from_static(image_data);
             let loader = gdk_pixbuf::PixbufLoader::new();
-            
+
             if loader.write(&image_bytes).is_ok() {
                 let texture = gtk::gdk::Texture::from_bytes(&image_bytes)
                     .map_err(|err| format!("Failed to create texture: {}", err))
@@ -184,7 +183,7 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
                     APP_DEFAULT_BUTTON_HEIGHT as i32,
                 );
 
-                return picture
+                return picture;
             }
             generate_empty_picture()
         }
@@ -194,7 +193,6 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
         }
     }
 }
-
 
 pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
     match RES_DIR.get_file(image_name) {
@@ -202,17 +200,19 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
             let image_data = file.contents();
             let image_bytes = glib::Bytes::from_static(image_data);
             let loader = gdk_pixbuf::PixbufLoader::new();
-            
+
             if loader.write(&image_bytes).is_ok() {
                 match loader.close() {
-                    Ok(_) => {},
-                    Err(error) => eprintln!(" - [!] ERROR problem with loading SVG icons:\n\t{:?}", error),
+                    Ok(_) => {}
+                    Err(error) => eprintln!(
+                        " - [!] ERROR problem with loading SVG icons:\n\t{:?}",
+                        error
+                    ),
                 };
 
                 if let Some(pixbuf) = loader.pixbuf() {
                     return gtk::gdk::Texture::for_pixbuf(&pixbuf);
                 }
-                
             }
             generate_empty_texture()
         }
@@ -223,18 +223,18 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
     }
 }
 
-
 pub fn generate_empty_picture() -> gtk::Picture {
     let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
-        gtk::gdk_pixbuf::Colorspace::Rgb, 
+        gtk::gdk_pixbuf::Colorspace::Rgb,
         APP_IMAGE_HAS_ALPHA,
         APP_IMAGE_BITS as i32,
         APP_DEFAULT_BUTTON_WIDTH as i32,
         APP_DEFAULT_BUTTON_HEIGHT as i32,
-    ).expect("Failed to create empty pixbuf");
-    
+    )
+    .expect("Failed to create empty pixbuf");
+
     empty_pixbuf.fill(0x070410FF);
-    
+
     let picture = gtk::Picture::new();
 
     picture.set_size_request(
@@ -247,15 +247,15 @@ pub fn generate_empty_picture() -> gtk::Picture {
 }
 
 pub fn generate_empty_texture() -> gtk::gdk::Texture {
-    
     let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
-        gtk::gdk_pixbuf::Colorspace::Rgb, 
+        gtk::gdk_pixbuf::Colorspace::Rgb,
         APP_IMAGE_HAS_ALPHA,
         APP_IMAGE_BITS as i32,
         APP_DEFAULT_BUTTON_WIDTH as i32,
         APP_DEFAULT_BUTTON_HEIGHT as i32,
-    ).expect("Failed to create empty pixbuf");
-    
+    )
+    .expect("Failed to create empty pixbuf");
+
     empty_pixbuf.fill(0x070410FF);
 
     gtk::gdk::Texture::for_pixbuf(&empty_pixbuf)
@@ -265,23 +265,20 @@ pub fn setup_css() {
     let provider = gtk::CssProvider::new();
 
     let css_theme = match RES_DIR.get_file(std::path::Path::new("theme").join("style.css")) {
-        Some(css_file) => {
-            css_file.contents_utf8().unwrap_or_default()
-        },
+        Some(css_file) => css_file.contents_utf8().unwrap_or_default(),
         None => {
             eprintln!("CSS theme file not found");
             ""
-        },
+        }
     };
 
     provider.load_from_string(css_theme);
-    
+
     gtk::style_context_add_provider_for_display(
         &gtk::gdk::Display::default().expect("Error initializing display"),
         &provider,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 }
-
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
