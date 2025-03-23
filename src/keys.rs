@@ -6,7 +6,6 @@
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 use adw::prelude::*;
-use gtk::glib::clone;
 use gtk4 as gtk;
 use libadwaita as adw;
 use num_bigint::BigUint;
@@ -14,8 +13,6 @@ use rand::Rng;
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;
 use std::{fs::File, io::Read};
-
-use crate::APP_SETTINGS;
 
 pub type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 type MasterPrivateKey = (String, String, Vec<u8>, Vec<u8>, Vec<u8>);
@@ -370,6 +367,7 @@ pub fn generate_entropy(
 
             rng_entropy_string
         }
+        #[cfg(feature = "full")]
         "QRNG" => {
             // if let Some(state) = &state {
             //     let mut state = state.lock().unwrap();
@@ -383,7 +381,7 @@ pub fn generate_entropy(
             // }
 
             let (anu_data_format, array_length, hex_block_size, anu_log, entropy_length) = {
-                let lock_app_settings = APP_SETTINGS.read().unwrap();
+                let lock_app_settings = crate::APP_SETTINGS.read().unwrap();
                 (
                     lock_app_settings.anu_data_format.clone().unwrap(),
                     lock_app_settings.anu_array_length.unwrap(),
@@ -397,7 +395,7 @@ pub fn generate_entropy(
             let open_loop = glib::MainLoop::new(Some(&open_context), false);
             let (tx, rx) = std::sync::mpsc::channel();
 
-            std::thread::spawn(clone!(
+            std::thread::spawn(gtk::glib::clone!(
                 #[strong]
                 open_loop,
                 move || {

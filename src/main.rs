@@ -25,6 +25,7 @@ use std::{
 };
 // use gtk::prelude::*;
 
+#[cfg(feature = "full")]
 mod anu;
 mod coin_db;
 #[cfg(feature = "dev")]
@@ -1528,6 +1529,7 @@ fn print_program_info() {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+    let feature = get_active_app_feature();
 
     println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
     println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
@@ -1536,7 +1538,7 @@ fn print_program_info() {
     println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
-    println!("{} {}", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap());
+    println!("{} {} ({} features)", &APP_DESCRIPTION.unwrap(), &APP_VERSION.unwrap(), feature);
     println!("Start time (UNIX): {:?}", &timestamp.to_string());
     println!(
         "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-."
@@ -1662,14 +1664,18 @@ fn create_main_window(
 
     #[cfg(feature = "dev")] start_time: Option<std::time::Instant>,
 ) {
+    #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.create_main_window").to_string());
-
+    
+    let feature = get_active_app_feature();
+    
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
         .title(format!(
-            "{} {}",
-            APP_DESCRIPTION.unwrap(),
-            APP_VERSION.unwrap()
+            "{} {} {}",
+            APP_NAME.unwrap(),
+            APP_VERSION.unwrap(),
+            feature
         ))
         .show_menubar(true)
         .decorated(true)
@@ -1881,7 +1887,7 @@ fn create_main_window(
         .hexpand(true)
         .build();
 
-    let anu_enabled = cfg!(feature = "anu") && lock_app_settings.anu_enabled.unwrap_or(false);
+    let anu_enabled = cfg!(feature = "full") && lock_app_settings.anu_enabled.unwrap_or(false);
     let valid_entropy_sources: Vec<&str> = if anu_enabled {
         VALID_ENTROPY_SOURCES.to_vec()
     } else {
@@ -4136,7 +4142,7 @@ fn create_settings_window(
     wallet_settings_frame.set_child(Some(&content_wallet_box));
 
     // Default entropy source
-    let qrng_enabled = cfg!(feature = "anu") && lock_app_settings.anu_enabled.unwrap();
+    let qrng_enabled = cfg!(feature = "full") && lock_app_settings.anu_enabled.unwrap();
     let valid_entropy_sources: Vec<&str> = if qrng_enabled {
         VALID_ENTROPY_SOURCES.to_vec()
     } else {
@@ -4385,7 +4391,7 @@ fn create_settings_window(
     let _default_anu_hex_length_spinbutton =
         gtk::SpinButton::new(Some(&hex_block_size_adjustment), 1.0, 0);
 
-    #[cfg(feature = "anu")]
+    #[cfg(feature = "full")]
     {
         let anu_settings_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let anu_settings_frame = gtk::Frame::new(Some(&t!("UI.settings.anu")));
@@ -5036,7 +5042,7 @@ fn create_settings_window(
                 ),
             ];
 
-            #[cfg(feature = "anu")]
+            #[cfg(feature = "full")]
             {
                 let _updates = {
                     let mut _updates = _updates.clone();
@@ -5695,4 +5701,14 @@ fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {
     }
 
     Ok(result.to_string())
+}
+
+fn get_active_app_feature() -> &'static str {
+    if cfg!(feature = "dev") {
+        "Dev"
+    } else if cfg!(feature = "full") {
+        "Full"
+    } else {
+        "Basic" 
+    }
 }

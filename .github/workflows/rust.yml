@@ -62,8 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        features: ["", "anu"]
-        # features: ["", "anu", "dev"]
+        features: ["", "full"]
+        # features: ["", "full", "dev"]
       fail-fast: false
     steps:
       - name: Checkout code
@@ -108,7 +108,7 @@ jobs:
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
-        features: ["", "anu", "dev"]
+        features: ["", "full"]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

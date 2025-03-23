@@ -4,7 +4,7 @@ description = "Quantum Random Rust Mnemonic"
 version = "0.78.0"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 license = "MIT"
-license-file = "LICENSE.txt"
+# license-file = "LICENSE.txt"
 repository = "https://github.com/control-owl/qr2m"
 readme = "README.md"
 edition = "2024"
@@ -43,12 +43,12 @@ native-tls =    { version = "0.2.14",   optional = true }
 
 
 [features]
-anu = [
+full = [
     "reqwest",
     "native-tls"
 ]
 dev = [
-    "anu",
+    "full",
     "ed25519-dalek",
 ]
 

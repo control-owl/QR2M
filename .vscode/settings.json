@@ -102,4 +102,5 @@
     "winres"
   ],
   "window.newWindowProfile": "ro0t",
+  "outline.collapseItems": "alwaysCollapse",
 }
