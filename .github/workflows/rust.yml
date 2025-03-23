@@ -33,7 +33,7 @@ jobs:
         run: |
           sudo apt-get update 
           sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config musl-tools
-          cargo install cargo-audit cargo-outdated cargo-deb cargo-rpm
+          cargo update
   
   versioning:
     needs: setup
@@ -69,9 +69,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Update Clippy
-        run: cargo update
-
       - name: Cache Cargo dependencies
         uses: actions/cache@v3
         with:
@@ -91,16 +88,16 @@ jobs:
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
 
       - name: Audit dependencies
-        run: cargo audit --deny warnings
+        run: cargo install cargo-audit && cargo audit --deny warnings
 
       - name: Check licenses and bans
-        run: cargo deny check
+        run: cargo install cargo-deny && cargo deny check
 
       - name: Run cargo fmt
         run: cargo fmt -- --check
 
       - name: Check outdated dependencies
-        run: cargo outdated --exit-code 1
+        run: cargo install cargo-outdated && cargo outdated --exit-code 1
 
   build:
     needs: [check, versioning]
