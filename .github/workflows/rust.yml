@@ -103,10 +103,10 @@ jobs:
         run: cargo build --release --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Package .deb
-        run: cargo deb --target ${{ matrix.target }} --no-build  # Use pre-built binary
+        run: cargo install deb && cargo deb --target ${{ matrix.target }} --no-build  # Use pre-built binary
 
       - name: Package .rpm
-        run: cargo rpm build --target ${{ matrix.target }}
+        run: cargo install rpm && cargo rpm build --target ${{ matrix.target }}
 
       - name: Store Artifacts
         uses: actions/upload-artifact@v3
