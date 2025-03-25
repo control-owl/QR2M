@@ -3,7 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 // #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -3543,10 +3543,9 @@ fn create_main_window(
                     let handle = tokio::spawn(async move {
                         let mut generated_count = 0;
                         let mut current_index = address_start_point_int;
-                        let mut buffered_addresses = 0;
                         let mut batch: Vec<CryptoAddresses> = Vec::new();
 
-                        while generated_count < num_addresses {
+                        while generated_count <= num_addresses {
                             let cancel_rx = cancel_rx.lock().await;
                             if *cancel_rx.borrow() {
                                 #[cfg(debug_assertions)]
@@ -3616,11 +3615,11 @@ fn create_main_window(
 
                                         batch.push(new_entry);
 
-                                        if buffered_addresses >= (generating_threads * 5)
-                                            || buffered_addresses >= address_count_int
+                                        if batch.len() >= 20
+                                            || batch.len() >= address_count_int
                                         {
                                             tx.send(batch.clone()).unwrap_or_default();
-                                            // batch = Vec::new();
+                                            batch.clear();
                                         }
 
                                         let current_total = generated_addresses
@@ -3639,7 +3638,6 @@ fn create_main_window(
                                             let _ = tp.send(new_progress);
                                         }
 
-                                        buffered_addresses += 1;
                                         generated_count += 1;
                                         current_index += 1;
                                     }
@@ -3650,6 +3648,7 @@ fn create_main_window(
                                 }
                             }
                         }
+                        
                         if !batch.is_empty() {
                             tx.send(batch).unwrap_or_default()
                         }
