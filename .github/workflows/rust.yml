@@ -13,7 +13,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  ACTIONS_STEP_DEBUG: true
 
 permissions:
   contents: write
@@ -116,7 +115,7 @@ jobs:
         run: cargo build --release --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Store Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Linux-Binaries-${{ matrix.target }}-${{ matrix.features || 'basic' }}
           path: target/${{ matrix.target }}/release/*
