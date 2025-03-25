@@ -102,19 +102,19 @@ jobs:
       - name: Build Release
         run: cargo build --release --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
-      - name: Package .deb
-        run: cargo install deb && cargo deb --target ${{ matrix.target }} --no-build  # Use pre-built binary
+      # - name: Package .deb
+      #   run: cargo install deb && cargo deb --target ${{ matrix.target }} --no-build
 
-      - name: Package .rpm
-        run: cargo install rpm && cargo rpm build --target ${{ matrix.target }}
+      # - name: Package .rpm
+      #   run: cargo install rpm && cargo rpm build --target ${{ matrix.target }}
 
       - name: Store Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: Linux-Binaries-${{ matrix.target }}-${{ matrix.features || 'basic' }}
           path: |
-            target/${{ matrix.target }}/release/*.deb
-            target/${{ matrix.target }}/release/*.rpm
+            target/${{ matrix.target }}/${{ matrix.features || 'basic' }}/release/QR2M
+            target/${{ matrix.target }}/${{ matrix.features || 'basic' }}/release/QR2M
 
   release_notes:
     needs: [build, versioning]
