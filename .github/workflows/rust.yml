@@ -13,6 +13,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  ACTIONS_STEP_DEBUG: true
 
 permissions:
   contents: write
