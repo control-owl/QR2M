@@ -119,7 +119,7 @@ jobs:
         with:
           name: QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}-${{ matrix.features || 'basic' }}
           path: target/${{ matrix.target }}/release/*
-          if-no-file-found: error
+          if-no-files-found: error
 
   release:
     needs: [build, versioning]
@@ -151,7 +151,7 @@ jobs:
           path: artifacts
 
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             artifacts/**/*/*
