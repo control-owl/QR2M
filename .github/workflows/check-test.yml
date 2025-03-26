@@ -17,7 +17,8 @@ jobs:
         matrix:
           target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
           features: ["", "full"]
-
+        fail-fast: false
+        
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
