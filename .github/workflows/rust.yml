@@ -35,7 +35,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v3
@@ -146,7 +146,7 @@ jobs:
           path: artifacts
 
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*/*
           name: Release v${{ needs.versioning.outputs.version }}
