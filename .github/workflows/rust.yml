@@ -67,12 +67,27 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Extract version from Cargo.toml
+        
+      - name: Get Latest Tag and Increment Version
         id: extract_version
         run: |
-          VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+          IFS='.' read -r -a parts <<< "${latest_tag//v/}"
+          major=${parts[0]}
+          minor=${parts[1]}
+          patch=${parts[2]}
+          new_patch=$((patch + 1))
+          new_version="v$major.$minor.$new_patch"
+          echo "version=$new_version" >> $GITHUB_ENV
+          echo "version=$new_version" >> $GITHUB_OUTPUT
+
+
+      # - name: Extract version from Cargo.toml
+      #   id: extract_version
+      #   run: |
+      #     VERSION=$(grep '^version =' Cargo.toml | head -1 | cut -d '"' -f2)
+      #     echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create and push tag
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
