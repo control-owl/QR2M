@@ -35,7 +35,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v3
@@ -123,7 +123,6 @@ jobs:
   release:
     needs: [build, versioning]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -133,11 +132,11 @@ jobs:
       - name: Generate Release Notes
         id: changelog
         run: |
-          echo "Release Notes for v${{ needs.versioning.outputs.version }}" > release_notes.txt
-          echo "Commits since last tag:" >> release_notes.txt
-          git log $(git describe --tags --abbrev=0 @^)..@ --oneline >> release_notes.txt || echo "No previous tag found"
+          echo "Release Notes for v${{ needs.versioning.outputs.version }}" > RELEASE.txt
+          echo "Commits since last tag:" >> RELEASE.txt
+          git log $(git describe --tags --abbrev=0 @^)..@ --oneline >> RELEASE.txt || echo "No previous tag found"
           echo "release_body<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.txt >> $GITHUB_OUTPUT
+          cat RELEASE.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Download Artifacts
@@ -146,9 +145,12 @@ jobs:
           path: artifacts
 
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*/*
+          files: |
+            artifacts/**/*/*
+            RELEASE.txt
+            LICENSE.txt
           name: Release v${{ needs.versioning.outputs.version }}
           body: ${{ steps.changelog.outputs.release_body }}
           draft: false
