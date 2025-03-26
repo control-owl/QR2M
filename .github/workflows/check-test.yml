@@ -30,12 +30,12 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          components: clippy
 
-      - name: Install additional dependencies
-        run: |
-          cargo install cargo-audit cargo-deny cargo-outdated
-          rustup component add clippy rustfmt
+      # - name: Install additional dependencies
+      #   run: |
+      #     cargo install cargo-audit cargo-deny cargo-outdated
+      #     rustup component add clippy rustfmt
 
       - name: Check formatting
         run: cargo fmt -- --check
