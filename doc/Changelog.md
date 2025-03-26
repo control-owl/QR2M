@@ -4,9 +4,6 @@
     - cargo build           (Build basic features)
     - cargo build --full    (Build with QRNG feature)
     - cargo build --dev     (Only for development and testing)
-- I discovered for GitHub Workflows and releases
-    - I did not know you can automate them, wow
-    - First release try :D
 
 # version 0.77.3
 - improved address generation
