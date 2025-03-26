@@ -182,14 +182,24 @@ jobs:
         with:
           name: QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}-${{ matrix.features || 'basic' }}
           path: artifacts
+      
+      - name: Compress Release Files
+        run: |
+          mkdir release
+          cp artifacts/target/${{ matrix.target }}/release/QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}-${{ matrix.features || 'basic' }}
+          cp RELEASE.txt release/
+          cp LICENSE.txt release/
+          cp README.md release/
+          zip -r release-v${{ needs.versioning.outputs.version }}.zip release/
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/**/*/*
-            RELEASE.txt
-            LICENSE.txt
+          # files: |
+          #   QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}-${{ matrix.features || 'basic' }}
+          #   RELEASE.txt
+          #   LICENSE.txt
+          files: release/release-v${{ needs.versioning.outputs.version }}.zip
           name: Release v${{ needs.versioning.outputs.version }}
           body: ${{ steps.changelog.outputs.release_body }}
           draft: false
