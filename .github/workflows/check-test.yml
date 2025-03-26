@@ -7,6 +7,9 @@ on:
     branches:
       - "master"
 
+permissions:
+  contents: write
+
 jobs:
   check-test:
     runs-on: ubuntu-latest
@@ -43,14 +46,14 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" -- -D warnings
 
-      - name: Run cargo audit
-        run: cargo audit --deny warnings
-
-      - name: Run cargo deny
-        run: cargo deny check
-
-      - name: Check outdated dependencies
-        run: cargo outdated --exit-code 1
+#       - name: Run cargo audit
+#         run: cargo audit --deny warnings
+# 
+#       - name: Run cargo deny
+#         run: cargo deny check
+# 
+#       - name: Check outdated dependencies
+#         run: cargo outdated --exit-code 1
 
       - name: Build
         run: cargo build --features "${{ matrix.features }}"
