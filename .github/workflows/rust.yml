@@ -30,7 +30,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config musl-tools
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -95,11 +95,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -117,12 +112,17 @@ jobs:
       - name: Store Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: Linux-Binaries-${{ matrix.target }}-${{ matrix.features || 'basic' }}
+          name: QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}-${{ matrix.features || 'basic' }}
           path: target/${{ matrix.target }}/release/*
+          if-no-file-found: error
 
   release:
     needs: [build, versioning]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu]
+        features: ["", "full"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -142,6 +142,7 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v3
         with:
+          name: QR2M-v${{ needs.versioning.outputs.version }}-${{ matrix.target }}-${{ matrix.features || 'basic' }}
           path: artifacts
 
       - name: Upload Release Assets
