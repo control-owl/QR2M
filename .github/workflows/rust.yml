@@ -173,7 +173,7 @@ jobs:
           echo "Release Notes for v${{ needs.versioning.outputs.version }}" > RELEASE.txt
           echo "Commits since last tag:" >> RELEASE.txt
           git log $(git describe --tags --abbrev=0 @^)..@ --oneline >> RELEASE.txt || echo "No previous tag found"
-          echo "rfsgdshfjhgjhjzgjelease_body<<EOF" >> $GITHUB_OUTPUT
+          echo "release_body<<EOF" >> $GITHUB_OUTPUT
           cat RELEASE.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
