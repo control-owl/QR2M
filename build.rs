@@ -6,4 +6,19 @@ fn main() {
         res.set_manifest_file("res/app.manifest");
         res.compile().expect("Failed to compile win resources")
     }
+
+    // std::process::Command::new("cargo")
+    //     .args([
+    //         "clippy",
+    //         "--all-targets",
+    //         "--verbose",
+    //         "--locked",
+    //         "--",
+    //         "-D",
+    //         "warnings",
+    //     ])
+    //     .status()
+    //     .unwrap();
 }
+
+// cargo clippy --all-targets --verbose --locked --features "${{ matrix.features }}" -- -D warnings
