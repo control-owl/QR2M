@@ -18,6 +18,9 @@ jobs:
         features: ["", "full"]
       fail-fast: false
         
+    env:
+      PKG_CONFIG_PATH: "/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/usr/local/opt/openssl@3/lib/pkgconfig"
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,6 +29,7 @@ jobs:
         run: |
           brew update
           brew install gtk4 libadwaita pkg-config openssl@3.0 glib
+          export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3.0/lib/pkgconfig
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
