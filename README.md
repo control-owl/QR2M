@@ -14,8 +14,10 @@ Copyright  [2023-2025]  Control Owl
 
 ---
 
-[![Check test](https://github.com/control-owl/QR2M/actions/workflows/check-test.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test.yml)
 [![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql)
+
+[![Check test](https://github.com/control-owl/QR2M/actions/workflows/check-test.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test.yml)
+
 
 ---
 
