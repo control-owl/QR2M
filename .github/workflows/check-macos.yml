@@ -25,7 +25,7 @@ jobs:
       - name: Install system dependencies
         run: |
           brew update
-          brew install gtk4 libadwaita pkg-config openssl@3.0
+          brew install gtk4 libadwaita pkg-config openssl@3.0 glib
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
