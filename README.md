@@ -12,9 +12,17 @@
 Copyright  [2023-2025]  Control Owl
 ```
 
-[![Check test](https://github.com/control-owl/QR2M/actions/workflows/check-test.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test.yml)
-
 **QR2M** is a **cryptographic key generator** built with **Rust** and **GTK4**. It supports generating secure addresses for +250 crypto coins. Designed with versatility in mind, QR2M allows entropy generation from multiple sources: hardware-based **RNG**, ANU quantum RNG (**QRNG**), and user-provided **files**. While it is not a cryptocurrency wallet yet, it lays the groundwork for potential RPC connection support in future updates. Application is translated to English, German and Croatian.
+
+
+## Project status
+
+[![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql)
+
+[![Check Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-test-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test-musl.yml)
+
+[![Check Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-test-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test-gnu.yml)
+
 
 ## Table of Contents
 

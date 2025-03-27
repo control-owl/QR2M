@@ -1,13 +1,9 @@
-name: Check test
+name: Check Linux x86_64 GNU
 
 on:
   pull_request:
     branches:
       - "master"
-
-  # push:
-    # tags:
-      # - "CHECK"
       
 permissions:
   contents: read
@@ -17,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
         matrix:
-          target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+          target: [x86_64-unknown-linux-gnu]
           features: ["", "full"]
         fail-fast: false
         
@@ -55,7 +51,7 @@ jobs:
 #     needs: standard
 #     strategy:
 #         matrix:
-#           target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+#           target: [x86_64-unknown-linux-gnu]
 #           features: ["", "full"]
 #         fail-fast: false
 # 
