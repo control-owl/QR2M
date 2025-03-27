@@ -35,15 +35,8 @@
     - [x] settings
     - [x] about
 - [x] theme (auto)
-- [ ] Shortcuts Window
 - [x] buy me a coffee
 - [x] create filters for cointree
-- [ ] copy-button in all major fields
-- [ ] remove unnecessary BIPs unless coin is BTC
-- [ ] create logging
-- [ ] Restore mnemonic passphrase from a file
-- [x] Set length of RNG mnemonic passphrase
-- [ ] Create tooltips
 
 ---
 

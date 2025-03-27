@@ -104,4 +104,5 @@
   "window.newWindowProfile": "ro0t",
   "outline.collapseItems": "alwaysCollapse",
   "editor.formatOnSave": true,
+  "git-graph.referenceLabels.alignment": "Branches (on the left) & Tags (on the right)",
 }
