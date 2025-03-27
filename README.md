@@ -19,9 +19,11 @@ Copyright  [2023-2025]  Control Owl
 
 [![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql)
 
-[![Check Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-test-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test-musl.yml)
+[![Check Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml)
 
-[![Check Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-test-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test-gnu.yml)
+[![Check Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml)
+
+[![Check macOS](https://github.com/control-owl/QR2M/actions/workflows/check-macos.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos.yml)
 
 
 ## Table of Contents

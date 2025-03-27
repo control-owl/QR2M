@@ -1,4 +1,4 @@
-name: Check Linux x86_64 MUSL
+name: Check Linux x86_64 GNU
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
         matrix:
-          target: [x86_64-unknown-linux-musl]
+          target: [x86_64-unknown-linux-gnu]
           features: ["", "full"]
         fail-fast: false
         
@@ -42,7 +42,7 @@ jobs:
         run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" -- -D warnings
 
       - name: Build
-        run: cargo build --features "${{ matrix.features }}"
+        run: cargo build --release --features "${{ matrix.features }}"
 
       - name: Run tests
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
@@ -52,7 +52,7 @@ jobs:
 #     needs: standard
 #     strategy:
 #         matrix:
-#           target: [x86_64-unknown-linux-musl]
+#           target: [x86_64-unknown-linux-gnu]
 #           features: ["", "full"]
 #         fail-fast: false
 # 

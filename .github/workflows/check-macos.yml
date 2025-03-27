@@ -1,0 +1,49 @@
+name: Check macOS
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+      
+permissions:
+  contents: read
+
+jobs:
+  standard:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [x86_64-apple-darwin]
+        features: ["", "full"]
+      fail-fast: false
+        
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          brew update
+          brew install libgtk-4.1 adwaita pkg-config openssl@3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy rustfmt
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run cargo check
+        run: cargo check --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+
+      - name: Run Clippy
+        run: cargo clippy --no-deps --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}" -- -D warnings
+
+      - name: Build
+        run: cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+
+      - name: Run tests
+        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
