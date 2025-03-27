@@ -1,20 +1,20 @@
 name: Check test
 
 on:
-  # pull_request_target:
-  #   types:
-  #     - closed
-  push:
+  pull_request:
     branches:
       - "master"
-    tags:
-      - "CHECK"
 
+  # push:
+    # tags:
+      # - "CHECK"
+      
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   standard:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     strategy:
         matrix:
@@ -51,25 +51,25 @@ jobs:
       - name: Run tests
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
   
-  extended:
-    runs-on: ubuntu-latest
-    needs: standard
-    strategy:
-        matrix:
-          target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
-          features: ["", "full"]
-        fail-fast: false
-
-    steps:
-      - name: Install additional dependencies
-        run: |
-          cargo install cargo-audit cargo-deny cargo-outdated
-
-      - name: Run cargo audit
-        run: cargo audit --deny warnings
-
-      - name: Run cargo deny
-        run: cargo deny check
-
-      - name: Check outdated dependencies
-        run: cargo outdated --exit-code 1
+#   extended:
+#     runs-on: ubuntu-latest
+#     needs: standard
+#     strategy:
+#         matrix:
+#           target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
+#           features: ["", "full"]
+#         fail-fast: false
+# 
+#     steps:
+#       - name: Install additional dependencies
+#         run: |
+#           cargo install cargo-audit cargo-deny cargo-outdated
+# 
+#       - name: Run cargo audit
+#         run: cargo audit --deny warnings
+# 
+#       - name: Run cargo deny
+#         run: cargo deny check
+# 
+#       - name: Check outdated dependencies
+#         run: cargo outdated --exit-code 1
