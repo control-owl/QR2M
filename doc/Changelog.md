@@ -4,6 +4,7 @@
     - cargo build           (Build basic features)
     - cargo build --full    (Build with QRNG feature)
     - cargo build --dev     (Only for development and testing)
+- GitHub workflows
 
 # version 0.77.3
 - improved address generation
