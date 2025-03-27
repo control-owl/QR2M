@@ -1,12 +1,12 @@
 name: Check test
 
 on:
-  pull_request_target:
-    types:
-      - closed
+  # pull_request_target:
+  #   types:
+  #     - closed
+  push:
     branches:
       - "master"
-  push:
     tags:
       - "CHECK"
 
@@ -15,7 +15,6 @@ permissions:
 
 jobs:
   standard:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     strategy:
         matrix:
