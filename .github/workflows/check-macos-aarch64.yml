@@ -1,4 +1,4 @@
-name: Check macOS
+name: Check macOS aarch64
 
 on:
   push:

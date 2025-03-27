@@ -23,7 +23,10 @@ Copyright  [2023-2025]  Control Owl
 
 [![Check Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml)
 
-[![Check macOS](https://github.com/control-owl/QR2M/actions/workflows/check-macos.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos.yml)
+[![Check macOS aarch64](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml)
+
+[![Check macOS x86_64](https://github.com/control-owl/QR2M/actions/workflows/check-macos-x86_64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos-x86_64.yml)
+
 
 
 ## Table of Contents
