@@ -19,8 +19,9 @@ jobs:
       fail-fast: false
         
     env:
-      PKG_CONFIG_PATH: "/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/usr/local/opt/openssl@3/lib/pkgconfig"
-      
+      PKG_CONFIG_PATH: "/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig"
+      LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
