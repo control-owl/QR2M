@@ -24,18 +24,28 @@ jobs:
 
       - name: Configure Git for Signing
         run: |
-          git config --global user.email "QR2M@r-o0-t.wtf"
+          git config --global user.email "qr2m@r-o0-t.wtf"
           git config --global user.name "QR2M"
           git config --global user.signingkey "$GPG_KEY_ID"
           git config --global commit.gpgSign true
+          git config --global gpg.program gpg
+          git config --global gpg.format openpgp
+          git config --global core.editor true
+        shell: bash
+
+      - name: Enable GPG Passphrase Handling
+        run: |
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          gpg-connect-agent reloadagent /bye
         shell: bash
 
       - name: Sign Last Commit
         run: |
-            export GIT_COMMITTER_DATE="$(date -R)"
-            echo "${{ secrets.GPG_PASSPHRASE }}" | \
-            gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign --armor -o commit.sig HEAD
-            git commit --amend --no-edit -S
+          git config --global gpg.program gpg
+          git commit --amend --no-edit -S \
+            --gpg-sign="${GPG_KEY_ID}" \
+            --gpg-sign-args "--batch --yes --pinentry-mode loopback --passphrase \"${{ secrets.GPG_PASSPHRASE }}\""
         shell: bash
 
       - name: Force Push Signed Commit
