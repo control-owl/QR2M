@@ -5,6 +5,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: write
+
 jobs:
   sign:
     runs-on: ubuntu-latest
@@ -48,4 +51,7 @@ jobs:
         shell: bash
 
       - name: Force Push Signed Commit
-        run: git push --force-with-lease
+        run: |
+          git remote set-url origin https://github-actions:$(echo ${{ secrets.GITHUB_TOKEN }})@github.com/${{ github.repository }}
+          git push --force-with-lease
+        shell: bash
