@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: write
@@ -47,7 +50,7 @@ jobs:
           git config --global gpg.program gpg
           echo "${{ secrets.GPG_PASSPHRASE }}" | \
           gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign --armor
-          git commit --amend --no-edit -S
+          git commit --amend --no-edit -S -m "Code signed with GPG keys"
         shell: bash
 
       - name: Force Push Signed Commit
