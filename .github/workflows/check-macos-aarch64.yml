@@ -5,7 +5,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-      
+
 permissions:
   contents: read
 
@@ -17,7 +17,7 @@ jobs:
         target: [aarch64-apple-darwin]
         features: ["", "full"]
       fail-fast: false
-        
+
     env:
       PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
       LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
