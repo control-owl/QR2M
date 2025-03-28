@@ -2,7 +2,7 @@ name: Linux x86_64 MUSL
 
 on:
   workflow_run:
-    workflows: ["Sign Commits"]
+    workflows: ["Verify GPG Signature"]
     types: 
       - completed
     branches: [ "master" ]
@@ -22,17 +22,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Check if Commit is Signed
-        id: check_sign
-        run: |
-          SIGNED=$(git log -1 --pretty=%G?)
-          if [[ "$SIGNED" != "G" ]]; then
-            echo "Commit is not signed, skipping workflow."
-            exit 1
-          else
-            echo "Commit is signed."
-          fi
 
       - name: Install system dependencies
         run: |
@@ -58,26 +47,3 @@ jobs:
 
       - name: Run tests
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
-
-#   extended:
-#     runs-on: ubuntu-latest
-#     needs: standard
-#     strategy:
-#         matrix:
-#           target: [x86_64-unknown-linux-musl]
-#           features: ["", "full"]
-#         fail-fast: false
-# 
-#     steps:
-#       - name: Install additional dependencies
-#         run: |
-#           cargo install cargo-audit cargo-deny cargo-outdated
-# 
-#       - name: Run cargo audit
-#         run: cargo audit --deny warnings
-# 
-#       - name: Run cargo deny
-#         run: cargo deny check
-# 
-#       - name: Check outdated dependencies
-#         run: cargo outdated --exit-code 1
