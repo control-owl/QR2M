@@ -17,7 +17,16 @@ Copyright  [2023-2025]  Control Owl
 
 ## Project status
 
+| **Security Status** |
+| --- |
+| [![Verify GPG Signature](https://github.com/control-owl/QR2M/actions/workflows/verify.yml/badge.svg)](https://github.com/control-owl/QR2M/actions/workflows/verify.yml) |
+| [![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql) |
 
+| **Build Status** |
+| --- |
+| [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml) |
+| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml) |
+| [![macOS aarch64 Darwin](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml) |
 
 
 ## Table of Contents
