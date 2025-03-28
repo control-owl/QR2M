@@ -1,0 +1,39 @@
+name: Sign Commits
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import GPG Key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          KEY_ID=$(gpg --list-secret-keys --keyid-format=long | grep sec | awk '{print $2}' | cut -d'/' -f2)
+          echo "Using GPG Key ID: $KEY_ID"
+          echo "GPG_KEY_ID=$KEY_ID" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Configure Git for Signing
+        run: |
+          git config --global user.email "QR2M@r-o0-t.wtf"
+          git config --global user.name "QR2M"
+          git config --global user.signingkey "$GPG_KEY_ID"
+          git config --global commit.gpgSign true
+        shell: bash
+
+      - name: Sign Last Commit
+        run: |
+          git rebase --exec 'echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --sign --detach-sign --armor -o commit.sig HEAD && git commit --amend --no-edit -S' -i HEAD~1
+        shell: bash
+
+      - name: Force Push Signed Commit
+        run: git push --force-with-lease
