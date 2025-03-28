@@ -3,8 +3,7 @@ name = "QR2M"
 description = "Quantum Random Rust Mnemonic"
 version = "0.78.0"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
-license = "MIT"
-# license-file = "LICENSE.txt"
+license = "CC-BY-NC-ND-4.0"
 repository = "https://github.com/control-owl/qr2m"
 readme = "README.md"
 edition = "2024"
@@ -32,7 +31,7 @@ glib =          { version = "0.20.9"    }
 libadwaita =    { version = "0.7.2"     }
 lazy_static =   { version = "1.5.0"     }
 include_dir =   { version = "0.7.4"     }
-once_cell =     { version = "1.21.1"    }
+once_cell =     { version = "1.21.3"    }
 dashmap =       { version = "6.1.0"     }
 num_cpus =      { version = "1.16"      }
 tokio =         { version = "1.44.1",   features = ["full"] }
