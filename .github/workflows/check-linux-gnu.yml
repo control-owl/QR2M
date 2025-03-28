@@ -22,6 +22,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check if Commit is Signed
+        id: check_sign
+        run: |
+          SIGNED=$(git log -1 --pretty=%G?)
+          if [[ "$SIGNED" != "G" ]]; then
+            echo "Commit is not signed, skipping workflow."
+            exit 1
+          else
+            echo "Commit is signed."
+          fi
+
       - name: Install system dependencies
         run: |
             sudo apt-get update
