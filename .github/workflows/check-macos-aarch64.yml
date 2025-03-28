@@ -1,4 +1,4 @@
-name: Check macOS aarch64
+name: macOS aarch64 Darwin
 
 on:
   push:

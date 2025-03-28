@@ -1,4 +1,4 @@
-name: Check Linux x86_64 GNU
+name: Linux x86_64 GNU
 
 on:
   push:
