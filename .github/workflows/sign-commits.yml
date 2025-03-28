@@ -32,7 +32,10 @@ jobs:
 
       - name: Sign Last Commit
         run: |
-          git rebase --exec 'echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --sign --detach-sign --armor -o commit.sig HEAD && git commit --amend --no-edit -S' -i HEAD~1
+            export GIT_COMMITTER_DATE="$(date -R)"
+            echo "${{ secrets.GPG_PASSPHRASE }}" | \
+            gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --detach-sign --armor -o commit.sig HEAD
+            git commit --amend --no-edit -S
         shell: bash
 
       - name: Force Push Signed Commit
