@@ -167,16 +167,52 @@ impl GuiState {
             #[cfg(debug_assertions)]
             println!("\t- Icon: {:?}", icon_path);
 
-            // let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
-            // icons.insert(name.to_owned(), texture);
             if let Some(icon_str) = icon_path.to_str() {
                 let texture = qr2m_lib::get_texture_from_resource(icon_str);
                 icons.insert(name.to_string(), texture);
             } else {
                 #[cfg(debug_assertions)]
-                println!("Warning: Invalid UTF-8 in path {:?}", icon_path);
+                eprintln!("Warning: Invalid UTF-8 in path {:?}", icon_path);
             }
         }
+
+        let security_icon_path = std::path::Path::new("theme").join("color");
+        let security_texture = match &self.security_level {
+            Some(level) => match level.as_str() {
+                "High" => qr2m_lib::get_texture_from_resource(
+                    security_icon_path
+                        .join("sec-high.svg")
+                        .to_str()
+                        .unwrap_or("theme/color/sec-high.svg"),
+                ),
+                "Error" => qr2m_lib::get_texture_from_resource(
+                    security_icon_path
+                        .join("sec-error.svg")
+                        .to_str()
+                        .unwrap_or("theme/color/sec-error.svg"),
+                ),
+                "Warn" => qr2m_lib::get_texture_from_resource(
+                    security_icon_path
+                        .join("sec-warn.svg")
+                        .to_str()
+                        .unwrap_or("theme/color/sec-warn.svg"),
+                ),
+                _ => qr2m_lib::get_texture_from_resource(
+                    security_icon_path
+                        .join("sec-default.svg")
+                        .to_str()
+                        .unwrap_or("theme/color/sec-default.svg"),
+                ),
+            },
+            None => qr2m_lib::get_texture_from_resource(
+                security_icon_path
+                    .join("sec-default.svg")
+                    .to_str()
+                    .unwrap_or("theme/color/sec-default.svg"),
+            ),
+        };
+
+        icons.insert("security".to_string(), security_texture);
 
         self.gui_button_images = Some(icons);
 
@@ -1571,9 +1607,11 @@ fn setup_app_actions(
     let about = gio::SimpleAction::new("about", None);
     let settings = gio::SimpleAction::new("settings", None);
     let quit = gio::SimpleAction::new("quit", None);
+    let security = gio::SimpleAction::new("security", None);
 
     #[cfg(feature = "dev")]
     let log = gio::SimpleAction::new("log", None);
+
     #[cfg(feature = "dev")]
     let test = gio::SimpleAction::new("test", None);
 
@@ -1622,6 +1660,10 @@ fn setup_app_actions(
         }
     ));
 
+    security.connect_activate(move |_action, _parameter| {
+        create_security_window();
+    });
+
     settings.connect_activate(clone!(
         #[strong]
         gui_state,
@@ -1657,6 +1699,7 @@ fn setup_app_actions(
     application.set_accels_for_action("app.about", &["F1"]);
     application.set_accels_for_action("app.settings", &["F5"]);
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    application.set_accels_for_action("app.security", &["F2"]);
     #[cfg(feature = "dev")]
     application.set_accels_for_action("app.test", &["<Primary>T"]);
 
@@ -1666,6 +1709,8 @@ fn setup_app_actions(
     application.add_action(&about);
     application.add_action(&settings);
     application.add_action(&quit);
+    application.add_action(&security);
+
     #[cfg(feature = "dev")]
     application.add_action(&test);
 }
@@ -1727,6 +1772,7 @@ fn create_main_window(
         "about",
         "settings",
         "random",
+        "security",
         #[cfg(feature = "dev")]
         "log",
     ];
@@ -1735,26 +1781,6 @@ fn create_main_window(
     for &name in &button_names {
         let button = gtk::Button::new();
         buttons.insert(name.to_string(), std::rc::Rc::new(button));
-    }
-
-    let button_tooltips = [
-        ("new", "Ctrl+N"),
-        ("open", "Ctrl+O"),
-        ("save", "Ctrl+S"),
-        ("about", "F1"),
-        ("settings", "F5"),
-        ("random", ""),
-        #[cfg(feature = "dev")]
-        ("log", "F11"),
-    ];
-
-    for (name, shortcut) in button_tooltips {
-        if let Some(button) = buttons.get(name) {
-            button.set_tooltip_text(Some(&t!(
-                format!("UI.main.tooltips.{}", name),
-                value = shortcut
-            )));
-        }
     }
 
     let gui_theme = lock_app_settings.gui_theme.clone().unwrap();
@@ -1803,6 +1829,27 @@ fn create_main_window(
         info_bar.clone(),
     ))));
 
+    let button_tooltips = [
+        ("new", "Ctrl+N"),
+        ("open", "Ctrl+O"),
+        ("save", "Ctrl+S"),
+        ("about", "F1"),
+        ("settings", "F5"),
+        ("random", ""),
+        ("security", "F2"),
+        #[cfg(feature = "dev")]
+        ("log", "F11"),
+    ];
+
+    for (name, shortcut) in button_tooltips {
+        if let Some(button) = buttons.get(name) {
+            button.set_tooltip_text(Some(&t!(
+                format!("UI.main.tooltips.{}", name),
+                value = shortcut
+            )));
+        }
+    }
+
     setup_app_actions(
         application.clone(),
         gui_state.clone(),
@@ -1814,6 +1861,7 @@ fn create_main_window(
     header_bar.pack_start(&*buttons["save"]);
     header_bar.pack_end(&*buttons["settings"]);
     header_bar.pack_end(&*buttons["about"]);
+    header_bar.pack_end(&*buttons["security"]);
 
     #[cfg(feature = "dev")]
     header_bar.pack_end(&*buttons["log"]);
@@ -1844,6 +1892,10 @@ fn create_main_window(
             log_window.present();
         }
     ));
+
+    buttons["security"].connect_clicked(move |_| {
+        create_security_window();
+    });
 
     buttons["new"].connect_clicked(clone!(
         #[strong]
@@ -6100,4 +6152,42 @@ fn generate_new_app_signature(
         ])
         .status()
         .expect("Failed to execute GPG tools")
+}
+
+fn create_security_window() {
+    let security_window = gtk::ApplicationWindow::builder()
+        .title(t!("UI.main.security").to_string())
+        .default_width(300)
+        .default_height(600)
+        .resizable(false)
+        .modal(true)
+        .build();
+
+    let vertical_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    vertical_box.set_halign(gtk::Align::Center);
+    vertical_box.set_valign(gtk::Align::Center);
+    vertical_box.set_margin_top(20);
+    vertical_box.set_margin_bottom(20);
+    vertical_box.set_margin_start(20);
+    vertical_box.set_margin_end(20);
+
+    let image = gtk::Image::from_file("res/logo/logo.png");
+    image.set_pixel_size(128);
+    vertical_box.append(&image);
+
+    let label = gtk::Label::new(Some("This is the security window"));
+    label.set_margin_top(10);
+    label.set_margin_bottom(10);
+    vertical_box.append(&label);
+
+    let close_button = gtk::Button::with_label("Close");
+    let window_clone = security_window.clone();
+    close_button.connect_clicked(move |_| {
+        window_clone.close();
+    });
+    vertical_box.append(&close_button);
+
+    security_window.set_child(Some(&vertical_box));
+
+    security_window.present();
 }
