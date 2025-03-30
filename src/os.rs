@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "OS specific tasks"
-// copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2025-03-13"
+// license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
+// version = "2025-03-30"
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 

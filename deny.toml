@@ -18,7 +18,7 @@ confidence-threshold = 1.0
 
 [[licenses.clarify]]
 name = "QR2M"
-expression = "MIT"
+expression = "CC-BY-NC-ND-4.0"
 license-files = [
     { path = "LICENSE.txt", hash = 0x7fb2423e }
 ]

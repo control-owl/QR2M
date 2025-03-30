@@ -1,5 +1,5 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
-// copyright = "Copyright © 2023-2025 Control Owl"
+// license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -23,7 +23,6 @@ use std::{
     io::{self, BufRead, Write},
     time::SystemTime,
 };
-// use gtk::prelude::*;
 
 #[cfg(feature = "full")]
 mod anu;
@@ -89,6 +88,7 @@ struct GuiState {
         std::cell::RefCell<std::collections::HashMap<String, Vec<std::rc::Rc<gtk::Button>>>>,
     >,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
+    security_level: Option<String>,
 }
 
 impl GuiState {
@@ -102,6 +102,7 @@ impl GuiState {
                 std::collections::HashMap::new(),
             )),
             gui_button_images: None,
+            security_level: None,
         }
     }
 
@@ -166,16 +167,52 @@ impl GuiState {
             #[cfg(debug_assertions)]
             println!("\t- Icon: {:?}", icon_path);
 
-            // let texture = qr2m_lib::get_texture_from_resource(icon_path.to_str().unwrap());
-            // icons.insert(name.to_owned(), texture);
             if let Some(icon_str) = icon_path.to_str() {
                 let texture = qr2m_lib::get_texture_from_resource(icon_str);
                 icons.insert(name.to_string(), texture);
             } else {
                 #[cfg(debug_assertions)]
-                println!("Warning: Invalid UTF-8 in path {:?}", icon_path);
+                eprintln!("Warning: Invalid UTF-8 in path {:?}", icon_path);
             }
         }
+
+        let security_icon_path = std::path::Path::new("theme").join("color");
+        let security_texture = match &self.security_level {
+            Some(level) => match level.as_str() {
+                "High" => qr2m_lib::get_texture_from_resource(
+                    security_icon_path
+                        .join("sec-high.svg")
+                        .to_str()
+                        .unwrap_or("theme/color/sec-high.svg"),
+                ),
+                // "Error" => qr2m_lib::get_texture_from_resource(
+                //     security_icon_path
+                //         .join("sec-error.svg")
+                //         .to_str()
+                //         .unwrap_or("theme/color/sec-error.svg"),
+                // ),
+                "Warn" => qr2m_lib::get_texture_from_resource(
+                    security_icon_path
+                        .join("sec-warn.svg")
+                        .to_str()
+                        .unwrap_or("theme/color/sec-warn.svg"),
+                ),
+                _ => qr2m_lib::get_texture_from_resource(
+                    security_icon_path
+                        .join("sec-error.svg")
+                        .to_str()
+                        .unwrap_or("theme/color/sec-error.svg"),
+                ),
+            },
+            None => qr2m_lib::get_texture_from_resource(
+                security_icon_path
+                    .join("sec-error.svg")
+                    .to_str()
+                    .unwrap_or("theme/color/sec-error.svg"),
+            ),
+        };
+
+        icons.insert("security".to_string(), security_texture);
 
         self.gui_button_images = Some(icons);
 
@@ -1489,6 +1526,8 @@ async fn main() {
 
     print_program_info();
 
+    let security_level = verify_signature();
+
     os::detect_os_and_user_dir();
 
     if let Err(_err) = os::check_local_config() {
@@ -1506,6 +1545,10 @@ async fn main() {
         .build();
 
     let gui_state = std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
+
+    {
+        gui_state.borrow_mut().security_level = Some(security_level);
+    }
 
     application.connect_activate(clone!(
         #[strong]
@@ -1539,7 +1582,7 @@ fn print_program_info() {
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
     println!(
-        "{} {} ({} features)",
+        "{} {} ({})",
         &APP_DESCRIPTION.unwrap(),
         &APP_VERSION.unwrap(),
         feature
@@ -1564,9 +1607,11 @@ fn setup_app_actions(
     let about = gio::SimpleAction::new("about", None);
     let settings = gio::SimpleAction::new("settings", None);
     let quit = gio::SimpleAction::new("quit", None);
+    let security = gio::SimpleAction::new("security", None);
 
     #[cfg(feature = "dev")]
     let log = gio::SimpleAction::new("log", None);
+
     #[cfg(feature = "dev")]
     let test = gio::SimpleAction::new("test", None);
 
@@ -1615,6 +1660,14 @@ fn setup_app_actions(
         }
     ));
 
+    security.connect_activate(clone!(
+        #[strong]
+        gui_state,
+        move |_action, _parameter| {
+            create_security_window(gui_state.clone());
+        }
+    ));
+
     settings.connect_activate(clone!(
         #[strong]
         gui_state,
@@ -1647,9 +1700,11 @@ fn setup_app_actions(
     application.set_accels_for_action("app.new", &["<Primary>N"]);
     application.set_accels_for_action("app.open", &["<Primary>O"]);
     application.set_accels_for_action("app.save", &["<Primary>S"]);
-    application.set_accels_for_action("app.about", &["F1"]);
-    application.set_accels_for_action("app.settings", &["F5"]);
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    application.set_accels_for_action("app.about", &["F1"]);
+    application.set_accels_for_action("app.security", &["F2"]);
+    application.set_accels_for_action("app.settings", &["F5"]);
+
     #[cfg(feature = "dev")]
     application.set_accels_for_action("app.test", &["<Primary>T"]);
 
@@ -1659,6 +1714,8 @@ fn setup_app_actions(
     application.add_action(&about);
     application.add_action(&settings);
     application.add_action(&quit);
+    application.add_action(&security);
+
     #[cfg(feature = "dev")]
     application.add_action(&test);
 }
@@ -1720,6 +1777,7 @@ fn create_main_window(
         "about",
         "settings",
         "random",
+        "security",
         #[cfg(feature = "dev")]
         "log",
     ];
@@ -1728,26 +1786,6 @@ fn create_main_window(
     for &name in &button_names {
         let button = gtk::Button::new();
         buttons.insert(name.to_string(), std::rc::Rc::new(button));
-    }
-
-    let button_tooltips = [
-        ("new", "Ctrl+N"),
-        ("open", "Ctrl+O"),
-        ("save", "Ctrl+S"),
-        ("about", "F1"),
-        ("settings", "F5"),
-        ("random", ""),
-        #[cfg(feature = "dev")]
-        ("log", "F11"),
-    ];
-
-    for (name, shortcut) in button_tooltips {
-        if let Some(button) = buttons.get(name) {
-            button.set_tooltip_text(Some(&t!(
-                format!("UI.main.tooltips.{}", name),
-                value = shortcut
-            )));
-        }
     }
 
     let gui_theme = lock_app_settings.gui_theme.clone().unwrap();
@@ -1796,6 +1834,27 @@ fn create_main_window(
         info_bar.clone(),
     ))));
 
+    let button_tooltips = [
+        ("new", "Ctrl+N"),
+        ("open", "Ctrl+O"),
+        ("save", "Ctrl+S"),
+        ("about", "F1"),
+        ("settings", "F5"),
+        ("random", ""),
+        ("security", "F2"),
+        #[cfg(feature = "dev")]
+        ("log", "F11"),
+    ];
+
+    for (name, shortcut) in button_tooltips {
+        if let Some(button) = buttons.get(name) {
+            button.set_tooltip_text(Some(&t!(
+                format!("UI.main.tooltips.{}", name),
+                value = shortcut
+            )));
+        }
+    }
+
     setup_app_actions(
         application.clone(),
         gui_state.clone(),
@@ -1807,9 +1866,9 @@ fn create_main_window(
     header_bar.pack_start(&*buttons["save"]);
     header_bar.pack_end(&*buttons["settings"]);
     header_bar.pack_end(&*buttons["about"]);
-
     #[cfg(feature = "dev")]
     header_bar.pack_end(&*buttons["log"]);
+    header_bar.pack_end(&*buttons["security"]);
 
     // JUMP: Action: Settings button action
     buttons["settings"].connect_clicked(clone!(
@@ -1835,6 +1894,15 @@ fn create_main_window(
         move |_| {
             let log_window = create_log_window(gui_state.clone());
             log_window.present();
+        }
+    ));
+
+    buttons["security"].connect_clicked(clone!(
+        #[strong]
+        gui_state,
+        move |_| {
+            let security_window = create_security_window(gui_state.clone());
+            security_window.present();
         }
     ));
 
@@ -2623,7 +2691,7 @@ fn create_main_window(
         let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
         column.set_expand(true);
 
-        #[cfg(debug_assertions)]
+        #[cfg(not(feature = "dev"))]
         {
             if i == 0 {
                 column.set_visible(false);
@@ -2688,29 +2756,6 @@ fn create_main_window(
     let address_generation_progress_bar = gtk::ProgressBar::new();
     address_generation_progress_bar.set_hexpand(true);
     address_generation_progress_box.append(&address_generation_progress_bar);
-
-    stop_address_generation_button.connect_clicked(clone!(
-        #[strong]
-        generator_handler,
-        #[weak]
-        delete_addresses_button_box,
-        #[weak]
-        stop_addresses_button_box,
-        move |_| {
-            if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
-                cancel_tx.send(true).ok();
-                handle.abort();
-                delete_addresses_button_box.set_visible(true);
-                stop_addresses_button_box.set_visible(false);
-
-                #[cfg(debug_assertions)]
-                println!("Address generation aborted");
-            } else {
-                #[cfg(debug_assertions)]
-                eprintln!("No handle!");
-            }
-        }
-    ));
 
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
@@ -3513,7 +3558,6 @@ fn create_main_window(
 
             let cpu_threads = num_cpus::get();
 
-            // TODO: Increase in production
             let generating_threads = if address_count_int <= cpu_threads {
                 1
             } else {
@@ -3749,7 +3793,7 @@ fn create_main_window(
         }
     ));
 
-    #[cfg(feature = "dev")]
+    // #[cfg(feature = "dev")]
     generate_addresses_button.connect_clicked(clone!(
         #[strong]
         address_store,
@@ -3926,9 +3970,9 @@ fn create_main_window(
                                         CRYPTO_ADDRESS.insert(coin_path_id, new_entry);
                                         generated_addresses
                                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                        generated_count += 1;
                                     }
                                 }
-                                generated_count += 1;
                                 current_index += 1;
                             }
                         });
@@ -3943,9 +3987,13 @@ fn create_main_window(
                 }
             });
 
+            *generator_handler.lock().unwrap() = Some((generation_task, cancel_tx));
+
             glib::idle_add_local(clone!(
                 #[strong]
                 address_store,
+                #[strong]
+                generator_handler,
                 #[strong]
                 app_messages_state,
                 #[strong]
@@ -3955,6 +4003,10 @@ fn create_main_window(
                 #[strong]
                 delete_addresses_button_box,
                 move || {
+                    if generator_handler.lock().unwrap().is_none() {
+                        return glib::ControlFlow::Break;
+                    }
+
                     let total_generated =
                         generated_addresses.load(std::sync::atomic::Ordering::Relaxed);
                     let progress = if address_count_int > 0 {
@@ -3967,10 +4019,6 @@ fn create_main_window(
 
                     let mut batch = Vec::new();
                     let mut keys_to_remove = Vec::new();
-                    //              5000 / 12
-
-                    let magic = num_cpus::get() * 10;
-                    dbg!(magic);
 
                     for entry in CRYPTO_ADDRESS.iter().take(address_count_int) {
                         let coin = entry.value().clone();
@@ -4004,14 +4052,14 @@ fn create_main_window(
 
                         stop_addresses_button_box.set_visible(false);
                         delete_addresses_button_box.set_visible(true);
+                        address_start_spinbutton.set_text(&address_start_point_int.to_string());
+
                         return glib::ControlFlow::Break;
                     }
 
                     glib::ControlFlow::Continue
                 }
             ));
-
-            *generator_handler.lock().unwrap() = Some((generation_task, cancel_tx));
         }
     ));
 
@@ -4028,9 +4076,39 @@ fn create_main_window(
             address_store.remove_all();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
-            address_generation_progress_bar.set_show_text(false);
             address_generation_progress_bar.set_fraction(0.0);
+            address_generation_progress_bar.set_show_text(false);
             delete_addresses_button_box.set_visible(false);
+        }
+    ));
+
+    stop_address_generation_button.connect_clicked(clone!(
+        #[strong]
+        generator_handler,
+        #[strong]
+        app_messages_state,
+        #[weak]
+        delete_addresses_button_box,
+        #[weak]
+        stop_addresses_button_box,
+        move |_| {
+            if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
+                cancel_tx.send(true).ok();
+                handle.abort();
+            } else {
+                #[cfg(debug_assertions)]
+                eprintln!("No handle!");
+            }
+
+            let message = "Address generation aborted";
+            #[cfg(debug_assertions)]
+            println!("{}", message);
+
+            let lock_app_messages = app_messages_state.borrow();
+            lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Warning);
+
+            delete_addresses_button_box.set_visible(true);
+            stop_addresses_button_box.set_visible(false);
         }
     ));
 
@@ -4094,7 +4172,11 @@ fn create_main_window(
         if let Some(value) = start_time {
             let elapsed = value.elapsed();
 
-            println!("Application startup time: {:.2?}", elapsed);
+            let message = format!("Application startup time: {:.2?}", elapsed);
+            println!("{}", message);
+
+            let lock_app_messages = app_messages_state.borrow();
+            lock_app_messages.queue_message(message, gtk::MessageType::Info);
         };
     }
 }
@@ -5991,4 +6073,180 @@ fn get_active_app_feature() -> &'static str {
     } else {
         "Basic"
     }
+}
+
+fn verify_signature() -> String {
+    let feature = get_active_app_feature();
+    let sig_name = format!("{}-{}.sig", APP_NAME.unwrap(), feature);
+    let app_executable = std::env::current_exe().expect("Failed to get current executable path");
+    let executable_dir = app_executable
+        .parent()
+        .expect("Failed to extract executable directory");
+    let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
+
+    if std::path::Path::new(&sig_full_path).exists() {
+        let status = std::process::Command::new("gpg")
+            .args([
+                "--verify",
+                &sig_full_path,
+                &app_executable.to_string_lossy(),
+            ])
+            .status()
+            .expect("Failed to execute GPG verification");
+
+        if !status.success() {
+            eprintln!(
+                "Signature verification failed! Possible tampering detected: {}",
+                app_executable.to_string_lossy()
+            );
+
+            eprintln!("Try to generate new a one...");
+            let _ = std::fs::remove_file(&sig_full_path);
+
+            let status = generate_new_app_signature(&app_executable, &sig_full_path);
+
+            if !status.success() {
+                eprintln!(
+                    "GPG signing failed for {}. No secret key found",
+                    app_executable.to_string_lossy()
+                );
+                String::from("Low")
+            } else {
+                println!(
+                    "Signature created successfully. Signature verified\n{}",
+                    &status
+                );
+
+                String::from("High")
+            }
+        } else {
+            println!("Signature verification succeeded. Running application...");
+
+            String::from("High")
+        }
+    } else {
+        eprintln!("Signature file not found. Try to generate new a one...");
+
+        let status = generate_new_app_signature(&app_executable, &sig_full_path);
+
+        if !status.success() {
+            eprintln!(
+                "GPG signing failed for {}. No secret key found",
+                app_executable.to_string_lossy()
+            );
+            String::from("Low")
+        } else {
+            println!("Signature created successfully. Signature verified");
+
+            String::from("High")
+        }
+    }
+}
+
+fn generate_new_app_signature(
+    app_executable: &std::path::Path,
+    sig_full_path: &str,
+) -> std::process::ExitStatus {
+    let control_owl_fingerprint = "2524C8FEB60EFCB0-";
+
+    std::process::Command::new("gpg")
+        .args([
+            "--detach-sign",
+            "--armor",
+            "-u",
+            control_owl_fingerprint,
+            "-o",
+            sig_full_path,
+            &app_executable.to_string_lossy(),
+        ])
+        .status()
+        .expect("Failed to execute GPG tools")
+}
+
+fn create_security_window(
+    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
+) -> gtk::ApplicationWindow {
+    let security_window = gtk::ApplicationWindow::builder()
+        .title(t!("UI.main.security").to_string())
+        .default_width(300)
+        .default_height(600)
+        .resizable(false)
+        .modal(true)
+        .build();
+
+    let vertical_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    vertical_box.set_halign(gtk::Align::Center);
+    vertical_box.set_valign(gtk::Align::Center);
+    vertical_box.set_margin_top(20);
+    vertical_box.set_margin_bottom(20);
+    vertical_box.set_margin_start(20);
+    vertical_box.set_margin_end(20);
+
+    let lock_gui_state = gui_state.borrow();
+    let security_level = lock_gui_state.security_level.as_ref().unwrap();
+
+    let security_icon_path = std::path::Path::new("theme").join("color");
+
+    let security_texture = match security_level.as_str() {
+        "High" => qr2m_lib::get_picture_from_resources(
+            security_icon_path
+                .join("sec-high.svg")
+                .to_str()
+                .unwrap_or("theme/color/sec-high.svg"),
+        ),
+        "Warn" => qr2m_lib::get_picture_from_resources(
+            security_icon_path
+                .join("sec-warn.svg")
+                .to_str()
+                .unwrap_or("theme/color/sec-warn.svg"),
+        ),
+        _ => qr2m_lib::get_picture_from_resources(
+            security_icon_path
+                .join("sec-error.svg")
+                .to_str()
+                .unwrap_or("theme/color/sec-error.svg"),
+        ),
+    };
+
+    let image = gtk::Image::from_paintable(security_texture.paintable().as_ref());
+    image.set_pixel_size(128);
+    vertical_box.append(&image);
+
+    let security_text = match security_level.as_str() {
+        "High" => {
+            "This application is securely signed with a valid GPG signature, confirming it has not been altered or tampered with since its original build."
+        }
+        "Warn" => {
+            "Warning: The application's security signature could not be fully verified. While it may still be safe, there is a risk that it has been altered or compromised."
+        }
+        _ => {
+            "This application lacks a cryptographic signature, which means its authenticity cannot be confirmed.\n\n\
+            If you did not download it from an official source, there is a chance it has been altered or tampered with.\n\n\
+            Use extreme caution before proceeding."
+        }
+    };
+
+    let label = gtk::Label::new(Some(security_text));
+    label.set_margin_top(10);
+    label.set_margin_bottom(10);
+    label.set_wrap(true);
+    label.set_justify(gtk::Justification::Center);
+
+    vertical_box.append(&label);
+
+    let close_button = gtk::Button::with_label("Close");
+
+    close_button.connect_clicked(clone!(
+        #[strong]
+        security_window,
+        move |_| {
+            security_window.close();
+        }
+    ));
+
+    vertical_box.append(&close_button);
+
+    security_window.set_child(Some(&vertical_box));
+
+    security_window
 }

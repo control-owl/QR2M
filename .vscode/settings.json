@@ -20,7 +20,7 @@
   "editor.minimap.enabled": false,
   "workbench.colorCustomizations": {},
   "terminal.integrated.tabs.enabled": false,
-  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.colorTheme": "Visual Studio Dark",
   "todo-tree.highlights.defaultHighlight": {
     "type": "text"
   },

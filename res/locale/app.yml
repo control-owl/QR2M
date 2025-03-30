@@ -210,6 +210,10 @@ UI:
         en: "Generate random mnemonic passphrase"
         de: "Zufällige mnemonische Passphrase generieren"
         hr: "Generirajte nasumičnu mnemoničku zaporku"
+      security:
+        en: "Security %{value}"
+        de: "Sicherheit %{value}"
+        hr: "Sigurnost %{value}"
     seed:
       en: "Seed"
       entropy:
