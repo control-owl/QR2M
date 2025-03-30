@@ -11,6 +11,12 @@
     - cargo build --full    (Build with QRNG feature)
     - cargo build --dev     (Only for development and testing)
 - GitHub workflows
+    - Check code vulnerabilities
+    - Check builds:
+        - Linux GNU
+        - Linux MUSL
+        - macOS aarch64
+- GPG signatures added to GitHub
 
 # version 0.77.3
 - improved address generation

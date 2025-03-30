@@ -1,0 +1,57 @@
+name: macOS aarch64 Darwin
+
+on:
+  workflow_run:
+    workflows: ["Verify GPG Signature"]
+    types: 
+      - completed
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  standard:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [aarch64-apple-darwin]
+        features: ["", "full"]
+      fail-fast: false
+
+    env:
+      PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
+      LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
+      CPPFLAGS: "-I/opt/homebrew/opt/openssl@3.0/include -I/opt/homebrew/include"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          brew update
+          brew install gtk4 libadwaita pkg-config openssl@3.0 glib
+          pkg-config --modversion glib-2.0
+          pkg-config --modversion openssl
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy rustfmt
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run cargo check
+        run: cargo check --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+
+      - name: Run Clippy
+        run: cargo clippy --no-deps --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}" -- -D warnings
+
+      - name: Build
+        run: cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+
+      - name: Run tests
+        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"

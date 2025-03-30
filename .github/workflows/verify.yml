@@ -1,0 +1,30 @@
+name: Verify GPG Signature
+on:
+  push:
+    branches:  [ "master" ]
+  pull_request:
+    branches:  [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify GPG Signatures
+        run: |
+          git log --pretty=format:"%H %G?" HEAD^..HEAD | while read commit status; do
+            echo "Checking commit: $commit"
+            if [ "$status" != "G" ]; then
+              echo "Error: Commit $commit is not GPG-signed!"
+              exit 1
+            else
+              echo "Commit $commit is signed."
+            fi
+          done

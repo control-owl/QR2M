@@ -1,0 +1,49 @@
+name: Linux x86_64 MUSL
+
+on:
+  workflow_run:
+    workflows: ["Verify GPG Signature"]
+    types: 
+      - completed
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  standard:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-musl]
+        features: ["", "full"]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config libssl-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy rustfmt
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run cargo check
+        run: cargo check --verbose --locked --features "${{ matrix.features }}"
+
+      - name: Run Clippy
+        run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" -- -D warnings
+
+      - name: Build
+        run: cargo build --release --features "${{ matrix.features }}"
+
+      - name: Run tests
+        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
