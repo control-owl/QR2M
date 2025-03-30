@@ -185,12 +185,12 @@ impl GuiState {
                         .to_str()
                         .unwrap_or("theme/color/sec-high.svg"),
                 ),
-                "Error" => qr2m_lib::get_texture_from_resource(
-                    security_icon_path
-                        .join("sec-error.svg")
-                        .to_str()
-                        .unwrap_or("theme/color/sec-error.svg"),
-                ),
+                // "Error" => qr2m_lib::get_texture_from_resource(
+                //     security_icon_path
+                //         .join("sec-error.svg")
+                //         .to_str()
+                //         .unwrap_or("theme/color/sec-error.svg"),
+                // ),
                 "Warn" => qr2m_lib::get_texture_from_resource(
                     security_icon_path
                         .join("sec-warn.svg")
@@ -199,16 +199,16 @@ impl GuiState {
                 ),
                 _ => qr2m_lib::get_texture_from_resource(
                     security_icon_path
-                        .join("sec-default.svg")
+                        .join("sec-error.svg")
                         .to_str()
-                        .unwrap_or("theme/color/sec-default.svg"),
+                        .unwrap_or("theme/color/sec-error.svg"),
                 ),
             },
             None => qr2m_lib::get_texture_from_resource(
                 security_icon_path
-                    .join("sec-default.svg")
+                    .join("sec-error.svg")
                     .to_str()
-                    .unwrap_or("theme/color/sec-default.svg"),
+                    .unwrap_or("theme/color/sec-error.svg"),
             ),
         };
 
@@ -1582,7 +1582,7 @@ fn print_program_info() {
     println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
 
     println!(
-        "{} {} ({} features)",
+        "{} {} ({})",
         &APP_DESCRIPTION.unwrap(),
         &APP_VERSION.unwrap(),
         feature
@@ -1660,9 +1660,13 @@ fn setup_app_actions(
         }
     ));
 
-    security.connect_activate(move |_action, _parameter| {
-        create_security_window();
-    });
+    security.connect_activate(clone!(
+        #[strong]
+        gui_state,
+        move |_action, _parameter| {
+            create_security_window(gui_state.clone());
+        }
+    ));
 
     settings.connect_activate(clone!(
         #[strong]
@@ -1696,10 +1700,11 @@ fn setup_app_actions(
     application.set_accels_for_action("app.new", &["<Primary>N"]);
     application.set_accels_for_action("app.open", &["<Primary>O"]);
     application.set_accels_for_action("app.save", &["<Primary>S"]);
-    application.set_accels_for_action("app.about", &["F1"]);
-    application.set_accels_for_action("app.settings", &["F5"]);
     application.set_accels_for_action("app.quit", &["<Primary>Q"]);
+    application.set_accels_for_action("app.about", &["F1"]);
     application.set_accels_for_action("app.security", &["F2"]);
+    application.set_accels_for_action("app.settings", &["F5"]);
+
     #[cfg(feature = "dev")]
     application.set_accels_for_action("app.test", &["<Primary>T"]);
 
@@ -1861,10 +1866,9 @@ fn create_main_window(
     header_bar.pack_start(&*buttons["save"]);
     header_bar.pack_end(&*buttons["settings"]);
     header_bar.pack_end(&*buttons["about"]);
-    header_bar.pack_end(&*buttons["security"]);
-
     #[cfg(feature = "dev")]
     header_bar.pack_end(&*buttons["log"]);
+    header_bar.pack_end(&*buttons["security"]);
 
     // JUMP: Action: Settings button action
     buttons["settings"].connect_clicked(clone!(
@@ -1893,9 +1897,14 @@ fn create_main_window(
         }
     ));
 
-    buttons["security"].connect_clicked(move |_| {
-        create_security_window();
-    });
+    buttons["security"].connect_clicked(clone!(
+        #[strong]
+        gui_state,
+        move |_| {
+            let security_window = create_security_window(gui_state.clone());
+            security_window.present();
+        }
+    ));
 
     buttons["new"].connect_clicked(clone!(
         #[strong]
@@ -6138,7 +6147,7 @@ fn generate_new_app_signature(
     app_executable: &std::path::Path,
     sig_full_path: &str,
 ) -> std::process::ExitStatus {
-    let control_owl_fingerprint = "2524C8FEB60EFCB0";
+    let control_owl_fingerprint = "2524C8FEB60EFCB0-";
 
     std::process::Command::new("gpg")
         .args([
@@ -6154,7 +6163,9 @@ fn generate_new_app_signature(
         .expect("Failed to execute GPG tools")
 }
 
-fn create_security_window() {
+fn create_security_window(
+    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
+) -> gtk::ApplicationWindow {
     let security_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.main.security").to_string())
         .default_width(300)
@@ -6171,23 +6182,71 @@ fn create_security_window() {
     vertical_box.set_margin_start(20);
     vertical_box.set_margin_end(20);
 
-    let image = gtk::Image::from_file("res/logo/logo.png");
+    let lock_gui_state = gui_state.borrow();
+    let security_level = lock_gui_state.security_level.as_ref().unwrap();
+
+    let security_icon_path = std::path::Path::new("theme").join("color");
+
+    let security_texture = match security_level.as_str() {
+        "High" => qr2m_lib::get_picture_from_resources(
+            security_icon_path
+                .join("sec-high.svg")
+                .to_str()
+                .unwrap_or("theme/color/sec-high.svg"),
+        ),
+        "Warn" => qr2m_lib::get_picture_from_resources(
+            security_icon_path
+                .join("sec-warn.svg")
+                .to_str()
+                .unwrap_or("theme/color/sec-warn.svg"),
+        ),
+        _ => qr2m_lib::get_picture_from_resources(
+            security_icon_path
+                .join("sec-error.svg")
+                .to_str()
+                .unwrap_or("theme/color/sec-error.svg"),
+        ),
+    };
+
+    let image = gtk::Image::from_paintable(security_texture.paintable().as_ref());
     image.set_pixel_size(128);
     vertical_box.append(&image);
 
-    let label = gtk::Label::new(Some("This is the security window"));
+    let security_text = match security_level.as_str() {
+        "High" => {
+            "This application is securely signed with a valid GPG signature, confirming it has not been altered or tampered with since its original build."
+        }
+        "Warn" => {
+            "Warning: The application's security signature could not be fully verified. While it may still be safe, there is a risk that it has been altered or compromised."
+        }
+        _ => {
+            "This application lacks a cryptographic signature, which means its authenticity cannot be confirmed.\n\n\
+            If you did not download it from an official source, there is a chance it has been altered or tampered with.\n\n\
+            Use extreme caution before proceeding."
+        }
+    };
+
+    let label = gtk::Label::new(Some(security_text));
     label.set_margin_top(10);
     label.set_margin_bottom(10);
+    label.set_wrap(true);
+    label.set_justify(gtk::Justification::Center);
+
     vertical_box.append(&label);
 
     let close_button = gtk::Button::with_label("Close");
-    let window_clone = security_window.clone();
-    close_button.connect_clicked(move |_| {
-        window_clone.close();
-    });
+
+    close_button.connect_clicked(clone!(
+        #[strong]
+        security_window,
+        move |_| {
+            security_window.close();
+        }
+    ));
+
     vertical_box.append(&close_button);
 
     security_window.set_child(Some(&vertical_box));
 
-    security_window.present();
+    security_window
 }

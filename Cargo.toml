@@ -4,7 +4,6 @@ description = "Quantum Random Rust Mnemonic"
 version = "0.79.0"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 license = "CC-BY-NC-ND-4.0"
-# license-file = "LICENSE.txt"
 repository = "https://github.com/control-owl/qr2m"
 readme = "README.md"
 edition = "2024"

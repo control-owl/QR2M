@@ -2,6 +2,7 @@
 - security: add signatures to app
 - security: verify signatures before start
 - license: moved from copyright to CC-BY-NC-ND-4.0
+- beta: new security window
 
 # version 0.78.0
 - I finally discovered #[cfg(debug_assertions)]
