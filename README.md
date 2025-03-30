@@ -9,23 +9,33 @@
 ██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║
 ╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║
  ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝
-Copyright  [2023-2025]  Control Owl
+CC-BY-NC-ND-4.0  [2023-2025]  Control Owl
 ```
 
 **QR2M** is a **cryptographic key generator** built with **Rust** and **GTK4**. It supports generating secure addresses for +250 crypto coins. Designed with versatility in mind, QR2M allows entropy generation from multiple sources: hardware-based **RNG**, ANU quantum RNG (**QRNG**), and user-provided **files**. While it is not a cryptocurrency wallet yet, it lays the groundwork for potential RPC connection support in future updates. Application is translated to English, German and Croatian.
 
+## License
+
+This project is licensed under a Creative Commons Attribution Non Commercial No Derivatives 4.0 International license. Check the [deed](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en).
+
 
 ## Project status
 
-[![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql)
+| **Security Status** |
+| --- |
+| [![Verify GPG Signature](https://github.com/control-owl/QR2M/actions/workflows/verify.yml/badge.svg)](https://github.com/control-owl/QR2M/actions/workflows/verify.yml) |
+| [![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql) |
 
-[![Check Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-test-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test-musl.yml)
-
-[![Check Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-test-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-test-gnu.yml)
+| **Build Status** |
+| --- |
+| [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml) |
+| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml) |
+| [![macOS aarch64 Darwin](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml) |
 
 
 ## Table of Contents
 
+- [Project Status](#project-status)
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -48,6 +58,7 @@ Copyright  [2023-2025]  Control Owl
 ## Installation
 
 - Check wiki [How to install QR2M](https://github.com/control-owl/QR2M/wiki/Installation#how-to-install-qr2m)
+
 
 ## Usage
 
@@ -107,7 +118,7 @@ Copyright  [2023-2025]  Control Owl
 [Wiki](https://github.com/control-owl/QR2M/wiki)
 
 
-# Support Me
+## Support Me
 
 If you like my work, you can buy me a coffee! ☕  
 

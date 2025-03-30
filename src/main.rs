@@ -1,5 +1,5 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
-// copyright = "Copyright © 2023-2025 Control Owl"
+// license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -23,7 +23,6 @@ use std::{
     io::{self, BufRead, Write},
     time::SystemTime,
 };
-// use gtk::prelude::*;
 
 #[cfg(feature = "full")]
 mod anu;
@@ -89,6 +88,7 @@ struct GuiState {
         std::cell::RefCell<std::collections::HashMap<String, Vec<std::rc::Rc<gtk::Button>>>>,
     >,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
+    security_level: Option<String>,
 }
 
 impl GuiState {
@@ -102,6 +102,7 @@ impl GuiState {
                 std::collections::HashMap::new(),
             )),
             gui_button_images: None,
+            security_level: None,
         }
     }
 
@@ -1489,6 +1490,8 @@ async fn main() {
 
     print_program_info();
 
+    let security_level = verify_signature();
+
     os::detect_os_and_user_dir();
 
     if let Err(_err) = os::check_local_config() {
@@ -1506,6 +1509,10 @@ async fn main() {
         .build();
 
     let gui_state = std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
+
+    {
+        gui_state.borrow_mut().security_level = Some(security_level);
+    }
 
     application.connect_activate(clone!(
         #[strong]
@@ -2623,7 +2630,7 @@ fn create_main_window(
         let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
         column.set_expand(true);
 
-        #[cfg(debug_assertions)]
+        #[cfg(not(feature = "dev"))]
         {
             if i == 0 {
                 column.set_visible(false);
@@ -2688,29 +2695,6 @@ fn create_main_window(
     let address_generation_progress_bar = gtk::ProgressBar::new();
     address_generation_progress_bar.set_hexpand(true);
     address_generation_progress_box.append(&address_generation_progress_bar);
-
-    stop_address_generation_button.connect_clicked(clone!(
-        #[strong]
-        generator_handler,
-        #[weak]
-        delete_addresses_button_box,
-        #[weak]
-        stop_addresses_button_box,
-        move |_| {
-            if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
-                cancel_tx.send(true).ok();
-                handle.abort();
-                delete_addresses_button_box.set_visible(true);
-                stop_addresses_button_box.set_visible(false);
-
-                #[cfg(debug_assertions)]
-                println!("Address generation aborted");
-            } else {
-                #[cfg(debug_assertions)]
-                eprintln!("No handle!");
-            }
-        }
-    ));
 
     bip_box.append(&bip_dropdown);
     bip_box.append(&bip_hardened_frame);
@@ -3513,7 +3497,6 @@ fn create_main_window(
 
             let cpu_threads = num_cpus::get();
 
-            // TODO: Increase in production
             let generating_threads = if address_count_int <= cpu_threads {
                 1
             } else {
@@ -3749,7 +3732,7 @@ fn create_main_window(
         }
     ));
 
-    #[cfg(feature = "dev")]
+    // #[cfg(feature = "dev")]
     generate_addresses_button.connect_clicked(clone!(
         #[strong]
         address_store,
@@ -3926,9 +3909,9 @@ fn create_main_window(
                                         CRYPTO_ADDRESS.insert(coin_path_id, new_entry);
                                         generated_addresses
                                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                        generated_count += 1;
                                     }
                                 }
-                                generated_count += 1;
                                 current_index += 1;
                             }
                         });
@@ -3943,9 +3926,13 @@ fn create_main_window(
                 }
             });
 
+            *generator_handler.lock().unwrap() = Some((generation_task, cancel_tx));
+
             glib::idle_add_local(clone!(
                 #[strong]
                 address_store,
+                #[strong]
+                generator_handler,
                 #[strong]
                 app_messages_state,
                 #[strong]
@@ -3955,6 +3942,10 @@ fn create_main_window(
                 #[strong]
                 delete_addresses_button_box,
                 move || {
+                    if generator_handler.lock().unwrap().is_none() {
+                        return glib::ControlFlow::Break;
+                    }
+
                     let total_generated =
                         generated_addresses.load(std::sync::atomic::Ordering::Relaxed);
                     let progress = if address_count_int > 0 {
@@ -3967,10 +3958,6 @@ fn create_main_window(
 
                     let mut batch = Vec::new();
                     let mut keys_to_remove = Vec::new();
-                    //              5000 / 12
-
-                    let magic = num_cpus::get() * 10;
-                    dbg!(magic);
 
                     for entry in CRYPTO_ADDRESS.iter().take(address_count_int) {
                         let coin = entry.value().clone();
@@ -4004,14 +3991,14 @@ fn create_main_window(
 
                         stop_addresses_button_box.set_visible(false);
                         delete_addresses_button_box.set_visible(true);
+                        address_start_spinbutton.set_text(&address_start_point_int.to_string());
+
                         return glib::ControlFlow::Break;
                     }
 
                     glib::ControlFlow::Continue
                 }
             ));
-
-            *generator_handler.lock().unwrap() = Some((generation_task, cancel_tx));
         }
     ));
 
@@ -4028,9 +4015,39 @@ fn create_main_window(
             address_store.remove_all();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
-            address_generation_progress_bar.set_show_text(false);
             address_generation_progress_bar.set_fraction(0.0);
+            address_generation_progress_bar.set_show_text(false);
             delete_addresses_button_box.set_visible(false);
+        }
+    ));
+
+    stop_address_generation_button.connect_clicked(clone!(
+        #[strong]
+        generator_handler,
+        #[strong]
+        app_messages_state,
+        #[weak]
+        delete_addresses_button_box,
+        #[weak]
+        stop_addresses_button_box,
+        move |_| {
+            if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
+                cancel_tx.send(true).ok();
+                handle.abort();
+            } else {
+                #[cfg(debug_assertions)]
+                eprintln!("No handle!");
+            }
+
+            let message = "Address generation aborted";
+            #[cfg(debug_assertions)]
+            println!("{}", message);
+
+            let lock_app_messages = app_messages_state.borrow();
+            lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Warning);
+
+            delete_addresses_button_box.set_visible(true);
+            stop_addresses_button_box.set_visible(false);
         }
     ));
 
@@ -4094,7 +4111,11 @@ fn create_main_window(
         if let Some(value) = start_time {
             let elapsed = value.elapsed();
 
-            println!("Application startup time: {:.2?}", elapsed);
+            let message = format!("Application startup time: {:.2?}", elapsed);
+            println!("{}", message);
+
+            let lock_app_messages = app_messages_state.borrow();
+            lock_app_messages.queue_message(message, gtk::MessageType::Info);
         };
     }
 }
@@ -5552,7 +5573,7 @@ fn create_about_window() {
         .website("https://www.github.com/control-owl/qr2m")
         .website_label("GitHub project")
         .authors([APP_AUTHOR.unwrap()])
-        .copyright("Copyright [2023-2025] Control Owl")
+        .copyright("CC-BY-NC-ND-4.0 [2023-2025] Control Owl")
         .license(licenses)
         .wrap_license(true)
         .comments(t!("UI.about.description").to_string())
@@ -5991,4 +6012,92 @@ fn get_active_app_feature() -> &'static str {
     } else {
         "Basic"
     }
+}
+
+fn verify_signature() -> String {
+    let feature = get_active_app_feature();
+    let sig_name = format!("{}-{}.sig", APP_NAME.unwrap(), feature);
+    let app_executable = std::env::current_exe().expect("Failed to get current executable path");
+    let executable_dir = app_executable
+        .parent()
+        .expect("Failed to extract executable directory");
+    let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
+
+    if std::path::Path::new(&sig_full_path).exists() {
+        let status = std::process::Command::new("gpg")
+            .args([
+                "--verify",
+                &sig_full_path,
+                &app_executable.to_string_lossy(),
+            ])
+            .status()
+            .expect("Failed to execute GPG verification");
+
+        if !status.success() {
+            eprintln!(
+                "Signature verification failed! Possible tampering detected: {}",
+                app_executable.to_string_lossy()
+            );
+
+            eprintln!("Try to generate new a one...");
+            let _ = std::fs::remove_file(&sig_full_path);
+
+            let status = generate_new_app_signature(&app_executable, &sig_full_path);
+
+            if !status.success() {
+                eprintln!(
+                    "GPG signing failed for {}. No secret key found",
+                    app_executable.to_string_lossy()
+                );
+                String::from("Low")
+            } else {
+                println!(
+                    "Signature created successfully. Signature verified\n{}",
+                    &status
+                );
+
+                String::from("High")
+            }
+        } else {
+            println!("Signature verification succeeded. Running application...");
+
+            String::from("High")
+        }
+    } else {
+        eprintln!("Signature file not found. Try to generate new a one...");
+
+        let status = generate_new_app_signature(&app_executable, &sig_full_path);
+
+        if !status.success() {
+            eprintln!(
+                "GPG signing failed for {}. No secret key found",
+                app_executable.to_string_lossy()
+            );
+            String::from("Low")
+        } else {
+            println!("Signature created successfully. Signature verified");
+
+            String::from("High")
+        }
+    }
+}
+
+fn generate_new_app_signature(
+    app_executable: &std::path::Path,
+    sig_full_path: &str,
+) -> std::process::ExitStatus {
+    let control_owl_fingerprint = "2524C8FEB60EFCB0";
+
+    std::process::Command::new("gpg")
+        .args([
+            "--detach-sign",
+            "--armor",
+            "-u",
+            control_owl_fingerprint,
+            "-o",
+            sig_full_path,
+            &app_executable.to_string_lossy(),
+        ])
+        .status()
+        .expect("Failed to execute GPG tools")
 }

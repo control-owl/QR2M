@@ -1,7 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // module = "QRNG Library"
-// copyright = "Copyright © 2023-2025 Control Owl"
-// version = "2025-03-13"
+// license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
+// version = "2025-03-30"
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -221,6 +221,12 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
             generate_empty_texture()
         }
     }
+}
+
+pub fn get_file_from_resources(file_name: &str) -> Result<&'static include_dir::File, String> {
+    RES_DIR
+        .get_file(file_name)
+        .ok_or_else(|| format!("File '{}' not found in resources", file_name))
 }
 
 pub fn generate_empty_picture() -> gtk::Picture {
