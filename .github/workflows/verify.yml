@@ -20,6 +20,7 @@ jobs:
       - name: Import GPG Keys
         run: |
           echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import --no-tty --batch
+          echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}:5:" | gpg --import-ownertrust --no-tty --batch --yes
         # echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key ${{ secrets.CONTROL_OWL_GPG_KEY_ID }}
         env:
           GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
