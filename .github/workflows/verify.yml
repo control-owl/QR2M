@@ -20,7 +20,7 @@ jobs:
       - name: Import GPG Keys
         run: |
           echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import --no-tty --batch
-          KEY_FINGERPRINT=$(gpg --list-keys --with-colons | grep "^pub" | cut -d':' -f5 | tail -1)
+          KEY_FINGERPRINT=$(gpg --list-keys --with-colons ${{ secrets.CONTROL_OWL_GPG_KEY_ID }} | awk -F':' '/^fpr/ {print $10}' | head -1)
           echo "$KEY_FINGERPRINT:5:" | gpg --import-ownertrust --no-tty --batch --yes
         # echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key ${{ secrets.CONTROL_OWL_GPG_KEY_ID }}
         env:
