@@ -21,8 +21,6 @@ jobs:
         run: |
           echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import --no-tty --batch
           echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key ${{ secrets.CONTROL_OWL_GPG_KEY_ID }}
-        env:
-          GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
 
       - name: Verify Control Owl GPG Signature
         run: |
@@ -43,8 +41,8 @@ jobs:
 
           case "$STATUS" in
             G)  # Good signature, now check key
-                if [ "$KEY_ID" != "$CONTROL_OWL_GPG_KEY_ID" ]; then
-                  echo "Error: Commit $COMMIT is signed with an unexpected key: $KEY_ID (expected: $CONTROL_OWL_GPG_KEY_ID)"
+                if [ "$KEY_ID" != "${{ secrets.CONTROL_OWL_GPG_KEY_ID }}" ]; then
+                  echo "Error: Commit $COMMIT is signed with an unexpected key: $KEY_ID (expected: ${{ secrets.CONTROL_OWL_GPG_KEY_ID }})"
                   exit 1
                 fi
                 echo "Success: Commit $COMMIT is signed with the expected key."
