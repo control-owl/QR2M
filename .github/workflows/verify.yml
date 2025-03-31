@@ -1,5 +1,4 @@
 name: Verify GPG Signature
-
 on:
   push:
     branches:  [ "master" ]
@@ -20,11 +19,10 @@ jobs:
 
       - name: Import GPG Keys
         run: |
+          # Import Control Owl key
           echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import
+          # Import QR2M key
           echo "${{ secrets.GPG_PUBLIC_KEY_QR2M }}" | gpg --import
-          echo -e "5\ny\n" | gpg --command-fd 0 --expert --edit-key "$CONTROL_OWL_KEY_ID" trust
-          echo -e "5\ny\n" | gpg --command-fd 0 --expert --edit-key "$QR2M_KEY_ID" trust
-          gpg --list-keys --with-colons
         env:
           GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
           GPG_PUBLIC_KEY_QR2M: ${{ secrets.GPG_PUBLIC_KEY_QR2M }}
