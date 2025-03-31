@@ -19,40 +19,29 @@ jobs:
 
       - name: Import GPG Keys
         run: |
-          echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import
-          git config --global user.signingkey 2524C8FEB60EFCB0
-          git config --global commit.gpgSign true
-          echo "${{ secrets.GPG_PUBLIC_KEY_QR2M }}" | gpg --import
-          echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key 2524C8FEB60EFCB0
-          echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key 99204764AC6B6A44
+          echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import --no-tty --batch
+        # echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key ${{ secrets.CONTROL_OWL_GPG_KEY_ID }}
         env:
           GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
-          GPG_PUBLIC_KEY_QR2M: ${{ secrets.GPG_PUBLIC_KEY_QR2M }}
-
-      # - name: Verify GPG Signatures simple
-      #   run: |
-      #     git log --pretty=format:"%H %G?" HEAD^..HEAD | while read commit status; do
-      #       echo "Checking commit: $commit"
-      #       if [ "$status" != "G" ]; then
-      #         echo "Error: Commit $commit is not GPG-signed!"
-      #         exit 1
-      #       else
-      #         echo "Commit $commit is signed."
-      #       fi
-      #     done
 
       - name: Verify Control Owl GPG Signature
         run: |
-          COMMIT_HASH=$(git rev-parse HEAD)
+          COMMIT_HASH="${{ github.sha }}"
           echo "Checking commit: $COMMIT_HASH"
-          
+
+          if ! git verify-commit "$COMMIT_HASH" > /dev/null 2>&1; then
+            echo "Error: Commit $COMMIT_HASH failed basic signature verification!"
+            git log -1 --show-signature "$COMMIT_HASH"
+            exit 1
+          fi
+
           COMMIT_INFO=$(git log -1 --pretty=format:"%H %G? %GK" HEAD^..HEAD)
           read COMMIT STATUS KEY_ID <<< "$COMMIT_INFO"
           echo "Commit: $COMMIT"
           echo "Status: $STATUS"
           echo "Key ID: $KEY_ID"
 
-          EXPECTED_KEY_ID="2524C8FEB60EFCB0"
+          EXPECTED_KEY_ID="${{ secrets.CONTROL_OWL_GPG_KEY_ID }}"
 
           case "$STATUS" in
             G)  # Good signature, now check key
