@@ -2,7 +2,7 @@ name: macOS aarch64 Darwin
 
 on:
   workflow_run:
-    workflows: ["Verify GPG Signature"]
+    workflows: ["Verify GPG Signature pause"]
     types: 
       - completed
     branches: [ "master" ]

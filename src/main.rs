@@ -1,5 +1,9 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
+const CONTROL_OWL_KEY_ID: &str = "2524C8FEB60EFCB0";
+const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B60E FCB0";
+const QR2M_KEY_ID: &str = "99204764AC6B6A44";
+const QR2M_OWL_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -6147,14 +6151,12 @@ fn generate_new_app_signature(
     app_executable: &std::path::Path,
     sig_full_path: &str,
 ) -> std::process::ExitStatus {
-    let control_owl_fingerprint = "2524C8FEB60EFCB0";
-
     std::process::Command::new("gpg")
         .args([
             "--detach-sign",
             "--armor",
             "-u",
-            control_owl_fingerprint,
+            CONTROL_OWL_KEY_ID,
             "-o",
             sig_full_path,
             &app_executable.to_string_lossy(),

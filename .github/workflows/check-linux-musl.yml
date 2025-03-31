@@ -2,7 +2,7 @@ name: Linux x86_64 MUSL
 
 on:
   workflow_run:
-    workflows: ["Verify GPG Signature"]
+    workflows: ["Verify GPG Signature pause"]
     types: 
       - completed
     branches: [ "master" ]
