@@ -6147,7 +6147,7 @@ fn generate_new_app_signature(
     app_executable: &std::path::Path,
     sig_full_path: &str,
 ) -> std::process::ExitStatus {
-    let control_owl_fingerprint = "2524C8FEB60EFCB0-";
+    let control_owl_fingerprint = "2524C8FEB60EFCB0";
 
     std::process::Command::new("gpg")
         .args([
