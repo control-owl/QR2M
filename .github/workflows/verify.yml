@@ -20,9 +20,16 @@ jobs:
       - name: Import GPG Keys
         run: |
           echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import --no-tty --batch
-          KEY_FINGERPRINT=$(gpg --list-keys --with-colons ${{ secrets.CONTROL_OWL_GPG_KEY_ID }} | awk -F':' '/^fpr/ {print $10}' | head -1)
+          EXPECTED_KEY_ID="${{ secrets.CONTROL_OWL_GPG_KEY_ID }}"
+          gpg --list-keys --with-colons "$EXPECTED_KEY_ID"
+          KEY_FINGERPRINT=$(gpg --list-keys --with-colons "$EXPECTED_KEY_ID" | awk -F':' '/^fpr/ {print $10}' | head -1)
           echo "$KEY_FINGERPRINT:5:" | gpg --import-ownertrust --no-tty --batch --yes
-        # echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key ${{ secrets.CONTROL_OWL_GPG_KEY_ID }}
+          if [ -z "$KEY_FINGERPRINT" ]; then
+            echo "Error: Could not find fingerprint for key $EXPECTED_KEY_ID"
+            exit 1
+          fi
+          echo "$KEY_FINGERPRINT:5:" | gpg --import-ownertrust --no-tty --batch --yes
+          echo "Trusted key $KEY_FINGERPRINT"
         env:
           GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
 
