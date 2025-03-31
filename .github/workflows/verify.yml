@@ -19,9 +19,9 @@ jobs:
 
       - name: Import GPG Keys
         run: |
-          # Import Control Owl key
           echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import
-          # Import QR2M key
+          git config --global user.signingkey 2524C8FEB60EFCB0
+          git config --global commit.gpgSign true
           echo "${{ secrets.GPG_PUBLIC_KEY_QR2M }}" | gpg --import
         env:
           GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
