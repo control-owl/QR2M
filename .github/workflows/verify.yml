@@ -45,7 +45,7 @@ jobs:
           echo "Checking commit: $COMMIT_HASH"
           
           git log -1 --pretty=format:"%H %G? %GK" HEAD^..HEAD > commit_info.txt
-          cat commit_info.txt
+          echo "Commit info:" && cat commit_info.txt
 
           read COMMIT STATUS KEY_ID < commit_info.txt
           echo "Commit: $COMMIT"
