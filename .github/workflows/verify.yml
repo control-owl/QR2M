@@ -23,8 +23,8 @@ jobs:
           git config --global user.signingkey 2524C8FEB60EFCB0
           git config --global commit.gpgSign true
           echo "${{ secrets.GPG_PUBLIC_KEY_QR2M }}" | gpg --import
-          echo -e "trust\n5\ny\nsave\n" | gpg --command-fd 0 --edit-key "$CONTROL_OWL_KEY_ID"
-          echo -e "trust\n5\ny\nsave\n" | gpg --command-fd 0 --edit-key "$QR2M_KEY_ID"
+          echo -e "trust\n5\ny\nsave\n" | gpg --command-fd 0 --edit-key 2524C8FEB60EFCB0
+          echo -e "trust\n5\ny\nsave\n" | gpg --command-fd 0 --edit-key 99204764AC6B6A44
         env:
           GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
           GPG_PUBLIC_KEY_QR2M: ${{ secrets.GPG_PUBLIC_KEY_QR2M }}
