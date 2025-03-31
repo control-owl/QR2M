@@ -20,16 +20,7 @@ jobs:
       - name: Import GPG Keys
         run: |
           echo "${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}" | gpg --import --no-tty --batch
-          EXPECTED_KEY_ID="${{ secrets.CONTROL_OWL_GPG_KEY_ID }}"
-          gpg --list-keys --with-colons "$EXPECTED_KEY_ID"
-          KEY_FINGERPRINT=$(gpg --list-keys --with-colons "$EXPECTED_KEY_ID" | awk -F':' '/^fpr/ {print $10}' | head -1)
-          echo "$KEY_FINGERPRINT:5:" | gpg --import-ownertrust --no-tty --batch --yes
-          if [ -z "$KEY_FINGERPRINT" ]; then
-            echo "Error: Could not find fingerprint for key $EXPECTED_KEY_ID"
-            exit 1
-          fi
-          echo "$KEY_FINGERPRINT:5:" | gpg --import-ownertrust --no-tty --batch --yes
-          echo "Trusted key $KEY_FINGERPRINT"
+          echo -e "trust\n5\ny\nsave\n" | gpg --batch --command-fd 0 --edit-key ${{ secrets.CONTROL_OWL_GPG_KEY_ID }}
         env:
           GPG_PUBLIC_KEY_CONTROL_OWL: ${{ secrets.GPG_PUBLIC_KEY_CONTROL_OWL }}
 
@@ -50,12 +41,10 @@ jobs:
           echo "Status: $STATUS"
           echo "Key ID: $KEY_ID"
 
-          EXPECTED_KEY_ID="${{ secrets.CONTROL_OWL_GPG_KEY_ID }}"
-
           case "$STATUS" in
             G)  # Good signature, now check key
-                if [ "$KEY_ID" != "$EXPECTED_KEY_ID" ]; then
-                  echo "Error: Commit $COMMIT is signed with an unexpected key: $KEY_ID (expected: $EXPECTED_KEY_ID)"
+                if [ "$KEY_ID" != "$GPG_PUBLIC_KEY_CONTROL_OWL" ]; then
+                  echo "Error: Commit $COMMIT is signed with an unexpected key: $KEY_ID (expected: $GPG_PUBLIC_KEY_CONTROL_OWL)"
                   exit 1
                 fi
                 echo "Success: Commit $COMMIT is signed with the expected key."
