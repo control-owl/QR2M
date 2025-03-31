@@ -43,8 +43,8 @@ jobs:
 
           case "$STATUS" in
             G)  # Good signature, now check key
-                if [ "$KEY_ID" != "$GPG_PUBLIC_KEY_CONTROL_OWL" ]; then
-                  echo "Error: Commit $COMMIT is signed with an unexpected key: $KEY_ID (expected: $GPG_PUBLIC_KEY_CONTROL_OWL)"
+                if [ "$KEY_ID" != "$CONTROL_OWL_GPG_KEY_ID" ]; then
+                  echo "Error: Commit $COMMIT is signed with an unexpected key: $KEY_ID (expected: $CONTROL_OWL_GPG_KEY_ID)"
                   exit 1
                 fi
                 echo "Success: Commit $COMMIT is signed with the expected key."
