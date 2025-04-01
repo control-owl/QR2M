@@ -16,7 +16,7 @@ CC-BY-NC-ND-4.0  [2023-2025]  Control Owl
 
 ## License
 
-This project is licensed under a Creative Commons Attribution Non Commercial No Derivatives 4.0 International license. Check the [deed](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en).
+This project is licensed under a **Creative Commons Attribution Non Commercial No Derivatives 4.0 International license**. Check the [deed](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en).
 
 
 ## Project status
@@ -51,8 +51,9 @@ This project is licensed under a Creative Commons Attribution Non Commercial No 
   - Random Number Generator (RNG)
   - Quantum Random Number Generator (QRNG) from ANU
   - User-supplied files for custom entropy
-- **Cross-platform GUI** built with **GTK4**.
+- **Cross-platform GUI** built with **GTK4** for Linux, macOS and Windows
 - **Secure and lightweight**: Written in Rust, ensuring robust performance and security.
+- **Really fast**: Generate 1000 addresses in 1 second
 
 
 ## Installation
@@ -63,7 +64,7 @@ This project is licensed under a Creative Commons Attribution Non Commercial No 
 ## Usage
 
 1. **Launch the Application**:
-   - Start the app using the terminal or the provided executable.
+   - Start the app using the provided executable.
 
 2. **Select the Entropy Source**:
    - Choose from the available entropy sources:
@@ -76,7 +77,7 @@ This project is licensed under a Creative Commons Attribution Non Commercial No 
     - Specify the length of the entropy to be generated based on your chosen entropy source.
 
 4. **Mnemonic Passphrase**:
-    - Enter an optional passphrase for added security, which will be used to generate the mnemonic.
+    - Enter an optional passphrase for added security, which will be used to generate the seed.
 
 5. **Generate Seed**:
     - Press the "New entropy" button to create the cryptographic seed based on your entropy source, length, and passphrase.
@@ -95,7 +96,7 @@ This project is licensed under a Creative Commons Attribution Non Commercial No 
      - **Hardened**: Choose which path to harden.
 
 9. **Generate Address**:
-   - After selecting the desired format, generate the address for your chosen cryptocurrency by pressing the "Generate address" button.
+   - After selecting the desired format, generate the address for your chosen cryptocurrency by pressing the button.
 
 
 ## Screenshots

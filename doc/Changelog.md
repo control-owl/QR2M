@@ -1,3 +1,7 @@
+# version 0.79.1
+- security window, show some basic build info
+- cargo: rust-i18n updated
+
 # version 0.79.0
 - security: add signatures to app
 - security: verify signatures before start
