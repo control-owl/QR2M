@@ -1,9 +1,9 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
 const CONTROL_OWL_KEY_ID: &str = "2524C8FEB60EFCB0";
-// const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B60E FCB0";
-// const QR2M_KEY_ID: &str = "99204764AC6B6A44";
-// const QR2M_OWL_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
+const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B60E FCB0";
+const QR2M_KEY_ID: &str = "99204764AC6B6A44";
+// const QR2M_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -183,11 +183,11 @@ impl GuiState {
         let security_icon_path = std::path::Path::new("theme").join("color");
         let security_texture = match &self.security_level {
             Some(level) => match level.as_str() {
-                "High" => qr2m_lib::get_texture_from_resource(
+                "Verified" => qr2m_lib::get_texture_from_resource(
                     security_icon_path
-                        .join("sec-high.svg")
+                        .join("sec-good.svg")
                         .to_str()
-                        .unwrap_or("theme/color/sec-high.svg"),
+                        .unwrap_or("theme/color/sec-good.svg"),
                 ),
                 // "Error" => qr2m_lib::get_texture_from_resource(
                 //     security_icon_path
@@ -1664,13 +1664,9 @@ fn setup_app_actions(
         }
     ));
 
-    security.connect_activate(clone!(
-        #[strong]
-        gui_state,
-        move |_action, _parameter| {
-            create_security_window(gui_state.clone());
-        }
-    ));
+    security.connect_activate(move |_action, _parameter| {
+        create_security_window();
+    });
 
     settings.connect_activate(clone!(
         #[strong]
@@ -1901,14 +1897,10 @@ fn create_main_window(
         }
     ));
 
-    buttons["security"].connect_clicked(clone!(
-        #[strong]
-        gui_state,
-        move |_| {
-            let security_window = create_security_window(gui_state.clone());
-            security_window.present();
-        }
-    ));
+    buttons["security"].connect_clicked(move |_| {
+        let security_window = create_security_window();
+        security_window.present();
+    });
 
     buttons["new"].connect_clicked(clone!(
         #[strong]
@@ -6114,19 +6106,19 @@ fn verify_signature() -> String {
                     "GPG signing failed for {}. No secret key found",
                     app_executable.to_string_lossy()
                 );
-                String::from("Low")
+                String::from("Error")
             } else {
                 println!(
                     "Signature created successfully. Signature verified\n{}",
                     &status
                 );
 
-                String::from("High")
+                String::from("Verified")
             }
         } else {
             println!("Signature verification succeeded. Running application...");
 
-            String::from("High")
+            String::from("Verified")
         }
     } else {
         eprintln!("Signature file not found. Try to generate new a one...");
@@ -6138,11 +6130,11 @@ fn verify_signature() -> String {
                 "GPG signing failed for {}. No secret key found",
                 app_executable.to_string_lossy()
             );
-            String::from("Low")
+            String::from("Error")
         } else {
             println!("Signature created successfully. Signature verified");
 
-            String::from("High")
+            String::from("Verified")
         }
     }
 }
@@ -6156,7 +6148,7 @@ fn generate_new_app_signature(
             "--detach-sign",
             "--armor",
             "-u",
-            CONTROL_OWL_KEY_ID,
+            QR2M_KEY_ID,
             "-o",
             sig_full_path,
             &app_executable.to_string_lossy(),
@@ -6165,76 +6157,156 @@ fn generate_new_app_signature(
         .expect("Failed to execute GPG tools")
 }
 
-fn create_security_window(
-    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
-) -> gtk::ApplicationWindow {
+fn create_security_window() -> gtk::ApplicationWindow {
+    const COMMIT_HASH: &str = env!("COMMIT_HASH");
+    const COMMIT_DATE: &str = env!("COMMIT_DATE");
+    const KEY_ID: &str = env!("KEY_ID");
+    const BUILD_TARGET: &str = env!("BUILD_TARGET");
+
+    let security_level = if KEY_ID == CONTROL_OWL_KEY_ID {
+        "Verified"
+    // } else if KEY_ID != "None" {
+    //     "Warn"
+    } else {
+        "Error"
+    };
+
     let security_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.main.security").to_string())
-        .default_width(300)
+        .default_width(400)
         .default_height(600)
         .resizable(false)
         .modal(true)
         .build();
 
-    let vertical_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-    vertical_box.set_halign(gtk::Align::Center);
-    vertical_box.set_valign(gtk::Align::Center);
-    vertical_box.set_margin_top(20);
-    vertical_box.set_margin_bottom(20);
-    vertical_box.set_margin_start(20);
-    vertical_box.set_margin_end(20);
-
-    let lock_gui_state = gui_state.borrow();
-    let security_level = lock_gui_state.security_level.as_ref().unwrap();
+    let main_sec_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    main_sec_box.set_halign(gtk::Align::Center);
+    main_sec_box.set_valign(gtk::Align::Center);
+    main_sec_box.set_margin_top(10);
+    main_sec_box.set_margin_bottom(10);
+    main_sec_box.set_margin_start(10);
+    main_sec_box.set_margin_end(10);
 
     let security_icon_path = std::path::Path::new("theme").join("color");
-
-    let security_texture = match security_level.as_str() {
-        "High" => qr2m_lib::get_picture_from_resources(
+    let security_texture = match security_level {
+        "Verified" => qr2m_lib::get_picture_from_resources(
             security_icon_path
-                .join("sec-high.svg")
+                .join("sec-good-128.svg")
                 .to_str()
-                .unwrap_or("theme/color/sec-high.svg"),
+                .unwrap_or("theme/color/sec-good-128.svg"),
         ),
-        "Warn" => qr2m_lib::get_picture_from_resources(
-            security_icon_path
-                .join("sec-warn.svg")
-                .to_str()
-                .unwrap_or("theme/color/sec-warn.svg"),
-        ),
+        // "Warn" => qr2m_lib::get_picture_from_resources(
+        //     security_icon_path
+        //         .join("sec-warn.svg")
+        //         .to_str()
+        //         .unwrap_or("theme/color/sec-warn.svg"),
+        // ),
         _ => qr2m_lib::get_picture_from_resources(
             security_icon_path
-                .join("sec-error.svg")
+                .join("sec-error-128.svg")
                 .to_str()
-                .unwrap_or("theme/color/sec-error.svg"),
+                .unwrap_or("theme/color/sec-error-128.svg"),
         ),
     };
 
     let image = gtk::Image::from_paintable(security_texture.paintable().as_ref());
     image.set_pixel_size(128);
-    vertical_box.append(&image);
+    main_sec_box.append(&image);
 
-    let security_text = match security_level.as_str() {
-        "High" => {
+    let status_label = gtk::Label::new(Some(security_level));
+    status_label.set_css_classes(&["h1"]);
+    status_label.set_margin_top(10);
+    status_label.set_justify(gtk::Justification::Center);
+    main_sec_box.append(&status_label);
+
+    let security_text = match security_level {
+        "Verified" => {
             "This application is securely signed with a valid GPG signature, confirming it has not been altered or tampered with since its original build."
         }
-        "Warn" => {
-            "Warning: The application's security signature could not be fully verified. While it may still be safe, there is a risk that it has been altered or compromised."
-        }
+        // "Warn" => {
+        //     "The application's security signature could not be fully verified. While it may still be safe, there is a risk that it has been altered or compromised."
+        // }
         _ => {
-            "This application lacks a cryptographic signature, which means its authenticity cannot be confirmed.\n\n\
-            If you did not download it from an official source, there is a chance it has been altered or tampered with.\n\n\
-            Use extreme caution before proceeding."
+            "This application has wrong cryptographic signature, which means its authenticity cannot be confirmed.\n\n\
+            If you did not download it from an official source, there is a chance it has been altered or tampered with."
         }
     };
 
-    let label = gtk::Label::new(Some(security_text));
-    label.set_margin_top(10);
-    label.set_margin_bottom(10);
-    label.set_wrap(true);
-    label.set_justify(gtk::Justification::Center);
+    let detail_label = gtk::Label::new(Some(security_text));
+    detail_label.set_margin_top(5);
+    detail_label.set_wrap(true);
+    detail_label.set_justify(gtk::Justification::Center);
+    main_sec_box.append(&detail_label);
 
-    vertical_box.append(&label);
+    let build_info_label = gtk::Label::new(Some("Build Information:"));
+    build_info_label.set_css_classes(&["h2"]);
+    build_info_label.set_margin_top(20);
+    main_sec_box.append(&build_info_label);
+
+    let build_details = gtk::Label::new(Some(&format!(
+        "• Commit: {}\n\
+         • Commit Date: {}\n\
+         • Platform: {}\n\
+         • Signed with GPG key: {}",
+        COMMIT_HASH,
+        COMMIT_DATE,
+        BUILD_TARGET,
+        if KEY_ID == "None" {
+            "Not signed"
+        } else {
+            KEY_ID
+        }
+    )));
+    build_details.set_margin_top(5);
+    build_details.set_justify(gtk::Justification::Left);
+    main_sec_box.append(&build_details);
+
+    if KEY_ID != "None" {
+        if KEY_ID == CONTROL_OWL_KEY_ID {
+            let verified_message = gtk::Label::new(Some(
+                "This key is verified and belongs to the official developer.",
+            ));
+            // verified_message.set_margin_top(10);
+            verified_message.set_wrap(true);
+            verified_message.set_css_classes(&["security-verified"]);
+            verified_message.set_justify(gtk::Justification::Left);
+            main_sec_box.append(&verified_message);
+        } else {
+            let error_message = gtk::Label::new(Some(
+                "This key is not recognized. Proceed with extreme caution !!!",
+            ));
+            // error_message.set_margin_top(10);
+            error_message.set_wrap(true);
+            error_message.set_css_classes(&["security-error"]);
+            error_message.set_justify(gtk::Justification::Left);
+            main_sec_box.append(&error_message);
+        }
+    } else {
+        let not_signed_label = gtk::Label::new(Some("This commit is not signed."));
+        // not_signed_label.set_margin_top(10);
+        not_signed_label.set_wrap(true);
+        not_signed_label.set_css_classes(&["security-error"]);
+        not_signed_label.set_justify(gtk::Justification::Left);
+        main_sec_box.append(&not_signed_label);
+    }
+
+    let gpg_key_label = gtk::Label::new(Some("Control Owl's GPG key:"));
+    gpg_key_label.set_margin_top(10);
+    main_sec_box.append(&gpg_key_label);
+
+    let web_gpg_checker = format!("https://keys.openpgp.org/search?q={}", CONTROL_OWL_KEY_ID);
+
+    let key_link = gtk::LinkButton::builder()
+        .uri(web_gpg_checker)
+        .label(CONTROL_OWL_KEY_ID)
+        .build();
+
+    key_link.set_halign(gtk::Align::Center);
+    main_sec_box.append(&key_link);
+
+    let fingerprint_label = gtk::Label::new(Some(CONTROL_OWL_FINGERPRINT));
+    // fingerprint_label.set_margin_top(10);
+    main_sec_box.append(&fingerprint_label);
 
     let close_button = gtk::Button::with_label("Close");
 
@@ -6246,9 +6318,9 @@ fn create_security_window(
         }
     ));
 
-    vertical_box.append(&close_button);
+    main_sec_box.append(&close_button);
 
-    security_window.set_child(Some(&vertical_box));
+    security_window.set_child(Some(&main_sec_box));
 
     security_window
 }

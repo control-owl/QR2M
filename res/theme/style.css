@@ -40,25 +40,28 @@
 }
 
 
-/* .button {
-    padding: 5px;
-
-} */
-
-/* .green-box {
-    background-color: green;
-    border: 0px solid black;
+.h1 {
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    font-size: xx-large;
+    font-weight: bold;
 }
 
-.empty-box {
-    background-color: lightgray;
-    border: 0px solid black;
-} */
+.h2 {
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    font-size: large;
+    /* font-weight: bold; */
+}
 
-/* .main-buttons {
-    padding: 5px;
-} */
+.security-error {
+    font-size: medium;
+    color: red;
+    font-weight: bold;
+}
 
-/* .main-buttons:hover {
-    padding: 3px;
-} */
+.security-verified {
+    font-size: medium;
+    color: green;
+    font-weight: bold;
+}
