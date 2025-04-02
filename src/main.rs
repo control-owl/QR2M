@@ -70,6 +70,10 @@ const VALID_GUI_ICONS: &[&str] = &["Thin", "Bold", "Fill"];
 const VALID_COIN_SEARCH_PARAMETER: &[&str] = &["Name", "Symbol", "Index"];
 const APP_LOG_LEVEL: &[&str] = &["Standard", "Verbose", "Ultimate"];
 const GUI_IMAGE_EXTENSION: &str = if cfg!(windows) { "png" } else { "svg" };
+const COMMIT_HASH: &str = env!("COMMIT_HASH");
+const COMMIT_DATE: &str = env!("COMMIT_DATE");
+const KEY_ID: &str = env!("KEY_ID");
+const BUILD_TARGET: &str = env!("BUILD_TARGET");
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -92,7 +96,7 @@ struct GuiState {
         std::cell::RefCell<std::collections::HashMap<String, Vec<std::rc::Rc<gtk::Button>>>>,
     >,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
-    security_level: Option<String>,
+    security_level: Option<u8>,
 }
 
 impl GuiState {
@@ -182,14 +186,14 @@ impl GuiState {
 
         let security_icon_path = std::path::Path::new("theme").join("color");
         let security_texture = match &self.security_level {
-            Some(level) => match level.as_str() {
-                "Verified" => qr2m_lib::get_texture_from_resource(
+            Some(level) => match level {
+                2 => qr2m_lib::get_texture_from_resource(
                     security_icon_path
                         .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
                         .to_str()
                         .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
                 ),
-                "Warn" => qr2m_lib::get_texture_from_resource(
+                1 => qr2m_lib::get_texture_from_resource(
                     security_icon_path
                         .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
                         .to_str()
@@ -1524,7 +1528,7 @@ async fn main() {
 
     print_program_info();
 
-    let security_level = verify_gpg_app_signature();
+    let security_level = check_security_level();
 
     os::detect_os_and_user_dir();
 
@@ -1658,9 +1662,14 @@ fn setup_app_actions(
         }
     ));
 
-    security.connect_activate(move |_action, _parameter| {
-        create_security_window();
-    });
+    security.connect_activate(clone!(
+        #[strong]
+        gui_state,
+        move |_action, _parameter| {
+            let security_window = create_security_window(gui_state.clone());
+            security_window.present();
+        }
+    ));
 
     settings.connect_activate(clone!(
         #[strong]
@@ -1891,10 +1900,14 @@ fn create_main_window(
         }
     ));
 
-    buttons["security"].connect_clicked(move |_| {
-        let security_window = create_security_window();
-        security_window.present();
-    });
+    buttons["security"].connect_clicked(clone!(
+        #[strong]
+        gui_state,
+        move |_| {
+            let security_window = create_security_window(gui_state.clone());
+            security_window.present();
+        }
+    ));
 
     buttons["new"].connect_clicked(clone!(
         #[strong]
@@ -6065,11 +6078,25 @@ fn get_active_app_feature() -> &'static str {
     }
 }
 
-fn verify_gpg_app_signature() -> String {
+fn check_security_level() -> u8 {
     #[cfg(debug_assertions)]
-    println!("[+] {}", &t!("log.verify_gpg_app_signature").to_string());
+    println!("[+] {}", &t!("log.check_security_level").to_string());
+
+    //     let mut security = SecurityLevel::new();
+    //
+    //     security.add_signature(SignatureType::App, QR2M_KEY_ID.to_string(), true);
+    //     security.add_signature(SignatureType::Code, CONTROL_OWL_KEY_ID.to_string(), true);
+
+    let mut security_level: u8 = 0;
+
+    if KEY_ID == CONTROL_OWL_KEY_ID {
+        let _ = security_level.saturating_add(1);
+    } else {
+        let _ = security_level.saturating_sub(1);
+    }
 
     let feature = get_active_app_feature();
+
     let sig_name = format!("{}-{}.sig", APP_NAME.unwrap(), feature);
     let app_executable = std::env::current_exe().expect("Failed to get current executable path");
     let executable_dir = app_executable
@@ -6077,7 +6104,7 @@ fn verify_gpg_app_signature() -> String {
         .expect("Failed to extract executable directory");
     let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
 
-    if std::path::Path::new(&sig_full_path).exists() {
+    security_level = if std::path::Path::new(&sig_full_path).exists() {
         let status = std::process::Command::new("gpg")
             .args([
                 "--verify",
@@ -6088,7 +6115,8 @@ fn verify_gpg_app_signature() -> String {
             .expect("Failed to execute GPG verification");
 
         if !status.success() {
-            eprintln!("Signature verification failed! Try to generate new a one...");
+            #[cfg(debug_assertions)]
+            eprintln!("\t- App signature verification failed! Try to generate new a one...");
 
             let _ = std::fs::remove_file(&sig_full_path);
 
@@ -6097,41 +6125,47 @@ fn verify_gpg_app_signature() -> String {
             dbg!(&status);
 
             if status {
+                #[cfg(debug_assertions)]
                 println!(
-                    "Signature created successfully. Signature verified\n{}",
+                    "\t- App signature created successfully. Status:\n{}",
                     &status
                 );
 
-                String::from("Verified")
+                1
             } else {
-                eprintln!(
-                    "GPG signing failed for {}. No secret key found",
-                    app_executable.to_string_lossy()
-                );
-                String::from("Error")
+                #[cfg(debug_assertions)]
+                eprintln!("\t- App signing failed. No secret key found",);
+
+                0
             }
         } else {
-            println!("Signature verification succeeded. Running application...");
+            #[cfg(debug_assertions)]
+            println!("\t- App signature verification succeeded");
 
-            String::from("Verified")
+            1
         }
     } else {
-        eprintln!("Signature file not found. Try to generate new a one...");
+        #[cfg(debug_assertions)]
+        eprintln!("\t- App signature file not found. Try to generate new a one...");
 
         let status = generate_new_app_signature(&app_executable, &sig_full_path);
 
         if status {
-            println!("Signature created successfully. Signature verified");
+            #[cfg(debug_assertions)]
+            println!("\t- App signature created successfully");
 
-            String::from("Verified")
+            1
         } else {
-            eprintln!(
-                "GPG signing failed for {}. No secret key found",
-                app_executable.to_string_lossy()
-            );
-            String::from("Error")
+            #[cfg(debug_assertions)]
+            eprintln!("\t- GPG signing failed for. No secret key found",);
+
+            0
         }
-    }
+    };
+
+    println!("\t- Security level: {}", security_level);
+
+    security_level
 }
 
 fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
@@ -6152,22 +6186,13 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
         .is_ok()
 }
 
-fn create_security_window() -> gtk::ApplicationWindow {
+fn create_security_window(
+    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
+) -> gtk::ApplicationWindow {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.create_security_window").to_string());
 
-    const COMMIT_HASH: &str = env!("COMMIT_HASH");
-    const COMMIT_DATE: &str = env!("COMMIT_DATE");
-    const KEY_ID: &str = env!("KEY_ID");
-    const BUILD_TARGET: &str = env!("BUILD_TARGET");
-
-    let security_level = if KEY_ID == CONTROL_OWL_KEY_ID {
-        "Verified"
-    // } else if KEY_ID != "None" {
-    //     "Warn"
-    } else {
-        "Error"
-    };
+    let security_level = gui_state.borrow().security_level.unwrap_or(0);
 
     let security_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.main.security").to_string())
@@ -6186,12 +6211,19 @@ fn create_security_window() -> gtk::ApplicationWindow {
     main_sec_box.set_margin_end(10);
 
     let security_icon_path = std::path::Path::new("theme").join("color");
+
     let security_texture = match security_level {
-        "Verified" => qr2m_lib::get_picture_from_resources(
+        2 => qr2m_lib::get_picture_from_resources(
             security_icon_path
                 .join(format!("sec-good-128.{}", GUI_IMAGE_EXTENSION))
                 .to_str()
                 .unwrap_or(&format!("theme/color/sec-good-128.{}", GUI_IMAGE_EXTENSION)),
+        ),
+        1 => qr2m_lib::get_picture_from_resources(
+            security_icon_path
+                .join(format!("sec-warn-128.{}", GUI_IMAGE_EXTENSION))
+                .to_str()
+                .unwrap_or(&format!("theme/color/sec-warn-128.{}", GUI_IMAGE_EXTENSION)),
         ),
         _ => qr2m_lib::get_picture_from_resources(
             security_icon_path
@@ -6208,22 +6240,34 @@ fn create_security_window() -> gtk::ApplicationWindow {
     image.set_pixel_size(128);
     main_sec_box.append(&image);
 
-    let status_label = gtk::Label::new(Some(security_level));
+    let status_text = match security_level {
+        2 => "Verified",
+        1 => "Warning",
+        _ => "Error",
+    };
+
+    let status_label = gtk::Label::new(Some(status_text));
     status_label.set_css_classes(&["h1"]);
     status_label.set_margin_top(10);
     status_label.set_justify(gtk::Justification::Center);
     main_sec_box.append(&status_label);
 
     let security_text = match security_level {
-        "Verified" => {
-            "This application is securely signed with a valid GPG signature, confirming it has not been altered or tampered with since its original build."
+        2 => {
+            "This application is securely signed with both a valid GPG code signature and an application \
+            signature. The code signature verifies that the source code is authenticated and has not been \
+            altered, while the application signature ensures that the final build remains untampered with \
+            after compilation."
         }
-        // "Warn" => {
-        //     "The application's security signature could not be fully verified. While it may still be safe, there is a risk that it has been altered or compromised."
-        // }
+        1 => {
+            "The application's security signature is partially verified. This typically happens when the \
+            application is manually compiled from source rather than obtained from an official release. \
+            While it may still be safe, its integrity after compilation cannot be guaranteed."
+        }
         _ => {
-            "This application has wrong cryptographic signature, which means its authenticity cannot be confirmed.\n\n\
-            If you did not download it from an official source, there is a chance it has been altered or tampered with."
+            "The application's cryptographic signature is invalid or missing, making it impossible to \
+            verify its authenticity. If you did not obtain it from an official source, there is a risk \
+            that it has been modified or tampered with."
         }
     };
 
@@ -6319,3 +6363,46 @@ fn create_security_window() -> gtk::ApplicationWindow {
 
     security_window
 }
+
+// FUTURE NATURE
+//
+// #[derive(Clone, PartialEq, Eq, Hash)]
+// enum SignatureType {
+//     App,
+//     Code,
+// }
+//
+// struct SignatureInfo {
+//     key_id: String,
+//     valid: bool,
+// }
+//
+// struct SecurityLevel {
+//     signatures: std::collections::HashMap<SignatureType, SignatureInfo>,
+// }
+//
+// impl SecurityLevel {
+//     pub fn new() -> Self {
+//         SecurityLevel {
+//             signatures: std::collections::HashMap::new(),
+//         }
+//     }
+//
+//     pub fn add_signature(
+//         &mut self,
+//         sig_type: SignatureType,
+//         key_id: String,
+//         valid: bool,
+//     ) -> Option<SignatureInfo> {
+//         self.signatures
+//             .insert(sig_type, SignatureInfo { key_id, valid })
+//     }
+//
+//     pub fn get_signature(&self, sig_type: &SignatureType) -> Option<&SignatureInfo> {
+//         self.signatures.get(sig_type)
+//     }
+//
+//     pub fn check_signature(&self, key_id: &str) -> bool {
+//         self.signatures.values().any(|sig| sig.key_id == key_id)
+//     }
+// }
