@@ -19,6 +19,17 @@ CC-BY-NC-ND-4.0  [2023-2025]  Control Owl
 This project is licensed under a **Creative Commons Attribution Non Commercial No Derivatives 4.0 International license**. Check the [deed](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en).
 
 
+## Security
+
+To ensure the authenticity and integrity of this application, I've implemented GPG signature verification for both the source code and the final compiled application.
+
+
+### How It Works (still developing)
+
+- Code Signature: Control Owl [2524C8FEB60EFCB0](https://keys.openpgp.org/search?q=2524C8FEB60EFCB0) – Ensures that the source code in this repository is legitimate and has not been altered.
+- Build Signature: QR2M [99204764AC6B6A44](https://keys.openpgp.org/search?q=99204764AC6B6A44) – Ensures that the final compiled application has not been modified after building. This prevents tampering before distribution.
+
+
 ## Project status
 
 | **Security Status** |
