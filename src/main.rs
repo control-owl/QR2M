@@ -185,34 +185,28 @@ impl GuiState {
             Some(level) => match level.as_str() {
                 "Verified" => qr2m_lib::get_texture_from_resource(
                     security_icon_path
-                        .join("sec-good.svg")
+                        .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
                         .to_str()
-                        .unwrap_or("theme/color/sec-good.svg"),
+                        .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
                 ),
-                // "Error" => qr2m_lib::get_texture_from_resource(
-                //     security_icon_path
-                //         .join("sec-error.svg")
-                //         .to_str()
-                //         .unwrap_or("theme/color/sec-error.svg"),
-                // ),
                 "Warn" => qr2m_lib::get_texture_from_resource(
                     security_icon_path
-                        .join("sec-warn.svg")
+                        .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
                         .to_str()
-                        .unwrap_or("theme/color/sec-warn.svg"),
+                        .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
                 ),
                 _ => qr2m_lib::get_texture_from_resource(
                     security_icon_path
-                        .join("sec-error.svg")
+                        .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
                         .to_str()
-                        .unwrap_or("theme/color/sec-error.svg"),
+                        .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
                 ),
             },
             None => qr2m_lib::get_texture_from_resource(
                 security_icon_path
-                    .join("sec-error.svg")
+                    .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
                     .to_str()
-                    .unwrap_or("theme/color/sec-error.svg"),
+                    .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
             ),
         };
 
@@ -1530,7 +1524,7 @@ async fn main() {
 
     print_program_info();
 
-    let security_level = verify_signature();
+    let security_level = verify_gpg_app_signature();
 
     os::detect_os_and_user_dir();
 
@@ -6071,7 +6065,10 @@ fn get_active_app_feature() -> &'static str {
     }
 }
 
-fn verify_signature() -> String {
+fn verify_gpg_app_signature() -> String {
+    #[cfg(debug_assertions)]
+    println!("[+] {}", &t!("log.verify_gpg_app_signature").to_string());
+
     let feature = get_active_app_feature();
     let sig_name = format!("{}-{}.sig", APP_NAME.unwrap(), feature);
     let app_executable = std::env::current_exe().expect("Failed to get current executable path");
@@ -6091,29 +6088,27 @@ fn verify_signature() -> String {
             .expect("Failed to execute GPG verification");
 
         if !status.success() {
-            eprintln!(
-                "Signature verification failed! Possible tampering detected: {}",
-                app_executable.to_string_lossy()
-            );
+            eprintln!("Signature verification failed! Try to generate new a one...");
 
-            eprintln!("Try to generate new a one...");
             let _ = std::fs::remove_file(&sig_full_path);
 
             let status = generate_new_app_signature(&app_executable, &sig_full_path);
 
-            if !status.success() {
-                eprintln!(
-                    "GPG signing failed for {}. No secret key found",
-                    app_executable.to_string_lossy()
-                );
-                String::from("Error")
-            } else {
+            dbg!(&status);
+
+            if status {
                 println!(
                     "Signature created successfully. Signature verified\n{}",
                     &status
                 );
 
                 String::from("Verified")
+            } else {
+                eprintln!(
+                    "GPG signing failed for {}. No secret key found",
+                    app_executable.to_string_lossy()
+                );
+                String::from("Error")
             }
         } else {
             println!("Signature verification succeeded. Running application...");
@@ -6125,24 +6120,24 @@ fn verify_signature() -> String {
 
         let status = generate_new_app_signature(&app_executable, &sig_full_path);
 
-        if !status.success() {
+        if status {
+            println!("Signature created successfully. Signature verified");
+
+            String::from("Verified")
+        } else {
             eprintln!(
                 "GPG signing failed for {}. No secret key found",
                 app_executable.to_string_lossy()
             );
             String::from("Error")
-        } else {
-            println!("Signature created successfully. Signature verified");
-
-            String::from("Verified")
         }
     }
 }
 
-fn generate_new_app_signature(
-    app_executable: &std::path::Path,
-    sig_full_path: &str,
-) -> std::process::ExitStatus {
+fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
+    #[cfg(debug_assertions)]
+    println!("[+] {}", &t!("log.generate_new_app_signature").to_string());
+
     std::process::Command::new("gpg")
         .args([
             "--detach-sign",
@@ -6154,10 +6149,13 @@ fn generate_new_app_signature(
             &app_executable.to_string_lossy(),
         ])
         .status()
-        .expect("Failed to execute GPG tools")
+        .is_ok()
 }
 
 fn create_security_window() -> gtk::ApplicationWindow {
+    #[cfg(debug_assertions)]
+    println!("[+] {}", &t!("log.create_security_window").to_string());
+
     const COMMIT_HASH: &str = env!("COMMIT_HASH");
     const COMMIT_DATE: &str = env!("COMMIT_DATE");
     const KEY_ID: &str = env!("KEY_ID");
@@ -6191,21 +6189,18 @@ fn create_security_window() -> gtk::ApplicationWindow {
     let security_texture = match security_level {
         "Verified" => qr2m_lib::get_picture_from_resources(
             security_icon_path
-                .join("sec-good-128.svg")
+                .join(format!("sec-good-128.{}", GUI_IMAGE_EXTENSION))
                 .to_str()
-                .unwrap_or("theme/color/sec-good-128.svg"),
+                .unwrap_or(&format!("theme/color/sec-good-128.{}", GUI_IMAGE_EXTENSION)),
         ),
-        // "Warn" => qr2m_lib::get_picture_from_resources(
-        //     security_icon_path
-        //         .join("sec-warn.svg")
-        //         .to_str()
-        //         .unwrap_or("theme/color/sec-warn.svg"),
-        // ),
         _ => qr2m_lib::get_picture_from_resources(
             security_icon_path
-                .join("sec-error-128.svg")
+                .join(format!("sec-error-128.{}", GUI_IMAGE_EXTENSION))
                 .to_str()
-                .unwrap_or("theme/color/sec-error-128.svg"),
+                .unwrap_or(&format!(
+                    "theme/color/sec-error-128.{}",
+                    GUI_IMAGE_EXTENSION
+                )),
         ),
     };
 
