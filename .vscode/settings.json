@@ -20,7 +20,7 @@
   "editor.minimap.enabled": false,
   "workbench.colorCustomizations": {},
   "terminal.integrated.tabs.enabled": false,
-  "workbench.colorTheme": "Visual Studio Dark",
+  "workbench.colorTheme": "Default Light Modern",
   "todo-tree.highlights.defaultHighlight": {
     "type": "text"
   },
@@ -105,4 +105,5 @@
   "outline.collapseItems": "alwaysCollapse",
   "editor.formatOnSave": true,
   "git-graph.referenceLabels.alignment": "Branches (on the left) & Tags (on the right)",
+  "github-actions.workflows.pinned.workflows": [],
 }
