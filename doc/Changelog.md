@@ -1,5 +1,8 @@
+# version 0.79.2
+- security window: beta
+
 # version 0.79.1
-- security window, show some basic build info
+- security window: show some basic build info
 - cargo: rust-i18n updated
 
 # version 0.79.0
