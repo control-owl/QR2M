@@ -477,6 +477,37 @@ UI:
       hr: "Spremiti novčanik u direktorij"
   anu:
     en: "ANU QRNG Downloader"
+  security:
+    en: "Security checker"
+    de: "Sicherheitschecker"
+    hr: "Sigurnosna provjera"
+    level:
+      error:
+        en: "Danger"
+        de: "Gefahr"
+        hr: "Opasnost"
+        message:
+          en: "The application's cryptographic signature is invalid or missing, making it impossible to verify its authenticity. If you did not obtain it from an official source, there is a risk that it has been modified or tampered with."
+          de: "Die kryptografische Signatur der Anwendung ist ungültig oder fehlt, sodass ihre Authentizität nicht überprüft werden kann. Wenn Sie die Signatur nicht aus einer offiziellen Quelle beziehen, besteht das Risiko, dass sie verändert oder manipuliert wurde."
+          hr: "Kriptografski potpis ove aplikacije je nevažeći ili nepostojan, što onemogućuje provjeru njezine autentičnosti. Ako niste nabavili ovaj program iz službenog izvora, postoji rizik da je program izmijenjen ili neovlašteno mijenjan od nepoznate osobe."
+      warning:
+        en: "Warning"
+        de: "Warnung"
+        hr: "Upozorenje"
+        message:
+          en: "The application's security signature is partially verified. This typically happens when the application is manually compiled from source rather than obtained from an official release. While it may still be safe, its integrity after compilation cannot be guaranteed."
+          de: "Die Sicherheitssignatur der Anwendung ist teilweise verifiziert. Dies geschieht typischerweise, wenn die Anwendung manuell aus dem Quellcode kompiliert und nicht aus einer offiziellen Version bezogen wird. Obwohl die Anwendung möglicherweise weiterhin sicher ist, kann ihre Integrität nach der Kompilierung nicht garantiert werden."
+          hr: "Sigurnosni potpis ove aplikacije je djelomično provjeren. To se obično događa kada je aplikacija ručno kompajlirana iz izvora, a ne dobivena sa službene stranice. Iako je kod uvijek siguran, ne može se jamčiti njegov integritet nakon kompilacije."
+      verified:
+        en: "Verified"
+        de: "Verifiziert"
+        hr: "Provjeren"
+        message:
+          en: "This application is securely signed with both a valid GPG code signature and an application signature. The code signature verifies that the source code is authenticated and has not been altered, while the application signature ensures that the final build remains untampered with after compilation."
+          de: "Diese Anwendung ist sowohl mit einer gültigen GPG-Codesignatur als auch mit einer Anwendungssignatur sicher signiert. Die Codesignatur bestätigt, dass der Quellcode authentifiziert und unverändert ist, während die Anwendungssignatur sicherstellt, dass der endgültige Build nach der Kompilierung unverändert bleibt."
+          hr: "Ova je aplikacija sigurno potpisana važećim potpisom GPG koda i potpisom aplikacije. Potpis koda potvrđuje da je izvorni kod autentificiran i da nije mijenjan, dok potpis aplikacije osigurava da konačna verzija ostane neometana nakon kompilacije."
+
+
 error:
   settings:
     config:

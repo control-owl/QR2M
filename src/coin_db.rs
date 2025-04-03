@@ -15,7 +15,7 @@ pub const COIN_STATUS_VERIFIED: u32 = 254; // ECDB Status: 1
 pub const COIN_STATUS_NOT_VERIFIED: u32 = 10; // ECDB Status: 2
 pub const COIN_STATUS_IN_PLAN: u32 = 12; // ECDB Status: 3
 pub const VALID_COIN_STATUS_NAME: &[&str] = &[
-    // Coin status 2024-11-16
+    // Coin status 2025-03-27
     "Not supported",
     "Verified",
     "Not verified",
