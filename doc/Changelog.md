@@ -1,3 +1,7 @@
+# version 0.79.3
+- security window
+- new: busy cursor by address generation
+
 # version 0.79.2
 - security window: beta
 
