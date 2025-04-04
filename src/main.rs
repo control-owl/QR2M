@@ -3510,6 +3510,8 @@ fn create_main_window(
         address_generation_progress_bar,
         #[weak]
         delete_addresses_button_box,
+        #[weak]
+        window,
         move |_| {
             let buffer = master_private_key_text.buffer();
             let start_iter = buffer.start_iter();
@@ -3574,6 +3576,9 @@ fn create_main_window(
             let progress_status = std::sync::Arc::new(std::sync::Mutex::new(0.0));
 
             let start_time = std::time::Instant::now();
+
+            let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
+            window.set_cursor(busy_cursor.as_ref());
 
             let address_loop = tokio::spawn(async move {
                 let mut handles = vec![];
@@ -3785,6 +3790,8 @@ fn create_main_window(
 
                             stop_addresses_button_box.set_visible(false);
                             delete_addresses_button_box.set_visible(true);
+
+                            window.set_cursor(None);
 
                             return glib::ControlFlow::Break;
                         }
@@ -4081,13 +4088,18 @@ fn create_main_window(
         address_start_spinbutton,
         #[weak]
         address_generation_progress_bar,
+        #[weak]
+        window,
         move |_| {
+            let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
+            window.set_cursor(busy_cursor.as_ref());
             address_store.remove_all();
             CRYPTO_ADDRESS.clear();
             address_start_spinbutton.set_text("0");
             address_generation_progress_bar.set_fraction(0.0);
             address_generation_progress_bar.set_show_text(false);
             delete_addresses_button_box.set_visible(false);
+            window.set_cursor(None);
         }
     ));
 
@@ -4100,7 +4112,11 @@ fn create_main_window(
         delete_addresses_button_box,
         #[weak]
         stop_addresses_button_box,
+        #[weak]
+        window,
         move |_| {
+            window.set_cursor(None);
+
             if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
                 cancel_tx.send(true).ok();
                 handle.abort();
