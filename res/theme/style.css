@@ -51,7 +51,7 @@
     border-radius: 5px;
     font-family: Arial, sans-serif;
     font-size: large;
-    /* font-weight: bold; */
+    font-weight: bold;
 }
 
 .security-error {
