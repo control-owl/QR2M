@@ -3,7 +3,7 @@
 const CONTROL_OWL_KEY_ID: &str = "2524C8FEB60EFCB0";
 const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B60E FCB0";
 const QR2M_KEY_ID: &str = "99204764AC6B6A44";
-// const QR2M_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
+const QR2M_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -6088,18 +6088,13 @@ fn check_security_level() -> u8 {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.check_security_level").to_string());
 
-    //     let mut security = SecurityLevel::new();
-    //
-    //     security.add_signature(SignatureType::App, QR2M_KEY_ID.to_string(), true);
-    //     security.add_signature(SignatureType::Code, CONTROL_OWL_KEY_ID.to_string(), true);
-
     let mut security_level: u8 = 0;
 
     if KEY_ID == CONTROL_OWL_KEY_ID {
-        let _ = security_level.saturating_add(1);
-    } else {
-        let _ = security_level.saturating_sub(1);
+        security_level += 1;
     }
+
+    dbg!(&security_level);
 
     let feature = get_active_app_feature();
 
@@ -6110,7 +6105,7 @@ fn check_security_level() -> u8 {
         .expect("Failed to extract executable directory");
     let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
 
-    security_level = if std::path::Path::new(&sig_full_path).exists() {
+    if std::path::Path::new(&sig_full_path).exists() {
         let status = std::process::Command::new("gpg")
             .args([
                 "--verify",
@@ -6137,18 +6132,18 @@ fn check_security_level() -> u8 {
                     &status
                 );
 
-                1
+                security_level += 1
             } else {
                 #[cfg(debug_assertions)]
                 eprintln!("\t- App signing failed. No secret key found",);
 
-                0
+                let _ = security_level.saturating_sub(1);
             }
         } else {
             #[cfg(debug_assertions)]
             println!("\t- App signature verification succeeded");
 
-            1
+            security_level += 1;
         }
     } else {
         #[cfg(debug_assertions)]
@@ -6160,12 +6155,12 @@ fn check_security_level() -> u8 {
             #[cfg(debug_assertions)]
             println!("\t- App signature created successfully");
 
-            1
+            security_level += 1;
         } else {
             #[cfg(debug_assertions)]
             eprintln!("\t- GPG signing failed for. No secret key found",);
 
-            0
+            let _ = security_level.saturating_sub(1);
         }
     };
 
@@ -6201,7 +6196,7 @@ fn create_security_window(
     let security_level = gui_state.borrow().security_level.unwrap_or(0);
 
     let security_window = gtk::ApplicationWindow::builder()
-        .title(t!("UI.main.security").to_string())
+        .title(t!("UI.security").to_string())
         .default_width(400)
         .default_height(600)
         .resizable(false)
@@ -6247,9 +6242,9 @@ fn create_security_window(
     main_sec_box.append(&image);
 
     let status_text = match security_level {
-        2 => "Verified",
-        1 => "Warning",
-        _ => "Error",
+        2 => &t!("UI.security.level.verified"),
+        1 => &t!("UI.security.level.warning"),
+        _ => &t!("UI.security.level.error"),
     };
 
     let status_label = gtk::Label::new(Some(status_text));
@@ -6259,22 +6254,9 @@ fn create_security_window(
     main_sec_box.append(&status_label);
 
     let security_text = match security_level {
-        2 => {
-            "This application is securely signed with both a valid GPG code signature and an application \
-            signature. The code signature verifies that the source code is authenticated and has not been \
-            altered, while the application signature ensures that the final build remains untampered with \
-            after compilation."
-        }
-        1 => {
-            "The application's security signature is partially verified. This typically happens when the \
-            application is manually compiled from source rather than obtained from an official release. \
-            While it may still be safe, its integrity after compilation cannot be guaranteed."
-        }
-        _ => {
-            "The application's cryptographic signature is invalid or missing, making it impossible to \
-            verify its authenticity. If you did not obtain it from an official source, there is a risk \
-            that it has been modified or tampered with."
-        }
+        2 => &t!("UI.security.level.verified.message"),
+        1 => &t!("UI.security.level.warning.message"),
+        _ => &t!("UI.security.level.error.message"),
     };
 
     let detail_label = gtk::Label::new(Some(security_text));
@@ -6302,6 +6284,7 @@ fn create_security_window(
             KEY_ID
         }
     )));
+
     build_details.set_margin_top(5);
     build_details.set_justify(gtk::Justification::Left);
     main_sec_box.append(&build_details);
@@ -6335,25 +6318,50 @@ fn create_security_window(
         main_sec_box.append(&not_signed_label);
     }
 
-    let gpg_key_label = gtk::Label::new(Some("Control Owl's GPG key:"));
-    gpg_key_label.set_margin_top(10);
-    main_sec_box.append(&gpg_key_label);
+    let our_key_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let control_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let qr2m_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    our_key_box.append(&control_box);
+    our_key_box.append(&qr2m_box);
 
-    let web_gpg_checker = format!("https://keys.openpgp.org/search?q={}", CONTROL_OWL_KEY_ID);
+    let control_owl_name = gtk::Label::new(Some("Control Owl:"));
+    control_owl_name.set_margin_top(10);
+    control_box.append(&control_owl_name);
 
-    let key_link = gtk::LinkButton::builder()
-        .uri(web_gpg_checker)
+    let control_online_checker =
+        format!("https://keys.openpgp.org/search?q={}", CONTROL_OWL_KEY_ID);
+
+    let control_link = gtk::LinkButton::builder()
+        .uri(control_online_checker)
         .label(CONTROL_OWL_KEY_ID)
         .build();
 
-    key_link.set_halign(gtk::Align::Center);
-    main_sec_box.append(&key_link);
+    control_link.set_halign(gtk::Align::Center);
+    control_box.append(&control_link);
 
-    let fingerprint_label = gtk::Label::new(Some(CONTROL_OWL_FINGERPRINT));
-    // fingerprint_label.set_margin_top(10);
-    main_sec_box.append(&fingerprint_label);
+    let control_fingerprint = gtk::Label::new(Some(CONTROL_OWL_FINGERPRINT));
+    control_box.append(&control_fingerprint);
 
-    let close_button = gtk::Button::with_label("Close");
+    let qr2m_label = gtk::Label::new(Some("QR2M:"));
+    qr2m_label.set_margin_top(10);
+    qr2m_box.append(&qr2m_label);
+
+    let qr2m_online_checker = format!("https://keys.openpgp.org/search?q={}", QR2M_KEY_ID);
+
+    let qr2m_link = gtk::LinkButton::builder()
+        .uri(qr2m_online_checker)
+        .label(QR2M_KEY_ID)
+        .build();
+
+    qr2m_link.set_halign(gtk::Align::Center);
+    qr2m_box.append(&qr2m_link);
+
+    let qr2m_fingerprint_label = gtk::Label::new(Some(QR2M_FINGERPRINT));
+    qr2m_box.append(&qr2m_fingerprint_label);
+
+    main_sec_box.append(&our_key_box);
+
+    let close_button = gtk::Button::with_label(&t!("UI.element.button.close"));
 
     close_button.connect_clicked(clone!(
         #[strong]
