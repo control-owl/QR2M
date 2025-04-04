@@ -477,6 +477,78 @@ UI:
       hr: "Spremiti novčanik u direktorij"
   anu:
     en: "ANU QRNG Downloader"
+  security:
+    en: "Security checker"
+    de: "Sicherheitschecker"
+    hr: "Sigurnosna provjera"
+    level:
+      error:
+        en: "Danger"
+        de: "Gefahr"
+        hr: "Opasnost"
+        message:
+          en: "The application's cryptographic signature is invalid or missing, making it impossible to verify its authenticity. If you did not obtain this software from an official source, there is a risk that it has been modified or tampered with."
+          de: "Die kryptografische Signatur der Anwendung ist ungültig oder fehlt. Daher ist eine Überprüfung ihrer Authentizität nicht möglich. Wenn Sie die Software nicht aus einer offiziellen Quelle beziehen, besteht das Risiko, dass sie verändert oder manipuliert wurde."
+          hr: "Kriptografski potpis aplikacije je nevažeći ili nedostaje, što onemogućuje provjeru njezine autentičnosti. Ako ovaj softver niste nabavili iz službenog izvora, postoji rizik da je modificiran ili neovlašteno mijenjan."
+      warning:
+        en: "Warning"
+        de: "Warnung"
+        hr: "Upozorenje"
+        message:
+          en: "The security signature of the application has been partially verified. This usually happens when the application was manually compiled from source, rather than obtained from an official release. While it may still be secure, its integrity after compilation cannot be guaranteed."
+          de: "Die Sicherheitssignatur der Anwendung wurde teilweise überprüft. Dies geschieht normalerweise, wenn die Anwendung manuell aus dem Quellcode kompiliert und nicht aus einer offiziellen Version übernommen wurde. Obwohl die Anwendung möglicherweise weiterhin sicher ist, kann ihre Integrität nach der Kompilierung nicht garantiert werden."
+          hr: "Sigurnosni potpis ove aplikacije je djelomično provjeren. To se obično događa kada je aplikacija ručno kompajlirana iz izvora, a ne dobivena sa službene stranice. Iako je kod možda siguran, ne može se jamčiti njegov integritet nakon kompilacije."
+      verified:
+        en: "Verified"
+        de: "Verifiziert"
+        hr: "Provjeren"
+        message:
+          en: "This application is securely signed with both a valid GPG code signature and an application signature. The code signature verifies that the source code is authenticated and has not been altered, while the application signature ensures that the final build remains untampered with after compilation."
+          de: "Diese Anwendung ist sowohl mit einer gültigen GPG-Codesignatur als auch mit einer Anwendungssignatur sicher signiert. Die Codesignatur bestätigt, dass der Quellcode authentifiziert und unverändert ist, während die Anwendungssignatur sicherstellt, dass der endgültige Build nach der Kompilierung unverändert bleibt."
+          hr: "Ova je aplikacija sigurno potpisana važećim potpisom GPG koda i potpisom aplikacije. Potpis koda potvrđuje da je izvorni kod autentificiran i da nije mijenjan, dok potpis aplikacije osigurava da konačna verzija ostane neometana nakon kompilacije."
+    keys:
+      verified:
+        en: "This key is verified and belongs to the official developer."
+        de: "Dieser Schlüssel ist verifiziert und gehört dem offiziellen Entwickler."
+        hr: "Ovaj je ključ provjeren i pripada službenom programeru."
+      error:
+        en: "This key is not recognized. Proceed with extreme caution !!!"
+        de: "Dieser Schlüssel wird nicht erkannt. Gehen Sie mit äußerster Vorsicht vor !!!"
+        hr: "Ovaj ključ nije prepoznat. Nastavite s velikim oprezom !!!"
+      no_sign:
+        en: "This commit is not signed."
+        de: "Dieses Commit ist nicht signiert."
+        hr: "Ovo preuzimanje nije potpisano."
+    info:
+      build:
+        en: "Build Information:"
+        de: "Build-Informationen:"
+        hr: "Podaci o verziji:"
+    details:
+      hash:
+        en: "Commit hash"
+        de: "Commit-Hash"
+        hr: "Hash aplikacije"
+      date:
+        en: "Commit date"
+        de: "Commit-Datum"
+        hr: "Datum izvršenja"
+      platform:
+        en: "Platform"
+        de: "Plattform"
+        hr: "Platforma"
+      key:
+        en: "Signed with GPG key"
+        de: "Mit GPG-Schlüssel signiert"
+        hr: "Potpisano GPG ključem"
+      no_sign:
+        en: "Not signed"
+        de: "Nicht signiert"
+        hr: "Nije potpisano"
+      developer:
+        en: "Developer's keys:"
+        de: "Entwicklerschlüssel:"
+        hr: "Ključevi programera:"
 error:
   settings:
     config:

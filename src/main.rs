@@ -6265,23 +6265,27 @@ fn create_security_window(
     detail_label.set_justify(gtk::Justification::Center);
     main_sec_box.append(&detail_label);
 
-    let build_info_label = gtk::Label::new(Some("Build Information:"));
+    let build_info_label = gtk::Label::new(Some(&t!("UI.security.info.build")));
     build_info_label.set_css_classes(&["h2"]);
     build_info_label.set_margin_top(20);
     main_sec_box.append(&build_info_label);
 
     let build_details = gtk::Label::new(Some(&format!(
-        "• Commit: {}\n\
-         • Commit Date: {}\n\
-         • Platform: {}\n\
-         • Signed with GPG key: {}",
+        "• {}: {}\n\
+         • {}: {}\n\
+         • {}: {}\n\
+         • {}: {}",
+        t!("UI.security.details.hash"),
         COMMIT_HASH,
+        t!("UI.security.details.date"),
         COMMIT_DATE,
+        t!("UI.security.details.platform"),
         BUILD_TARGET,
+        t!("UI.security.details.key"),
         if KEY_ID == "None" {
-            "Not signed"
+            t!("UI.security.details.no_sign").to_string()
         } else {
-            KEY_ID
+            KEY_ID.to_string()
         }
     )));
 
@@ -6291,26 +6295,21 @@ fn create_security_window(
 
     if KEY_ID != "None" {
         if KEY_ID == CONTROL_OWL_KEY_ID {
-            let verified_message = gtk::Label::new(Some(
-                "This key is verified and belongs to the official developer.",
-            ));
+            let verified_message = gtk::Label::new(Some(&t!("UI.security.keys.verified")));
             // verified_message.set_margin_top(10);
             verified_message.set_wrap(true);
             verified_message.set_css_classes(&["security-verified"]);
             verified_message.set_justify(gtk::Justification::Left);
             main_sec_box.append(&verified_message);
         } else {
-            let error_message = gtk::Label::new(Some(
-                "This key is not recognized. Proceed with extreme caution !!!",
-            ));
-            // error_message.set_margin_top(10);
+            let error_message = gtk::Label::new(Some(&t!("UI.security.keys.error")));
             error_message.set_wrap(true);
             error_message.set_css_classes(&["security-error"]);
             error_message.set_justify(gtk::Justification::Left);
             main_sec_box.append(&error_message);
         }
     } else {
-        let not_signed_label = gtk::Label::new(Some("This commit is not signed."));
+        let not_signed_label = gtk::Label::new(Some(&t!("UI.security.keys.no_sign")));
         // not_signed_label.set_margin_top(10);
         not_signed_label.set_wrap(true);
         not_signed_label.set_css_classes(&["security-error"]);
@@ -6319,13 +6318,17 @@ fn create_security_window(
     }
 
     let our_key_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let our_label = gtk::Label::new(Some(&t!("UI.security.details.developer")));
+    our_label.set_margin_top(10);
+    our_label.set_css_classes(&["h2"]);
+
     let control_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let qr2m_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    our_key_box.append(&our_label);
     our_key_box.append(&control_box);
     our_key_box.append(&qr2m_box);
 
-    let control_owl_name = gtk::Label::new(Some("Control Owl:"));
-    control_owl_name.set_margin_top(10);
+    let control_owl_name = gtk::Label::new(Some("Control Owl"));
     control_box.append(&control_owl_name);
 
     let control_online_checker =
