@@ -3615,6 +3615,10 @@ fn create_main_window(
                                 #[cfg(debug_assertions)]
                                 println!("Address generation aborted (thread {})", thread_id);
 
+                                if !batch.is_empty() {
+                                    tx.send(batch).unwrap_or_default()
+                                }
+
                                 let _ = tp.send(1.0);
                                 return;
                             }
