@@ -151,7 +151,12 @@ pub fn is_valid_entropy(full_entropy: &str) -> bool {
 pub fn get_text_from_resources(file_name: &str) -> String {
     match RES_DIR.get_file(file_name) {
         Some(file) => match std::str::from_utf8(file.contents()) {
-            Ok(text) => text.to_string(),
+            Ok(text) => {
+                // #[cfg(debug_assertions)]
+                // println!("text: {:?}", text);
+
+                text.to_string()
+            }
             Err(err) => {
                 eprintln!("Failed to read {} as UTF-8: {}", file_name, err);
                 String::new()
