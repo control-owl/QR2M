@@ -242,17 +242,17 @@ UI:
           de: "Länge der mnemonischen Passwortphrase"
           hr: "Dužina mnemoničke šifre"
       generate:
-        en: "New entropy"
-        de: "Neue Entropie"
-        hr: "Nova entropija"
+        en: "New seed"
+        de: "Neue Seed"
+        hr: "Novi seed"
         file:
           en: "Select new file"
           de: "Neue Datei auswählen"
           hr: "Odaberi drugu datoteku"
       delete:
-        en: "Delete entropy"
-        de: "Entropie löschen"
-        hr: "Obriši entropiju"
+        en: "Delete seed"
+        de: "Seed löschen"
+        hr: "Obriši seed"
     coin:
       en: "Coin"
       search:

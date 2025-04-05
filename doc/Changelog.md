@@ -1,6 +1,6 @@
 # version 0.79.3
 - security window
-- new: busy cursor by address generation
+- busy cursor by address generation
 
 # version 0.79.2
 - security window: beta
@@ -17,7 +17,7 @@
 
 # version 0.78.0
 - I finally discovered #[cfg(debug_assertions)]
-- new: 3 build systems
+- 3 build systems
     - cargo build           (Build basic features)
     - cargo build --full    (Build with QRNG feature)
     - cargo build --dev     (Only for development and testing)

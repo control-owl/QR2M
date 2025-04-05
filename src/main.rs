@@ -1,13 +1,9 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
-const CONTROL_OWL_KEY_ID: &str = "2524C8FEB60EFCB0";
-const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B60E FCB0";
-const QR2M_KEY_ID: &str = "99204764AC6B6A44";
-const QR2M_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 // #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -24,6 +20,7 @@ use libadwaita as adw;
 use rand::Rng;
 use std::{
     fs::{self, File},
+    hash::{Hash, Hasher},
     io::{self, BufRead, Write},
     time::SystemTime,
 };
@@ -45,6 +42,10 @@ const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
+const CONTROL_OWL_KEY_ID: &str = "2524C8FEB60EFCB0";
+const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B60E FCB0";
+const QR2M_KEY_ID: &str = "99204764AC6B6A44";
+const QR2M_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
 const APP_LANGUAGE: &[&str] = &["English", "Deutsch", "Hrvatski"];
 const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
@@ -74,6 +75,7 @@ const COMMIT_HASH: &str = env!("COMMIT_HASH");
 const COMMIT_DATE: &str = env!("COMMIT_DATE");
 const KEY_ID: &str = env!("KEY_ID");
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
+const SOURCE_HASH: &str = env!("SOURCE_HASH");
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -2085,9 +2087,9 @@ fn create_main_window(
     let mnemonic_passphrase_text = gtk::Entry::new();
     mnemonic_passphrase_text.set_hexpand(true);
 
-    let generate_entropy_button = gtk::Button::new();
-    generate_entropy_button.set_width_request(200);
-    generate_entropy_button.set_label(&t!("UI.main.seed.generate"));
+    let generate_seed_button = gtk::Button::new();
+    generate_seed_button.set_width_request(200);
+    generate_seed_button.set_label(&t!("UI.main.seed.generate"));
 
     let delete_entropy_button = gtk::Button::new();
     delete_entropy_button.set_width_request(200);
@@ -2159,7 +2161,7 @@ fn create_main_window(
     sidebar_seed_header_box.append(&sidebar_seed_header_entropy_options);
     sidebar_seed_header_box.append(&sidebar_seed_header_mnemonic_options);
 
-    sidebar_seed_button_box.append(&generate_entropy_button);
+    sidebar_seed_button_box.append(&generate_seed_button);
     sidebar_seed_button_box.append(&delete_entropy_button);
 
     sidebar_seed_result_box.append(&entropy_box);
@@ -2865,7 +2867,7 @@ fn create_main_window(
     ));
 
     // JUMP: Action: Generate Seed button
-    generate_entropy_button.connect_clicked(clone!(
+    generate_seed_button.connect_clicked(clone!(
         #[strong]
         app_messages_state,
         #[weak]
@@ -2884,7 +2886,16 @@ fn create_main_window(
         master_public_key_text,
         #[weak]
         seed_text,
+        #[weak(rename_to = random_mnemonic_passphrase_button)]
+        buttons["random"],
         move |_| {
+            entropy_text.buffer().set_text("");
+            mnemonic_words_text.buffer().set_text("");
+            seed_text.buffer().set_text("");
+            mnemonic_passphrase_text.buffer().set_text("");
+
+            random_mnemonic_passphrase_button.emit_by_name::<()>("clicked", &[]);
+
             let selected_entropy_source_index = entropy_source_dropdown.selected() as usize;
             let selected_entropy_length_index = entropy_length_dropdown.selected() as usize;
             let selected_entropy_source_value =
@@ -3122,7 +3133,7 @@ fn create_main_window(
 
     entropy_source_dropdown.connect_selected_notify(clone!(
         #[weak]
-        generate_entropy_button,
+        generate_seed_button,
         // #[weak] random_mnemonic_passphrase_button,
         move |entropy_source_dropdown| {
             let value = entropy_source_dropdown.selected() as usize;
@@ -3138,9 +3149,9 @@ fn create_main_window(
             // }
 
             if *source == "File" {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate.file"));
+                generate_seed_button.set_label(&t!("UI.main.seed.generate.file"));
             } else {
-                generate_entropy_button.set_label(&t!("UI.main.seed.generate"));
+                generate_seed_button.set_label(&t!("UI.main.seed.generate"));
             }
         }
     ));
@@ -3683,7 +3694,10 @@ fn create_main_window(
 
                                         batch.push(new_entry);
 
-                                        if batch.len() >= 50 || batch.len() >= address_count_int {
+                                        if batch.len() >= 50
+                                            || batch.len() >= addresses_per_thread
+                                            || batch.len() >= address_count_int
+                                        {
                                             tx.send(batch.clone()).unwrap_or_default();
                                             batch.clear();
                                         }
@@ -5639,11 +5653,11 @@ fn create_about_window() {
     let logo_picture = gtk::Picture::new();
     logo_picture.set_paintable(Some(&pixy));
 
-    let my_license = std::path::Path::new("licenses").join("LICENSE.txt");
-    let app_license = qr2m_lib::get_text_from_resources(my_license.to_str().unwrap());
+    let my_license = std::path::Path::new("licenses").join("QR2M.license");
+    let app_license = qr2m_lib::get_text_from_resources(&my_license.to_string_lossy());
 
-    let their_license = std::path::Path::new("licenses").join("LICENSE-LGPL-2.1.txt");
-    let lgpl_license = qr2m_lib::get_text_from_resources(their_license.to_str().unwrap());
+    let their_license = std::path::Path::new("licenses").join("GTK.license");
+    let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_string_lossy());
 
     let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
 
@@ -5654,6 +5668,18 @@ fn create_about_window() {
     ];
     let comments = they_forced_me.join(" ");
 
+    let my_key = std::path::Path::new("keys").join("Control-Owl-Public-key.asc");
+    let my_public = qr2m_lib::get_text_from_resources(&my_key.to_string_lossy());
+
+    println!("{}", my_public);
+    let author = format!(
+        "{}\n\n\
+        Public key:\n\
+        {}",
+        APP_AUTHOR.unwrap(),
+        my_public,
+    );
+
     let help_window = gtk::AboutDialog::builder()
         .modal(true)
         // .default_width(600)
@@ -5662,7 +5688,7 @@ fn create_about_window() {
         .version(APP_VERSION.unwrap())
         .website("https://www.github.com/control-owl/qr2m")
         .website_label("GitHub project")
-        .authors([APP_AUTHOR.unwrap()])
+        .authors([author])
         .copyright("CC-BY-NC-ND-4.0 [2023-2025] Control Owl")
         .license(licenses)
         .wrap_license(true)
@@ -6104,11 +6130,54 @@ fn get_active_app_feature() -> &'static str {
     }
 }
 
+fn hash_me_baby() -> String {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+
+    let mut paths = Vec::new();
+    x_files(std::path::Path::new("."), &mut paths);
+    paths.sort();
+
+    for path in paths {
+        if let Ok(contents) = std::fs::read(&path) {
+            contents.hash(&mut hasher);
+        }
+    }
+
+    format!("{:x}", hasher.finish())
+}
+
+fn x_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_file() {
+                let path_str = path.to_string_lossy();
+                if !path_str.contains(".git")
+                    && !path_str.contains("target")
+                    && !path_str.contains(".vscode")
+                {
+                    paths.push(path);
+                }
+            } else if path.is_dir() {
+                x_files(&path, paths);
+            }
+        }
+    }
+}
+
 fn check_security_level() -> u8 {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.check_security_level").to_string());
 
     let mut security_level: u8 = 0;
+
+    let current_hash = hash_me_baby();
+
+    if SOURCE_HASH != current_hash {
+        eprintln!("WARNING: Project files have been modified since last commit!");
+        eprintln!("Build hash: {}", SOURCE_HASH);
+        eprintln!("Current hash: {}", current_hash);
+    }
 
     if KEY_ID == CONTROL_OWL_KEY_ID {
         security_level += 1;
@@ -6213,8 +6282,6 @@ fn create_security_window(
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.create_security_window").to_string());
 
-    let security_level = gui_state.borrow().security_level.unwrap_or(0);
-
     let security_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.security").to_string())
         .default_width(400)
@@ -6233,6 +6300,7 @@ fn create_security_window(
 
     let security_icon_path = std::path::Path::new("theme").join("color");
 
+    let security_level = gui_state.borrow().security_level.unwrap_or(0);
     let security_texture = match security_level {
         2 => qr2m_lib::get_picture_from_resources(
             security_icon_path
