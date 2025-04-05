@@ -2095,6 +2095,8 @@ fn create_main_window(
     delete_entropy_button.set_width_request(200);
     delete_entropy_button.set_label(&t!("UI.main.seed.delete"));
 
+    // Lets fucking do it
+    // Copy button!
     let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy")));
     let entropy_text = gtk::TextView::new();
@@ -2104,8 +2106,29 @@ fn create_main_window(
     entropy_text.set_editable(false);
     entropy_text.set_left_margin(5);
     entropy_text.set_top_margin(5);
-    entropy_frame.set_child(Some(&entropy_text));
+
+    let entropy_inner_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    entropy_inner_box.append(&entropy_text);
+
+    let copy_entropy_button = gtk::Button::new();
+    copy_entropy_button.set_icon_name("edit-copy");
+    copy_entropy_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    entropy_inner_box.append(&copy_entropy_button);
+
+    entropy_frame.set_child(Some(&entropy_inner_box));
     entropy_box.append(&entropy_frame);
+
+    copy_entropy_button.connect_clicked(clone!(
+        #[weak]
+        entropy_text,
+        move |copy_entropy_button| {
+            let buffer = entropy_text.buffer();
+            let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+            let display = copy_entropy_button.display();
+            let clipboard = display.clipboard();
+            clipboard.set_text(&text);
+        }
+    ));
 
     let mnemonic_words_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let mnemonic_words_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words")));
@@ -2116,8 +2139,29 @@ fn create_main_window(
     mnemonic_words_text.set_editable(false);
     mnemonic_words_text.set_left_margin(5);
     mnemonic_words_text.set_top_margin(5);
-    mnemonic_words_frame.set_child(Some(&mnemonic_words_text));
+
+    let mnemonic_inner_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    mnemonic_inner_box.append(&mnemonic_words_text);
+
+    let copy_mnemonic_button = gtk::Button::new();
+    copy_mnemonic_button.set_icon_name("edit-copy");
+    copy_mnemonic_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    mnemonic_inner_box.append(&copy_mnemonic_button);
+
+    mnemonic_words_frame.set_child(Some(&mnemonic_inner_box));
     mnemonic_words_box.append(&mnemonic_words_frame);
+
+    copy_mnemonic_button.connect_clicked(clone!(
+        #[weak]
+        mnemonic_words_text,
+        move |copy_mnemonic_button| {
+            let buffer = mnemonic_words_text.buffer();
+            let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+            let display = copy_mnemonic_button.display();
+            let clipboard = display.clipboard();
+            clipboard.set_text(&text);
+        }
+    ));
 
     let seed_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
     let seed_frame = gtk::Frame::new(Some(&t!("UI.main.seed")));
@@ -2128,8 +2172,29 @@ fn create_main_window(
     seed_text.set_editable(false);
     seed_text.set_left_margin(5);
     seed_text.set_top_margin(5);
-    seed_frame.set_child(Some(&seed_text));
+
+    let seed_inner_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    seed_inner_box.append(&seed_text);
+
+    let copy_seed_button = gtk::Button::new();
+    copy_seed_button.set_icon_name("edit-copy");
+    copy_seed_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    seed_inner_box.append(&copy_seed_button);
+
+    seed_frame.set_child(Some(&seed_inner_box));
     seed_box.append(&seed_frame);
+
+    copy_seed_button.connect_clicked(clone!(
+        #[weak]
+        seed_text,
+        move |copy_seed_button| {
+            let buffer = seed_text.buffer();
+            let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+            let display = copy_seed_button.display();
+            let clipboard = display.clipboard();
+            clipboard.set_text(&text);
+        }
+    ));
 
     mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
     mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);

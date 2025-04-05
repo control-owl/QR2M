@@ -1,3 +1,6 @@
+# version 0.80.0
+- copy buttons
+
 # version 0.79.3
 - security window
 - busy cursor by address generation
