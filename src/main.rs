@@ -2370,7 +2370,6 @@ fn create_main_window(
     )));
 
     // Coin treeview
-    // Trying to migrate TreeStore to GObject
     let scrolled_window = gtk::ScrolledWindow::new();
     let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin")));
 
@@ -2529,26 +2528,70 @@ fn create_main_window(
     // Master private keys entries
     let master_keys_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let master_xprv_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.priv")));
-    let master_xpub_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.pub")));
     let master_private_key_text = gtk::TextView::new();
-    let master_public_key_text = gtk::TextView::new();
-
     master_private_key_text.set_editable(false);
-    master_public_key_text.set_editable(false);
     master_private_key_text.set_wrap_mode(gtk::WrapMode::Char);
     master_private_key_text.set_editable(false);
     master_private_key_text.set_left_margin(5);
     master_private_key_text.set_top_margin(5);
+    master_private_key_text.set_hexpand(true);
+
+    let master_xprv_inner_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    master_xprv_inner_box.append(&master_private_key_text);
+
+    let copy_master_xprv_button = gtk::Button::new();
+    copy_master_xprv_button.set_icon_name("edit-copy");
+    copy_master_xprv_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    master_xprv_inner_box.append(&copy_master_xprv_button);
+
+    master_xprv_frame.set_child(Some(&master_xprv_inner_box));
+    master_keys_box.append(&master_xprv_frame);
+
+    copy_master_xprv_button.connect_clicked(clone!(
+        #[weak]
+        master_private_key_text,
+        move |copy_master_xprv_button| {
+            let buffer = master_private_key_text.buffer();
+            let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+            let display = copy_master_xprv_button.display();
+            let clipboard = display.clipboard();
+            clipboard.set_text(&text);
+        }
+    ));
+
+    let master_xpub_frame = gtk::Frame::new(Some(&t!("UI.main.coin.keys.pub")));
+    let master_public_key_text = gtk::TextView::new();
+    master_public_key_text.set_editable(false);
     master_public_key_text.set_wrap_mode(gtk::WrapMode::Char);
     master_public_key_text.set_editable(false);
     master_public_key_text.set_left_margin(5);
     master_public_key_text.set_top_margin(5);
-    master_xprv_frame.set_child(Some(&master_private_key_text));
-    master_xpub_frame.set_child(Some(&master_public_key_text));
-    master_keys_box.append(&master_xprv_frame);
-    master_keys_box.append(&master_xpub_frame);
-    coin_main_content_box.append(&master_keys_box);
+    master_public_key_text.set_hexpand(true);
 
+    let master_xpub_inner_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
+    master_xpub_inner_box.append(&master_public_key_text);
+
+    let copy_master_xpub_button = gtk::Button::new();
+    copy_master_xpub_button.set_icon_name("edit-copy");
+    copy_master_xpub_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    master_xpub_inner_box.append(&copy_master_xpub_button);
+
+    master_xpub_frame.set_child(Some(&master_xpub_inner_box));
+    master_keys_box.append(&master_xpub_frame);
+
+    copy_master_xpub_button.connect_clicked(clone!(
+        #[weak]
+        master_public_key_text,
+        move |copy_master_xpub_button| {
+            let buffer = master_public_key_text.buffer();
+            let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+            let display = copy_master_xpub_button.display();
+            let clipboard = display.clipboard();
+            clipboard.set_text(&text);
+        }
+    ));
+
+    coin_main_content_box.append(&master_keys_box);
     stack.add_titled(&coin_main_box, Some("sidebar-coin"), &t!("UI.main.coin"));
 
     // JUMP: Sidebar 3: Address
@@ -2902,7 +2945,7 @@ fn create_main_window(
                 let end_iter = buffer.end_iter();
                 let full_entropy = buffer.text(&start_iter, &end_iter, false);
 
-                if full_entropy != "" {
+                if !full_entropy.is_empty() {
                     let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
                     mnemonic_words_text.buffer().set_text(&mnemonic_words);
 
