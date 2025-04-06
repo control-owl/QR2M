@@ -5762,9 +5762,10 @@ fn create_settings_window(
                 move |response| match response {
                     Ok(1) => {
                         let lock_app_messages = app_messages_state.borrow();
+                        let ok = t!("UI.button.ok").to_string();
 
                         match reset_user_settings() {
-                            Ok(result) if result == t!("UI.button.ok").to_string() => {
+                            Ok(result) if result == ok => {
                                 settings_window.close();
 
                                 AppSettings::load_settings();
