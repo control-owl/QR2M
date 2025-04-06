@@ -1,8 +1,10 @@
 # version 0.80.0
 - copy buttons
+- security window: scoring
+- internal repository cleaned
 
 # version 0.79.3
-- security window
+- security window: translations
 - busy cursor by address generation
 
 # version 0.79.2

@@ -103,21 +103,21 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 ## Screenshots
 
 ### Generate seed
-![Screenshot](./doc/preview/0.41.1-1.png "Preview")
+![Screenshot](./.github/preview/0.41.1-1.png "Preview")
 
 ### Generate master keys
-![Screenshot](./doc/preview/0.41.1-2.png "Preview")
+![Screenshot](./.github/preview/0.41.1-2.png "Preview")
 
 ### Generate addresses
-![Screenshot](./doc/preview/0.41.1-3.png "Preview")
+![Screenshot](./.github/preview/0.41.1-3.png "Preview")
 
 ### Settings
-![Screenshot](./doc/preview/0.41.1-4.png "Preview")
+![Screenshot](./.github/preview/0.41.1-4.png "Preview")
 
 
 ## Security
 
-To ensure the authenticity and integrity of this application, I've implemented GPG signature verification for both the source code and the final compiled application.
+To ensure the authenticity and integrity of this application, I've implemented GPG signature verification for both the source code and the final compiled application. Both public keys can be always find in project directory: `res/keys`
 
 ### How It Works (still developing)
 

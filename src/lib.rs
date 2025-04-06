@@ -1,7 +1,5 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
-// module = "QRNG Library"
 // license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
-// version = "2025-03-30"
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -9,6 +7,7 @@ use gtk::{gdk_pixbuf, glib, prelude::*};
 use gtk4 as gtk;
 use include_dir::{Dir, include_dir};
 use sha2::{Digest, Sha256, Sha512};
+use std::io::{self, Write};
 
 const APP_DEFAULT_BUTTON_HEIGHT: u8 = 24;
 const APP_DEFAULT_BUTTON_WIDTH: u8 = 24;
@@ -146,6 +145,35 @@ pub fn is_valid_entropy(full_entropy: &str) -> bool {
         && entropy.chars().all(|c| c == '0' || c == '1')
 }
 
+pub fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {
+    if !path.starts_with("m/") {
+        return Err("Path must start with 'm/'");
+    }
+
+    let segments: Vec<&str> = path[2..].split('/').collect();
+
+    if segments.len() > 5 {
+        return Err("Too many segments for u64");
+    }
+
+    let mut result: u64 = 0;
+
+    for (i, segment) in segments.iter().enumerate() {
+        let is_hardened = segment.ends_with('\'');
+        let num_str = segment.trim_end_matches('\'');
+        let index: u32 = num_str.parse().map_err(|_| "Invalid number in path")?;
+
+        let value = if is_hardened {
+            index + 0x80000000
+        } else {
+            index
+        };
+
+        result |= (value as u64) << (48 - i * 12);
+    }
+
+    Ok(result.to_string())
+}
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 pub fn get_text_from_resources(file_name: &str) -> String {
@@ -298,3 +326,48 @@ pub fn setup_css() {
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+pub fn save_config_to_file(
+    local_config_file: &std::path::PathBuf,
+    toml_str: &str,
+) -> std::io::Result<()> {
+    let mut file = std::fs::File::create(local_config_file).map_err(|_err| {
+        #[cfg(debug_assertions)]
+        eprintln!("\t- Failed to create config file: {}", _err);
+        std::io::Error::new(std::io::ErrorKind::Other, "Failed to create config file")
+    })?;
+
+    file.write_all(toml_str.as_bytes()).map_err(|_err| {
+        #[cfg(debug_assertions)]
+        eprintln!("\t- Failed to write to config file: {}", _err);
+
+        std::io::Error::new(std::io::ErrorKind::Other, "Failed to write to config file")
+    })?;
+
+    #[cfg(debug_assertions)]
+    println!(
+        "\t- Config file written successfully: {:?}",
+        local_config_file
+    );
+
+    Ok(())
+}
+
+pub fn read_config_from_file(local_config_file: &std::path::PathBuf) -> std::io::Result<String> {
+    std::fs::read_to_string(local_config_file).map_err(|_err| {
+        #[cfg(debug_assertions)]
+        eprintln!("\t- Failed to read config file: {}", _err);
+
+        std::io::Error::new(io::ErrorKind::NotFound, "Failed to read config file")
+    })
+}
+
+pub fn get_active_app_feature() -> &'static str {
+    if cfg!(feature = "dev") {
+        "Dev"
+    } else if cfg!(feature = "full") {
+        "Full"
+    } else {
+        "Basic"
+    }
+}

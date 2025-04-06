@@ -23,11 +23,11 @@ fn main() {
 
         println!("cargo:rustc-env=COMMIT_HASH={}", commit_hash);
         println!("cargo:rustc-env=COMMIT_DATE={}", commit_date);
-        println!("cargo:rustc-env=KEY_ID={}", key_id);
+        println!("cargo:rustc-env=COMMIT_KEY={}", key_id);
     } else {
         println!("cargo:rustc-env=COMMIT_HASH=Unknown");
         println!("cargo:rustc-env=COMMIT_DATE=Unknown");
-        println!("cargo:rustc-env=KEY_ID=None");
+        println!("cargo:rustc-env=COMMIT_KEY=None");
     }
 
     let source_hash = hash_me_baby();

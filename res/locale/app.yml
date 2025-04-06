@@ -153,28 +153,42 @@ UI:
         en: "ANU"
       proxy:
         en: "Proxy"
-  element:
-    button:
-      open:
-        en: "Open"
-        de: "Öffnen"
-        hr: "Otvoriti"
-      save:
-        en: "Save"
-        de: "Speichern"
-        hr: "Spremiti"
-      cancel:
-        en: "Cancel"
-        de: "Abbrechen"
-        hr: "Otkazati"
-      default:
-        en: "Default config"
-        de: "Standardkonfiguration"
-        hr: "Standardne postavke"
-      close:
-        en: "Close"
-        de: "Schließen"
-        hr: "Zatvori"
+    reset:
+      title:
+        en: "Configuration reset"
+        de: "Konfiguration zurückgesetzt"
+        hr: "Reset konfiguracije"
+      message:
+        en: "Do you really want to reset config?"
+        de: "Möchten Sie die Konfiguration wirklich zurücksetzen?"
+        hr: "Želite li stvarno resetirati konfiguraciju?"
+  button:
+    open:
+      en: "Open"
+      de: "Öffnen"
+      hr: "Otvoriti"
+    save:
+      en: "Save"
+      de: "Speichern"
+      hr: "Spremiti"
+    cancel:
+      en: "Cancel"
+      de: "Abbrechen"
+      hr: "Otkazati"
+    default:
+      en: "Default config"
+      de: "Standardkonfiguration"
+      hr: "Standardne postavke"
+    close:
+      en: "Close"
+      de: "Schließen"
+      hr: "Zatvori"
+    copy:
+      en: "Copy"
+      de: "Kopieren"
+      hr: "Kopirati"
+    ok:
+      en: "OK"
   about:
     description:
       en: "(Q)RNG crypto key generator"
@@ -475,11 +489,15 @@ UI:
       en: "Save wallet in directory"
       de: "Wallet im Verzeichnis speichern"
       hr: "Spremiti novčanik u direktorij"
+    gtk:
+      en: "This application uses GTK4 for its GUI. GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later. For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab."
+      de: "Diese Anwendung verwendet GTK4 für die grafische Benutzeroberfläche. GTK4 ist unter der GNU Lesser General Public License (LGPL) Version 2.1 oder höher lizenziert. Weitere Informationen zur LGPL-2.1-Lizenz und Ihren Rechten finden Sie auf der Registerkarte „Lizenz“."
+      hr: "Ova aplikacija koristi GTK4 za svoj GUI. GTK4 je licenciran pod GNU Lesser General Public License (LGPL) verzijom 2.1 ili novijom. Za više pojedinosti o licenci LGPL-2.1 i vašim pravima prema ovoj licenci, pogledajte karticu Licenca."
   anu:
     en: "ANU QRNG Downloader"
   security:
-    en: "Security checker"
-    de: "Sicherheitschecker"
+    en: "Security check"
+    de: "Sicherheitscheck"
     hr: "Sigurnosna provjera"
     level:
       error:
@@ -688,7 +706,7 @@ error:
         hr: "Neispravna WIF dužina: '%{value}'"
     master:
       en: "Before creating an address, please create master keys"
-      de: "Bitte generieren Sie die Masterkeys, bevor Sie die Adress generieren "
+      de: "Bitte generieren Sie die Masterschlüssel, bevor Sie die Adresse generieren "
       hr: "Adresa može biti generiran tek kada napravite master ključeve"
     maximum:
       en: "There are no more addresses"
@@ -711,110 +729,3 @@ error:
       en: "Problem with sending wallet to an app"
       de: "Problem beim Senden der Wallet in der App"
       hr: "Problem sa slanjem novčanika u aplikaciji"
-log:
-  generate_entropy:
-    en: "Generating entropy:"
-  generate_entropy_checksum:
-    en: "Generating entropy checksum:"
-  generate_mnemonic_words:
-    en: "Generating mnemonic words:"
-  generate_bip39_seed:
-    en: "Generating seed:"
-  generate_entropy_from_file:
-    en: "Generating entropy from file"
-  derive_master_keys:
-    en: "Generating master keys"
-  hmac_sha512:
-    en: "Generating hmac-sha512 hash"
-  sha256_hash:
-    en: "Generating sha256 hash"
-  calculate_checksum:
-    en: "Calculating checksum"
-  create_coin_store:
-    en: "Creating coin store"
-  create_coin_completion_model:
-    en: "Creating coin completion model"
-  create_coin_database:
-    en: "Creating coin database"
-  load_icon_bytes:
-    en: "Loading icon"
-  get_window_theme_icons:
-    en: "Loading theme icons:"
-  create_settings_window:
-    en: "Creating settings window"
-  create_about_window:
-    en: "Creating about window"
-  update_derivation_label:
-    en: "Updating derivation label"
-  create_main_window:
-    en: "Creating main window"
-  create_log_window:
-    en: "Creating log window"
-  get_entropy_from_anu:
-    en: "Connecting to ANU API"
-  fetch_anu_qrng_data:
-    en: "Fetching ANU data"
-  load_last_anu_request:
-    en: "Loading last ANU request"
-  create_anu_timestamp:
-    en: "Creating ANU timestamp"
-  write_api_response_to_log:
-    en: "Writing ANU response to log"
-  extract_uint8_data:
-    en: "Extracting uint8 data from ANU API"
-  process_uint8_data:
-    en: "Processing uint8 data"
-  derive_child_key:
-    en: "Deriving child keys"
-  derive_from_path:
-    en: "Deriving from HD path"
-  generate_address:
-    en: "Generating crypto address"
-  sha256_and_ripemd160:
-    en: "Generating sha256 and ripemd160 hash"
-  double_sha256:
-    en: "Generating double sha256 hash"
-  detecting_local_os:
-    en: "Local system"
-  load_settings:
-    en: "Loading user settings"
-  reset_user_settings:
-    en: "Resetting user config"
-  open_wallet_from_file:
-    en: "Opening wallet from a file"
-  save_wallet_to_file:
-    en: "Saving wallet to a file"
-  process_wallet_file_from_path:
-    en: "Processing wallet from a file"
-  parse_wallet_version:
-    en: "Parsing wallet version"  
-  generate_address:
-    en: "Generating crypto addresses"
-  apply_language:
-    en: "Applying new language"
-  reload_gui_icons:
-    en: "Reloading GUI icons"
-  reload_gui_theme:
-    en: "Reloading GUI theme"
-  register_button:
-    en: "Registering GUI button"
-  app_settings:
-    update_value:
-      en: "Updating app settings"
-    save_settings:
-      en: "Saving app settings"
-  app_messages:
-    queue_message:
-      en: "Queuing message"
-    start_message_processor:
-      en: "Starting app message processor"
-    start_next_message:
-      en: "Starting next message"
-    create_info_message:
-      en: "Creating info message"
-  switch_locale:
-    en: "Changing app language"
-  check_local_config:
-    en: "Local config"
-  setup_app_actions:
-    en: "Creating app actions"

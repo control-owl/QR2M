@@ -21,7 +21,7 @@ use rand::Rng;
 use std::{
     fs::{self, File},
     hash::{Hash, Hasher},
-    io::{self, BufRead, Write},
+    io::{self, BufRead},
     time::SystemTime,
 };
 
@@ -73,7 +73,7 @@ const APP_LOG_LEVEL: &[&str] = &["Standard", "Verbose", "Ultimate"];
 const GUI_IMAGE_EXTENSION: &str = if cfg!(windows) { "png" } else { "svg" };
 const COMMIT_HASH: &str = env!("COMMIT_HASH");
 const COMMIT_DATE: &str = env!("COMMIT_DATE");
-const KEY_ID: &str = env!("KEY_ID");
+const COMMIT_KEY: &str = env!("COMMIT_KEY");
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const SOURCE_HASH: &str = env!("SOURCE_HASH");
 
@@ -98,7 +98,7 @@ struct GuiState {
         std::cell::RefCell<std::collections::HashMap<String, Vec<std::rc::Rc<gtk::Button>>>>,
     >,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
-    security_level: Option<u8>,
+    security_level: Option<SecurityLevel>,
 }
 
 impl GuiState {
@@ -187,15 +187,16 @@ impl GuiState {
         }
 
         let security_icon_path = std::path::Path::new("theme").join("color");
+
         let security_texture = match &self.security_level {
-            Some(level) => match level {
-                2 => qr2m_lib::get_texture_from_resource(
+            Some(level) => match level.score {
+                100 => qr2m_lib::get_texture_from_resource(
                     security_icon_path
                         .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
                         .to_str()
                         .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
                 ),
-                1 => qr2m_lib::get_texture_from_resource(
+                75 => qr2m_lib::get_texture_from_resource(
                     security_icon_path
                         .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
                         .to_str()
@@ -1020,7 +1021,7 @@ impl AppSettings {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
-        let config_str = match read_config_from_file(&local_config_file) {
+        let config_str = match qr2m_lib::read_config_from_file(&local_config_file) {
             Ok(config) => config,
             Err(_) => {
                 eprintln!("Failed to read config, using defaults.");
@@ -1112,43 +1113,11 @@ impl AppSettings {
 
         let toml_str = doc.to_string();
 
-        if let Err(_err) = save_config_to_file(&local_config_file, &toml_str) {
+        if let Err(_err) = qr2m_lib::save_config_to_file(&local_config_file, &toml_str) {
             #[cfg(debug_assertions)]
             eprintln!("\t- Error saving config file: {}", _err);
         };
     }
-}
-
-fn save_config_to_file(local_config_file: &std::path::PathBuf, toml_str: &str) -> io::Result<()> {
-    let mut file = fs::File::create(local_config_file).map_err(|_err| {
-        #[cfg(debug_assertions)]
-        eprintln!("\t- Failed to create config file: {}", _err);
-        io::Error::new(io::ErrorKind::Other, "Failed to create config file")
-    })?;
-
-    file.write_all(toml_str.as_bytes()).map_err(|_err| {
-        #[cfg(debug_assertions)]
-        eprintln!("\t- Failed to write to config file: {}", _err);
-
-        io::Error::new(io::ErrorKind::Other, "Failed to write to config file")
-    })?;
-
-    #[cfg(debug_assertions)]
-    println!(
-        "\t- Config file written successfully: {:?}",
-        local_config_file
-    );
-
-    Ok(())
-}
-
-fn read_config_from_file(local_config_file: &std::path::PathBuf) -> io::Result<String> {
-    fs::read_to_string(local_config_file).map_err(|_err| {
-        #[cfg(debug_assertions)]
-        eprintln!("\t- Failed to read config file: {}", _err);
-
-        io::Error::new(io::ErrorKind::NotFound, "Failed to read config file")
-    })
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -1375,7 +1344,7 @@ impl AppMessages {
             _ => message_box.set_css_classes(&["info-message"]),
         }
 
-        let close_button = gtk::Button::with_label(&t!("UI.element.button.close"));
+        let close_button = gtk::Button::with_label(&t!("UI.button.close"));
         let gesture = gtk::GestureClick::new();
 
         gesture.connect_pressed(clone!(
@@ -1521,6 +1490,143 @@ impl FieldValue {
     }
 }
 
+mod address_implementation {
+    use glib::{
+        ParamSpecBuilderExt,
+        prelude::*,
+        subclass::{object::ObjectImpl, types::ObjectSubclass},
+    };
+
+    #[derive(Default)]
+    pub struct AddressDatabase {
+        pub id: std::cell::RefCell<String>,
+        pub coin: std::cell::RefCell<String>,
+        pub path: std::cell::RefCell<String>,
+        pub address: std::cell::RefCell<String>,
+        pub public_key: std::cell::RefCell<String>,
+        pub private_key: std::cell::RefCell<String>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for AddressDatabase {
+        const NAME: &'static str = "AddressDatabase";
+
+        type Type = super::AddressDatabase;
+        type ParentType = glib::Object;
+    }
+
+    impl ObjectImpl for AddressDatabase {
+        fn properties() -> &'static [glib::ParamSpec] {
+            static PROPERTIES: std::sync::OnceLock<Vec<glib::ParamSpec>> =
+                std::sync::OnceLock::new();
+
+            PROPERTIES.get_or_init(|| {
+                vec![
+                    glib::ParamSpecString::builder("id")
+                        .blurb("Id")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("coin")
+                        .blurb("Coin")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("path")
+                        .blurb("Derivation path")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("address")
+                        .blurb("Address")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("public-key")
+                        .blurb("Public key")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                    glib::ParamSpecString::builder("private-key")
+                        .blurb("Private key")
+                        .flags(glib::ParamFlags::READWRITE)
+                        .build(),
+                ]
+            })
+        }
+
+        fn set_property(&self, _id: usize, value: &glib::Value, specification: &glib::ParamSpec) {
+            match specification.name() {
+                "id" => *self.id.borrow_mut() = value.get().unwrap_or_default(),
+                "coin" => *self.coin.borrow_mut() = value.get().unwrap_or_default(),
+                "path" => *self.path.borrow_mut() = value.get().unwrap_or_default(),
+                "address" => *self.address.borrow_mut() = value.get().unwrap_or_default(),
+                "public-key" => *self.public_key.borrow_mut() = value.get().unwrap_or_default(),
+                "private-key" => *self.private_key.borrow_mut() = value.get().unwrap_or_default(),
+                _ => {
+                    #[cfg(debug_assertions)]
+                    eprintln!("Unknown property");
+                }
+            }
+        }
+
+        fn property(&self, _id: usize, specification: &glib::ParamSpec) -> glib::Value {
+            match specification.name() {
+                "id" => self.id.borrow().to_value(),
+                "coin" => self.coin.borrow().to_value(),
+                "path" => self.path.borrow().to_value(),
+                "address" => self.address.borrow().to_value(),
+                "public-key" => self.public_key.borrow().to_value(),
+                "private-key" => self.private_key.borrow().to_value(),
+                _ => unimplemented!(),
+            }
+        }
+    }
+}
+
+glib::wrapper! {
+    pub struct AddressDatabase(ObjectSubclass<address_implementation::AddressDatabase>);
+}
+
+impl AddressDatabase {
+    pub fn new(
+        id: &str,
+        coin: &str,
+        path: &str,
+        address: &str,
+        public_key: &str,
+        private_key: &str,
+    ) -> Self {
+        let builder = glib::Object::builder::<AddressDatabase>()
+            .property("id", id)
+            .property("coin", coin)
+            .property("path", path)
+            .property("address", address)
+            .property("public-key", public_key)
+            .property("private-key", private_key);
+
+        builder.build()
+    }
+}
+
+#[derive(Clone)]
+struct SecurityLevel {
+    code_modified: bool,
+    developer_key: bool,
+    app_key: bool,
+    source_hash: String,
+    current_hash: String,
+    score: u8,
+}
+
+impl SecurityLevel {
+    fn new() -> Self {
+        SecurityLevel {
+            code_modified: false,
+            developer_key: false,
+            app_key: false,
+            source_hash: String::new(),
+            current_hash: String::new(),
+            score: 0,
+        }
+    }
+}
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 #[tokio::main]
@@ -1576,7 +1682,7 @@ fn print_program_info() {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let feature = get_active_app_feature();
+    let feature = qr2m_lib::get_active_app_feature();
 
     println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
     println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
@@ -1734,7 +1840,7 @@ fn create_main_window(
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.create_main_window").to_string());
 
-    let feature = get_active_app_feature();
+    let feature = qr2m_lib::get_active_app_feature();
 
     let window = gtk::ApplicationWindow::builder()
         .application(&application)
@@ -2112,7 +2218,7 @@ fn create_main_window(
 
     let copy_entropy_button = gtk::Button::new();
     copy_entropy_button.set_icon_name("edit-copy");
-    copy_entropy_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    copy_entropy_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     entropy_inner_box.append(&copy_entropy_button);
 
     entropy_frame.set_child(Some(&entropy_inner_box));
@@ -2145,7 +2251,7 @@ fn create_main_window(
 
     let copy_mnemonic_button = gtk::Button::new();
     copy_mnemonic_button.set_icon_name("edit-copy");
-    copy_mnemonic_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    copy_mnemonic_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     mnemonic_inner_box.append(&copy_mnemonic_button);
 
     mnemonic_words_frame.set_child(Some(&mnemonic_inner_box));
@@ -2178,7 +2284,7 @@ fn create_main_window(
 
     let copy_seed_button = gtk::Button::new();
     copy_seed_button.set_icon_name("edit-copy");
-    copy_seed_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    copy_seed_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     seed_inner_box.append(&copy_seed_button);
 
     seed_frame.set_child(Some(&seed_inner_box));
@@ -2546,7 +2652,7 @@ fn create_main_window(
 
     let copy_master_xprv_button = gtk::Button::new();
     copy_master_xprv_button.set_icon_name("edit-copy");
-    copy_master_xprv_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    copy_master_xprv_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     master_xprv_inner_box.append(&copy_master_xprv_button);
 
     master_xprv_frame.set_child(Some(&master_xprv_inner_box));
@@ -2578,7 +2684,7 @@ fn create_main_window(
 
     let copy_master_xpub_button = gtk::Button::new();
     copy_master_xpub_button.set_icon_name("edit-copy");
-    copy_master_xpub_button.set_tooltip_text(Some(&t!("UI.main.button.copy")));
+    copy_master_xpub_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     master_xpub_inner_box.append(&copy_master_xpub_button);
 
     master_xpub_frame.set_child(Some(&master_xpub_inner_box));
@@ -3758,10 +3864,11 @@ fn create_main_window(
                                 format!("{}/{}", derivation_path, current_index)
                             };
 
-                            let coin_path_id = match derivation_path_to_integer(&derivation_path) {
-                                Ok(value) => value,
-                                Err(_) => return,
-                            };
+                            let coin_path_id =
+                                match qr2m_lib::derivation_path_to_integer(&derivation_path) {
+                                    Ok(value) => value,
+                                    Err(_) => return,
+                                };
 
                             match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
                                 dashmap::mapref::entry::Entry::Vacant(_) => {
@@ -5428,9 +5535,9 @@ fn create_settings_window(
     let left_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let right_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
 
-    let save_button = gtk::Button::with_label(&t!("UI.element.button.save"));
-    let cancel_button = gtk::Button::with_label(&t!("UI.element.button.cancel"));
-    let default_button = gtk::Button::with_label(&t!("UI.element.button.default"));
+    let save_button = gtk::Button::with_label(&t!("UI.button.save"));
+    let cancel_button = gtk::Button::with_label(&t!("UI.button.cancel"));
+    let default_button = gtk::Button::with_label(&t!("UI.button.default"));
 
     // JUMP: Save settings button
     save_button.connect_clicked(clone!(
@@ -5639,9 +5746,12 @@ fn create_settings_window(
         move |_| {
             let dialog = gtk::AlertDialog::builder()
                 .modal(true)
-                .message("Reset Configuration")
-                .detail("Do you really want to reset config?")
-                .buttons(gtk::glib::StrV::from(vec!["Cancel", "OK"]))
+                .message(t!("UI.settings.reset.title"))
+                .detail(t!("UI.settings.reset.message"))
+                .buttons(gtk::glib::StrV::from(vec![
+                    t!("UI.button.cancel").to_string(),
+                    t!("UI.button.ok").to_string(),
+                ]))
                 .build();
 
             let gui_state = gui_state.clone();
@@ -5654,7 +5764,7 @@ fn create_settings_window(
                         let lock_app_messages = app_messages_state.borrow();
 
                         match reset_user_settings() {
-                            Ok(result) if result == "OK" => {
+                            Ok(result) if result == t!("UI.button.ok").to_string() => {
                                 settings_window.close();
 
                                 AppSettings::load_settings();
@@ -5774,17 +5884,11 @@ fn create_about_window() {
 
     let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
 
-    let they_forced_me = [
-        "This application uses GTK4 for its GUI.",
-        "GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.",
-        "For more details on the LGPL-2.1 license and your rights under this license, please refer to the License tab.",
-    ];
-    let comments = they_forced_me.join(" ");
+    let gtk_license = t!("UI.dialog.gtk").to_string();
 
     let my_key = std::path::Path::new("keys").join("Control-Owl-Public-key.asc");
     let my_public = qr2m_lib::get_text_from_resources(&my_key.to_string_lossy());
 
-    println!("{}", my_public);
     let author = format!(
         "{}\n\n\
         Public key:\n\
@@ -5793,7 +5897,7 @@ fn create_about_window() {
         my_public,
     );
 
-    let help_window = gtk::AboutDialog::builder()
+    let about_window = gtk::AboutDialog::builder()
         .modal(true)
         // .default_width(600)
         .default_height(400)
@@ -5805,16 +5909,15 @@ fn create_about_window() {
         .copyright("CC-BY-NC-ND-4.0 [2023-2025] Control Owl")
         .license(licenses)
         .wrap_license(true)
-        .comments(t!("UI.about.description").to_string())
+        .comments(gtk_license)
         .logo(
             &logo_picture
                 .paintable()
                 .unwrap_or(gtk::gdk::Paintable::new_empty(32, 32)),
         )
-        .comments(comments)
         .build();
 
-    help_window.present();
+    about_window.present();
 }
 
 fn open_wallet_from_file(
@@ -5928,7 +6031,7 @@ fn save_wallet_to_file(app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMe
     let save_dialog = gtk::FileDialog::builder()
         .title(t!("UI.dialog.save").to_string())
         .modal(true)
-        .accept_label(t!("UI.element.button.save").to_string())
+        .accept_label(t!("UI.button.save").to_string())
         .build();
 
     let filter = gtk::FileFilter::new();
@@ -6089,165 +6192,11 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-mod implementation {
-    use glib::{
-        ParamSpecBuilderExt,
-        prelude::*,
-        subclass::{object::ObjectImpl, types::ObjectSubclass},
-    };
-
-    #[derive(Default)]
-    pub struct AddressDatabase {
-        pub id: std::cell::RefCell<String>,
-        pub coin: std::cell::RefCell<String>,
-        pub path: std::cell::RefCell<String>,
-        pub address: std::cell::RefCell<String>,
-        pub public_key: std::cell::RefCell<String>,
-        pub private_key: std::cell::RefCell<String>,
-    }
-
-    #[glib::object_subclass]
-    impl ObjectSubclass for AddressDatabase {
-        const NAME: &'static str = "AddressDatabase";
-
-        type Type = super::AddressDatabase;
-        type ParentType = glib::Object;
-    }
-
-    impl ObjectImpl for AddressDatabase {
-        fn properties() -> &'static [glib::ParamSpec] {
-            static PROPERTIES: std::sync::OnceLock<Vec<glib::ParamSpec>> =
-                std::sync::OnceLock::new();
-
-            PROPERTIES.get_or_init(|| {
-                vec![
-                    glib::ParamSpecString::builder("id")
-                        .blurb("Id")
-                        .flags(glib::ParamFlags::READWRITE)
-                        .build(),
-                    glib::ParamSpecString::builder("coin")
-                        .blurb("Coin")
-                        .flags(glib::ParamFlags::READWRITE)
-                        .build(),
-                    glib::ParamSpecString::builder("path")
-                        .blurb("Derivation path")
-                        .flags(glib::ParamFlags::READWRITE)
-                        .build(),
-                    glib::ParamSpecString::builder("address")
-                        .blurb("Address")
-                        .flags(glib::ParamFlags::READWRITE)
-                        .build(),
-                    glib::ParamSpecString::builder("public-key")
-                        .blurb("Public key")
-                        .flags(glib::ParamFlags::READWRITE)
-                        .build(),
-                    glib::ParamSpecString::builder("private-key")
-                        .blurb("Private key")
-                        .flags(glib::ParamFlags::READWRITE)
-                        .build(),
-                ]
-            })
-        }
-
-        fn set_property(&self, _id: usize, value: &glib::Value, specification: &glib::ParamSpec) {
-            match specification.name() {
-                "id" => *self.id.borrow_mut() = value.get().unwrap_or_default(),
-                "coin" => *self.coin.borrow_mut() = value.get().unwrap_or_default(),
-                "path" => *self.path.borrow_mut() = value.get().unwrap_or_default(),
-                "address" => *self.address.borrow_mut() = value.get().unwrap_or_default(),
-                "public-key" => *self.public_key.borrow_mut() = value.get().unwrap_or_default(),
-                "private-key" => *self.private_key.borrow_mut() = value.get().unwrap_or_default(),
-                _ => {
-                    #[cfg(debug_assertions)]
-                    eprintln!("Unknown property");
-                }
-            }
-        }
-
-        fn property(&self, _id: usize, specification: &glib::ParamSpec) -> glib::Value {
-            match specification.name() {
-                "id" => self.id.borrow().to_value(),
-                "coin" => self.coin.borrow().to_value(),
-                "path" => self.path.borrow().to_value(),
-                "address" => self.address.borrow().to_value(),
-                "public-key" => self.public_key.borrow().to_value(),
-                "private-key" => self.private_key.borrow().to_value(),
-                _ => unimplemented!(),
-            }
-        }
-    }
-}
-
-glib::wrapper! {
-    pub struct AddressDatabase(ObjectSubclass<implementation::AddressDatabase>);
-}
-
-impl AddressDatabase {
-    pub fn new(
-        id: &str,
-        coin: &str,
-        path: &str,
-        address: &str,
-        public_key: &str,
-        private_key: &str,
-    ) -> Self {
-        let builder = glib::Object::builder::<AddressDatabase>()
-            .property("id", id)
-            .property("coin", coin)
-            .property("path", path)
-            .property("address", address)
-            .property("public-key", public_key)
-            .property("private-key", private_key);
-
-        builder.build()
-    }
-}
-
-fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {
-    if !path.starts_with("m/") {
-        return Err("Path must start with 'm/'");
-    }
-
-    let segments: Vec<&str> = path[2..].split('/').collect();
-
-    if segments.len() > 5 {
-        return Err("Too many segments for u64");
-    }
-
-    let mut result: u64 = 0;
-
-    for (i, segment) in segments.iter().enumerate() {
-        let is_hardened = segment.ends_with('\'');
-        let num_str = segment.trim_end_matches('\'');
-        let index: u32 = num_str.parse().map_err(|_| "Invalid number in path")?;
-
-        let value = if is_hardened {
-            index + 0x80000000
-        } else {
-            index
-        };
-
-        result |= (value as u64) << (48 - i * 12);
-    }
-
-    Ok(result.to_string())
-}
-
-fn get_active_app_feature() -> &'static str {
-    if cfg!(feature = "dev") {
-        "Dev"
-    } else if cfg!(feature = "full") {
-        "Full"
-    } else {
-        "Basic"
-    }
-}
-
 fn hash_me_baby() -> String {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
 
     let mut paths = Vec::new();
-    x_files(std::path::Path::new("."), &mut paths);
+    get_project_files(std::path::Path::new("."), &mut paths);
     paths.sort();
 
     for path in paths {
@@ -6259,7 +6208,7 @@ fn hash_me_baby() -> String {
     format!("{:x}", hasher.finish())
 }
 
-fn x_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
+fn get_project_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
@@ -6272,33 +6221,37 @@ fn x_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
                     paths.push(path);
                 }
             } else if path.is_dir() {
-                x_files(&path, paths);
+                get_project_files(&path, paths);
             }
         }
     }
 }
 
-fn check_security_level() -> u8 {
+fn check_security_level() -> SecurityLevel {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.check_security_level").to_string());
 
-    let mut security_level: u8 = 0;
+    let mut security = SecurityLevel::new();
 
-    let current_hash = hash_me_baby();
+    security.source_hash = SOURCE_HASH.to_string();
+    security.current_hash = hash_me_baby();
 
-    if SOURCE_HASH != current_hash {
-        eprintln!("WARNING: Project files have been modified since last commit!");
-        eprintln!("Build hash: {}", SOURCE_HASH);
-        eprintln!("Current hash: {}", current_hash);
+    if security.source_hash != security.current_hash {
+        eprintln!("\t- WARNING: Project files have been modified since last official build!");
+        eprintln!("\t- Build hash: {}", security.source_hash);
+        eprintln!("\t- Current hash: {}", security.current_hash);
+        security.code_modified = true;
+    } else {
+        security.score += 25;
     }
 
-    if KEY_ID == CONTROL_OWL_KEY_ID {
-        security_level += 1;
+    if COMMIT_KEY != CONTROL_OWL_KEY_ID {
+        security.developer_key = false;
+    } else {
+        security.score += 25;
     }
 
-    dbg!(&security_level);
-
-    let feature = get_active_app_feature();
+    let feature = qr2m_lib::get_active_app_feature();
 
     let sig_name = format!("{}-{}.sig", APP_NAME.unwrap(), feature);
     let app_executable = std::env::current_exe().expect("Failed to get current executable path");
@@ -6334,18 +6287,20 @@ fn check_security_level() -> u8 {
                     &status
                 );
 
-                security_level += 1
+                security.app_key = true;
+                security.score += 25;
             } else {
                 #[cfg(debug_assertions)]
                 eprintln!("\t- App signing failed. No secret key found",);
 
-                let _ = security_level.saturating_sub(1);
+                security.app_key = false;
             }
         } else {
             #[cfg(debug_assertions)]
             println!("\t- App signature verification succeeded");
 
-            security_level += 1;
+            security.app_key = true;
+            security.score += 25;
         }
     } else {
         #[cfg(debug_assertions)]
@@ -6357,18 +6312,19 @@ fn check_security_level() -> u8 {
             #[cfg(debug_assertions)]
             println!("\t- App signature created successfully");
 
-            security_level += 1;
+            security.app_key = true;
+            security.score += 25;
         } else {
             #[cfg(debug_assertions)]
             eprintln!("\t- GPG signing failed for. No secret key found",);
 
-            let _ = security_level.saturating_sub(1);
+            security.app_key = false;
         }
     };
 
-    println!("\t- Security level: {}", security_level);
+    println!("\t- Security score: {}", security.score);
 
-    security_level
+    security
 }
 
 fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
@@ -6413,15 +6369,22 @@ fn create_security_window(
 
     let security_icon_path = std::path::Path::new("theme").join("color");
 
-    let security_level = gui_state.borrow().security_level.unwrap_or(0);
-    let security_texture = match security_level {
-        2 => qr2m_lib::get_picture_from_resources(
+    let gui_state = gui_state.borrow();
+
+    let security_level = match &gui_state.security_level {
+        Some(state) => state,
+        None => &SecurityLevel::new(),
+    };
+    let security_score = security_level.score;
+
+    let security_texture = match security_score {
+        100 => qr2m_lib::get_picture_from_resources(
             security_icon_path
                 .join(format!("sec-good-128.{}", GUI_IMAGE_EXTENSION))
                 .to_str()
                 .unwrap_or(&format!("theme/color/sec-good-128.{}", GUI_IMAGE_EXTENSION)),
         ),
-        1 => qr2m_lib::get_picture_from_resources(
+        75 => qr2m_lib::get_picture_from_resources(
             security_icon_path
                 .join(format!("sec-warn-128.{}", GUI_IMAGE_EXTENSION))
                 .to_str()
@@ -6442,9 +6405,9 @@ fn create_security_window(
     image.set_pixel_size(128);
     main_sec_box.append(&image);
 
-    let status_text = match security_level {
-        2 => &t!("UI.security.level.verified"),
-        1 => &t!("UI.security.level.warning"),
+    let status_text = match security_score {
+        100 => &t!("UI.security.level.verified"),
+        75 => &t!("UI.security.level.warning"),
         _ => &t!("UI.security.level.error"),
     };
 
@@ -6454,9 +6417,9 @@ fn create_security_window(
     status_label.set_justify(gtk::Justification::Center);
     main_sec_box.append(&status_label);
 
-    let security_text = match security_level {
-        2 => &t!("UI.security.level.verified.message"),
-        1 => &t!("UI.security.level.warning.message"),
+    let security_text = match security_score {
+        100 => &t!("UI.security.level.verified.message"),
+        75 => &t!("UI.security.level.warning.message"),
         _ => &t!("UI.security.level.error.message"),
     };
 
@@ -6483,10 +6446,10 @@ fn create_security_window(
         t!("UI.security.details.platform"),
         BUILD_TARGET,
         t!("UI.security.details.key"),
-        if KEY_ID == "None" {
+        if COMMIT_KEY == "None" {
             t!("UI.security.details.no_sign").to_string()
         } else {
-            KEY_ID.to_string()
+            COMMIT_KEY.to_string()
         }
     )));
 
@@ -6494,8 +6457,8 @@ fn create_security_window(
     build_details.set_justify(gtk::Justification::Left);
     main_sec_box.append(&build_details);
 
-    if KEY_ID != "None" {
-        if KEY_ID == CONTROL_OWL_KEY_ID {
+    if COMMIT_KEY != "None" {
+        if COMMIT_KEY == CONTROL_OWL_KEY_ID {
             let verified_message = gtk::Label::new(Some(&t!("UI.security.keys.verified")));
             // verified_message.set_margin_top(10);
             verified_message.set_wrap(true);
@@ -6565,7 +6528,7 @@ fn create_security_window(
 
     main_sec_box.append(&our_key_box);
 
-    let close_button = gtk::Button::with_label(&t!("UI.element.button.close"));
+    let close_button = gtk::Button::with_label(&t!("UI.button.close"));
 
     close_button.connect_clicked(clone!(
         #[strong]
@@ -6581,46 +6544,3 @@ fn create_security_window(
 
     security_window
 }
-
-// FUTURE NATURE
-//
-// #[derive(Clone, PartialEq, Eq, Hash)]
-// enum SignatureType {
-//     App,
-//     Code,
-// }
-//
-// struct SignatureInfo {
-//     key_id: String,
-//     valid: bool,
-// }
-//
-// struct SecurityLevel {
-//     signatures: std::collections::HashMap<SignatureType, SignatureInfo>,
-// }
-//
-// impl SecurityLevel {
-//     pub fn new() -> Self {
-//         SecurityLevel {
-//             signatures: std::collections::HashMap::new(),
-//         }
-//     }
-//
-//     pub fn add_signature(
-//         &mut self,
-//         sig_type: SignatureType,
-//         key_id: String,
-//         valid: bool,
-//     ) -> Option<SignatureInfo> {
-//         self.signatures
-//             .insert(sig_type, SignatureInfo { key_id, valid })
-//     }
-//
-//     pub fn get_signature(&self, sig_type: &SignatureType) -> Option<&SignatureInfo> {
-//         self.signatures.get(sig_type)
-//     }
-//
-//     pub fn check_signature(&self, key_id: &str) -> bool {
-//         self.signatures.values().any(|sig| sig.key_id == key_id)
-//     }
-// }
