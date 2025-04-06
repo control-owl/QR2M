@@ -2414,22 +2414,27 @@ fn create_main_window(
             &t!("UI.main.database.column.key_derivation").to_string(),
         ),
         ("hash", &t!("UI.main.database.column.hash").to_string()),
+        #[cfg(feature = "dev")]
         (
             "private-header",
             &t!("UI.main.database.column.priv_header").to_string(),
         ),
+        #[cfg(feature = "dev")]
         (
             "public-header",
             &t!("UI.main.database.column.pub_header").to_string(),
         ),
+        #[cfg(feature = "dev")]
         (
             "public-key-hash",
             &t!("UI.main.database.column.pub_hash").to_string(),
         ),
+        #[cfg(feature = "dev")]
         (
             "script-hash",
             &t!("UI.main.database.column.script").to_string(),
         ),
+        #[cfg(feature = "dev")]
         (
             "wallet-import-format",
             &t!("UI.main.database.column.wif").to_string(),

@@ -95,6 +95,7 @@
     "Deque",
     "mapref",
     "notif",
+    "openssl",
     "paintable",
     "QRNG",
     "READWRITE",
