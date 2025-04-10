@@ -30,6 +30,7 @@ pub struct LocalSettings {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 pub fn detect_os_and_user_dir() {
+    #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.detecting_local_os").to_string());
 
     let os = match std::env::consts::OS {
@@ -86,6 +87,7 @@ pub fn detect_os_and_user_dir() {
                             local_temp_dir.join(APP_LOCAL_CONFIG_FILE),
                         )
                     } else {
+                        #[cfg(debug_assertions)]
                         println!("\t- Using writable symlink target: {:?}", &target);
                         (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
                     }
@@ -119,14 +121,18 @@ pub fn detect_os_and_user_dir() {
     local_settings.local_config_file = Some(config_file.clone());
     local_settings.local_temp_file = Some(local_temp_file.clone());
 
-    println!("\t- OS: {:?}", &os);
-    println!("\t- Config directory: {:?}", &config_dir);
-    println!("\t- Configuration file: {:?}", &config_file);
-    println!("\t- Temp directory: {:?}", &local_temp_dir);
-    println!("\t- Temp file: {:?}", &local_temp_file);
+    #[cfg(debug_assertions)]
+    {
+        println!("\t- OS: {:?}", &os);
+        println!("\t- Config directory: {:?}", &config_dir);
+        println!("\t- Configuration file: {:?}", &config_file);
+        println!("\t- Temp directory: {:?}", &local_temp_dir);
+        println!("\t- Temp file: {:?}", &local_temp_file);
+    }
 }
 
 pub fn switch_locale(lang: &str) {
+    #[cfg(debug_assertions)]
     println!(" - {}", &t!("log.switch_locale").to_string());
 
     match lang {
@@ -135,10 +141,12 @@ pub fn switch_locale(lang: &str) {
         _ => rust_i18n::set_locale("en"),
     }
 
+    #[cfg(debug_assertions)]
     println!(" - Language: {:?}", lang);
 }
 
 pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.check_local_config").to_string());
 
     let local_settings = LOCAL_SETTINGS.lock().unwrap();
@@ -183,6 +191,8 @@ pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         fs::write(&local_config_file, toml_string)?;
+
+        #[cfg(debug_assertions)]
         println!("\t- New config file created");
     }
 

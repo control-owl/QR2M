@@ -40,12 +40,15 @@ pub fn derive_child_key_secp256k1(
     index: u32,
     hardened: bool,
 ) -> DerivationResult {
-    println!("[+] {}", &t!("log.derive_child_key").to_string());
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.derive_child_key").to_string());
 
-    println!("parent_key {:?}", parent_key);
-    println!("parent_chain_code {:?}", parent_chain_code);
-    println!("index {:?}", index);
-    println!("hardened {:?}", hardened);
+        println!("parent_key {:?}", parent_key);
+        println!("parent_chain_code {:?}", parent_chain_code);
+        println!("index {:?}", index);
+        println!("hardened {:?}", hardened);
+    }
 
     if index & 0x80000000 != 0 && !hardened {
         return None;
@@ -72,6 +75,7 @@ pub fn derive_child_key_secp256k1(
 
     data.extend_from_slice(&index_bytes);
 
+    #[cfg(debug_assertions)]
     println!("data_for_hmac_sha512 {:?}", data);
 
     let result = qr2m_lib::calculate_hmac_sha512_hash(parent_chain_code, &data);
@@ -99,9 +103,12 @@ pub fn derive_child_key_secp256k1(
     let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
     let child_public_key_bytes = child_pubkey.serialize().to_vec();
 
-    println!("child_private_key_bytes {:?}", child_secret_key_bytes);
-    println!("child_chain_code_bytes {:?}", child_chain_code_bytes);
-    println!("child_public_key_bytes {:?}", child_public_key_bytes);
+    #[cfg(debug_assertions)]
+    {
+        println!("child_private_key_bytes {:?}", child_secret_key_bytes);
+        println!("child_chain_code_bytes {:?}", child_chain_code_bytes);
+        println!("child_public_key_bytes {:?}", child_public_key_bytes);
+    }
 
     Some((
         child_secret_key_bytes,
@@ -167,6 +174,7 @@ pub fn create_private_key_for_address(
         "sha256+ripemd160" => match private_key {
             Some(key) => {
                 let private_key_hex = hex::encode(key.secret_bytes());
+                #[cfg(debug_assertions)]
                 println!("Private key hex: {}", private_key_hex);
                 Ok(private_key_hex)
             }
@@ -184,9 +192,11 @@ pub fn derive_from_path_secp256k1(
     master_chain_code: &[u8],
     path: &str,
 ) -> DerivationResult {
-    println!("[+] {}", &t!("log.derive_from_path_secp256k1").to_string());
-
-    println!("Derivation path {:?}", path);
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.derive_from_path_secp256k1").to_string());
+        println!("Derivation path {:?}", path);
+    }
 
     let mut private_key = master_key.to_vec();
     let mut chain_code = master_chain_code.to_vec();
@@ -200,7 +210,9 @@ pub fn derive_from_path_secp256k1(
         let hardened = part.ends_with("'");
         let index: u32 = match part.trim_end_matches("'").parse() {
             Ok(index) => {
+                #[cfg(debug_assertions)]
                 println!("Index: {:?}", &index);
+
                 index
             }
             Err(_) => {
@@ -244,6 +256,7 @@ pub fn derive_from_path_secp256k1(
 }
 
 pub fn generate_address_sha256(public_key: &CryptoPublicKey, public_key_hash: &[u8]) -> String {
+    #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.generate_address_sha256").to_string());
 
     let public_key_bytes = match public_key {
@@ -252,6 +265,7 @@ pub fn generate_address_sha256(public_key: &CryptoPublicKey, public_key_hash: &[
         CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
     };
 
+    #[cfg(debug_assertions)]
     println!("Public key bytes: {:?}", &public_key_bytes);
 
     let hash160 = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
@@ -259,15 +273,21 @@ pub fn generate_address_sha256(public_key: &CryptoPublicKey, public_key_hash: &[
     let mut payload = Vec::with_capacity(public_key_hash.len() + hash160.len());
     payload.extend_from_slice(public_key_hash);
     payload.extend_from_slice(&hash160);
+
+    #[cfg(debug_assertions)]
     println!("Extended sha256_and_ripemd160 payload: {:?}", &payload);
 
     let checksum = qr2m_lib::calculate_double_sha256_hash(&payload);
 
     let address_checksum = &checksum[0..4];
+
+    #[cfg(debug_assertions)]
     println!("Address checksum: {:?}", address_checksum);
 
     let mut address_payload = payload;
     address_payload.extend_from_slice(address_checksum);
+
+    #[cfg(debug_assertions)]
     println!("Extended Address payload: {:?}", address_payload);
 
     bs58::encode(address_payload).into_string()
@@ -279,6 +299,8 @@ pub fn generate_address_keccak256(public_key: &CryptoPublicKey, _public_key_hash
         #[cfg(feature = "dev")]
         CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
     };
+
+    #[cfg(debug_assertions)]
     println!("Public key bytes: {:?}", &public_key_bytes);
 
     let public_key_slice = match public_key {
@@ -290,12 +312,18 @@ pub fn generate_address_keccak256(public_key: &CryptoPublicKey, _public_key_hash
     let mut keccak = Keccak256::new();
     keccak.update(public_key_slice);
     let keccak_result = keccak.finalize();
+
+    #[cfg(debug_assertions)]
     println!("Keccak256 hash result: {:?}", &keccak_result);
 
     let address_bytes = &keccak_result[12..];
+
+    #[cfg(debug_assertions)]
     println!("Address bytes: {:?}", address_bytes);
 
     let address = format!("0x{}", hex::encode(address_bytes));
+
+    #[cfg(debug_assertions)]
     println!("Generated Ethereum address: {:?}", address);
 
     address
@@ -311,6 +339,8 @@ pub fn generate_sha256_ripemd160_address(
         #[cfg(feature = "dev")]
         CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
     };
+
+    #[cfg(debug_assertions)]
     println!("Public key bytes: {:?}", &public_key_bytes);
 
     let hash = qr2m_lib::calculate_sha256_and_ripemd160_hash(&public_key_bytes);
@@ -333,6 +363,8 @@ pub fn generate_sha256_ripemd160_address(
     let encoded_address = bs58::encode(full_address_bytes)
         .with_alphabet(alphabet)
         .into_string();
+
+    #[cfg(debug_assertions)]
     println!("Base58 encoded address: {}", encoded_address);
 
     Ok(encoded_address)
@@ -345,10 +377,13 @@ pub fn generate_entropy(
     entropy_length: u64,
     // state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
 ) -> String {
-    println!("[+] {}", &t!("log.generate_entropy").to_string());
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.generate_entropy").to_string());
 
-    println!(" - Entropy source: {:?}", source);
-    println!(" - Entropy length: {:?}", entropy_length);
+        println!(" - Entropy source: {:?}", source);
+        println!(" - Entropy length: {:?}", entropy_length);
+    }
 
     match source {
         "RNG" | "RNG+" => {
@@ -358,6 +393,7 @@ pub fn generate_entropy(
                 .map(|bit| char::from_digit(bit, 10).unwrap())
                 .collect();
 
+            #[cfg(debug_assertions)]
             println!(" - RNG Entropy: {:?}", rng_entropy_string);
 
             let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
@@ -411,7 +447,7 @@ pub fn generate_entropy(
                     );
 
                     if let Err(err) = tx.send(qrng_entropy_string) {
-                        println!("Error sending data back: {}", err);
+                        eprintln!("Error sending data back: {}", err);
                     }
 
                     open_loop.quit();
@@ -435,7 +471,7 @@ pub fn generate_entropy(
                     received_qrng_entropy_string
                 }
                 Err(_) => {
-                    println!("Error retrieving entropy from ANU API.");
+                    eprintln!("Error retrieving entropy from ANU API.");
                     String::new()
                 }
             }
@@ -456,6 +492,8 @@ pub fn generate_entropy(
                     Ok(file) => {
                         if let Some(path) = file.path() {
                             let file_path = path.to_string_lossy().to_string();
+
+                            #[cfg(debug_assertions)]
                             println!(" - Entropy file name: {:?}", file_path);
 
                             let file_entropy_string =
@@ -467,7 +505,9 @@ pub fn generate_entropy(
                             if let Err(err) = tx.send(file_entropy_string) {
                                 eprintln!("{}", &t!("error.mpsc.send", value = err));
                             } else {
+                                #[cfg(debug_assertions)]
                                 println!("Sent");
+
                                 loop_clone.quit();
                             }
                         }
@@ -484,7 +524,9 @@ pub fn generate_entropy(
 
             match rx.recv() {
                 Ok(received_file_entropy_string) => {
+                    #[cfg(debug_assertions)]
                     println!("Received entropy: {}", received_file_entropy_string);
+
                     received_file_entropy_string
                 }
                 Err(err) => {
@@ -495,15 +537,18 @@ pub fn generate_entropy(
             }
         }
         _ => {
-            println!("{}", &t!("error.entropy.create.source"));
+            eprintln!("{}", &t!("error.entropy.create.source"));
             String::new()
         }
     }
 }
 
 pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
-    println!("[+] {}", &t!("log.generate_mnemonic_words").to_string());
-    println!(" - Final entropy: {:?}", final_entropy_binary);
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.generate_mnemonic_words").to_string());
+        println!(" - Entropy: {:?}", final_entropy_binary);
+    }
 
     let chunks: Vec<String> = final_entropy_binary
         .chars()
@@ -535,9 +580,12 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 
     let mnemonic_words_as_string = mnemonic_words_vector.join(" ");
 
-    println!(" - Entropy chunks: {:?}", chunks);
-    println!(" - Decimal mnemonic: {:?}", mnemonic_decimal);
-    println!(" - Mnemonic words: {:?}", mnemonic_words_vector);
+    #[cfg(debug_assertions)]
+    {
+        println!(" - Entropy chunks: {:?}", chunks);
+        println!(" - Decimal mnemonic: {:?}", mnemonic_decimal);
+        println!(" - Mnemonic words: {:?}", mnemonic_words_vector);
+    }
 
     let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
     wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
@@ -546,9 +594,12 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
 }
 
 pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-    println!("[+] {}", &t!("log.generate_bip39_seed").to_string());
-    println!(" - Entropy: {:?}", entropy);
-    println!(" - Passphrase: {:?}", passphrase);
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.generate_bip39_seed").to_string());
+        println!(" - Entropy: {:?}", entropy);
+        println!(" - Passphrase: {:?}", passphrase);
+    }
 
     let entropy_vector = qr2m_lib::convert_string_to_binary(entropy);
     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
@@ -560,20 +611,24 @@ pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
     };
     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
 
+    #[cfg(debug_assertions)]
     println!(" - Seed: {:?}", seed);
 
     seed
 }
 
 pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
-    println!("[+] {}", &t!("log.generate_entropy_from_file").to_string());
-    println!(" - File: {:?}", file_path);
-    println!(" - Entropy length: {:?}", entropy_length);
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.generate_entropy_from_file").to_string());
+        println!(" - File: {:?}", file_path);
+        println!(" - Entropy length: {:?}", entropy_length);
+    }
 
     let mut file = match File::open(file_path) {
         Ok(file) => file,
         Err(err) => {
-            println!("{}", &t!("error.file.open", value = file_path, error = err));
+            eprintln!("{}", &t!("error.file.open", value = file_path, error = err));
             return String::new();
         }
     };
@@ -583,7 +638,7 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
     match file.read_to_end(&mut buffer) {
         Ok(_) => {}
         Err(err) => {
-            println!("{}", &t!("error.file.read", value = file_path, error = err));
+            eprintln!("{}", &t!("error.file.read", value = file_path, error = err));
         }
     };
 
@@ -596,8 +651,11 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
 
     entropy = entropy.chars().take(entropy_length as usize).collect();
 
-    println!(" - File entropy hash: {:?}", hash);
-    println!(" - File entropy: {:?}", entropy);
+    #[cfg(debug_assertions)]
+    {
+        println!(" - File entropy hash: {:?}", hash);
+        println!(" - File entropy: {:?}", entropy);
+    }
 
     entropy
 }
@@ -607,9 +665,12 @@ pub fn generate_master_keys(
     mut private_header: &str,
     mut public_header: &str,
 ) -> Result<MasterPrivateKey, String> {
-    println!("[+] {}", &t!("log.derive_master_keys").to_string());
-    println!(" - Private header: {:?}", private_header);
-    println!(" - Public header: {:?}", public_header);
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.derive_master_keys").to_string());
+        println!(" - Private header: {:?}", private_header);
+        println!(" - Public header: {:?}", public_header);
+    }
 
     if private_header.is_empty() {
         private_header = "0x0488ADE4";
@@ -662,19 +723,22 @@ pub fn generate_master_keys(
 
     let master_xpub = bs58::encode(&master_public_key).into_string();
 
-    println!(" - Parsed private header {:?}", private_header);
-    println!(" - Parsed public header {:?}", public_header);
-    println!(" - Seed: {:?}", seed_bytes);
-    println!(" - Hmac sha512 hash: {:?}", hmac_result);
-    println!(
-        " - Master key private bytes: {:?}",
-        master_private_key_bytes
-    );
-    println!(" - Master key chain code: {:?}", master_chain_code_bytes);
-    println!(" - Master private key (xprv): {:?}", master_xprv);
-    println!(" - Master secret key {:?}", master_secret_key);
-    println!(" - Master public key {:?}", master_public_key_bytes);
-    println!(" - Master public key (xpub): {:?}", master_xpub);
+    #[cfg(debug_assertions)]
+    {
+        println!(" - Parsed private header {:?}", private_header);
+        println!(" - Parsed public header {:?}", public_header);
+        println!(" - Seed: {:?}", seed_bytes);
+        println!(" - Hmac sha512 hash: {:?}", hmac_result);
+        println!(
+            " - Master key private bytes: {:?}",
+            master_private_key_bytes
+        );
+        println!(" - Master key chain code: {:?}", master_chain_code_bytes);
+        println!(" - Master private key (xprv): {:?}", master_xprv);
+        println!(" - Master secret key {:?}", master_secret_key);
+        println!(" - Master public key {:?}", master_public_key_bytes);
+        println!(" - Master public key (xpub): {:?}", master_xpub);
+    }
 
     let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
     wallet_settings.master_xprv = Some(master_xprv.clone());
@@ -695,9 +759,11 @@ pub fn generate_master_keys(
 pub fn generate_address(
     ingredients: AddressHocusPokus,
 ) -> Result<(String, String, String), String> {
-    println!("[+] {}", &t!("log.generate_address").to_string());
-
-    println!("\t- derivation_path: {:?}", ingredients.derivation_path);
+    #[cfg(debug_assertions)]
+    {
+        println!("[+] {}", &t!("log.generate_address").to_string());
+        println!("\t- derivation_path: {:?}", ingredients.derivation_path);
+    }
 
     let secp = secp256k1::Secp256k1::new();
 
