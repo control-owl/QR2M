@@ -121,11 +121,11 @@ pub fn calculate_checksum_for_entropy(entropy: &str, entropy_length: &u32) -> St
     let entropy_binary = convert_string_to_binary(entropy);
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
     let checksum_length = entropy_length / 32;
-    let entropy_checksum: String = hash_raw_binary
+
+    hash_raw_binary
         .chars()
-        .take(checksum_length.try_into().unwrap())
-        .collect();
-    entropy_checksum
+        .take(checksum_length.try_into().unwrap_or_default())
+        .collect()
 }
 
 pub fn is_valid_entropy(full_entropy: &str) -> bool {

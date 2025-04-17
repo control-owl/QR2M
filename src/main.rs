@@ -368,7 +368,7 @@ impl AppSettings {
         let config_str = match fs::read_to_string(&local_config_file) {
             Ok(contents) => contents,
             Err(err) => {
-                if err.kind() == std::io::ErrorKind::NotFound {
+                if err.kind() == io::ErrorKind::NotFound {
                     #[cfg(debug_assertions)]
                     println!("\t- Config file not found, using default settings.");
 
@@ -1021,13 +1021,10 @@ impl AppSettings {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         let local_config_file = local_settings.local_config_file.clone().unwrap();
 
-        let config_str = match qr2m_lib::read_config_from_file(&local_config_file) {
-            Ok(config) => config,
-            Err(_) => {
-                eprintln!("Failed to read config, using defaults.");
-                String::new()
-            }
-        };
+        let config_str = qr2m_lib::read_config_from_file(&local_config_file).unwrap_or_else(|_| {
+            eprintln!("Failed to read config, using defaults.");
+            String::new()
+        });
 
         let mut doc = config_str
             .parse::<toml_edit::DocumentMut>()
@@ -1203,12 +1200,9 @@ impl AppMessages {
 
         let mut queue = self.message_queue.lock().unwrap();
         let last_message_in_queue = queue.get(queue.len().wrapping_sub(1));
-
-        let some_message = match last_message_in_queue {
-            Some(message) => message,
-            None => &("".to_string(), gtk::MessageType::Info),
-        };
-
+        let default_message: &(String, gtk::MessageType) =
+            &("".to_string(), gtk::MessageType::Info);
+        let some_message = last_message_in_queue.unwrap_or(default_message);
         let last_message = some_message.0.clone();
 
         if new_message != last_message {
@@ -1664,12 +1658,11 @@ async fn main() {
         #[strong]
         gui_state,
         move |app| {
-            create_main_window(
-                app.clone(),
-                gui_state.clone(),
-                #[cfg(feature = "dev")]
-                Some(start_time),
-            );
+            #[cfg(not(feature = "dev"))]
+            create_main_window(app.clone(), gui_state.clone());
+
+            #[cfg(feature = "dev")]
+            create_main_window(app.clone(), gui_state.clone(), Some(start_time));
         }
     ));
 
@@ -1834,7 +1827,6 @@ fn setup_app_actions(
 fn create_main_window(
     application: adw::Application,
     gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
-
     #[cfg(feature = "dev")] start_time: Option<std::time::Instant>,
 ) {
     #[cfg(debug_assertions)]
@@ -2845,7 +2837,7 @@ fn create_main_window(
     address_treeview_frame.set_hexpand(true);
     address_treeview_frame.set_vexpand(true);
 
-    let address_store = gtk::gio::ListStore::new::<AddressDatabase>();
+    let address_store = gio::ListStore::new::<AddressDatabase>();
 
     let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
         let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
@@ -4660,7 +4652,7 @@ fn create_settings_window(
         gtk::Label::new(Some(&t!("UI.settings.wallet.notification_timeout")));
     let notification_timeout = lock_app_settings.gui_notification_timeout.unwrap() as f64;
     let notification_timeout_adjustment =
-        gtk::Adjustment::new(notification_timeout, 1.0, 120.0, 1.0, 10.0, 0.0);
+        gtk::Adjustment::new(notification_timeout, 0.0, 120.0, 1.0, 10.0, 0.0);
     let notification_timeout_spinbutton =
         gtk::SpinButton::new(Some(&notification_timeout_adjustment), 1.0, 0);
 
@@ -5840,7 +5832,7 @@ fn reset_user_settings() -> Result<String, String> {
         #[cfg(debug_assertions)]
         println!("\t- Local config file: {:?}", local_config_file);
 
-        match std::fs::remove_file(local_config_file) {
+        match fs::remove_file(local_config_file) {
             Ok(_) => {
                 #[cfg(debug_assertions)]
                 println!("\t- Local config file deleted");
@@ -6069,7 +6061,7 @@ fn save_wallet_to_file(app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMe
                             WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase
                         );
 
-                        match std::fs::write(&path_with_extension, &wallet_data) {
+                        match fs::write(&path_with_extension, &wallet_data) {
                             Ok(_) => {
                                 let lock_app_messages = app_messages_state_clone.borrow();
                                 lock_app_messages.queue_message(
@@ -6143,7 +6135,7 @@ fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<
 
     let file =
         File::open(file_path).map_err(|_| "Error: Could not open wallet file".to_string())?;
-    let mut lines = std::io::BufReader::new(file).lines();
+    let mut lines = io::BufReader::new(file).lines();
 
     let version_line = match lines.next() {
         Some(Ok(line)) => line,
@@ -6201,7 +6193,7 @@ fn hash_me_baby() -> String {
     paths.sort();
 
     for path in paths {
-        if let Ok(contents) = std::fs::read(&path) {
+        if let Ok(contents) = fs::read(&path) {
             contents.hash(&mut hasher);
         }
     }
@@ -6210,7 +6202,7 @@ fn hash_me_baby() -> String {
 }
 
 fn get_project_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
-    if let Ok(entries) = std::fs::read_dir(dir) {
+    if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
             if path.is_file() {
@@ -6243,7 +6235,7 @@ fn check_security_level() -> SecurityLevel {
         eprintln!("\t- Current hash: {}", security.current_hash);
         security.code_modified = true;
     } else {
-        security.score += 25;
+        security.score += 50;
     }
 
     if COMMIT_KEY != CONTROL_OWL_KEY_ID {
@@ -6275,7 +6267,7 @@ fn check_security_level() -> SecurityLevel {
             #[cfg(debug_assertions)]
             eprintln!("\t- App signature verification failed! Try to generate new a one...");
 
-            let _ = std::fs::remove_file(&sig_full_path);
+            let _ = fs::remove_file(&sig_full_path);
 
             let status = generate_new_app_signature(&app_executable, &sig_full_path);
 
