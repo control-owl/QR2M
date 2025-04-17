@@ -2508,6 +2508,214 @@ fn create_main_window(
         }
     ));
 
+    import_mnemonic_button.connect_clicked(clone!(
+        #[strong]
+        mnemonic_words_text,
+        #[strong]
+        mnemonic_passphrase_text,
+        #[strong]
+        seed_text,
+        #[strong]
+        mnemonic_dictionary_dropdown,
+        move |_| {
+            let import_mnemonic_dialog = gtk::ApplicationWindow::builder()
+                .title("Import Mnemonic")
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Center)
+                .height_request(150)
+                .width_request(500)
+                .resizable(false)
+                .modal(true)
+                .build();
+
+            let main_dialog_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+            main_dialog_box.set_margin_bottom(10);
+            main_dialog_box.set_margin_top(10);
+            main_dialog_box.set_margin_start(10);
+            main_dialog_box.set_margin_end(10);
+            main_dialog_box.set_hexpand(true);
+            main_dialog_box.set_vexpand(true);
+
+            let dialog_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic")));
+
+            let mnemonic_import_text = gtk::TextView::new();
+            mnemonic_import_text.set_wrap_mode(gtk::WrapMode::Char);
+            mnemonic_import_text.set_hexpand(true);
+            mnemonic_import_text.set_vexpand(true);
+
+            dialog_frame.set_child(Some(&mnemonic_import_text));
+
+            let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+            button_box.set_hexpand(true);
+            button_box.set_halign(gtk::Align::Center);
+
+            let import_button = gtk::Button::with_label("Import");
+            let close_button = gtk::Button::with_label("Close");
+            button_box.append(&import_button);
+            button_box.append(&close_button);
+
+            main_dialog_box.append(&dialog_frame);
+            main_dialog_box.append(&button_box);
+
+            import_mnemonic_dialog.set_child(Some(&main_dialog_box));
+
+            import_button.connect_clicked(clone!(
+                #[strong]
+                import_mnemonic_dialog,
+                #[strong]
+                mnemonic_words_text,
+                #[strong]
+                mnemonic_passphrase_text,
+                #[strong]
+                seed_text,
+                #[strong]
+                mnemonic_dictionary_dropdown,
+                move |_| {
+                    let buffer = mnemonic_import_text.buffer();
+                    let text = buffer
+                        .text(&buffer.start_iter(), &buffer.end_iter(), false)
+                        .to_string();
+                    println!("Imported mnemonic: {}", text);
+
+                    // TODO: check if imported mnemonic is valid
+                    // if qr2m_lib::is_valid_mnemonic(&text) {
+                    mnemonic_words_text.buffer().set_text(&text);
+
+                    let mnemonic_dictionary = {
+                        let lock_app_settings = APP_SETTINGS.read().unwrap();
+                        lock_app_settings
+                            .wallet_mnemonic_dictionary
+                            .clone()
+                            .unwrap()
+                    };
+
+                    let valid_mnemonic_dictionary_as_strings: Vec<String> =
+                        VALID_MNEMONIC_DICTIONARY
+                            .iter()
+                            .map(|&x| x.to_string())
+                            .collect();
+
+                    let default_mnemonic_dictionary = valid_mnemonic_dictionary_as_strings
+                        .iter()
+                        .position(|s| *s == mnemonic_dictionary)
+                        .unwrap_or(0);
+
+                    if let Ok(index) = default_mnemonic_dictionary.try_into() {
+                        mnemonic_dictionary_dropdown.set_selected(index);
+                    } else {
+                        eprintln!("\t- Invalid index for coin_search_filter_dropdown");
+                        mnemonic_dictionary_dropdown.set_selected(0);
+                    }
+
+                    let seed = keys::generate_seed_from_mnemonic(
+                        &text,
+                        &mnemonic_passphrase_text.buffer().text(),
+                    );
+
+                    let seed = keys::convert_seed_to_mnemonic(&seed);
+
+                    seed_text.buffer().set_text(&seed);
+                    // } else {
+                    //     // TODO: Show error message
+                    // };
+
+                    import_mnemonic_dialog.close();
+                }
+            ));
+
+            close_button.connect_clicked(clone!(
+                #[strong]
+                import_mnemonic_dialog,
+                move |_| {
+                    import_mnemonic_dialog.close();
+                }
+            ));
+
+            import_mnemonic_dialog.present();
+        }
+    ));
+
+    import_seed_button.connect_clicked(clone!(
+        #[strong]
+        seed_text,
+        move |_| {
+            let import_seed_dialog = gtk::ApplicationWindow::builder()
+                .title("Import Seed")
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Center)
+                .height_request(150)
+                .width_request(500)
+                .resizable(false)
+                .modal(true)
+                .build();
+
+            let main_dialog_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+            main_dialog_box.set_margin_bottom(10);
+            main_dialog_box.set_margin_top(10);
+            main_dialog_box.set_margin_start(10);
+            main_dialog_box.set_margin_end(10);
+            main_dialog_box.set_hexpand(true);
+            main_dialog_box.set_vexpand(true);
+
+            let dialog_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic")));
+
+            let seed_import_text = gtk::TextView::new();
+            seed_import_text.set_wrap_mode(gtk::WrapMode::Char);
+            seed_import_text.set_hexpand(true);
+            seed_import_text.set_vexpand(true);
+
+            dialog_frame.set_child(Some(&seed_import_text));
+
+            let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+            button_box.set_hexpand(true);
+            button_box.set_halign(gtk::Align::Center);
+
+            let import_button = gtk::Button::with_label("Import");
+            let close_button = gtk::Button::with_label("Close");
+            button_box.append(&import_button);
+            button_box.append(&close_button);
+
+            main_dialog_box.append(&dialog_frame);
+            main_dialog_box.append(&button_box);
+
+            import_seed_dialog.set_child(Some(&main_dialog_box));
+
+            import_button.connect_clicked(clone!(
+                #[strong]
+                seed_text,
+                #[strong]
+                import_seed_dialog,
+                move |_| {
+                    let buffer = seed_import_text.buffer();
+                    let text = buffer
+                        .text(&buffer.start_iter(), &buffer.end_iter(), false)
+                        .to_string();
+                    println!("Imported mnemonic: {}", text);
+
+                    // TODO: check if imported seed is valid
+                    // if qr2m_lib::is_valid_seed(&text) {
+
+                    seed_text.buffer().set_text(&text);
+                    // } else {
+                    //     // TODO: Show error message
+                    // };
+
+                    import_seed_dialog.close();
+                }
+            ));
+
+            close_button.connect_clicked(clone!(
+                #[strong]
+                import_seed_dialog,
+                move |_| {
+                    import_seed_dialog.close();
+                }
+            ));
+
+            import_seed_dialog.present();
+        }
+    ));
+
     mnemonic_passphrase_info_box.append(&mnemonic_passphrase_length_info);
     mnemonic_passphrase_scale_box.append(&mnemonic_passphrase_scale);
 
