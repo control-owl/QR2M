@@ -117,10 +117,21 @@ pub fn calculate_checksum_for_master_keys(data: &[u8]) -> [u8; 4] {
     checksum
 }
 
-pub fn calculate_checksum_for_entropy(entropy: &str, entropy_length: &u32) -> String {
+pub fn calculate_checksum_for_entropy(entropy: &str) -> String {
     let entropy_binary = convert_string_to_binary(entropy);
     let hash_raw_binary: String = convert_binary_to_string(&Sha256::digest(&entropy_binary));
-    let checksum_length = entropy_length / 32;
+
+    let checksum_length = match entropy.len() {
+        128 => 4,
+        160 => 5,
+        192 => 6,
+        224 => 7,
+        256 => 8,
+        _ => {
+            eprintln!("Wrong entropy length! Checksum not done");
+            0
+        }
+    };
 
     hash_raw_binary
         .chars()
@@ -140,9 +151,15 @@ pub fn is_valid_entropy(full_entropy: &str) -> bool {
 
     let (entropy, checksum) = full_entropy.split_at(entropy_len);
 
+    let calculated_checksum = calculate_checksum_for_entropy(entropy);
+
+    if calculated_checksum != checksum {
+        return false;
+    }
+
     entropy.len() == entropy_len
         && checksum.len() == checksum_len
-        && entropy.chars().all(|c| c == '0' || c == '1')
+        && full_entropy.chars().all(|c| c == '0' || c == '1')
 }
 
 pub fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {

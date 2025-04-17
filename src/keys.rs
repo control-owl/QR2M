@@ -543,7 +543,7 @@ pub fn generate_entropy(
     }
 }
 
-pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
+pub fn generate_mnemonic_words(final_entropy_binary: &str, dictionary: Option<&str>) -> String {
     #[cfg(debug_assertions)]
     {
         println!("[+] {}", &t!("log.generate_mnemonic_words").to_string());
@@ -562,7 +562,20 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
         .map(|chunk| u32::from_str_radix(chunk, 2).unwrap())
         .collect();
 
-    let wordlist_path = std::path::Path::new("coin").join(crate::WORDLIST_FILE);
+    let dictionary_file = match dictionary.unwrap_or_default() {
+        "Czech" => "czech.txt",
+        "French" => "french.txt",
+        "Italian" => "italian.txt",
+        "Portuguese" => "portuguese.txt",
+        "Spanish" => "spanish.txt",
+        "Chinese simplified" => "chinese_simplified.txt",
+        "Chinese traditional" => "chinese_traditional.txt",
+        "Japanese" => "japanese.txt",
+        "Korean" => "korean.txt",
+        _ => "english.txt",
+    };
+
+    let wordlist_path = std::path::Path::new("wordlists").join(dictionary_file);
     let wordlist = qr2m_lib::get_text_from_resources(wordlist_path.to_str().unwrap());
 
     let bad_word = t!("error.wordlist.word").to_string();
@@ -593,27 +606,40 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str) -> String {
     mnemonic_words_as_string
 }
 
-pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-    #[cfg(debug_assertions)]
-    {
-        println!("[+] {}", &t!("log.generate_bip39_seed").to_string());
-        println!(" - Entropy: {:?}", entropy);
-        println!(" - Passphrase: {:?}", passphrase);
-    }
+// pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
+//     #[cfg(debug_assertions)]
+//     {
+//         println!("[+] {}", &t!("log.generate_bip39_seed").to_string());
+//         println!(" - Entropy: {:?}", entropy);
+//         println!(" - Passphrase: {:?}", passphrase);
+//     }
+//
+//     let entropy_vector = qr2m_lib::convert_string_to_binary(entropy);
+//     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
+//         Ok(mnemonic) => mnemonic,
+//         Err(err) => {
+//             println!("{}", &t!("error.bip.mnemonic", error = err));
+//             return [0; 64];
+//         }
+//     };
+//     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
+//
+//     #[cfg(debug_assertions)]
+//     println!(" - Seed: {:?}", seed);
+//
+//     seed
+// }
 
-    let entropy_vector = qr2m_lib::convert_string_to_binary(entropy);
-    let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
-        Ok(mnemonic) => mnemonic,
-        Err(err) => {
-            println!("{}", &t!("error.bip.mnemonic", error = err));
-            return [0; 64];
-        }
-    };
-    let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
-
-    #[cfg(debug_assertions)]
-    println!(" - Seed: {:?}", seed);
-
+pub fn generate_seed_from_mnemonic(mnemonic: &str, passphrase: &str) -> [u8; 64] {
+    let salt = format!("mnemonic{}", passphrase);
+    let mut seed = [0u8; 64];
+    ring::pbkdf2::derive(
+        ring::pbkdf2::PBKDF2_HMAC_SHA512,
+        std::num::NonZeroU32::new(2048).unwrap(),
+        salt.as_bytes(),
+        mnemonic.as_bytes(),
+        &mut seed,
+    );
     seed
 }
 
@@ -865,7 +891,7 @@ pub fn generate_address(
         }
     };
 
-    // IMPROVEMENT: remove hard-coding, add this option to UI
+    // TODO: remove hard-coding, add this option to UI
     let compressed = true;
 
     let priv_key_wif = create_private_key_for_address(
@@ -884,3 +910,13 @@ pub fn generate_address(
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+pub fn convert_seed_to_mnemonic(seed: &[u8]) -> String {
+    let mut hex = String::with_capacity(128);
+
+    for byte in seed.iter() {
+        hex.push_str(&format!("{:02x}", byte));
+    }
+
+    hex
+}

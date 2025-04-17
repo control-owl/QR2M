@@ -47,7 +47,18 @@ const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B
 const QR2M_KEY_ID: &str = "99204764AC6B6A44";
 const QR2M_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
 const APP_LANGUAGE: &[&str] = &["English", "Deutsch", "Hrvatski"];
-const WORDLIST_FILE: &str = "bip39-mnemonic-words-english.txt";
+const VALID_MNEMONIC_DICTIONARY: &[&str] = &[
+    "English",
+    "Czech",
+    "French",
+    "Italian",
+    "Portuguese",
+    "Spanish",
+    "Chinese simplified",
+    "Chinese traditional",
+    "Japanese",
+    "Korean",
+];
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
 const VALID_ENTROPY_SOURCES: &[&str] = &["RNG+", "File", "QRNG"];
@@ -279,6 +290,7 @@ struct AppSettings {
     wallet_bip: Option<u32>,
     wallet_address_count: Option<u32>,
     wallet_hardened_address: Option<bool>,
+    wallet_mnemonic_dictionary: Option<String>,
     gui_save_size: Option<bool>,
     gui_last_width: Option<u32>,
     gui_last_height: Option<u32>,
@@ -319,6 +331,7 @@ impl Default for AppSettings {
             wallet_bip: Some(44),
             wallet_address_count: Some(10),
             wallet_hardened_address: Some(true),
+            wallet_mnemonic_dictionary: Some("English".to_string()),
             gui_save_size: Some(true),
             gui_last_width: Some(1024),
             gui_last_height: Some(768),
@@ -489,6 +502,11 @@ impl AppSettings {
             "hardened_address",
             settings.wallet_hardened_address,
         );
+        let wallet_mnemonic_dictionary = get_str(
+            &wallet_section,
+            "mnemonic_dictionary",
+            settings.wallet_mnemonic_dictionary,
+        );
         #[cfg(debug_assertions)]
         {
             println!("\t- Entropy source: {:?}", wallet_entropy_source);
@@ -500,6 +518,7 @@ impl AppSettings {
             println!("\t- BIP: {:?}", wallet_bip);
             println!("\t- Address count: {:?}", wallet_address_count);
             println!("\t- Hard address: {:?}", wallet_hardened_address);
+            println!("\t- Mnemonic dictionary: {:?}", wallet_mnemonic_dictionary);
         }
 
         let anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
@@ -587,6 +606,7 @@ impl AppSettings {
         application_settings.wallet_bip = wallet_bip;
         application_settings.wallet_address_count = wallet_address_count;
         application_settings.wallet_hardened_address = wallet_hardened_address;
+        application_settings.wallet_mnemonic_dictionary = wallet_mnemonic_dictionary;
 
         application_settings.gui_save_size = gui_save_size;
         application_settings.gui_last_width = gui_last_width;
@@ -688,6 +708,16 @@ impl AppSettings {
                 if let Some(value) = new_value.as_bool() {
                     if Some(value) != self.wallet_hardened_address {
                         self.wallet_hardened_address = Some(value);
+
+                        #[cfg(debug_assertions)]
+                        println!("\t- Updating key  {:?} = {:?}", key, new_value);
+                    }
+                }
+            }
+            "wallet_mnemonic_dictionary" => {
+                if let Some(value) = new_value.as_str() {
+                    if Some(value.to_string()) != self.wallet_mnemonic_dictionary {
+                        self.wallet_mnemonic_dictionary = Some(value.to_string());
 
                         #[cfg(debug_assertions)]
                         println!("\t- Updating key  {:?} = {:?}", key, new_value);
@@ -1051,6 +1081,8 @@ impl AppSettings {
                     toml_edit::value(self.wallet_address_count.unwrap() as i64);
                 wallet_table["hardened_address"] =
                     toml_edit::value(self.wallet_hardened_address.unwrap());
+                wallet_table["mnemonic_dictionary"] =
+                    toml_edit::value(self.wallet_mnemonic_dictionary.clone().unwrap());
             }
         }
 
@@ -1416,7 +1448,7 @@ impl AppLog {
         #[cfg(debug_assertions)]
         println!("\t- Icon changed. Logging starts...");
 
-        // IMPLEMENT: Show log messages
+        // TODO: Show log messages
     }
 }
 
@@ -2185,13 +2217,44 @@ fn create_main_window(
     let mnemonic_passphrase_text = gtk::Entry::new();
     mnemonic_passphrase_text.set_hexpand(true);
 
+    let mnemonic_dictionary_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let mnemonic_dictionary_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.dictionary")));
+    mnemonic_dictionary_box.append(&mnemonic_dictionary_frame);
+
+    let valid_dictionaries_as_strings: Vec<String> = VALID_MNEMONIC_DICTIONARY
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+
+    let valid_dictionaries_as_str_ref: Vec<&str> = valid_dictionaries_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+
+    let mnemonic_dictionary_dropdown = gtk::DropDown::from_strings(&valid_dictionaries_as_str_ref);
+
+    let default_mnemonic_dictionary = valid_dictionaries_as_strings
+        .iter()
+        .position(|x| {
+            x.parse::<String>().unwrap()
+                == lock_app_settings
+                    .wallet_mnemonic_dictionary
+                    .clone()
+                    .unwrap()
+        })
+        .unwrap_or(0);
+
+    mnemonic_dictionary_dropdown.set_selected(default_mnemonic_dictionary.try_into().unwrap());
+
+    mnemonic_dictionary_frame.set_child(Some(&mnemonic_dictionary_dropdown));
+
     let generate_seed_button = gtk::Button::new();
     generate_seed_button.set_width_request(200);
     generate_seed_button.set_label(&t!("UI.main.seed.generate"));
 
-    let delete_entropy_button = gtk::Button::new();
-    delete_entropy_button.set_width_request(200);
-    delete_entropy_button.set_label(&t!("UI.main.seed.delete"));
+    let delete_seed_button = gtk::Button::new();
+    delete_seed_button.set_width_request(200);
+    delete_seed_button.set_label(&t!("UI.main.seed.delete"));
 
     // Lets fucking do it
     // Copy button!
@@ -2212,6 +2275,11 @@ fn create_main_window(
     copy_entropy_button.set_icon_name("edit-copy");
     copy_entropy_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     entropy_inner_box.append(&copy_entropy_button);
+
+    let import_entropy_button = gtk::Button::new();
+    import_entropy_button.set_icon_name("document-revert");
+    import_entropy_button.set_tooltip_text(Some(&t!("UI.button.import")));
+    entropy_inner_box.append(&import_entropy_button);
 
     entropy_frame.set_child(Some(&entropy_inner_box));
     entropy_box.append(&entropy_frame);
@@ -2246,6 +2314,11 @@ fn create_main_window(
     copy_mnemonic_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     mnemonic_inner_box.append(&copy_mnemonic_button);
 
+    let import_mnemonic_button = gtk::Button::new();
+    import_mnemonic_button.set_icon_name("document-revert");
+    import_mnemonic_button.set_tooltip_text(Some(&t!("UI.button.import")));
+    mnemonic_inner_box.append(&import_mnemonic_button);
+
     mnemonic_words_frame.set_child(Some(&mnemonic_inner_box));
     mnemonic_words_box.append(&mnemonic_words_frame);
 
@@ -2279,6 +2352,11 @@ fn create_main_window(
     copy_seed_button.set_tooltip_text(Some(&t!("UI.button.copy")));
     seed_inner_box.append(&copy_seed_button);
 
+    let import_seed_button = gtk::Button::new();
+    import_seed_button.set_icon_name("document-revert");
+    import_seed_button.set_tooltip_text(Some(&t!("UI.button.import")));
+    seed_inner_box.append(&import_seed_button);
+
     seed_frame.set_child(Some(&seed_inner_box));
     seed_box.append(&seed_frame);
 
@@ -2291,6 +2369,142 @@ fn create_main_window(
             let display = copy_seed_button.display();
             let clipboard = display.clipboard();
             clipboard.set_text(&text);
+        }
+    ));
+
+    import_entropy_button.connect_clicked(clone!(
+        #[strong]
+        entropy_text,
+        #[strong]
+        mnemonic_words_text,
+        #[strong]
+        mnemonic_passphrase_text,
+        #[strong]
+        seed_text,
+        #[strong]
+        mnemonic_dictionary_dropdown,
+        move |_| {
+            let import_entropy_dialog = gtk::ApplicationWindow::builder()
+                .title("Import Entropy")
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Center)
+                .height_request(150)
+                .width_request(500)
+                .resizable(false)
+                .modal(true)
+                .build();
+
+            let main_dialog_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+            main_dialog_box.set_margin_bottom(10);
+            main_dialog_box.set_margin_top(10);
+            main_dialog_box.set_margin_start(10);
+            main_dialog_box.set_margin_end(10);
+            main_dialog_box.set_hexpand(true);
+            main_dialog_box.set_vexpand(true);
+
+            let dialog_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy")));
+
+            let entropy_import_text = gtk::TextView::new();
+            entropy_import_text.set_wrap_mode(gtk::WrapMode::Char);
+            entropy_import_text.set_hexpand(true);
+            entropy_import_text.set_vexpand(true);
+
+            dialog_frame.set_child(Some(&entropy_import_text));
+
+            let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+            button_box.set_hexpand(true);
+            button_box.set_halign(gtk::Align::Center);
+
+            let import_button = gtk::Button::with_label("Import");
+            let close_button = gtk::Button::with_label("Close");
+            button_box.append(&import_button);
+            button_box.append(&close_button);
+
+            main_dialog_box.append(&dialog_frame);
+            main_dialog_box.append(&button_box);
+
+            import_entropy_dialog.set_child(Some(&main_dialog_box));
+
+            import_button.connect_clicked(clone!(
+                #[strong]
+                import_entropy_dialog,
+                #[strong]
+                entropy_text,
+                #[strong]
+                entropy_import_text,
+                #[strong]
+                mnemonic_words_text,
+                #[strong]
+                mnemonic_passphrase_text,
+                #[strong]
+                seed_text,
+                #[strong]
+                mnemonic_dictionary_dropdown,
+                move |_| {
+                    let buffer = entropy_import_text.buffer();
+                    let text = buffer
+                        .text(&buffer.start_iter(), &buffer.end_iter(), false)
+                        .to_string();
+                    println!("Imported entropy: {}", text);
+
+                    if qr2m_lib::is_valid_entropy(&text) {
+                        entropy_text.buffer().set_text(&text);
+
+                        let mnemonic_dictionary = {
+                            let lock_app_settings = APP_SETTINGS.read().unwrap();
+                            lock_app_settings
+                                .wallet_mnemonic_dictionary
+                                .clone()
+                                .unwrap()
+                        };
+
+                        let valid_mnemonic_dictionary_as_strings: Vec<String> =
+                            VALID_MNEMONIC_DICTIONARY
+                                .iter()
+                                .map(|&x| x.to_string())
+                                .collect();
+
+                        let default_mnemonic_dictionary = valid_mnemonic_dictionary_as_strings
+                            .iter()
+                            .position(|s| *s == mnemonic_dictionary)
+                            .unwrap_or(0);
+
+                        if let Ok(index) = default_mnemonic_dictionary.try_into() {
+                            mnemonic_dictionary_dropdown.set_selected(index);
+                        } else {
+                            eprintln!("\t- Invalid index for coin_search_filter_dropdown");
+                            mnemonic_dictionary_dropdown.set_selected(0);
+                        }
+
+                        let mnemonic_words =
+                            keys::generate_mnemonic_words(&text, Some(&mnemonic_dictionary));
+                        mnemonic_words_text.buffer().set_text(&mnemonic_words);
+
+                        let seed = keys::generate_seed_from_mnemonic(
+                            &mnemonic_words,
+                            &mnemonic_passphrase_text.buffer().text(),
+                        );
+
+                        let seed = keys::convert_seed_to_mnemonic(&seed);
+
+                        seed_text.buffer().set_text(&seed);
+                    } else {
+                        // TODO: Show error message
+                    };
+
+                    import_entropy_dialog.close();
+                }
+            ));
+
+            close_button.connect_clicked(clone!(
+                #[strong]
+                import_entropy_dialog,
+                move |_| {
+                    import_entropy_dialog.close();
+                }
+            ));
+
+            import_entropy_dialog.present();
         }
     ));
 
@@ -2319,13 +2533,18 @@ fn create_main_window(
     sidebar_seed_header_entropy_options.append(&entropy_length_box);
 
     sidebar_seed_header_mnemonic_options.append(&mnemonic_passphrase_main_box);
-    sidebar_seed_header_mnemonic_options.append(&mnemonic_passphrase_length_box);
+
+    let extra_mnemonic_options = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    extra_mnemonic_options.append(&mnemonic_passphrase_length_box);
+    extra_mnemonic_options.append(&mnemonic_dictionary_box);
+
+    sidebar_seed_header_mnemonic_options.append(&extra_mnemonic_options);
 
     sidebar_seed_header_box.append(&sidebar_seed_header_entropy_options);
     sidebar_seed_header_box.append(&sidebar_seed_header_mnemonic_options);
 
     sidebar_seed_button_box.append(&generate_seed_button);
-    sidebar_seed_button_box.append(&delete_entropy_button);
+    sidebar_seed_button_box.append(&delete_seed_button);
 
     sidebar_seed_result_box.append(&entropy_box);
     sidebar_seed_result_box.append(&mnemonic_words_box);
@@ -3049,24 +3268,24 @@ fn create_main_window(
                 let full_entropy = buffer.text(&start_iter, &end_iter, false);
 
                 if !full_entropy.is_empty() {
-                    let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
-                    mnemonic_words_text.buffer().set_text(&mnemonic_words);
-
-                    let (entropy_len, _checksum_len) = match full_entropy.len() {
-                        132 => (128, 4),
-                        165 => (160, 5),
-                        198 => (192, 6),
-                        231 => (224, 7),
-                        264 => (256, 8),
-                        _ => (0, 0),
+                    let mnemonic_dictionary = {
+                        let lock_app_settings = APP_SETTINGS.read().unwrap();
+                        lock_app_settings
+                            .wallet_mnemonic_dictionary
+                            .clone()
+                            .unwrap()
                     };
 
-                    let (pre_entropy, _checksum) = full_entropy.split_at(entropy_len);
+                    let mnemonic_words =
+                        keys::generate_mnemonic_words(&full_entropy, Some(&mnemonic_dictionary));
 
-                    let seed = keys::generate_bip39_seed(
-                        pre_entropy,
+                    mnemonic_words_text.buffer().set_text(&mnemonic_words);
+
+                    let seed = keys::generate_seed_from_mnemonic(
+                        &mnemonic_words,
                         &mnemonic_passphrase_text.buffer().text(),
                     );
+
                     let seed_hex = hex::encode(&seed[..]);
                     seed_text.buffer().set_text(&seed_hex.to_string());
 
@@ -3096,6 +3315,8 @@ fn create_main_window(
         #[weak]
         master_public_key_text,
         #[weak]
+        mnemonic_dictionary_dropdown,
+        #[weak]
         seed_text,
         #[weak(rename_to = random_mnemonic_passphrase_button)]
         buttons["random"],
@@ -3119,12 +3340,23 @@ fn create_main_window(
             let pre_entropy = keys::generate_entropy(&source, *entropy_length as u64);
 
             if !pre_entropy.is_empty() {
-                let checksum =
-                    qr2m_lib::calculate_checksum_for_entropy(&pre_entropy, entropy_length);
+                let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy);
                 let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-                let mnemonic_words = keys::generate_mnemonic_words(&full_entropy);
+
+                // let lock_app_settings = APP_SETTINGS.read().unwrap();
+                // let mnemonic_dictionary = lock_app_settings
+                //     .wallet_mnemonic_dictionary
+                //     .clone()
+                //     .unwrap();
+
+                let value = mnemonic_dictionary_dropdown.selected() as usize;
+                let selected_dictionary = VALID_MNEMONIC_DICTIONARY.get(value);
+                let mnemonic_dictionary = selected_dictionary.unwrap();
+
+                let mnemonic_words =
+                    keys::generate_mnemonic_words(&full_entropy, Some(mnemonic_dictionary));
                 let passphrase_text = mnemonic_passphrase_text.text().to_string();
-                let seed = keys::generate_bip39_seed(&pre_entropy, &passphrase_text);
+                let seed = keys::generate_seed_from_mnemonic(&mnemonic_words, &passphrase_text);
                 let seed_hex = hex::encode(&seed[..]);
 
                 entropy_text.buffer().set_text(&full_entropy);
@@ -3162,7 +3394,7 @@ fn create_main_window(
         }
     ));
 
-    delete_entropy_button.connect_clicked(clone!(
+    delete_seed_button.connect_clicked(clone!(
         #[strong]
         address_store,
         #[weak]
@@ -3178,8 +3410,8 @@ fn create_main_window(
         #[weak]
         master_public_key_text,
         move |_| {
-            mnemonic_passphrase_text.buffer().set_text("");
             entropy_text.buffer().set_text("");
+            mnemonic_passphrase_text.buffer().set_text("");
             mnemonic_words_text.buffer().set_text("");
             seed_text.buffer().set_text("");
             master_private_key_text.buffer().set_text("");
@@ -3405,16 +3637,9 @@ fn create_main_window(
             let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
 
             if !entropy_text.is_empty() {
-                let entropy_length = entropy_text.len();
-                let cut_entropy = entropy_length / 32;
-                let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
-
-                let seed = keys::generate_bip39_seed(
-                    &new_pre_entropy,
-                    &mnemonic_passphrase_text.buffer().text(),
-                );
-                let seed_hex = hex::encode(&seed[..]);
-                seed_text.buffer().set_text(&seed_hex.to_string());
+                // let entropy_length = entropy_text.len();
+                // let cut_entropy = entropy_length / 32;
+                // let new_pre_entropy = entropy_text[0..entropy_length - cut_entropy].to_string();
 
                 let final_entropy = entropy_text.clone().to_string();
                 let mnemonic_words_buffer = mnemonic_words_text.buffer();
@@ -3425,6 +3650,13 @@ fn create_main_window(
                     .to_string();
                 let final_mnemonic_passphrase =
                     mnemonic_passphrase_text.buffer().text().to_string();
+
+                let seed = keys::generate_seed_from_mnemonic(
+                    &final_mnemonic_words,
+                    &mnemonic_passphrase_text.buffer().text(),
+                );
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
 
                 let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
                 wallet_settings.entropy_string = Some(final_entropy);
@@ -4862,6 +5094,44 @@ fn create_settings_window(
     mnemonic_length_box.append(&mnemonic_length_item_box);
     content_wallet_box.append(&mnemonic_length_box);
 
+    let default_mnemonic_dictionary_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+    let default_mnemonic_dictionary_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_mnemonic_dictionary_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    let default_mnemonic_dictionary_label = gtk::Label::new(Some(&t!("UI.main.seed.dictionary")));
+    let valid_dictionary_as_strings: Vec<String> = VALID_MNEMONIC_DICTIONARY
+        .iter()
+        .map(|&x| x.to_string())
+        .collect();
+
+    let valid_dictionary_as_str_refs: Vec<&str> = valid_dictionary_as_strings
+        .iter()
+        .map(|s| s.as_ref())
+        .collect();
+    let mnemonic_dictionary_dropdown = gtk::DropDown::from_strings(&valid_dictionary_as_str_refs);
+    let default_mnemonic_dictionary = valid_dictionary_as_strings
+        .iter()
+        .position(|x| {
+            x.parse::<String>().unwrap()
+                == lock_app_settings
+                    .wallet_mnemonic_dictionary
+                    .clone()
+                    .unwrap()
+        })
+        .unwrap_or(0);
+
+    mnemonic_dictionary_dropdown.set_selected(default_mnemonic_dictionary.try_into().unwrap());
+    mnemonic_dictionary_dropdown.set_size_request(200, 10);
+    default_mnemonic_dictionary_box.set_hexpand(true);
+    default_mnemonic_dictionary_item_box.set_hexpand(true);
+    default_mnemonic_dictionary_item_box.set_margin_end(20);
+    default_mnemonic_dictionary_item_box.set_halign(gtk::Align::End);
+
+    default_mnemonic_dictionary_label_box.append(&default_mnemonic_dictionary_label);
+    default_mnemonic_dictionary_item_box.append(&mnemonic_dictionary_dropdown);
+    default_mnemonic_dictionary_box.append(&default_mnemonic_dictionary_label_box);
+    default_mnemonic_dictionary_box.append(&default_mnemonic_dictionary_item_box);
+    content_wallet_box.append(&default_mnemonic_dictionary_box);
+
     // Default BIP
     let default_bip_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_bip_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -5570,6 +5840,12 @@ fn create_settings_window(
                     toml_edit::value(hardened_addresses_checkbox.is_active()),
                 ),
                 (
+                    "wallet_mnemonic_dictionary",
+                    toml_edit::value(
+                        VALID_MNEMONIC_DICTIONARY[mnemonic_dictionary_dropdown.selected() as usize],
+                    ),
+                ),
+                (
                     "gui_save_size",
                     toml_edit::value(save_window_size_checkbox.is_active()),
                 ),
@@ -6270,8 +6546,6 @@ fn check_security_level() -> SecurityLevel {
             let _ = fs::remove_file(&sig_full_path);
 
             let status = generate_new_app_signature(&app_executable, &sig_full_path);
-
-            dbg!(&status);
 
             if status {
                 #[cfg(debug_assertions)]

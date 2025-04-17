@@ -255,6 +255,10 @@ UI:
           en: "Mnemonic passphrase length"
           de: "Länge der mnemonischen Passwortphrase"
           hr: "Dužina mnemoničke šifre"
+        dictionary:
+          en: "Dictionary"
+          de: "Wörterbuch"
+          hr: "Rječnik"
       generate:
         en: "New seed"
         de: "Neue Seed"

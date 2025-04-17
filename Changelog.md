@@ -1,3 +1,20 @@
+# version 0.81.0
+- new import buttons:
+    - entropy
+    - seed
+    - mnemonic
+- mnemonic dictionary:
+    - English
+    - Czech
+    - French
+    - Italian
+    - Portuguese
+    - Spanish
+    - Chinese simplified
+    - Chinese traditional
+    - Japanese
+    - Korean
+
 # version 0.80.0
 - copy buttons
 - security window: scoring
