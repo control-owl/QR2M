@@ -6049,6 +6049,10 @@ fn create_settings_window(
                                 lock_gui_state.reload_gui_icons();
                                 lock_new_gui_state.gui_main_buttons =
                                     lock_gui_state.gui_main_buttons.clone();
+
+                                let security_level = check_security_level();
+                                lock_new_gui_state.security_level = Some(security_level);
+
                                 lock_new_gui_state.reload_gui_icons();
                                 lock_new_gui_state.apply_language();
 
