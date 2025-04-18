@@ -2373,15 +2373,15 @@ fn create_main_window(
     ));
 
     import_entropy_button.connect_clicked(clone!(
-        #[strong]
+        #[weak]
         entropy_text,
-        #[strong]
+        #[weak]
         mnemonic_words_text,
-        #[strong]
+        #[weak]
         mnemonic_passphrase_text,
-        #[strong]
+        #[weak]
         seed_text,
-        #[strong]
+        #[weak]
         mnemonic_dictionary_dropdown,
         move |_| {
             let import_entropy_dialog = gtk::ApplicationWindow::builder()
@@ -2426,19 +2426,19 @@ fn create_main_window(
             import_entropy_dialog.set_child(Some(&main_dialog_box));
 
             import_button.connect_clicked(clone!(
-                #[strong]
+                #[weak]
                 import_entropy_dialog,
-                #[strong]
+                #[weak]
                 entropy_text,
-                #[strong]
+                #[weak]
                 entropy_import_text,
-                #[strong]
+                #[weak]
                 mnemonic_words_text,
-                #[strong]
+                #[weak]
                 mnemonic_passphrase_text,
-                #[strong]
+                #[weak]
                 seed_text,
-                #[strong]
+                #[weak]
                 mnemonic_dictionary_dropdown,
                 move |_| {
                     let buffer = entropy_import_text.buffer();
@@ -2497,7 +2497,7 @@ fn create_main_window(
             ));
 
             close_button.connect_clicked(clone!(
-                #[strong]
+                #[weak]
                 import_entropy_dialog,
                 move |_| {
                     import_entropy_dialog.close();
@@ -2509,13 +2509,13 @@ fn create_main_window(
     ));
 
     import_mnemonic_button.connect_clicked(clone!(
-        #[strong]
+        #[weak]
         mnemonic_words_text,
-        #[strong]
+        #[weak]
         mnemonic_passphrase_text,
-        #[strong]
+        #[weak]
         seed_text,
-        #[strong]
+        #[weak]
         mnemonic_dictionary_dropdown,
         move |_| {
             let import_mnemonic_dialog = gtk::ApplicationWindow::builder()
@@ -2560,15 +2560,15 @@ fn create_main_window(
             import_mnemonic_dialog.set_child(Some(&main_dialog_box));
 
             import_button.connect_clicked(clone!(
-                #[strong]
+                #[weak]
                 import_mnemonic_dialog,
-                #[strong]
+                #[weak]
                 mnemonic_words_text,
-                #[strong]
+                #[weak]
                 mnemonic_passphrase_text,
-                #[strong]
+                #[weak]
                 seed_text,
-                #[strong]
+                #[weak]
                 mnemonic_dictionary_dropdown,
                 move |_| {
                     let buffer = mnemonic_import_text.buffer();
@@ -2624,7 +2624,7 @@ fn create_main_window(
             ));
 
             close_button.connect_clicked(clone!(
-                #[strong]
+                #[weak]
                 import_mnemonic_dialog,
                 move |_| {
                     import_mnemonic_dialog.close();
@@ -2636,7 +2636,7 @@ fn create_main_window(
     ));
 
     import_seed_button.connect_clicked(clone!(
-        #[strong]
+        #[weak]
         seed_text,
         move |_| {
             let import_seed_dialog = gtk::ApplicationWindow::builder()
@@ -2681,9 +2681,9 @@ fn create_main_window(
             import_seed_dialog.set_child(Some(&main_dialog_box));
 
             import_button.connect_clicked(clone!(
-                #[strong]
+                #[weak]
                 seed_text,
-                #[strong]
+                #[weak]
                 import_seed_dialog,
                 move |_| {
                     let buffer = seed_import_text.buffer();
@@ -2705,7 +2705,7 @@ fn create_main_window(
             ));
 
             close_button.connect_clicked(clone!(
-                #[strong]
+                #[weak]
                 import_seed_dialog,
                 move |_| {
                     import_seed_dialog.close();
@@ -3803,6 +3803,41 @@ fn create_main_window(
                 generate_seed_button.set_label(&t!("UI.main.seed.generate.file"));
             } else {
                 generate_seed_button.set_label(&t!("UI.main.seed.generate"));
+            }
+        }
+    ));
+
+    mnemonic_dictionary_dropdown.connect_selected_notify(clone!(
+        #[weak]
+        entropy_text,
+        #[weak]
+        mnemonic_passphrase_text,
+        #[weak]
+        mnemonic_words_text,
+        #[weak]
+        seed_text,
+        // #[weak] random_mnemonic_passphrase_button,
+        move |dropdown| {
+            let selected: usize = dropdown.selected().try_into().unwrap_or(0);
+            let selected_dictionary = VALID_MNEMONIC_DICTIONARY[selected];
+
+            let entropy_buffer = entropy_text.buffer();
+            let start_iter = entropy_buffer.start_iter();
+            let end_iter = entropy_buffer.end_iter();
+            let entropy_text = entropy_buffer.text(&start_iter, &end_iter, false);
+
+            if !entropy_text.is_empty() {
+                let mnemonic_words =
+                    keys::generate_mnemonic_words(&entropy_text, Some(selected_dictionary));
+                mnemonic_words_text.buffer().set_text(&mnemonic_words);
+
+                let seed = keys::generate_seed_from_mnemonic(
+                    &mnemonic_words,
+                    &mnemonic_passphrase_text.buffer().text(),
+                );
+
+                let seed_hex = hex::encode(&seed[..]);
+                seed_text.buffer().set_text(&seed_hex.to_string());
             }
         }
     ));

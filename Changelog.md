@@ -1,3 +1,6 @@
+# version 0.81.1
+- change mnemonic words dynamically based on dictionary
+
 # version 0.81.0
 - new import buttons:
     - entropy
