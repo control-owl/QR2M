@@ -6620,21 +6620,39 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-fn get_current_tree_hash() -> Option<String> {
-  let write_tree = std::process::Command::new("git")
-    .args(["write-tree"])
-    .output()
-    .ok()?;
+fn hash_me_baby() -> String {
+  use sha1::{Digest, Sha1};
+  // let mut hasher = std::collections::hash_map::DefaultHasher::new();
+  let mut hasher = Sha1::new();
+  let mut paths = Vec::new();
+  get_project_files(std::path::Path::new("."), &mut paths);
+  paths.sort();
 
-  if !write_tree.status.success() {
-    return None;
+  for path in paths {
+    if let Ok(contents) = fs::read(&path) {
+      let rel_path = path.strip_prefix(".").unwrap().to_string_lossy();
+      hasher.update(rel_path.as_bytes());
+      hasher.update(&contents);
+    }
   }
 
-  Some(
-    String::from_utf8_lossy(&write_tree.stdout)
-      .trim()
-      .to_string(),
-  )
+  format!("{:x}", hasher.finalize())
+}
+
+fn get_project_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
+  if let Ok(entries) = fs::read_dir(dir) {
+    for entry in entries.filter_map(|e| e.ok()) {
+      let path = entry.path();
+      if path.is_file() {
+        let path_str = path.to_string_lossy();
+        if !path_str.contains(".git") && !path_str.contains("target") {
+          paths.push(path);
+        }
+      } else if path.is_dir() {
+        get_project_files(&path, paths);
+      }
+    }
+  }
 }
 
 fn check_security_level() {
@@ -6644,7 +6662,7 @@ fn check_security_level() {
   let mut security = SECURITY_LEVEL.write().unwrap();
 
   security.source_hash = COMMIT_HASH.to_string();
-  security.current_hash = get_current_tree_hash().unwrap_or_default();
+  security.current_hash = hash_me_baby();
 
   if security.source_hash != security.current_hash {
     eprintln!("\t- WARNING: Project files have been modified since last official build!");
