@@ -575,6 +575,14 @@ UI:
         en: "Developer's keys:"
         de: "Entwicklerschlüssel:"
         hr: "Ključevi programera:"
+      modified:
+        en: "Code modified"
+        de: "Code geändert"
+        hr: "Kod izmijenjen"
+      source:
+        en: "Source hash"
+        de: "Quell-Hash"
+        hr: "Izvorni hash"
 error:
   settings:
     config:

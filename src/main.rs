@@ -86,7 +86,6 @@ const COMMIT_HASH: &str = env!("COMMIT_HASH");
 const COMMIT_DATE: &str = env!("COMMIT_DATE");
 const COMMIT_KEY: &str = env!("COMMIT_KEY");
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
-const SOURCE_HASH: &str = env!("SOURCE_HASH");
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -4221,6 +4220,8 @@ fn create_main_window(
       let generated_addresses = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
       let progress_status = std::sync::Arc::new(std::sync::Mutex::new(0.0));
 
+      let next_generator = generated_addresses.clone();
+
       let start_time = std::time::Instant::now();
 
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
@@ -4437,6 +4438,14 @@ fn create_main_window(
               delete_addresses_button_box.set_visible(true);
 
               window.set_cursor(None);
+
+              let next_address = next_generator
+                .as_ref()
+                .load(std::sync::atomic::Ordering::SeqCst)
+                // + address_count_int
+                + address_start_point_int;
+
+              address_start_spinbutton.set_value(next_address as f64);
 
               return glib::ControlFlow::Break;
             }
@@ -6653,7 +6662,7 @@ fn check_security_level() {
 
   let mut security = SECURITY_LEVEL.write().unwrap();
 
-  security.source_hash = SOURCE_HASH.to_string();
+  security.source_hash = COMMIT_HASH.to_string();
   security.current_hash = hash_me_baby();
 
   if security.source_hash != security.current_hash {
@@ -6852,11 +6861,17 @@ fn create_security_window() -> gtk::ApplicationWindow {
 
   let build_details = gtk::Label::new(Some(&format!(
     "• {}: {}\n\
-         • {}: {}\n\
-         • {}: {}\n\
-         • {}: {}",
+     • {}: {}\n\
+     • {}: {}\n\
+     • {}: {}\n\
+     • {}: {}\n\
+     • {}: {}",
     t!("UI.security.details.hash"),
-    COMMIT_HASH,
+    security_level.source_hash,
+    t!("UI.security.details.source"),
+    security_level.current_hash,
+    t!("UI.security.details.modified"),
+    security_level.code_modified,
     t!("UI.security.details.date"),
     COMMIT_DATE,
     t!("UI.security.details.platform"),
@@ -6866,7 +6881,7 @@ fn create_security_window() -> gtk::ApplicationWindow {
       t!("UI.security.details.no_sign").to_string()
     } else {
       COMMIT_KEY.to_string()
-    }
+    },
   )));
 
   build_details.set_margin_top(5);

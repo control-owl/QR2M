@@ -32,15 +32,14 @@ lazy_static = "1.5.0"
 include_dir = "0.7.4"
 dashmap = "6.1.0"
 num_cpus = "1.16.0"
-# once_cell = "1.21.3"
-# regex = "1.11.1"      cargo +nightly udeps --all-targets
-
 tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros", "sync"] }
 gtk4 = { version = "0.9.6", features = ["gnome_46"] }
+
 reqwest = { version = "0.12.15", features = ["json"], optional = true }
-ed25519-dalek = { version = "2.1.1", optional = true }
 native-tls = { version = "0.2.14", optional = true }
 openssl = { version = "0.10.72", optional = true }
+
+ed25519-dalek = { version = "2.1.1", optional = true }
 
 [features]
 full = ["reqwest", "native-tls", "openssl"]
