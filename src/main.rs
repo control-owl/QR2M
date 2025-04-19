@@ -96,6 +96,7 @@ lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<String, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
     static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
+    static ref SECURITY_LEVEL: std::sync::Arc<std::sync::RwLock<SecurityLevel>> = std::sync::Arc::new(std::sync::RwLock::new(SecurityLevel::new()));
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -109,7 +110,6 @@ struct GuiState {
         std::cell::RefCell<std::collections::HashMap<String, Vec<std::rc::Rc<gtk::Button>>>>,
     >,
     gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
-    security_level: Option<SecurityLevel>,
 }
 
 impl GuiState {
@@ -123,7 +123,6 @@ impl GuiState {
                 std::collections::HashMap::new(),
             )),
             gui_button_images: None,
-            security_level: None,
         }
     }
 
@@ -199,28 +198,22 @@ impl GuiState {
 
         let security_icon_path = std::path::Path::new("theme").join("color");
 
-        let security_texture = match &self.security_level {
-            Some(level) => match level.score {
-                100 => qr2m_lib::get_texture_from_resource(
-                    security_icon_path
-                        .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
-                        .to_str()
-                        .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
-                ),
-                75 => qr2m_lib::get_texture_from_resource(
-                    security_icon_path
-                        .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
-                        .to_str()
-                        .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
-                ),
-                _ => qr2m_lib::get_texture_from_resource(
-                    security_icon_path
-                        .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
-                        .to_str()
-                        .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
-                ),
-            },
-            None => qr2m_lib::get_texture_from_resource(
+        let security_level = SECURITY_LEVEL.read().unwrap();
+
+        let security_texture = match &security_level.score {
+            100 => qr2m_lib::get_texture_from_resource(
+                security_icon_path
+                    .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
+                    .to_str()
+                    .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
+            ),
+            75 => qr2m_lib::get_texture_from_resource(
+                security_icon_path
+                    .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
+                    .to_str()
+                    .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
+            ),
+            _ => qr2m_lib::get_texture_from_resource(
                 security_icon_path
                     .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
                     .to_str()
@@ -1662,8 +1655,6 @@ async fn main() {
 
     print_program_info();
 
-    let security_level = check_security_level();
-
     os::detect_os_and_user_dir();
 
     if let Err(_err) = os::check_local_config() {
@@ -1681,10 +1672,6 @@ async fn main() {
         .build();
 
     let gui_state = std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
-
-    {
-        gui_state.borrow_mut().security_level = Some(security_level);
-    }
 
     application.connect_activate(clone!(
         #[strong]
@@ -1795,14 +1782,10 @@ fn setup_app_actions(
         }
     ));
 
-    security.connect_activate(clone!(
-        #[strong]
-        gui_state,
-        move |_action, _parameter| {
-            let security_window = create_security_window(gui_state.clone());
-            security_window.present();
-        }
-    ));
+    security.connect_activate(move |_action, _parameter| {
+        let security_window = create_security_window();
+        security_window.present();
+    });
 
     settings.connect_activate(clone!(
         #[strong]
@@ -1897,6 +1880,8 @@ fn create_main_window(
     os::switch_locale(&gui_language);
 
     qr2m_lib::setup_css();
+
+    check_security_level();
 
     let header_bar = gtk::HeaderBar::new();
     let info_bar = gtk::Revealer::new();
@@ -2032,14 +2017,10 @@ fn create_main_window(
         }
     ));
 
-    buttons["security"].connect_clicked(clone!(
-        #[strong]
-        gui_state,
-        move |_| {
-            let security_window = create_security_window(gui_state.clone());
-            security_window.present();
-        }
-    ));
+    buttons["security"].connect_clicked(move |_| {
+        let security_window = create_security_window();
+        security_window.present();
+    });
 
     buttons["new"].connect_clicked(clone!(
         #[strong]
@@ -4898,7 +4879,6 @@ fn create_main_window(
     ));
 
     window.present();
-
     #[cfg(feature = "dev")]
     {
         if let Some(value) = start_time {
@@ -6296,9 +6276,6 @@ fn create_settings_window(
                                 lock_new_gui_state.gui_main_buttons =
                                     lock_gui_state.gui_main_buttons.clone();
 
-                                let security_level = check_security_level();
-                                lock_new_gui_state.security_level = Some(security_level);
-
                                 lock_new_gui_state.reload_gui_icons();
                                 lock_new_gui_state.apply_language();
 
@@ -6746,11 +6723,11 @@ fn get_project_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>)
     }
 }
 
-fn check_security_level() -> SecurityLevel {
+fn check_security_level() {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.check_security_level").to_string());
 
-    let mut security = SecurityLevel::new();
+    let mut security = SECURITY_LEVEL.write().unwrap();
 
     security.source_hash = SOURCE_HASH.to_string();
     security.current_hash = hash_me_baby();
@@ -6839,9 +6816,8 @@ fn check_security_level() -> SecurityLevel {
         }
     };
 
+    #[cfg(debug_assertions)]
     println!("\t- Security score: {}", security.score);
-
-    security
 }
 
 fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
@@ -6862,16 +6838,14 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
         .is_ok()
 }
 
-fn create_security_window(
-    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
-) -> gtk::ApplicationWindow {
+fn create_security_window() -> gtk::ApplicationWindow {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.create_security_window").to_string());
 
     let security_window = gtk::ApplicationWindow::builder()
         .title(t!("UI.security").to_string())
-        .default_width(400)
-        .default_height(600)
+        .default_width(450)
+        .default_height(500)
         .resizable(false)
         .modal(true)
         .build();
@@ -6884,14 +6858,12 @@ fn create_security_window(
     main_sec_box.set_margin_start(10);
     main_sec_box.set_margin_end(10);
 
+    let scrolled_window = gtk::ScrolledWindow::new();
+    scrolled_window.set_child(Some(&main_sec_box));
+    scrolled_window.set_vexpand(true);
+
     let security_icon_path = std::path::Path::new("theme").join("color");
-
-    let gui_state = gui_state.borrow();
-
-    let security_level = match &gui_state.security_level {
-        Some(state) => state,
-        None => &SecurityLevel::new(),
-    };
+    let security_level = SECURITY_LEVEL.read().unwrap();
     let security_score = security_level.score;
 
     let security_texture = match security_score {
@@ -6928,11 +6900,14 @@ fn create_security_window(
         _ => &t!("UI.security.level.error"),
     };
 
-    let status_label = gtk::Label::new(Some(status_text));
+    let score_text = format!("{}/100", security_score.to_string());
+    let status_label = gtk::Label::new(Some(&score_text));
+    let status_extra_label = gtk::Label::new(Some(&status_text));
     status_label.set_css_classes(&["h1"]);
     status_label.set_margin_top(10);
     status_label.set_justify(gtk::Justification::Center);
     main_sec_box.append(&status_label);
+    main_sec_box.append(&status_extra_label);
 
     let security_text = match security_score {
         100 => &t!("UI.security.level.verified.message"),
@@ -7055,9 +7030,14 @@ fn create_security_window(
         }
     ));
 
-    main_sec_box.append(&close_button);
+    let security_layout_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    security_layout_box.set_margin_bottom(10);
+    security_layout_box.set_margin_start(10);
+    security_layout_box.set_margin_end(10);
+    security_layout_box.append(&scrolled_window);
+    security_layout_box.append(&close_button);
 
-    security_window.set_child(Some(&main_sec_box));
+    security_window.set_child(Some(&security_layout_box));
 
     security_window
 }
