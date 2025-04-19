@@ -20,7 +20,6 @@ use libadwaita as adw;
 use rand::Rng;
 use std::{
   fs::{self, File},
-  hash::{Hash, Hasher},
   io::{self, BufRead},
   time::SystemTime,
 };
@@ -6621,39 +6620,21 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-fn hash_me_baby() -> String {
-  let mut hasher = std::collections::hash_map::DefaultHasher::new();
+fn get_current_tree_hash() -> Option<String> {
+  let write_tree = std::process::Command::new("git")
+    .args(["write-tree"])
+    .output()
+    .ok()?;
 
-  let mut paths = Vec::new();
-  get_project_files(std::path::Path::new("."), &mut paths);
-  paths.sort();
-
-  for path in paths {
-    if let Ok(contents) = fs::read(&path) {
-      contents.hash(&mut hasher);
-    }
+  if !write_tree.status.success() {
+    return None;
   }
 
-  format!("{:x}", hasher.finish())
-}
-
-fn get_project_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
-  if let Ok(entries) = fs::read_dir(dir) {
-    for entry in entries.filter_map(|e| e.ok()) {
-      let path = entry.path();
-      if path.is_file() {
-        let path_str = path.to_string_lossy();
-        if !path_str.contains(".git")
-          && !path_str.contains("target")
-          && !path_str.contains(".vscode")
-        {
-          paths.push(path);
-        }
-      } else if path.is_dir() {
-        get_project_files(&path, paths);
-      }
-    }
-  }
+  Some(
+    String::from_utf8_lossy(&write_tree.stdout)
+      .trim()
+      .to_string(),
+  )
 }
 
 fn check_security_level() {
@@ -6663,7 +6644,7 @@ fn check_security_level() {
   let mut security = SECURITY_LEVEL.write().unwrap();
 
   security.source_hash = COMMIT_HASH.to_string();
-  security.current_hash = hash_me_baby();
+  security.current_hash = get_current_tree_hash().unwrap_or_default();
 
   if security.source_hash != security.current_hash {
     eprintln!("\t- WARNING: Project files have been modified since last official build!");
