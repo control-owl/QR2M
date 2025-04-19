@@ -1,3 +1,8 @@
+# version 0.81.4
+- Rust Rover profile again
+- Rust formatter new config file
+  - 2 spaces indent
+
 # version 0.81.3
 - security window improved
 
