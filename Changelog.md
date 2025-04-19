@@ -1,3 +1,6 @@
+# version 0.81.3
+- security window improved
+
 # version 0.81.2
 - Tron address generation repaired
 
