@@ -1,3 +1,6 @@
+# version 0.81.2
+- Tron address generation repaired
+
 # version 0.81.1
 - change mnemonic words dynamically based on dictionary
 

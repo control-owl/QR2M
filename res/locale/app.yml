@@ -67,6 +67,10 @@ UI:
         en: "Default mnemonic passphrase length"
         de: "Standardlänge der mnemonischen Passphrase"
         hr: "Zadana duljina mnemoničke lozinke"
+      dictionary:
+        en: "Mnemonic dictionary"
+        de: "Mnemotechnisches Wörterbuch"
+        hr: "Mnemonički rječnik"
     anu:
       en: "ANU settings"
       de: "ANU Einstellungen"
@@ -624,6 +628,10 @@ error:
       en: "Master keys can be generated after the seed is created"
       de: "Hauptschlüssel können nach der Erstellung des Seeds generiert werden."
       hr: "Glavni ključevi mogu se generirati nakon što je kreiran seed."
+    invalid:
+      en: "The imported entropy is invalid"
+      de: "Die importierte Entropie ist ungültig"
+      hr: "Uvezena entropija nije važeća"
   wordlist:
     read:
       en: "Error reading from wordlist file: '%{value}'"
@@ -648,6 +656,10 @@ error:
       en: "Can not decode seed"
       de: "Kann Seed nicht entschlüsseln"
       hr: "Ne mogu dekodirati seed"
+    invalid:
+      en: "The imported seed is invalid"
+      de: "Der importierte Seed ist ungültig"
+      hr: "Uvezeni seed je nevažeći"
   file:
     open:
       en: "Failed to open file '%{value}': '%{error}'"

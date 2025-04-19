@@ -162,6 +162,18 @@ pub fn is_valid_entropy(full_entropy: &str) -> bool {
         && full_entropy.chars().all(|c| c == '0' || c == '1')
 }
 
+pub fn is_valid_seed(seed: &str) -> bool {
+    if seed.len() > 128 {
+        return false;
+    }
+
+    if seed.is_empty() {
+        return false;
+    }
+
+    seed.chars().all(|c| c.is_ascii_hexdigit())
+}
+
 pub fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {
     if !path.starts_with("m/") {
         return Err("Path must start with 'm/'");

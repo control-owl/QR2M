@@ -9,10 +9,9 @@ use glib::prelude::*;
 use gtk4 as gtk;
 
 const COINLIST_FILE: &str = "ECDB.csv";
-pub const COIN_STATUS_NOT_SUPPORTED: u32 = 899; // ECDB Status: 0
+pub const COIN_STATUS_NOT_SUPPORTED: u32 = 911; // ECDB Status: 0
 pub const COIN_STATUS_VERIFIED: u32 = 254; // ECDB Status: 1
 pub const COIN_STATUS_NOT_VERIFIED: u32 = 10; // ECDB Status: 2
-pub const COIN_STATUS_IN_PLAN: u32 = 12; // ECDB Status: 3
 pub const VALID_COIN_STATUS_NAME: &[&str] = &[
     // Coin status 2024-11-16
     "Not supported",

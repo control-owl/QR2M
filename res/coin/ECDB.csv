@@ -117,7 +117,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 1,115,ECN,Ecoin,secp256k1,sha256,,,0x5c,0x14,0xdc,,,
 1,116,DNR,Denarius,secp256k1,sha256,,,0x1e,0x5a,0x9e,,,
 1,117,PINK,Pinkcoin,secp256k1,sha256,,,0x03,0x1c,0x83,,,
-3,118,ATOM,Cosmos,ed25519,,,,,,,,,100
+0,118,ATOM,Cosmos,ed25519,,,,,,,,,100
 1,119,PIVX,Pivx,secp256k1,sha256,0x0221312B,0x022D2533,0x1e,0x0d,0xd4,,,
 1,120,FLASH,Flashcoin,secp256k1,sha256,,,0x44,0x82,0xc4,,,
 1,121,ZEN,Horizen (Zencash),secp256k1,sha256,,,0x2089,0x2096,,,,
@@ -127,7 +127,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,125,XST,StealthCoin,,,,,,,,,,
 0,126,BRK,Breakout Coin,,,,,,,,,,
 1,127,XVC,Vcash,secp256k1,sha256,,,0x47,0x08,0xc7,,,
-3,128,XMR,Monero,ed25519,keccak256,,,,,,,,100
+0,128,XMR,Monero,ed25519,keccak256,,,,,,,,100
 0,129,VOX,Voxels,,,,,,,,,,
 1,130,NAV,NavCoin,secp256k1,sha256,,,0x35,0x55,0x96,,,
 0,131,FCT,Factom Factoids,,,,,,,,,,
@@ -143,11 +143,11 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 1,141,KMD,Komodo,secp256k1,sha256,,,0x3c,0x55,0xbc,,,
 0,142,BSQ,bisq Token,,,,,,,,,,
 0,143,RIC,Riecoin,,,,,,,,,,
-1,144,XRP,Ripple,secp256k1,sha256+ripemd160,,,0x00,0x05,,,,10
+1,144,XRP,XRP,secp256k1,sha256+ripemd160,,,0x00,0x05,,,,10
 1,145,BCH,Bitcoin Cash,secp256k1,sha256,,,0x6f,0xc4,0xef,,,100
 1,146,NEBL,Neblio,secp256k1,sha256,,,0x35,0x70,0xb5,,,
 1,147,ZCL,ZClassic,secp256k1,sha256,,,0x1CB8,0x1CBD,,,,
-3,148,XLM,Stellar Lumens,ed25519,sha256,,,,,,,,100
+0,148,XLM,Stellar Lumens,ed25519,sha256,,,,,,,,100
 0,149,NLC2,NoLimitCoin2,,,,,,,,,,
 0,150,WHL,WhaleCoin,,,,,,,,,,
 1,151,ERC,EuropeCoin,secp256k1,sha256,,,0x21,,0xa8,,,
@@ -194,7 +194,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 1,192,LCC,LitecoinCash,secp256k1,sha256,,,0x1c,,0xb0,,,
 0,193,XFE,Feirm,,,,,,,,,,
 0,194,EOS,EOS,secp256k1,sha256,,,,,,,,100
-1,195,TRX,Tron,secp256k1,keccak256,,,,,,,,100
+1,195,TRX,Tron,secp256k1,keccak256,,,0x41,,,TRUE,,100
 1,196,KOBO,Kobocoin,secp256k1,sha256,,,0x23,0x1c,0xa3,,,
 1,197,HUSH,HUSH,secp256k1,sha256,,,0x1CB8,0x1CBD,,,,
 0,198,BAN,Banano,,,,,,,,,,
@@ -277,12 +277,12 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,275,SHIT,Shitcoin,,,,,,,,,,
 0,276,ANDES,Andescoin,,,,,,,,,,
 0,277,AREPA,Arepacoin,,,,,,,,,,
-2,278,BOLI,Bolivarcoin,secp256k1,sha256,,,0x55,,0xD5,,,
+1,278,BOLI,Bolivarcoin,secp256k1,sha256,,,0x55,,0xD5,,,
 0,279,RIL,Rilcoin,,,,,,,,,,
 0,280,HTR,Hathor Network,,,,,,,,,,
 0,281,ACME,Accumulate,,,,,,,,,,
 0,282,BRAVO,BRAVO,,,,,,,,,,
-3,283,ALGO,Algorand,ed25519,,,,,,,,,100
+0,283,ALGO,Algorand,ed25519,,,,,,,,,100
 0,284,BZX,Bitcoinzero,,,,,,,,,,
 0,285,GXX,GravityCoin,,,,,,,,,,
 0,286,HEAT,HEAT,,,,,,,,,,
@@ -304,7 +304,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,302,CMT,Community,,,,,,,,,,
 0,303,EUNO,EUNO,,,,,,,,,,
 1,304,IOTX,IoTeX,secp256k1,keccak256,,,,,,TRUE,,
-2,305,ONION,DeepOnion,secp256k1,sha256,,,0x1F,0x4E,0x9F,,,
+1,305,ONION,DeepOnion,secp256k1,sha256,,,0x1F,0x4E,0x9F,,,
 0,306,8BIT,8Bit,,,,,,,,,,
 0,307,ATC,AToken Coin,,,,,,,,,,
 0,308,BTS,Bitshares,,,,,,,,,,
@@ -319,7 +319,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,317,PLUG,Plug,,,,,,,,,,
 0,318,MAN,Matrix AI Network,,,,,,,,,,
 0,319,ECC,ECCoin,,,,,,,,,,
-2,320,RPD,Rapids,secp256k1,sha256,,,0x3d,0x06,0x2e,,,
+1,320,RPD,Rapids,secp256k1,sha256,,,0x3d,0x06,0x2e,,,
 0,321,RAP,Rapture,,,,,,,,,,
 0,322,GARD,Hashgard,,,,,,,,,,
 0,323,ZER,Zero,,,,,,,,,,
@@ -353,7 +353,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,351,MDM,Medium,,,,,,,,,,
 0,352,CYB,Cybex,,,,,,,,,,
 0,353,LTO,LTO Network,,,,,,,,,,
-3,354,DOT,Polkadot,ed25519,,,,,,,,,10
+0,354,DOT,Polkadot,ed25519,,,,,,,,,10
 0,355,AEON,Aeon,,,,,,,,,,
 0,356,RES,Resistance,,,,,,,,,,
 1,357,AYA,Aryacoin,secp256k1,sha256,,,0x17,0x6f,0x97,,,
@@ -471,7 +471,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,469,BTH,Bithereum,,,,,,,,,,
 0,470,MESG,MESG,,,,,,,,,,
 0,471,FIMK,FIMK,,,,,,,,,,
-3,472,AR,Arweave,ed25519,sha256,,,,,,,,100
+0,472,AR,Arweave,ed25519,sha256,,,,,,,,100
 0,473,OGO,Origo,,,,,,,,,,
 1,474,ROSE,Oasis Network,secp256k1,keccak256,,,,,,TRUE,,
 0,475,BARE,BARE Network,,,,,,,,,,
@@ -500,7 +500,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,498,CS,Credits,,,,,,,,,,
 1,499,RUPX,Rupaya,secp256k1,keccak256,,,,,,TRUE,,
 1,500,THETA,Theta,secp256k1,keccak256,,,,,,TRUE,,100
-3,501,SOL,Solana,ed25519,,,,,,,,,10
+0,501,SOL,Solana,ed25519,,,,,,,,,10
 1,502,THT,ThoughtAI,secp256k1,sha256,0x5AEBD8C6,0xFBC6A00D,0x07,0x09,0x7B,,,
 1,503,CFX,Conflux,secp256k1,keccak256,,,,,,TRUE,,100
 0,504,KUMA,Kumacoin,,,,,,,,,,
@@ -636,7 +636,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,634,VAL,Validity,,,,,,,,,,
 0,635,POKT,Pocket Network,,,,,,,,,,
 0,636,EMIT,EMIT,,,,,,,,,,
-3,637,APTOS,Aptos,ed25519,sha256,,,,,,,,100
+0,637,APTOS,Aptos,ed25519,sha256,,,,,,,,100
 0,638,ADON,ADON,,,,,,,,,,
 0,639,BTSG,BitSong,,,,,,,,,,
 0,640,LFC,Leofcoin,,,,,,,,,,
@@ -913,14 +913,14 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,1668,NEOX,Neoxa,,,,,,,,,,
 0,1669,MEWC,Meowcoin,,,,,,,,,,
 0,1688,BCX,BitcoinX,,,,,,,,,,
+0,1729,XTZ,Tezos (tz1),ed25519,sha256,,,0x06A19F,,,,,
 0,1729,XTZ,Tezos (tz3),p256,sha256,,,0x06A1A4,,,,,
 2,1729,XTZ,Tezos (tz2),secp256k1,sha256+ripemd160,,,0x06A1A1,,,,,
-3,1729,XTZ,Tezos (tz1),ed25519,sha256,,,0x06A19F,,,,,
 0,1776,LBTC,Liquid BTC,,,,,,,,,,
 0,1777,BBP,Biblepay,,,,,,,,,,
 0,1784,JPYS,JPY Stablecoin,,,,,,,,,,
 0,1789,VEGA,Vega Protocol,,,,,,,,,,
-3,1815,ADA,Cardano,ed25519,,,,,,,,,10
+0,1815,ADA,Cardano,ed25519,,,,,,,,,10
 1,1818,CUBE,Cube Chain Native Token,secp256k1,keccak256,,,,,,TRUE,,
 0,1856,TES,Teslacoin,,,,,,,,,,
 0,1888,ZTX,Zetrix,,,,,,,,,,
@@ -998,7 +998,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,3757,MPC,Partisia Blockchain,,,,,,,,,,
 0,4040,FC8,FCH Network,,,,,,,,,,
 0,4096,YEE,YeeCo,,,,,,,,,,
-3,4218,IOTA,IOTA,ed25519,sha256,,,,,,,,100
+0,4218,IOTA,IOTA,ed25519,sha256,,,,,,,,100
 1,4219,SMR,Shimmer,secp256k1,keccak256,,,,,,TRUE,,
 1,4242,AXE,Axe,secp256k1,sha256,,,0x37,0x10,0xcc,,,
 0,4343,XYM,Symbol,,,,,,,,,,
@@ -1074,7 +1074,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,11742,VARCH,InvArch,,,,,,,,,,
 0,11743,TNKR,Tinkernet,,,,,,,,,,
 0,12345,IPOS,IPOS,,,,,,,,,,
-3,12586,MINA,Mina,ed25519,pedersen,,,,,,,,100
+0,12586,MINA,Mina,ed25519,pedersen,,,,,,,,100
 1,13107,BTY,BitYuan,secp256k1,keccak256,,,,,,TRUE,,
 1,13108,YCC,Yuan Chain Coin,secp256k1,keccak256,,,,,,TRUE,,
 1,13381,PHX,Phoenix,secp256k1,keccak256,,,,,,TRUE,,

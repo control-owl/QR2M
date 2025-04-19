@@ -2373,6 +2373,8 @@ fn create_main_window(
     ));
 
     import_entropy_button.connect_clicked(clone!(
+        #[strong]
+        app_messages_state,
         #[weak]
         entropy_text,
         #[weak]
@@ -2426,6 +2428,8 @@ fn create_main_window(
             import_entropy_dialog.set_child(Some(&main_dialog_box));
 
             import_button.connect_clicked(clone!(
+                #[strong]
+                app_messages_state,
                 #[weak]
                 import_entropy_dialog,
                 #[weak]
@@ -2445,9 +2449,11 @@ fn create_main_window(
                     let text = buffer
                         .text(&buffer.start_iter(), &buffer.end_iter(), false)
                         .to_string();
-                    println!("Imported entropy: {}", text);
 
                     if qr2m_lib::is_valid_entropy(&text) {
+                        #[cfg(debug_assertions)]
+                        println!("Imported entropy: {}", text);
+
                         entropy_text.buffer().set_text(&text);
 
                         let mnemonic_dictionary = {
@@ -2489,7 +2495,13 @@ fn create_main_window(
 
                         seed_text.buffer().set_text(&seed);
                     } else {
-                        // TODO: Show error message
+                        eprintln!("\t Imported entropy invalid: {}", text);
+
+                        let lock_app_messages = app_messages_state.borrow();
+                        lock_app_messages.queue_message(
+                            t!("error.entropy.invalid").to_string(),
+                            gtk::MessageType::Error,
+                        );
                     };
 
                     import_entropy_dialog.close();
@@ -2536,10 +2548,10 @@ fn create_main_window(
             main_dialog_box.set_hexpand(true);
             main_dialog_box.set_vexpand(true);
 
-            let dialog_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic")));
+            let dialog_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic.words")));
 
             let mnemonic_import_text = gtk::TextView::new();
-            mnemonic_import_text.set_wrap_mode(gtk::WrapMode::Char);
+            mnemonic_import_text.set_wrap_mode(gtk::WrapMode::Word);
             mnemonic_import_text.set_hexpand(true);
             mnemonic_import_text.set_vexpand(true);
 
@@ -2575,10 +2587,11 @@ fn create_main_window(
                     let text = buffer
                         .text(&buffer.start_iter(), &buffer.end_iter(), false)
                         .to_string();
-                    println!("Imported mnemonic: {}", text);
 
                     // TODO: check if imported mnemonic is valid
                     // if qr2m_lib::is_valid_mnemonic(&text) {
+                    #[cfg(debug_assertions)]
+                    println!("Imported mnemonic: {}", text);
                     mnemonic_words_text.buffer().set_text(&text);
 
                     let mnemonic_dictionary = {
@@ -2636,6 +2649,8 @@ fn create_main_window(
     ));
 
     import_seed_button.connect_clicked(clone!(
+        #[strong]
+        app_messages_state,
         #[weak]
         seed_text,
         move |_| {
@@ -2657,7 +2672,7 @@ fn create_main_window(
             main_dialog_box.set_hexpand(true);
             main_dialog_box.set_vexpand(true);
 
-            let dialog_frame = gtk::Frame::new(Some(&t!("UI.main.seed.mnemonic")));
+            let dialog_frame = gtk::Frame::new(Some(&t!("UI.main.seed")));
 
             let seed_import_text = gtk::TextView::new();
             seed_import_text.set_wrap_mode(gtk::WrapMode::Char);
@@ -2681,6 +2696,8 @@ fn create_main_window(
             import_seed_dialog.set_child(Some(&main_dialog_box));
 
             import_button.connect_clicked(clone!(
+                #[strong]
+                app_messages_state,
                 #[weak]
                 seed_text,
                 #[weak]
@@ -2690,15 +2707,20 @@ fn create_main_window(
                     let text = buffer
                         .text(&buffer.start_iter(), &buffer.end_iter(), false)
                         .to_string();
-                    println!("Imported mnemonic: {}", text);
 
-                    // TODO: check if imported seed is valid
-                    // if qr2m_lib::is_valid_seed(&text) {
+                    if qr2m_lib::is_valid_seed(&text) {
+                        #[cfg(debug_assertions)]
+                        println!("Imported seed: {}", text);
+                        seed_text.buffer().set_text(&text);
+                    } else {
+                        eprintln!("\t Imported seed invalid: {}", text);
 
-                    seed_text.buffer().set_text(&text);
-                    // } else {
-                    //     // TODO: Show error message
-                    // };
+                        let lock_app_messages = app_messages_state.borrow();
+                        lock_app_messages.queue_message(
+                            t!("error.seed.invalid").to_string(),
+                            gtk::MessageType::Error,
+                        );
+                    };
 
                     import_seed_dialog.close();
                 }
@@ -2820,15 +2842,6 @@ fn create_main_window(
     filter_not_verified_coins_button_box.append(&filter_not_verified_coins_button);
     coin_filter_content_box.append(&filter_not_verified_coins_button_box);
     filter_not_verified_coins_button_box.set_hexpand(true);
-
-    let filter_in_plan_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    let filter_in_plan_coins_button = gtk::Button::with_label(&t!(
-        "UI.main.coin.filter.status.future",
-        value = coin_db::COIN_STATUS_IN_PLAN
-    ));
-    filter_in_plan_coins_button_box.append(&filter_in_plan_coins_button);
-    coin_filter_content_box.append(&filter_in_plan_coins_button_box);
-    filter_in_plan_coins_button_box.set_hexpand(true);
 
     let filter_not_supported_coins_button_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
     let filter_not_supported_coins_button = gtk::Button::with_label(&t!(
@@ -4005,17 +4018,6 @@ fn create_main_window(
             let filter = gtk::CustomFilter::new(|obj| {
                 let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
                 coin.property::<String>("status") == coin_db::VALID_COIN_STATUS_NAME[2]
-            });
-            filter_model.set_filter(Some(&filter));
-        }
-    });
-
-    filter_in_plan_coins_button.connect_clicked({
-        let filter_model = filter_model.clone();
-        move |_| {
-            let filter = gtk::CustomFilter::new(|obj| {
-                let coin = obj.downcast_ref::<coin_db::CoinDatabase>().unwrap();
-                coin.property::<String>("status") == coin_db::VALID_COIN_STATUS_NAME[3]
             });
             filter_model.set_filter(Some(&filter));
         }
@@ -5340,7 +5342,8 @@ fn create_settings_window(
     let default_mnemonic_dictionary_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
     let default_mnemonic_dictionary_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     let default_mnemonic_dictionary_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let default_mnemonic_dictionary_label = gtk::Label::new(Some(&t!("UI.main.seed.dictionary")));
+    let default_mnemonic_dictionary_label =
+        gtk::Label::new(Some(&t!("UI.settings.wallet.dictionary")));
     let valid_dictionary_as_strings: Vec<String> = VALID_MNEMONIC_DICTIONARY
         .iter()
         .map(|&x| x.to_string())

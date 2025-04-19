@@ -122,6 +122,7 @@ pub fn create_private_key_for_address(
     compressed: Option<bool>,
     wif: Option<&str>,
     hash: &str,
+    coin_index: u32,
 ) -> Result<String, String> {
     println!("Private key to WIF");
 
@@ -166,7 +167,11 @@ pub fn create_private_key_for_address(
         }
         "keccak256" => {
             if let Some(private_key) = private_key {
-                Ok(format!("0x{}", hex::encode(private_key.secret_bytes())))
+                if coin_index == 195 {
+                    Ok(hex::encode(private_key.secret_bytes()))
+                } else {
+                    Ok(format!("0x{}", hex::encode(private_key.secret_bytes())))
+                }
             } else {
                 Err("Private key must be provided".to_string())
             }
@@ -278,7 +283,6 @@ pub fn generate_address_sha256(public_key: &CryptoPublicKey, public_key_hash: &[
     println!("Extended sha256_and_ripemd160 payload: {:?}", &payload);
 
     let checksum = qr2m_lib::calculate_double_sha256_hash(&payload);
-
     let address_checksum = &checksum[0..4];
 
     #[cfg(debug_assertions)]
@@ -293,7 +297,11 @@ pub fn generate_address_sha256(public_key: &CryptoPublicKey, public_key_hash: &[
     bs58::encode(address_payload).into_string()
 }
 
-pub fn generate_address_keccak256(public_key: &CryptoPublicKey, _public_key_hash: &[u8]) -> String {
+pub fn generate_address_keccak256(
+    public_key: &CryptoPublicKey,
+    public_key_hash: &[u8],
+    coin_index: u32,
+) -> String {
     let public_key_bytes = match public_key {
         CryptoPublicKey::Secp256k1(key) => key.serialize_uncompressed().to_vec(),
         #[cfg(feature = "dev")]
@@ -321,10 +329,29 @@ pub fn generate_address_keccak256(public_key: &CryptoPublicKey, _public_key_hash
     #[cfg(debug_assertions)]
     println!("Address bytes: {:?}", address_bytes);
 
-    let address = format!("0x{}", hex::encode(address_bytes));
+    let address = match coin_index {
+        195 => {
+            let mut tron_prefixed = public_key_hash.to_vec();
+            tron_prefixed.extend_from_slice(address_bytes);
+
+            let checksum = {
+                let hash = Sha256::digest(&tron_prefixed);
+                let hash2 = Sha256::digest(hash);
+                hash2[..4].to_vec()
+            };
+
+            let mut full_payload = tron_prefixed.clone();
+            full_payload.extend_from_slice(&checksum);
+
+            bs58::encode(full_payload).into_string()
+        }
+        _ => {
+            format!("0x{}", hex::encode(address_bytes))
+        }
+    };
 
     #[cfg(debug_assertions)]
-    println!("Generated Ethereum address: {:?}", address);
+    println!("Generated address: {}", address);
 
     address
 }
@@ -606,30 +633,6 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str, dictionary: Option<&s
     mnemonic_words_as_string
 }
 
-// pub fn generate_bip39_seed(entropy: &str, passphrase: &str) -> [u8; 64] {
-//     #[cfg(debug_assertions)]
-//     {
-//         println!("[+] {}", &t!("log.generate_bip39_seed").to_string());
-//         println!(" - Entropy: {:?}", entropy);
-//         println!(" - Passphrase: {:?}", passphrase);
-//     }
-//
-//     let entropy_vector = qr2m_lib::convert_string_to_binary(entropy);
-//     let mnemonic = match bip39::Mnemonic::from_entropy(&entropy_vector) {
-//         Ok(mnemonic) => mnemonic,
-//         Err(err) => {
-//             println!("{}", &t!("error.bip.mnemonic", error = err));
-//             return [0; 64];
-//         }
-//     };
-//     let seed = bip39::Mnemonic::to_seed(&mnemonic, passphrase);
-//
-//     #[cfg(debug_assertions)]
-//     println!(" - Seed: {:?}", seed);
-//
-//     seed
-// }
-
 pub fn generate_seed_from_mnemonic(mnemonic: &str, passphrase: &str) -> [u8; 64] {
     let salt = format!("mnemonic{}", passphrase);
     let mut seed = [0u8; 64];
@@ -859,7 +862,11 @@ pub fn generate_address(
         },
         "keccak256" => match &public_key {
             CryptoPublicKey::Secp256k1(public_key) => {
-                format!("0x{}", hex::encode(public_key.serialize()))
+                if ingredients.coin_index == 195 {
+                    hex::encode(public_key.serialize())
+                } else {
+                    format!("0x{}", hex::encode(public_key.serialize()))
+                }
             }
             #[cfg(feature = "dev")]
             CryptoPublicKey::Ed25519(public_key) => {
@@ -873,7 +880,9 @@ pub fn generate_address(
 
     let address = match ingredients.hash.as_str() {
         "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
-        "keccak256" => generate_address_keccak256(&public_key, &public_key_hash_vec),
+        "keccak256" => {
+            generate_address_keccak256(&public_key, &public_key_hash_vec, ingredients.coin_index)
+        }
         "sha256+ripemd160" => match generate_sha256_ripemd160_address(
             ingredients.coin_index,
             &public_key,
@@ -899,6 +908,7 @@ pub fn generate_address(
         Some(compressed),
         Some(&ingredients.wallet_import_format),
         &ingredients.hash,
+        ingredients.coin_index,
     )
     .expect("Failed to convert private key to WIF");
 
