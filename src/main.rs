@@ -31,6 +31,8 @@ mod coin_db;
 mod dev;
 mod keys;
 mod os;
+#[cfg(feature = "dev")]
+mod sec;
 mod test_vectors;
 
 #[macro_use]
@@ -41,10 +43,6 @@ const APP_NAME: Option<&str> = option_env!("CARGO_PKG_NAME");
 const APP_DESCRIPTION: Option<&str> = option_env!("CARGO_PKG_DESCRIPTION");
 const APP_VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
 const APP_AUTHOR: Option<&str> = option_env!("CARGO_PKG_AUTHORS");
-const CONTROL_OWL_KEY_ID: &str = "2524C8FEB60EFCB0";
-const CONTROL_OWL_FINGERPRINT: &str = "C88E 6F25 736A D83D A1C7 57B2 2524 C8FE B60E FCB0";
-const QR2M_KEY_ID: &str = "99204764AC6B6A44";
-const QR2M_FINGERPRINT: &str = "DE39 6887 555C 656B 991D 768E 9920 4764 AC6B 6A44";
 const APP_LANGUAGE: &[&str] = &["English", "Deutsch", "Hrvatski"];
 const VALID_MNEMONIC_DICTIONARY: &[&str] = &[
   "English",
@@ -81,10 +79,6 @@ const VALID_GUI_ICONS: &[&str] = &["Thin", "Bold", "Fill"];
 const VALID_COIN_SEARCH_PARAMETER: &[&str] = &["Name", "Symbol", "Index"];
 const APP_LOG_LEVEL: &[&str] = &["Standard", "Verbose", "Ultimate"];
 const GUI_IMAGE_EXTENSION: &str = if cfg!(windows) { "png" } else { "svg" };
-const COMMIT_HASH: &str = env!("COMMIT_HASH");
-const COMMIT_DATE: &str = env!("COMMIT_DATE");
-const COMMIT_KEY: &str = env!("COMMIT_KEY");
-const BUILD_TARGET: &str = env!("BUILD_TARGET");
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -94,7 +88,6 @@ lazy_static::lazy_static! {
     static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
     static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<String, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
     static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
-    static ref SECURITY_LEVEL: std::sync::Arc<std::sync::RwLock<SecurityLevel>> = std::sync::Arc::new(std::sync::RwLock::new(SecurityLevel::new()));
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -192,32 +185,31 @@ impl GuiState {
       }
     }
 
-    let security_icon_path = std::path::Path::new("theme").join("color");
+    #[cfg(feature = "dev")]
+    {
+      let security_icon_path = std::path::Path::new("theme").join("color");
 
-    let security_level = SECURITY_LEVEL.read().unwrap();
+      let security = sec::SECURITY_STATUS.read().unwrap();
 
-    let security_texture = match &security_level.score {
-      100 => qr2m_lib::get_texture_from_resource(
-        security_icon_path
-          .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
-          .to_str()
-          .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
-      ),
-      75 => qr2m_lib::get_texture_from_resource(
-        security_icon_path
-          .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
-          .to_str()
-          .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
-      ),
-      _ => qr2m_lib::get_texture_from_resource(
-        security_icon_path
-          .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
-          .to_str()
-          .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
-      ),
-    };
+      let security_texture =
+        if security.app_key.unwrap_or_default() && security.author_key.unwrap_or_default() {
+          qr2m_lib::get_texture_from_resource(
+            security_icon_path
+              .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
+              .to_str()
+              .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
+          )
+        } else {
+          qr2m_lib::get_texture_from_resource(
+            security_icon_path
+              .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
+              .to_str()
+              .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
+          )
+        };
 
-    icons.insert("security".to_string(), security_texture);
+      icons.insert("security".to_string(), security_texture);
+    }
 
     self.gui_button_images = Some(icons);
 
@@ -1599,29 +1591,6 @@ impl AddressDatabase {
   }
 }
 
-#[derive(Clone)]
-struct SecurityLevel {
-  code_modified: bool,
-  developer_key: bool,
-  app_key: bool,
-  source_hash: String,
-  current_hash: String,
-  score: u8,
-}
-
-impl SecurityLevel {
-  fn new() -> Self {
-    SecurityLevel {
-      code_modified: false,
-      developer_key: false,
-      app_key: false,
-      source_hash: String::new(),
-      current_hash: String::new(),
-      score: 0,
-    }
-  }
-}
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 #[tokio::main]
@@ -1648,6 +1617,9 @@ async fn main() {
     .build();
 
   let gui_state = std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
+
+  #[cfg(feature = "dev")]
+  sec::check_security_level();
 
   application.connect_activate(clone!(
     #[strong]
@@ -1705,6 +1677,8 @@ fn setup_app_actions(
   let about = gio::SimpleAction::new("about", None);
   let settings = gio::SimpleAction::new("settings", None);
   let quit = gio::SimpleAction::new("quit", None);
+
+  #[cfg(feature = "dev")]
   let security = gio::SimpleAction::new("security", None);
 
   #[cfg(feature = "dev")]
@@ -1758,8 +1732,9 @@ fn setup_app_actions(
     }
   ));
 
+  #[cfg(feature = "dev")]
   security.connect_activate(move |_action, _parameter| {
-    let security_window = create_security_window();
+    let security_window = sec::create_security_window();
     security_window.present();
   });
 
@@ -1797,8 +1772,10 @@ fn setup_app_actions(
   application.set_accels_for_action("app.save", &["<Primary>S"]);
   application.set_accels_for_action("app.quit", &["<Primary>Q"]);
   application.set_accels_for_action("app.about", &["F1"]);
-  application.set_accels_for_action("app.security", &["F2"]);
   application.set_accels_for_action("app.settings", &["F5"]);
+
+  #[cfg(feature = "dev")]
+  application.set_accels_for_action("app.security", &["F2"]);
 
   #[cfg(feature = "dev")]
   application.set_accels_for_action("app.test", &["<Primary>T"]);
@@ -1809,6 +1786,8 @@ fn setup_app_actions(
   application.add_action(&about);
   application.add_action(&settings);
   application.add_action(&quit);
+
+  #[cfg(feature = "dev")]
   application.add_action(&security);
 
   #[cfg(feature = "dev")]
@@ -1857,8 +1836,6 @@ fn create_main_window(
 
   qr2m_lib::setup_css();
 
-  check_security_level();
-
   let header_bar = gtk::HeaderBar::new();
   let info_bar = gtk::Revealer::new();
   info_bar.set_transition_type(gtk::RevealerTransitionType::SlideDown);
@@ -1873,6 +1850,7 @@ fn create_main_window(
     "about",
     "settings",
     "random",
+    #[cfg(feature = "dev")]
     "security",
     #[cfg(feature = "dev")]
     "log",
@@ -1937,6 +1915,7 @@ fn create_main_window(
     ("about", "F1"),
     ("settings", "F5"),
     ("random", ""),
+    #[cfg(feature = "dev")]
     ("security", "F2"),
     #[cfg(feature = "dev")]
     ("log", "F11"),
@@ -1964,6 +1943,7 @@ fn create_main_window(
   header_bar.pack_end(&*buttons["about"]);
   #[cfg(feature = "dev")]
   header_bar.pack_end(&*buttons["log"]);
+  #[cfg(feature = "dev")]
   header_bar.pack_end(&*buttons["security"]);
 
   // JUMP: Action: Settings button action
@@ -1992,8 +1972,9 @@ fn create_main_window(
     }
   ));
 
+  #[cfg(feature = "dev")]
   buttons["security"].connect_clicked(move |_| {
-    let security_window = create_security_window();
+    let security_window = sec::create_security_window();
     security_window.present();
   });
 
@@ -4207,7 +4188,7 @@ fn create_main_window(
 
       let cpu_threads = num_cpus::get();
 
-      let generating_threads = if address_count_int <= cpu_threads {
+      let generating_threads = if address_count_int <= cpu_threads || address_count_int < 100 {
         1
       } else {
         cpu_threads
@@ -6619,362 +6600,3 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-fn hash_me_baby() -> String {
-  use sha1::{Digest, Sha1};
-  // let mut hasher = std::collections::hash_map::DefaultHasher::new();
-  let mut hasher = Sha1::new();
-  let mut paths = Vec::new();
-  get_project_files(std::path::Path::new("."), &mut paths);
-  paths.sort();
-
-  for path in paths {
-    if let Ok(contents) = fs::read(&path) {
-      let rel_path = path.strip_prefix(".").unwrap().to_string_lossy();
-      hasher.update(rel_path.as_bytes());
-      hasher.update(&contents);
-    }
-  }
-
-  format!("{:x}", hasher.finalize())
-}
-
-fn get_project_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
-  if let Ok(entries) = fs::read_dir(dir) {
-    for entry in entries.filter_map(|e| e.ok()) {
-      let path = entry.path();
-      if path.is_file() {
-        let path_str = path.to_string_lossy();
-        if !path_str.contains(".git") && !path_str.contains("target") {
-          paths.push(path);
-        }
-      } else if path.is_dir() {
-        get_project_files(&path, paths);
-      }
-    }
-  }
-}
-
-fn check_security_level() {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.check_security_level").to_string());
-
-  let mut security = SECURITY_LEVEL.write().unwrap();
-
-  security.source_hash = COMMIT_HASH.to_string();
-  security.current_hash = hash_me_baby();
-
-  if security.source_hash != security.current_hash {
-    eprintln!("\t- WARNING: Project files have been modified since last official build!");
-    eprintln!("\t- Build hash: {}", security.source_hash);
-    eprintln!("\t- Current hash: {}", security.current_hash);
-    security.code_modified = true;
-  } else {
-    security.score += 50;
-  }
-
-  if COMMIT_KEY != CONTROL_OWL_KEY_ID {
-    security.developer_key = false;
-  } else {
-    security.score += 25;
-  }
-
-  let feature = qr2m_lib::get_active_app_feature();
-
-  let sig_name = format!("{}-{}.sig", APP_NAME.unwrap(), feature);
-  let app_executable = std::env::current_exe().expect("Failed to get current executable path");
-  let executable_dir = app_executable
-    .parent()
-    .expect("Failed to extract executable directory");
-  let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
-
-  if std::path::Path::new(&sig_full_path).exists() {
-    let status = std::process::Command::new("gpg")
-      .args([
-        "--verify",
-        &sig_full_path,
-        &app_executable.to_string_lossy(),
-      ])
-      .status()
-      .expect("Failed to execute GPG verification");
-
-    if !status.success() {
-      #[cfg(debug_assertions)]
-      eprintln!("\t- App signature verification failed! Try to generate new a one...");
-
-      let _ = fs::remove_file(&sig_full_path);
-
-      let status = generate_new_app_signature(&app_executable, &sig_full_path);
-
-      if status {
-        #[cfg(debug_assertions)]
-        println!(
-          "\t- App signature created successfully. Status:\n{}",
-          &status
-        );
-
-        security.app_key = true;
-        security.score += 25;
-      } else {
-        #[cfg(debug_assertions)]
-        eprintln!("\t- App signing failed. No secret key found",);
-
-        security.app_key = false;
-      }
-    } else {
-      #[cfg(debug_assertions)]
-      println!("\t- App signature verification succeeded");
-
-      security.app_key = true;
-      security.score += 25;
-    }
-  } else {
-    #[cfg(debug_assertions)]
-    eprintln!("\t- App signature file not found. Try to generate new a one...");
-
-    let status = generate_new_app_signature(&app_executable, &sig_full_path);
-
-    if status {
-      #[cfg(debug_assertions)]
-      println!("\t- App signature created successfully");
-
-      security.app_key = true;
-      security.score += 25;
-    } else {
-      #[cfg(debug_assertions)]
-      eprintln!("\t- GPG signing failed for. No secret key found",);
-
-      security.app_key = false;
-    }
-  };
-
-  #[cfg(debug_assertions)]
-  println!("\t- Security score: {}", security.score);
-}
-
-fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.generate_new_app_signature").to_string());
-
-  std::process::Command::new("gpg")
-    .args([
-      "--detach-sign",
-      "--armor",
-      "-u",
-      QR2M_KEY_ID,
-      "-o",
-      sig_full_path,
-      &app_executable.to_string_lossy(),
-    ])
-    .status()
-    .is_ok()
-}
-
-fn create_security_window() -> gtk::ApplicationWindow {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.create_security_window").to_string());
-
-  let security_window = gtk::ApplicationWindow::builder()
-    .title(t!("UI.security").to_string())
-    .default_width(450)
-    .default_height(500)
-    .resizable(false)
-    .modal(true)
-    .build();
-
-  let main_sec_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-  main_sec_box.set_halign(gtk::Align::Center);
-  main_sec_box.set_valign(gtk::Align::Center);
-  main_sec_box.set_margin_top(10);
-  main_sec_box.set_margin_bottom(10);
-  main_sec_box.set_margin_start(10);
-  main_sec_box.set_margin_end(10);
-
-  let scrolled_window = gtk::ScrolledWindow::new();
-  scrolled_window.set_child(Some(&main_sec_box));
-  scrolled_window.set_vexpand(true);
-
-  let security_icon_path = std::path::Path::new("theme").join("color");
-  let security_level = SECURITY_LEVEL.read().unwrap();
-  let security_score = security_level.score;
-
-  let security_texture = match security_score {
-    100 => qr2m_lib::get_picture_from_resources(
-      security_icon_path
-        .join(format!("sec-good-128.{}", GUI_IMAGE_EXTENSION))
-        .to_str()
-        .unwrap_or(&format!("theme/color/sec-good-128.{}", GUI_IMAGE_EXTENSION)),
-    ),
-    75 => qr2m_lib::get_picture_from_resources(
-      security_icon_path
-        .join(format!("sec-warn-128.{}", GUI_IMAGE_EXTENSION))
-        .to_str()
-        .unwrap_or(&format!("theme/color/sec-warn-128.{}", GUI_IMAGE_EXTENSION)),
-    ),
-    _ => qr2m_lib::get_picture_from_resources(
-      security_icon_path
-        .join(format!("sec-error-128.{}", GUI_IMAGE_EXTENSION))
-        .to_str()
-        .unwrap_or(&format!(
-          "theme/color/sec-error-128.{}",
-          GUI_IMAGE_EXTENSION
-        )),
-    ),
-  };
-
-  let image = gtk::Image::from_paintable(security_texture.paintable().as_ref());
-  image.set_pixel_size(128);
-  main_sec_box.append(&image);
-
-  let status_text = match security_score {
-    100 => &t!("UI.security.level.verified"),
-    75 => &t!("UI.security.level.warning"),
-    _ => &t!("UI.security.level.error"),
-  };
-
-  let score_text = format!("{}/100", security_score);
-  let status_label = gtk::Label::new(Some(&score_text));
-  let status_extra_label = gtk::Label::new(Some(status_text));
-  status_label.set_css_classes(&["h1"]);
-  status_label.set_margin_top(10);
-  status_label.set_justify(gtk::Justification::Center);
-  main_sec_box.append(&status_label);
-  main_sec_box.append(&status_extra_label);
-
-  let security_text = match security_score {
-    100 => &t!("UI.security.level.verified.message"),
-    75 => &t!("UI.security.level.warning.message"),
-    _ => &t!("UI.security.level.error.message"),
-  };
-
-  let detail_label = gtk::Label::new(Some(security_text));
-  detail_label.set_margin_top(5);
-  detail_label.set_wrap(true);
-  detail_label.set_justify(gtk::Justification::Center);
-  main_sec_box.append(&detail_label);
-
-  let build_info_label = gtk::Label::new(Some(&t!("UI.security.info.build")));
-  build_info_label.set_css_classes(&["h2"]);
-  build_info_label.set_margin_top(20);
-  main_sec_box.append(&build_info_label);
-
-  let build_details = gtk::Label::new(Some(&format!(
-    "• {}: {}\n\
-     • {}: {}\n\
-     • {}: {}\n\
-     • {}: {}\n\
-     • {}: {}\n\
-     • {}: {}",
-    t!("UI.security.details.hash"),
-    security_level.source_hash,
-    t!("UI.security.details.source"),
-    security_level.current_hash,
-    t!("UI.security.details.modified"),
-    security_level.code_modified,
-    t!("UI.security.details.date"),
-    COMMIT_DATE,
-    t!("UI.security.details.platform"),
-    BUILD_TARGET,
-    t!("UI.security.details.key"),
-    if COMMIT_KEY == "None" {
-      t!("UI.security.details.no_sign").to_string()
-    } else {
-      COMMIT_KEY.to_string()
-    },
-  )));
-
-  build_details.set_margin_top(5);
-  build_details.set_justify(gtk::Justification::Left);
-  main_sec_box.append(&build_details);
-
-  if COMMIT_KEY != "None" {
-    if COMMIT_KEY == CONTROL_OWL_KEY_ID {
-      let verified_message = gtk::Label::new(Some(&t!("UI.security.keys.verified")));
-      // verified_message.set_margin_top(10);
-      verified_message.set_wrap(true);
-      verified_message.set_css_classes(&["security-verified"]);
-      verified_message.set_justify(gtk::Justification::Left);
-      main_sec_box.append(&verified_message);
-    } else {
-      let error_message = gtk::Label::new(Some(&t!("UI.security.keys.error")));
-      error_message.set_wrap(true);
-      error_message.set_css_classes(&["security-error"]);
-      error_message.set_justify(gtk::Justification::Left);
-      main_sec_box.append(&error_message);
-    }
-  } else {
-    let not_signed_label = gtk::Label::new(Some(&t!("UI.security.keys.no_sign")));
-    // not_signed_label.set_margin_top(10);
-    not_signed_label.set_wrap(true);
-    not_signed_label.set_css_classes(&["security-error"]);
-    not_signed_label.set_justify(gtk::Justification::Left);
-    main_sec_box.append(&not_signed_label);
-  }
-
-  let our_key_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-  let our_label = gtk::Label::new(Some(&t!("UI.security.details.developer")));
-  our_label.set_margin_top(10);
-  our_label.set_css_classes(&["h2"]);
-
-  let control_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-  let qr2m_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-  our_key_box.append(&our_label);
-  our_key_box.append(&control_box);
-  our_key_box.append(&qr2m_box);
-
-  let control_owl_name = gtk::Label::new(Some("Control Owl"));
-  control_box.append(&control_owl_name);
-
-  let control_online_checker = format!("https://keys.openpgp.org/search?q={}", CONTROL_OWL_KEY_ID);
-
-  let control_link = gtk::LinkButton::builder()
-    .uri(control_online_checker)
-    .label(CONTROL_OWL_KEY_ID)
-    .build();
-
-  control_link.set_halign(gtk::Align::Center);
-  control_box.append(&control_link);
-
-  let control_fingerprint = gtk::Label::new(Some(CONTROL_OWL_FINGERPRINT));
-  control_box.append(&control_fingerprint);
-
-  let qr2m_label = gtk::Label::new(Some("QR2M:"));
-  qr2m_label.set_margin_top(10);
-  qr2m_box.append(&qr2m_label);
-
-  let qr2m_online_checker = format!("https://keys.openpgp.org/search?q={}", QR2M_KEY_ID);
-
-  let qr2m_link = gtk::LinkButton::builder()
-    .uri(qr2m_online_checker)
-    .label(QR2M_KEY_ID)
-    .build();
-
-  qr2m_link.set_halign(gtk::Align::Center);
-  qr2m_box.append(&qr2m_link);
-
-  let qr2m_fingerprint_label = gtk::Label::new(Some(QR2M_FINGERPRINT));
-  qr2m_box.append(&qr2m_fingerprint_label);
-
-  main_sec_box.append(&our_key_box);
-
-  let close_button = gtk::Button::with_label(&t!("UI.button.close"));
-
-  close_button.connect_clicked(clone!(
-    #[strong]
-    security_window,
-    move |_| {
-      security_window.close();
-    }
-  ));
-
-  let security_layout_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
-  security_layout_box.set_margin_bottom(10);
-  security_layout_box.set_margin_start(10);
-  security_layout_box.set_margin_end(10);
-  security_layout_box.append(&scrolled_window);
-  security_layout_box.append(&close_button);
-
-  security_window.set_child(Some(&security_layout_box));
-
-  security_window
-}

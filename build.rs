@@ -1,5 +1,5 @@
 fn main() {
-  set_enviroment();
+  set_environment();
 
   if std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "windows" {
     use winres;
@@ -10,7 +10,7 @@ fn main() {
   }
 }
 
-fn set_enviroment() {
+fn set_environment() {
   let output = std::process::Command::new("git")
     .arg("log")
     .arg("-1")

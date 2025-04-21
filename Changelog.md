@@ -1,3 +1,6 @@
+# version 0.81.5
+- security window
+
 # version 0.81.4
 - Rust Rover profile again
 - Rust formatter new config file
