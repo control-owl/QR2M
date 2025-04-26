@@ -145,4 +145,4 @@ If you like my work, you can buy me a coffee! ☕
 
 The source code for GTK4 can be obtained from the [GTK project website](https://www.gtk.org/).
 
-GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later, read more [here](res/licenses/GTK.license).
+GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later, read more [here](./res/licenses/GTK.license).
