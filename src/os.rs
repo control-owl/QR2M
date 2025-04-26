@@ -33,7 +33,7 @@ pub fn detect_os_and_user_dir() {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.detecting_local_os").to_string());
 
-  let os = match std::env::consts::OS {
+  let os = match env::consts::OS {
     "windows" => "windows",
     "macos" => "macos",
     "linux" => "linux",

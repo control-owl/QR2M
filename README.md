@@ -21,15 +21,15 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 
 ## Project status
 
-| **Security Status** |
-| --- |
-| [![Verify GPG Signature](https://github.com/control-owl/QR2M/actions/workflows/verify.yml/badge.svg)](https://github.com/control-owl/QR2M/actions/workflows/verify.yml) |
+| **Security Status**                                                                                                                                                                                       |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![Verify GPG Signature](https://github.com/control-owl/QR2M/actions/workflows/verify.yml/badge.svg)](https://github.com/control-owl/QR2M/actions/workflows/verify.yml)                                   |
 | [![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql) |
 
-| **Build Status** |
-| --- |
-| [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml) |
-| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml) |
+| **Build Status**                                                                                                                                                                                                |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml)             |
+| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml)          |
 | [![macOS aarch64 Darwin](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml) |
 
 
@@ -145,4 +145,4 @@ If you like my work, you can buy me a coffee! ☕
 
 The source code for GTK4 can be obtained from the [GTK project website](https://www.gtk.org/).
 
-GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later, read more [here](/LICENSE-LGPL-2.1.txt).
+GTK4 is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later, read more [here](res/licenses/GTK.license).

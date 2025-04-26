@@ -77,7 +77,7 @@ mod tests {
     ];
 
     for vector in entropy_mnemonic_vectors {
-      let mnemonic = crate::keys::generate_mnemonic_words(vector.entropy, None);
+      let mnemonic = keys::generate_mnemonic_words(vector.entropy, None);
       assert_eq!(mnemonic, vector.mnemonic);
     }
   }
@@ -103,7 +103,7 @@ mod tests {
     ];
 
     for vector in mnemonic_seed_vectors {
-      let seed_raw = crate::keys::generate_seed_from_mnemonic(vector.mnemonic, vector.passphrase);
+      let seed_raw = keys::generate_seed_from_mnemonic(vector.mnemonic, vector.passphrase);
       let seed = keys::convert_seed_to_mnemonic(&seed_raw);
 
       assert_eq!(seed, vector.seed);
@@ -156,7 +156,7 @@ mod tests {
     ];
 
     for vector in test_vectors {
-      match crate::keys::generate_master_keys(vector.seed, "0x0488ADE4", "0x0488B21E") {
+      match keys::generate_master_keys(vector.seed, "0x0488ADE4", "0x0488B21E") {
         Ok((
           master_xprv,
           master_xpub,
@@ -267,7 +267,7 @@ mod tests {
       let master_chain_code_bytes =
         hex::decode(vector.master_chain_code).expect("can not decode master_chain_code");
 
-      match crate::keys::derive_child_key_secp256k1(
+      match keys::derive_child_key_secp256k1(
         &master_private_key_bytes,
         &master_chain_code_bytes,
         vector.index,

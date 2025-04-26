@@ -342,7 +342,7 @@ fn create_coin_database() -> Vec<CoinDatabase> {
     return Vec::new();
   }
 
-  let mut rdr = csv::ReaderBuilder::new()
+  let mut rdr = ReaderBuilder::new()
     .has_headers(true)
     .from_reader(csv_content.as_bytes());
 

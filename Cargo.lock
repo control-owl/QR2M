@@ -28,7 +28,6 @@ dependencies = [
  "secp256k1",
  "serde",
  "serde_json",
- "sha1",
  "sha2",
  "sha3",
  "tokio",
@@ -2066,17 +2065,6 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
-]
-
-[[package]]
-name = "sha1"
-version = "0.10.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3bf829a2d51ab4a5ddf1352d8470c140cadc8301b2ae1789db023f01cedd6ba"
-dependencies = [
- "cfg-if",
- "cpufeatures",
- "digest",
 ]
 
 [[package]]

@@ -884,6 +884,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
   let public_key_encoded = match ingredients.hash.as_str() {
     "sha256" | "sha256+ripemd160" => match &public_key {
       CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+      #[cfg(feature = "dev")]
       _ => String::new(),
     },
     "keccak256" => match &public_key {
@@ -894,6 +895,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
           format!("0x{}", hex::encode(public_key.serialize()))
         }
       }
+      #[cfg(feature = "dev")]
       _ => String::new(),
     },
     #[cfg(feature = "dev")]

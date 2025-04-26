@@ -297,8 +297,8 @@ pub fn get_file_from_resources(file_name: &str) -> Result<&'static include_dir::
 }
 
 pub fn generate_empty_picture() -> gtk::Picture {
-  let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
-    gtk::gdk_pixbuf::Colorspace::Rgb,
+  let empty_pixbuf = gdk_pixbuf::Pixbuf::new(
+    gdk_pixbuf::Colorspace::Rgb,
     APP_IMAGE_HAS_ALPHA,
     APP_IMAGE_BITS as i32,
     APP_DEFAULT_BUTTON_WIDTH as i32,
@@ -320,8 +320,8 @@ pub fn generate_empty_picture() -> gtk::Picture {
 }
 
 pub fn generate_empty_texture() -> gtk::gdk::Texture {
-  let empty_pixbuf = gtk::gdk_pixbuf::Pixbuf::new(
-    gtk::gdk_pixbuf::Colorspace::Rgb,
+  let empty_pixbuf = gdk_pixbuf::Pixbuf::new(
+    gdk_pixbuf::Colorspace::Rgb,
     APP_IMAGE_HAS_ALPHA,
     APP_IMAGE_BITS as i32,
     APP_DEFAULT_BUTTON_WIDTH as i32,
@@ -359,18 +359,18 @@ pub fn setup_css() {
 pub fn save_config_to_file(
   local_config_file: &std::path::PathBuf,
   toml_str: &str,
-) -> std::io::Result<()> {
+) -> io::Result<()> {
   let mut file = std::fs::File::create(local_config_file).map_err(|_err| {
     #[cfg(debug_assertions)]
     eprintln!("\t- Failed to create config file: {}", _err);
-    std::io::Error::new(std::io::ErrorKind::Other, "Failed to create config file")
+    io::Error::new(io::ErrorKind::Other, "Failed to create config file")
   })?;
 
   file.write_all(toml_str.as_bytes()).map_err(|_err| {
     #[cfg(debug_assertions)]
     eprintln!("\t- Failed to write to config file: {}", _err);
 
-    std::io::Error::new(std::io::ErrorKind::Other, "Failed to write to config file")
+    io::Error::new(io::ErrorKind::Other, "Failed to write to config file")
   })?;
 
   #[cfg(debug_assertions)]
@@ -382,12 +382,12 @@ pub fn save_config_to_file(
   Ok(())
 }
 
-pub fn read_config_from_file(local_config_file: &std::path::PathBuf) -> std::io::Result<String> {
+pub fn read_config_from_file(local_config_file: &std::path::PathBuf) -> io::Result<String> {
   std::fs::read_to_string(local_config_file).map_err(|_err| {
     #[cfg(debug_assertions)]
     eprintln!("\t- Failed to read config file: {}", _err);
 
-    std::io::Error::new(io::ErrorKind::NotFound, "Failed to read config file")
+    io::Error::new(io::ErrorKind::NotFound, "Failed to read config file")
   })
 }
 

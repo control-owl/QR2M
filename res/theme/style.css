@@ -1,6 +1,6 @@
 .info-bar {
     border-radius: 10px;
-    margin: 0px 5px 5px 5px;
+    margin: 0 5px 5px 5px;
     font-family: Arial, sans-serif;
     font-size: 14px;
 }
@@ -42,13 +42,6 @@
     border-radius: 10px;
     font-family: Arial, sans-serif;
     font-size: xx-large;
-    font-weight: bold;
-}
-
-.h2 {
-    border-radius: 5px;
-    font-family: Arial, sans-serif;
-    font-size: large;
     font-weight: bold;
 }
 

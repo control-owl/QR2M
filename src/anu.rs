@@ -195,7 +195,7 @@ fn load_last_anu_request() -> Option<SystemTime> {
 fn create_anu_timestamp(time: SystemTime) {
   let local_settings = LOCAL_SETTINGS.lock().unwrap();
   let local_temp_dir = local_settings.local_temp_dir.clone().unwrap();
-  let local_anu_timestamp_file = std::path::Path::new(&local_temp_dir).join(ANU_TIMESTAMP_FILE);
+  let local_anu_timestamp_file = Path::new(&local_temp_dir).join(ANU_TIMESTAMP_FILE);
 
   println!("local_anu_timestamp_file: {:?}", local_anu_timestamp_file);
 
@@ -219,7 +219,7 @@ fn create_anu_timestamp(time: SystemTime) {
 fn write_api_response_to_log(response: &Option<String>) {
   let local_settings = LOCAL_SETTINGS.lock().unwrap();
   let local_temp_dir = local_settings.local_temp_dir.clone().unwrap();
-  let local_anu_response_file = std::path::Path::new(&local_temp_dir).join(ANU_RESPONSE_FILE);
+  let local_anu_response_file = Path::new(&local_temp_dir).join(ANU_RESPONSE_FILE);
 
   println!("local_anu_response_file: {:?}", local_anu_response_file);
 
