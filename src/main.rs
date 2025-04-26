@@ -4016,6 +4016,12 @@ fn create_main_window(
         main_purpose_frame.set_visible(false);
         bip_hardened_frame.set_visible(false);
 
+        bip_hardened_checkbox.set_can_target(true);
+        coin_hardened_checkbox.set_can_target(true);
+        address_hardened_checkbox.set_can_target(true);
+        purpose_dropdown.set_can_target(true);
+        address_spinbutton.set_can_target(true);
+
         bip_number = 32;
         dp.update_field("bip", Some(FieldValue::U32(bip_number)));
         update_derivation_label(*dp, derivation_label_text)
@@ -4023,6 +4029,12 @@ fn create_main_window(
         derivation_label_text.set_editable(false);
         main_purpose_frame.set_visible(true);
         bip_hardened_frame.set_visible(true);
+
+        bip_hardened_checkbox.set_can_target(true);
+        coin_hardened_checkbox.set_can_target(true);
+        address_hardened_checkbox.set_can_target(true);
+        purpose_dropdown.set_can_target(true);
+        address_spinbutton.set_can_target(true);
 
         bip_number = bip.parse().unwrap();
         dp.update_field("bip", Some(FieldValue::U32(bip_number)));
@@ -4293,7 +4305,7 @@ fn create_main_window(
             let mut current_index = address_start_point_int;
             let mut batch: Vec<CryptoAddresses> = Vec::new();
 
-            while generated_count <= num_addresses {
+            while generated_count < num_addresses {
               let cancel_rx = cancel_rx.lock().await;
               if *cancel_rx.borrow() {
                 #[cfg(debug_assertions)]

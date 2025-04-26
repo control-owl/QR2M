@@ -175,30 +175,48 @@ pub fn is_valid_seed(seed: &str) -> bool {
 }
 
 pub fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {
-  if !path.starts_with("m/") {
-    return Err("Path must start with 'm/'");
+  if !path.starts_with("m") {
+    return Err("Path must start with 'm'");
   }
 
-  let segments: Vec<&str> = path[2..].split('/').collect();
+  let segments = if path.len() > 1 {
+    if &path[1..2] != "/" {
+      return Err("Expected '/' after 'm'");
+    }
+    path[2..].split('/').collect::<Vec<&str>>()
+  } else {
+    vec![]
+  };
 
   if segments.len() > 5 {
     return Err("Too many segments for u64");
   }
 
-  let mut result: u64 = 0;
+  let mut result: u128 = 0;
 
-  for (i, segment) in segments.iter().enumerate() {
-    let is_hardened = segment.ends_with('\'');
-    let num_str = segment.trim_end_matches('\'');
-    let index: u32 = num_str.parse().map_err(|_| "Invalid number in path")?;
+  for segment in segments.iter() {
+    if segment.is_empty() {
+      return Err("Empty segment not allowed");
+    }
 
-    let value = if is_hardened {
-      index + 0x80000000
+    let (number_part, hardened) = if let Some(stripped) = segment.strip_suffix('\'') {
+      (stripped, true)
     } else {
-      index
+      (*segment, false)
     };
 
-    result |= (value as u64) << (48 - i * 12);
+    if number_part.is_empty() || !number_part.chars().all(|c| c.is_ascii_digit()) {
+      return Err("Invalid number in segment");
+    }
+
+    let index: u32 = number_part.parse().map_err(|_| "Invalid number in path")?;
+
+    let value = if hardened { index + 0x80000000 } else { index };
+
+    // result |= (value as u64) << (48 - i * 12);
+    // result.push_str(&format!("{:010}", value));
+    // result = result << 32;
+    result += value as u128;
   }
 
   Ok(result.to_string())

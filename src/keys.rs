@@ -831,6 +831,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
     Vec::new()
   };
 
+  #[cfg(debug_assertions)]
   dbg!(&public_key_hash_vec);
 
   let derived_child_keys = match ingredients.key_derivation.as_str() {
@@ -854,6 +855,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
   }
   .expect("Can not derive child key");
 
+  #[cfg(debug_assertions)]
   dbg!(&derived_child_keys);
 
   let public_key = match ingredients.key_derivation.as_str() {
@@ -879,6 +881,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
     }
   };
 
+  #[cfg(debug_assertions)]
   dbg!(&public_key);
 
   let public_key_encoded = match ingredients.hash.as_str() {
@@ -910,6 +913,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
     }
   };
 
+  #[cfg(debug_assertions)]
   dbg!(&public_key_encoded);
 
   let address = match ingredients.hash.as_str() {
@@ -934,6 +938,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
     }
   };
 
+  #[cfg(debug_assertions)]
   dbg!(&address);
 
   let priv_key_wif = if ingredients.key_derivation == "ed25519" {
@@ -955,6 +960,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
     .map_err(|e| format!("Failed to convert private key to WIF: {:?}", e))?
   };
 
+  #[cfg(debug_assertions)]
   dbg!(&priv_key_wif);
 
   Ok(Some(Address {

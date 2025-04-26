@@ -48,9 +48,16 @@ pub fn derive_from_path_ed25519(
   }
 
   let mut private_key = master_key.to_vec();
+  #[cfg(debug_assertions)]
+  dbg!(&private_key);
+
   let mut chain_code = master_chain_code.to_vec();
+  #[cfg(debug_assertions)]
+  dbg!(&chain_code);
+
   let mut public_key = Vec::new();
-  // let private_key_array = [0; 32];
+  #[cfg(debug_assertions)]
+  dbg!(&public_key);
 
   for part in path.split('/') {
     if part == "m" {
@@ -64,14 +71,15 @@ pub fn derive_from_path_ed25519(
     };
 
     let effective_index = if hardened { index + 0x80000000 } else { index };
-
-    // let derived =
-    //   derive_child_key_ed25519(&private_key, &chain_code, index, hardened).unwrap_or_default();
+    #[cfg(debug_assertions)]
+    dbg!(&effective_index);
 
     let derived = match derive_child_key_ed25519(&private_key, &chain_code, effective_index) {
       Some(derived) => derived,
       None => return Err(format!("Failed to derive child key for index: {}", part)),
     };
+    #[cfg(debug_assertions)]
+    dbg!(&derived);
 
     // private_key.clone().copy_from_slice(&derived.0);
     // private_key_array = derived.0;
@@ -83,10 +91,20 @@ pub fn derive_from_path_ed25519(
       Some(value) => value,
       None => return Err("Wrong derivation".to_string()),
     };
+    #[cfg(debug_assertions)]
+    dbg!(&derivation_result);
 
     private_key = derivation_result.0.to_vec();
+    #[cfg(debug_assertions)]
+    dbg!(&private_key);
+
     chain_code = derivation_result.1.to_vec();
+    #[cfg(debug_assertions)]
+    dbg!(&chain_code);
+
     public_key = derivation_result.2;
+    #[cfg(debug_assertions)]
+    dbg!(&public_key);
   }
 
   // let chain_code_array: [u8; 32] = chain_code.try_into().expect("Slice with incorrect length");
