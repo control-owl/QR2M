@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Basic release" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="Release" singleton="false">
+    <option name="buildProfileId" value="release" />
+    <option name="command" value="run --package QR2M --bin QR2M --target-dir &quot;target/basic&quot;" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+    <envs />
+    <option name="emulateTerminal" value="true" />
+    <option name="channel" value="DEFAULT" />
+    <option name="requiredFeatures" value="true" />
+    <option name="allFeatures" value="false" />
+    <option name="withSudo" value="false" />
+    <option name="buildTarget" value="REMOTE" />
+    <option name="backtrace" value="SHORT" />
+    <option name="isRedirectInput" value="false" />
+    <option name="redirectInputPath" value="" />
+    <method v="2">
+      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Debug_Format" />
+      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Debug_Clippy" />
+      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Release_Check" />
+      <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+    </method>
+  </configuration>
+</component>
