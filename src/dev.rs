@@ -4,10 +4,9 @@
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 use adw::prelude::*;
-use ed25519_dalek::{SigningKey, VerifyingKey};
+use ed25519_dalek::SigningKey;
 use gtk4 as gtk;
 use libadwaita as adw;
-use sha2::{Digest, Sha256};
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -17,17 +16,41 @@ pub fn derive_from_path_ed25519(
   master_key: &[u8],
   master_chain_code: &[u8],
   path: &str,
-) -> crate::keys::DerivationResult {
-  println!("Deriving from path for ed25519: {}", path);
+) -> Result<crate::keys::DerivationResult, String> {
+  #[cfg(debug_assertions)]
+  {
+    println!("[+] {}", &t!("log.derive_from_path_ed25519").to_string());
+    println!("\t- master_key: {:?}", &master_key);
+    println!("\t- master_chain_code: {:?}", &master_chain_code);
+    println!("\t- path: {:?}", &path);
+  }
 
-  println!("master_key: {:?}", &master_key);
-  println!("master_chain_code: {:?}", &master_chain_code);
-  println!("path: {:?}", &path);
+  if master_key.len() != 32 {
+    return Err(format!(
+      "Master key must be 32 bytes, got {}",
+      master_key.len()
+    ));
+  } else {
+    println!("\t- master_key_len: {:?}", master_key.len())
+  }
 
-  let private_key = master_key.to_vec();
-  let chain_code = master_chain_code.to_vec();
+  if master_chain_code.len() != 32 {
+    return Err(format!(
+      "Master chain code must be 32 bytes, got {}",
+      master_chain_code.len()
+    ));
+  } else {
+    println!("\t- master_chain_code_len: {:?}", master_chain_code.len())
+  }
+
+  if !path.starts_with("m/") {
+    return Err("Path must start with 'm/'".to_string());
+  }
+
+  let mut private_key = master_key.to_vec();
+  let mut chain_code = master_chain_code.to_vec();
   let mut public_key = Vec::new();
-  let mut private_key_array = [0; 32];
+  // let private_key_array = [0; 32];
 
   for part in path.split('/') {
     if part == "m" {
@@ -37,68 +60,113 @@ pub fn derive_from_path_ed25519(
     let hardened = part.ends_with("'");
     let index: u32 = match part.trim_end_matches("'").parse() {
       Ok(index) => index,
-      Err(_) => {
-        eprintln!("Error: Unable to parse index from path part: {}", part);
-        return None;
-      }
+      Err(_) => return Err(format!("Invalid path index: {}", part)),
     };
-    let derived =
-      derive_child_key_ed25519(&private_key, &chain_code, index, hardened).unwrap_or_default();
 
-    private_key.clone().copy_from_slice(&derived.0);
-    private_key_array = derived.0;
+    let effective_index = if hardened { index + 0x80000000 } else { index };
 
-    chain_code.clone().copy_from_slice(&derived.1);
-    public_key = derived.2.clone();
+    // let derived =
+    //   derive_child_key_ed25519(&private_key, &chain_code, index, hardened).unwrap_or_default();
+
+    let derived = match derive_child_key_ed25519(&private_key, &chain_code, effective_index) {
+      Some(derived) => derived,
+      None => return Err(format!("Failed to derive child key for index: {}", part)),
+    };
+
+    // private_key.clone().copy_from_slice(&derived.0);
+    // private_key_array = derived.0;
+    //
+    // chain_code.clone().copy_from_slice(&derived.1);
+    // public_key = derived.2.clone();
+
+    let derivation_result = match derived {
+      Some(value) => value,
+      None => return Err("Wrong derivation".to_string()),
+    };
+
+    private_key = derivation_result.0.to_vec();
+    chain_code = derivation_result.1.to_vec();
+    public_key = derivation_result.2;
   }
 
-  let chain_code_array: [u8; 32] = chain_code.try_into().expect("Slice with incorrect length");
-  Some((private_key_array, chain_code_array, public_key))
+  // let chain_code_array: [u8; 32] = chain_code.try_into().expect("Slice with incorrect length");
+  // Some((private_key_array, chain_code_array, public_key))
+
+  let chain_code_array: [u8; 32] = chain_code
+    .try_into()
+    .map_err(|_| "Chain code length invalid".to_string())?;
+
+  Ok(Some((
+    private_key.try_into().expect("Expected a Vec of length 32"),
+    chain_code_array,
+    public_key,
+  )))
 }
 
 fn derive_child_key_ed25519(
   parent_key: &[u8],
   parent_chain_code: &[u8],
   index: u32,
-  hardened: bool,
-) -> crate::keys::DerivationResult {
-  println!("Deriving ed25519 child key");
-
-  println!("parent_key: {:?}", &parent_key);
-  println!("parent_chain_code: {:?}", &parent_chain_code);
-  println!("index: {:?}", &index);
-  println!("hardened: {:?}", &hardened);
-
-  let mut hasher = Sha256::new();
-  hasher.update(parent_key);
-  hasher.update(index.to_be_bytes());
-  if hardened {
-    hasher.update([1u8; 1]);
+) -> Option<crate::keys::DerivationResult> {
+  #[cfg(debug_assertions)]
+  {
+    println!("[+] {}", &t!("log.derive_child_key_ed25519").to_string());
+    println!("\t- parent_key: {:?}", &parent_key);
+    println!("\t- parent_chain_code: {:?}", &parent_chain_code);
+    println!("\t- index: {:?}", &index);
   }
-  let result = hasher.finalize();
 
+  if parent_key.len() != 32 || parent_chain_code.len() != 32 {
+    eprintln!("Invalid parent_key or parent_chain_code length");
+    return None;
+  }
+
+  let is_hard = index >= 0x80000000;
+
+  let data = if is_hard {
+    let mut d = Vec::with_capacity(37);
+    d.push(0u8);
+    d.extend_from_slice(parent_key);
+    d.extend_from_slice(&index.to_be_bytes());
+    d
+  } else {
+    let parent_sk = match SigningKey::try_from(parent_key) {
+      Ok(sk) => sk,
+      Err(_) => {
+        eprintln!("Invalid parent private key");
+        return None;
+      }
+    };
+    let parent_public_key = parent_sk.verifying_key().to_bytes();
+    let mut d = Vec::with_capacity(36);
+    d.extend_from_slice(&parent_public_key);
+    d.extend_from_slice(&index.to_be_bytes());
+    d
+  };
+
+  let result = qr2m_lib::calculate_hmac_sha512_hash(parent_chain_code, &data);
   if result.len() != 64 {
-    eprintln!("len is not 64, it is: {}", result.len());
+    eprintln!("calculate_hmac_sha512_hash len is not 64");
     return None;
   }
 
   let mut child_private_key_bytes: [u8; 32] = [0; 32];
   let mut child_chain_code_bytes: [u8; 32] = [0; 32];
-
   child_private_key_bytes.copy_from_slice(&result[..32]);
   child_chain_code_bytes.copy_from_slice(&result[32..]);
 
-  let secret_key = SigningKey::from_bytes(&child_private_key_bytes).to_bytes();
-  let public_key = VerifyingKey::from_bytes(&secret_key)
-    .unwrap_or_default()
-    .to_bytes()
-    .to_vec();
+  let secret_key = match SigningKey::try_from(child_private_key_bytes.as_ref()) {
+    Ok(sk) => sk,
+    Err(_) => {
+      eprintln!("Derived child private key is invalid");
+      return None;
+    }
+  };
 
-  println!("child_private_key_bytes: {:?}", &secret_key);
-  println!("child_chain_code_bytes: {:?}", &child_chain_code_bytes);
-  println!("child_public_key_bytes: {:?}", &public_key);
+  let secret_key_bytes = secret_key.to_bytes();
+  let public_key = secret_key.verifying_key().to_bytes().to_vec();
 
-  Some((secret_key, child_chain_code_bytes, public_key))
+  Some((secret_key_bytes, child_chain_code_bytes, public_key).into())
 }
 
 pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> String {
@@ -106,13 +174,13 @@ pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> St
     crate::keys::CryptoPublicKey::Ed25519(key) => key.to_bytes().to_vec(),
     _ => {
       eprintln!("generate_ed25519_address called with non-ed25519 key");
-      Vec::new()
+      return String::new();
     }
   };
 
-  let hash = Sha256::digest(&public_key_bytes);
-  bs58::encode(hash)
-    .with_alphabet(bs58::Alphabet::BITCOIN)
+  // let hash = Sha256::digest(&public_key_bytes);
+  bs58::encode(&public_key_bytes)
+    .with_alphabet(bs58::Alphabet::DEFAULT)
     .into_string()
 }
 

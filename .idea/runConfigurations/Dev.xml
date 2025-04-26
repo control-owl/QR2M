@@ -15,7 +15,6 @@
     <option name="redirectInputPath" value="" />
     <method v="2">
       <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Debug_Format" />
-      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Debug_Clippy" />
       <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
     </method>
   </configuration>

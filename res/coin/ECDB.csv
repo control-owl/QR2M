@@ -500,7 +500,7 @@ status,coin_index,coin_symbol,coin_name,key_derivation,hash,private_header,publi
 0,498,CS,Credits,,,,,,,,,,
 1,499,RUPX,Rupaya,secp256k1,keccak256,,,,,,TRUE,,
 1,500,THETA,Theta,secp256k1,keccak256,,,,,,TRUE,,100
-0,501,SOL,Solana,ed25519,,,,,,,,,10
+0,501,SOL,Solana,ed25519,ed25519,,,,,,,,10
 1,502,THT,ThoughtAI,secp256k1,sha256,0x5AEBD8C6,0xFBC6A00D,0x07,0x09,0x7B,,,
 1,503,CFX,Conflux,secp256k1,keccak256,,,,,,TRUE,,100
 0,504,KUMA,Kumacoin,,,,,,,,,,

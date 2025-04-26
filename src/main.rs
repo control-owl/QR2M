@@ -57,7 +57,18 @@ const VALID_MNEMONIC_DICTIONARY: &[&str] = &[
   "Korean",
 ];
 const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
-const VALID_BIP_DERIVATIONS: [u32; 5] = [32, 44, 49, 84, 86];
+const VALID_BIP_DERIVATIONS: &[&str] = &[
+  "32",
+  "44",
+  #[cfg(feature = "dev")]
+  "49",
+  #[cfg(feature = "dev")]
+  "84",
+  #[cfg(feature = "dev")]
+  "86",
+  #[cfg(feature = "dev")]
+  "Custom",
+];
 const VALID_ENTROPY_SOURCES: &[&str] = &["RNG+", "File", "QRNG"];
 const VALID_WALLET_PURPOSE: &[&str] = &["Internal", "External"];
 const VALID_ANU_API_DATA_FORMAT: &[&str] = &[
@@ -2128,7 +2139,7 @@ fn create_main_window(
   let default_mnemonic_length = lock_app_settings.wallet_mnemonic_length.unwrap();
   let mnemonic_passphrase_adjustment = gtk::Adjustment::new(
     default_mnemonic_length as f64,
-    8.0 * 2.0,
+    0.0,
     8.0 * 128.0 * 4.0,
     1.0,
     100.0,
@@ -3006,7 +3017,6 @@ fn create_main_window(
   let master_private_key_text = gtk::TextView::new();
   master_private_key_text.set_editable(false);
   master_private_key_text.set_wrap_mode(gtk::WrapMode::Char);
-  master_private_key_text.set_editable(false);
   master_private_key_text.set_left_margin(5);
   master_private_key_text.set_top_margin(5);
   master_private_key_text.set_hexpand(true);
@@ -3038,7 +3048,6 @@ fn create_main_window(
   let master_public_key_text = gtk::TextView::new();
   master_public_key_text.set_editable(false);
   master_public_key_text.set_wrap_mode(gtk::WrapMode::Char);
-  master_public_key_text.set_editable(false);
   master_public_key_text.set_left_margin(5);
   master_public_key_text.set_top_margin(5);
   master_public_key_text.set_hexpand(true);
@@ -3105,7 +3114,7 @@ fn create_main_window(
   let valid_bip_as_ref: Vec<&str> = valid_bip_as_string.iter().map(|s| s.as_ref()).collect();
   let bip_dropdown = gtk::DropDown::from_strings(&valid_bip_as_ref);
 
-  let wallet_bip = lock_app_settings.wallet_bip.unwrap();
+  let wallet_bip = lock_app_settings.wallet_bip.unwrap().to_string();
   let default_index = VALID_BIP_DERIVATIONS
     .iter()
     .position(|&x| x == wallet_bip)
@@ -3159,7 +3168,7 @@ fn create_main_window(
   let derivation_label_frame = gtk::Frame::new(Some(&t!("UI.main.address.derivation")));
   derivation_label_frame.set_hexpand(true);
 
-  let default_bip_label = if wallet_bip == 32 {
+  let default_bip_label = if wallet_bip == "32" {
     main_purpose_frame.set_visible(false);
     format!("m/{}'/0'/0'", wallet_bip)
   } else {
@@ -3167,12 +3176,21 @@ fn create_main_window(
     format!("m/{}'/0'/0'/0", wallet_bip)
   };
 
-  let derivation_label_text = gtk4::Label::builder()
-    .label(&default_bip_label)
-    .halign(gtk::Align::Center)
-    .valign(gtk::Align::Center)
-    .css_classes(["large-title"])
-    .build();
+  // JUMP: 111111111111111111111111111111111111111111111
+  // let derivation_label_text = gtk4::Label::builder()
+  //   .label(&default_bip_label)
+  //   .halign(gtk::Align::Center)
+  //   .valign(gtk::Align::Center)
+  //   .css_classes(["large-title"])
+  //   .build();
+
+  let derivation_label_text = gtk::TextView::new();
+  derivation_label_text.set_editable(false);
+  derivation_label_text.set_wrap_mode(gtk::WrapMode::Char);
+  derivation_label_text.set_justification(gtk::Justification::Center);
+  derivation_label_text.set_hexpand(true);
+  derivation_label_text.set_css_classes(&["h1"]);
+  derivation_label_text.buffer().set_text(&default_bip_label);
 
   let address_generation_buttons_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   address_generation_buttons_box.set_halign(gtk::Align::Center);
@@ -3960,25 +3978,56 @@ fn create_main_window(
     }
   });
 
+  // JUMP: BIP switching
   bip_dropdown.connect_selected_notify(clone!(
     #[weak]
     derivation_label_text,
+    #[weak]
+    bip_hardened_checkbox,
+    #[weak]
+    coin_hardened_checkbox,
+    #[weak]
+    address_hardened_checkbox,
+    #[weak]
+    purpose_dropdown,
+    #[weak]
+    address_spinbutton,
     move |bip_dropdown| {
       let value = bip_dropdown.selected() as usize;
-      let selected_entropy_source_value = VALID_BIP_DERIVATIONS.get(value);
-      let bip = selected_entropy_source_value.unwrap();
+      let selected_bip_value = VALID_BIP_DERIVATIONS.get(value);
+      let bip = selected_bip_value.unwrap();
+      let bip_number;
+      let mut dp = DERIVATION_PATH.write().unwrap();
 
-      if *bip == 32 {
+      if *bip == "Custom" {
+        println!("custom");
+        derivation_label_text.set_editable(true);
+        bip_hardened_checkbox.set_can_target(false);
+        coin_hardened_checkbox.set_can_target(false);
+        address_hardened_checkbox.set_can_target(false);
+        purpose_dropdown.set_can_target(false);
+        address_spinbutton.set_can_target(false);
+
+        // TODO: Process custom path, then update DP
+        // dp.update_field("bip", Some(FieldValue::U32(bip_number)));
+        // update_derivation_label(*dp, derivation_label_text)
+      } else if *bip == "32" {
+        derivation_label_text.set_editable(false);
         main_purpose_frame.set_visible(false);
         bip_hardened_frame.set_visible(false);
+
+        bip_number = 32;
+        dp.update_field("bip", Some(FieldValue::U32(bip_number)));
+        update_derivation_label(*dp, derivation_label_text)
       } else {
+        derivation_label_text.set_editable(false);
         main_purpose_frame.set_visible(true);
         bip_hardened_frame.set_visible(true);
-      }
 
-      let mut dp = DERIVATION_PATH.write().unwrap();
-      dp.update_field("bip", Some(FieldValue::U32(*bip)));
-      update_derivation_label(*dp, derivation_label_text)
+        bip_number = bip.parse().unwrap();
+        dp.update_field("bip", Some(FieldValue::U32(bip_number)));
+        update_derivation_label(*dp, derivation_label_text)
+      }
     }
   ));
 
@@ -4163,9 +4212,10 @@ fn create_main_window(
       delete_addresses_button_box.set_visible(false);
 
       let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
-      let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+      let _key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
 
-      if key_derivation != "secp256k1" {
+      #[cfg(not(feature = "dev"))]
+      if _key_derivation != "secp256k1" {
         let lock_app_messages = app_messages_state.borrow();
         lock_app_messages.queue_message(
           t!("error.address.unsupported").to_string(),
@@ -4174,7 +4224,13 @@ fn create_main_window(
         return;
       }
 
-      let derivation_path = derivation_label_text.text();
+      let derivation_path = {
+        let buffer = derivation_label_text.buffer();
+        let start_iter = buffer.start_iter();
+        let end_iter = buffer.end_iter();
+        buffer.text(&start_iter, &end_iter, false)
+      };
+
       let hardened_address = address_options_hardened_address_checkbox.is_active();
       let address_start_point = address_start_spinbutton.text();
       let mut address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
@@ -4289,16 +4345,14 @@ fn create_main_window(
                     hash: wallet_settings.hash.clone().unwrap_or_default(),
                   };
 
-                  if let Ok((address, public_key, private_key)) =
-                    keys::generate_address(magic_ingredients)
-                  {
+                  if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
                     let new_entry = CryptoAddresses {
                       id: Some(coin_path_id.clone()),
                       coin_name: Some(coin_name.clone()),
                       derivation_path: Some(derivation_path.clone()),
-                      address: Some(address.clone()),
-                      public_key: Some(public_key.clone()),
-                      private_key: Some(private_key.clone()),
+                      address: Some(address.address.clone()),
+                      public_key: Some(address.public_key.clone()),
+                      private_key: Some(address.private_key.clone()),
                     };
 
                     // dbg!(buffered_addresses);
@@ -4330,6 +4384,9 @@ fn create_main_window(
 
                     generated_count += 1;
                     current_index += 1;
+                  } else {
+                    eprintln!("problem with generating ed address");
+                    break;
                   }
                 }
                 dashmap::mapref::entry::Entry::Occupied(_) => {
@@ -5244,7 +5301,7 @@ fn create_settings_window(
   let mnemonic_length_label = gtk::Label::new(Some(&t!("UI.settings.wallet.mnemonic_length")));
   let mnemonic_length = lock_app_settings.wallet_mnemonic_length.unwrap() as f64;
   let mnemonic_length_adjustment =
-    gtk::Adjustment::new(mnemonic_length, 8.0 * 2.0, 8.0 * 128.0, 1.0, 100.0, 0.0);
+    gtk::Adjustment::new(mnemonic_length, 0.0, 8.0 * 128.0, 1.0, 100.0, 0.0);
   let mnemonic_length_spinbutton = gtk::SpinButton::new(Some(&mnemonic_length_adjustment), 1.0, 0);
 
   mnemonic_length_spinbutton.set_size_request(200, 10);
@@ -5306,6 +5363,7 @@ fn create_settings_window(
   let valid_bips_as_strings: Vec<String> = VALID_BIP_DERIVATIONS
     .iter()
     .map(|&x| x.to_string())
+    .filter(|s| s != "Custom")
     .collect();
 
   let valid_bips_as_str_refs: Vec<&str> =
@@ -5988,7 +6046,7 @@ fn create_settings_window(
         ),
         (
           "wallet_bip",
-          toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize] as i64),
+          toml_edit::value(VALID_BIP_DERIVATIONS[bip_dropdown.selected() as usize]),
         ),
         (
           "wallet_address_count",
@@ -6511,7 +6569,7 @@ fn save_wallet_to_file(app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMe
   save_loop.run();
 }
 
-fn update_derivation_label(dp: DerivationPath, label: gtk::Label) {
+fn update_derivation_label(dp: DerivationPath, label: gtk::TextView) {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.update_derivation_label").to_string());
 
@@ -6540,7 +6598,7 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::Label) {
   #[cfg(debug_assertions)]
   println!("\t- Derivation path: {:?}", &path);
 
-  label.set_text(&path);
+  label.buffer().set_text(&path);
 }
 
 fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<String>), String> {

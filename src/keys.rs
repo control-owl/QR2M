@@ -13,8 +13,10 @@ use sha3::Keccak256;
 use std::{fs::File, io::Read};
 
 pub type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
+pub type AddressResult = Option<Address>;
 type MasterPrivateKey = (String, String, Vec<u8>, Vec<u8>, Vec<u8>);
 
+#[derive(Debug)]
 pub struct AddressHocusPokus {
   pub coin_index: u32,
   pub derivation_path: String,
@@ -26,8 +28,16 @@ pub struct AddressHocusPokus {
   pub hash: String,
 }
 
+#[derive(Debug)]
+pub struct Address {
+  pub address: String,
+  pub public_key: String,
+  pub private_key: String,
+}
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+#[derive(Debug)]
 pub enum CryptoPublicKey {
   Secp256k1(secp256k1::PublicKey),
   #[cfg(feature = "dev")]
@@ -800,30 +810,28 @@ pub fn generate_master_keys(
   ))
 }
 
-pub fn generate_address(
-  ingredients: AddressHocusPokus,
-) -> Result<(String, String, String), String> {
+pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult, String> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_address").to_string());
-    println!("\t- derivation_path: {:?}", ingredients.derivation_path);
+    println!("\t- ingredients: {:?}", ingredients);
   }
 
   let secp = secp256k1::Secp256k1::new();
 
-  let trimmed_public_key_hash =
-    if let Some(stripped) = ingredients.public_key_hash.strip_prefix("0x") {
-      stripped
-    } else {
-      &ingredients.public_key_hash
-    };
+  let public_key_hash_vec = if ingredients.key_derivation != "ed25519" {
+    let trimmed_public_key_hash = ingredients
+      .public_key_hash
+      .strip_prefix("0x")
+      .unwrap_or(&ingredients.public_key_hash);
 
-  let public_key_hash_vec = match hex::decode(trimmed_public_key_hash) {
-    Ok(vec) => vec,
-    Err(e) => {
-      return Err(format!("Problem with decoding public_key_hash_vec: {:?}", e).to_string());
-    }
+    hex::decode(trimmed_public_key_hash)
+      .map_err(|e| format!("Problem with decoding public_key_hash_vec: {:?}", e))?
+  } else {
+    Vec::new()
   };
+
+  dbg!(&public_key_hash_vec);
 
   let derived_child_keys = match ingredients.key_derivation.as_str() {
     "secp256k1" => derive_from_path_secp256k1(
@@ -836,7 +844,7 @@ pub fn generate_address(
       &ingredients.master_private_key_bytes,
       &ingredients.master_chain_code_bytes,
       &ingredients.derivation_path,
-    ),
+    )?,
     _ => {
       return Err(format!(
         "Unsupported key derivation method: {:?}",
@@ -845,6 +853,8 @@ pub fn generate_address(
     }
   }
   .expect("Can not derive child key");
+
+  dbg!(&derived_child_keys);
 
   let public_key = match ingredients.key_derivation.as_str() {
     "secp256k1" => {
@@ -856,9 +866,10 @@ pub fn generate_address(
     }
     #[cfg(feature = "dev")]
     "ed25519" => {
-      let secret_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-      let pub_key_bytes = ed25519_dalek::VerifyingKey::from(&secret_key);
-      CryptoPublicKey::Ed25519(pub_key_bytes)
+      let sign_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+      // let secret_key = sign_key.to_bytes();
+      let pub_key = sign_key.verifying_key();
+      CryptoPublicKey::Ed25519(pub_key)
     }
     _ => {
       return Err(format!(
@@ -868,11 +879,12 @@ pub fn generate_address(
     }
   };
 
+  dbg!(&public_key);
+
   let public_key_encoded = match ingredients.hash.as_str() {
     "sha256" | "sha256+ripemd160" => match &public_key {
       CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-      #[cfg(feature = "dev")]
-      CryptoPublicKey::Ed25519(public_key) => hex::encode(public_key.to_bytes()),
+      _ => String::new(),
     },
     "keccak256" => match &public_key {
       CryptoPublicKey::Secp256k1(public_key) => {
@@ -882,15 +894,21 @@ pub fn generate_address(
           format!("0x{}", hex::encode(public_key.serialize()))
         }
       }
-      #[cfg(feature = "dev")]
-      CryptoPublicKey::Ed25519(public_key) => {
-        format!("0x{}", hex::encode(public_key.to_bytes()))
-      }
+      _ => String::new(),
+    },
+    #[cfg(feature = "dev")]
+    "ed25519" => match &public_key {
+      CryptoPublicKey::Ed25519(public_key) => bs58::encode(public_key.to_bytes())
+        .with_alphabet(bs58::Alphabet::DEFAULT)
+        .into_string(),
+      _ => String::new(),
     },
     _ => {
       return Err(format!("Unsupported hash method: {:?}", ingredients.hash));
     }
   };
+
+  dbg!(&public_key_encoded);
 
   let address = match ingredients.hash.as_str() {
     "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
@@ -914,23 +932,34 @@ pub fn generate_address(
     }
   };
 
-  // TODO: remove hard-coding, add this option to UI
-  let compressed = true;
+  dbg!(&address);
 
-  let priv_key_wif = create_private_key_for_address(
-    Some(&secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key")),
-    Some(compressed),
-    Some(&ingredients.wallet_import_format),
-    &ingredients.hash,
-    ingredients.coin_index,
-  )
-  .expect("Failed to convert private key to WIF");
+  let priv_key_wif = if ingredients.key_derivation == "ed25519" {
+    bs58::encode(&derived_child_keys.0)
+      .with_alphabet(bs58::Alphabet::DEFAULT)
+      .into_string()
+  } else {
+    let compressed = true;
+    create_private_key_for_address(
+      Some(
+        &secp256k1::SecretKey::from_slice(&derived_child_keys.0)
+          .map_err(|e| format!("Invalid secret key: {:?}", e))?,
+      ),
+      Some(compressed),
+      Some(&ingredients.wallet_import_format),
+      &ingredients.hash,
+      ingredients.coin_index,
+    )
+    .map_err(|e| format!("Failed to convert private key to WIF: {:?}", e))?
+  };
 
-  Ok((
-    address.clone(),
-    public_key_encoded.clone(),
-    priv_key_wif.clone(),
-  ))
+  dbg!(&priv_key_wif);
+
+  Ok(Some(Address {
+    address: address.clone(),
+    public_key: public_key_encoded.clone(),
+    private_key: priv_key_wif.clone(),
+  }))
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

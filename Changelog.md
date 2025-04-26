@@ -1,3 +1,7 @@
+# version 0.82.0
+- custom derivation path (dev)
+- trying to derive ed25519 address
+
 # version 0.81.5
 - security window
 
