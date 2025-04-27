@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Dev release" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="Release" singleton="false">
+  <configuration default="false" name="Dev" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="Run" singleton="false">
     <option name="buildProfileId" value="dev" />
     <option name="command" value="run --package QR2M --bin QR2M --features dev --target-dir &quot;target/dev&quot;" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
@@ -14,9 +14,6 @@
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
     <method v="2">
-      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Debug_Format" />
-      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Debug_Clippy" />
-      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Release_Check" />
       <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
     </method>
   </configuration>

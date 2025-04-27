@@ -14,7 +14,6 @@ use std::{fs::File, io::Read};
 
 pub type DerivationResult = Option<([u8; 32], [u8; 32], Vec<u8>)>;
 pub type AddressResult = Option<Address>;
-type MasterPrivateKey = (String, String, Vec<u8>, Vec<u8>, Vec<u8>);
 
 #[derive(Debug)]
 pub struct AddressHocusPokus {
@@ -26,6 +25,7 @@ pub struct AddressHocusPokus {
   pub key_derivation: String,
   pub wallet_import_format: String,
   pub hash: String,
+  // pub seed: String,
 }
 
 #[derive(Debug)]
@@ -714,11 +714,11 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
   entropy
 }
 
-pub fn generate_master_keys(
+pub fn generate_master_keys_secp256k1(
   seed: &str,
   mut private_header: &str,
   mut public_header: &str,
-) -> Result<MasterPrivateKey, String> {
+) {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.derive_master_keys").to_string());
@@ -756,7 +756,7 @@ pub fn generate_master_keys(
 
   master_private_key.extend_from_slice(&checksum);
 
-  let master_xprv = bs58::encode(&master_private_key).into_string();
+  let master_private_key_encoded = bs58::encode(&master_private_key).into_string();
   let secp = secp256k1::Secp256k1::new();
   let master_secret_key =
     secp256k1::SecretKey::from_slice(master_private_key_bytes).expect(&t!("error.master.create"));
@@ -775,7 +775,7 @@ pub fn generate_master_keys(
 
   master_public_key.extend_from_slice(&checksum);
 
-  let master_xpub = bs58::encode(&master_public_key).into_string();
+  let master_public_key_encoded = bs58::encode(&master_public_key).into_string();
 
   #[cfg(debug_assertions)]
   {
@@ -788,26 +788,18 @@ pub fn generate_master_keys(
       master_private_key_bytes
     );
     println!(" - Master key chain code: {:?}", master_chain_code_bytes);
-    println!(" - Master private key (xprv): {:?}", master_xprv);
+    println!(" - Master private key: {:?}", master_private_key_encoded);
     println!(" - Master secret key {:?}", master_secret_key);
     println!(" - Master public key {:?}", master_public_key_bytes);
-    println!(" - Master public key (xpub): {:?}", master_xpub);
+    println!(" - Master public key: {:?}", master_public_key_encoded);
   }
 
   let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
-  wallet_settings.master_xprv = Some(master_xprv.clone());
-  wallet_settings.master_xpub = Some(master_xpub.clone());
+  wallet_settings.master_private_key = Some(master_private_key_encoded.clone());
+  wallet_settings.master_public_key = Some(master_public_key_encoded.clone());
   wallet_settings.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
   wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
   wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
-
-  Ok((
-    master_xprv,
-    master_xpub,
-    master_private_key_bytes.to_vec(),
-    master_chain_code_bytes.to_vec(),
-    master_public_key_bytes.to_vec(),
-  ))
 }
 
 pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult, String> {
@@ -845,6 +837,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
       &ingredients.master_private_key_bytes,
       &ingredients.master_chain_code_bytes,
       &ingredients.derivation_path,
+      // &ingredients.seed,
     )?,
     _ => {
       return Err(format!(

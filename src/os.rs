@@ -3,10 +3,9 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-use crate::APP_NAME;
+use crate::{APP_NAME, FunctionOutput};
 use std::{
   env, fs,
-  io::{self},
   path::{Path, PathBuf},
 };
 
@@ -29,25 +28,22 @@ pub struct LocalSettings {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-pub fn detect_os_and_user_dir() {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.detecting_local_os").to_string());
+pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
+  crate::d3bug(">>> detect_os_and_user_dir", "log");
 
   let os = match env::consts::OS {
     "windows" => "windows",
     "macos" => "macos",
     "linux" => "linux",
     _ => "unknown",
-  }
-  .to_string();
+  };
 
-  let app_name = APP_NAME.unwrap();
-
+  let app_name = APP_NAME.ok_or_else(|| crate::AppError::Custom("APP_NAME not set".into()))?;
   let local_temp = env::temp_dir();
   let local_temp_dir = local_temp.join(app_name);
   let local_temp_file = local_temp_dir.join(APP_LOCAL_TEMP_FILE);
 
-  let local_config_dir = match os.as_str() {
+  let local_config_dir = match os {
     "windows" => {
       // C:\Users\<Username>\AppData\Roaming\<AppName>\
       let mut path = PathBuf::from(env::var("APPDATA").unwrap_or_else(|_| "C:\\".to_string()));
@@ -76,45 +72,37 @@ pub fn detect_os_and_user_dir() {
     match fs::read_link(&local_config_dir) {
       Ok(target) => {
         if target.is_dir() {
-          if fs::metadata(&target)
-            .map(|m| m.permissions().readonly())
-            .unwrap_or(true)
-          {
-            eprintln!("\t- Symlink target is not writable: {:?}", &target);
-            (
-              local_temp_dir.clone(),
-              local_temp_dir.join(APP_LOCAL_CONFIG_FILE),
-            )
+          let metadata = fs::metadata(&target).map_err(crate::AppError::Io)?;
+          if metadata.permissions().readonly() {
+            return Err(crate::AppError::Custom(format!(
+              "Symlink target is not writable: {:?}",
+              target
+            )));
           } else {
             #[cfg(debug_assertions)]
             println!("\t- Using writable symlink target: {:?}", &target);
             (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
           }
         } else {
-          eprintln!("\t- Symlink does not point to a directory: {:?}", &target);
-          (
-            local_temp_dir.clone(),
-            local_temp_dir.join(APP_LOCAL_CONFIG_FILE),
-          )
+          return Err(crate::AppError::Custom(format!(
+            "Symlink does not point to a directory: {:?}",
+            target
+          )));
         }
       }
       Err(e) => {
-        eprintln!(
-          "\t- Failed to read symlink target: {:?}\n\tError: {}",
-          &local_config_dir, e
-        );
-        (
-          local_temp_dir.clone(),
-          local_temp_dir.join(APP_LOCAL_CONFIG_FILE),
-        )
+        return Err(crate::AppError::Io(e));
       }
     }
   } else {
     (local_config_dir, local_config_file)
   };
 
-  let mut local_settings = LOCAL_SETTINGS.lock().unwrap();
-  local_settings.os = Some(os.clone());
+  let mut local_settings = LOCAL_SETTINGS
+    .lock()
+    .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
+
+  local_settings.os = Some(os.to_string());
   local_settings.local_config_dir = Some(config_dir.clone());
   local_settings.local_temp_dir = Some(local_temp_dir.clone());
   local_settings.local_config_file = Some(config_file.clone());
@@ -128,11 +116,12 @@ pub fn detect_os_and_user_dir() {
     println!("\t- Temp directory: {:?}", &local_temp_dir);
     println!("\t- Temp file: {:?}", &local_temp_file);
   }
+
+  Ok(())
 }
 
-pub fn switch_locale(lang: &str) {
-  #[cfg(debug_assertions)]
-  println!(" - {}", &t!("log.switch_locale").to_string());
+pub fn switch_locale(lang: &str) -> FunctionOutput<()> {
+  crate::d3bug(">>> switch_locale", "log");
 
   match lang {
     "Deutsch" => rust_i18n::set_locale("de"),
@@ -142,27 +131,40 @@ pub fn switch_locale(lang: &str) {
 
   #[cfg(debug_assertions)]
   println!(" - Language: {:?}", lang);
+
+  Ok(())
 }
 
-pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.check_local_config").to_string());
+pub fn check_local_config() -> FunctionOutput<()> {
+  crate::d3bug(">>> check_local_config", "log");
 
-  let local_settings = LOCAL_SETTINGS.lock().unwrap();
-  let local_config_file = local_settings.local_config_file.clone().unwrap();
-  let local_config_dir = local_settings.local_config_dir.clone().unwrap();
+  let local_settings = LOCAL_SETTINGS
+    .lock()
+    .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
+
+  let local_config_file = local_settings
+    .local_config_file
+    .clone()
+    .ok_or_else(|| crate::AppError::Custom("local_config_file not set".into()))?;
+
+  let local_config_dir = local_settings
+    .local_config_dir
+    .clone()
+    .ok_or_else(|| crate::AppError::Custom("local_config_dir not set".into()))?;
 
   if !local_config_dir.exists() {
-    fs::create_dir_all(&local_config_dir)?;
+    fs::create_dir_all(&local_config_dir).map_err(crate::AppError::Io)?;
   }
 
   if !is_directory_writable(&local_config_dir)? {
-    return Err(io::Error::new(io::ErrorKind::PermissionDenied, "Directory not writable").into());
+    return Err(crate::AppError::Custom("Directory is not writable".into()));
   }
 
   if !Path::new(&local_config_file).exists() {
     let default_settings = crate::AppSettings::default();
-    let serialized = toml::to_string(&default_settings)?;
+    let serialized = toml::to_string(&default_settings)
+      .map_err(|e| crate::AppError::Custom(format!("Failed to serialize settings: {}", e)))?;
+
     let mut config_map: std::collections::BTreeMap<
       String,
       std::collections::BTreeMap<String, String>,
@@ -187,7 +189,7 @@ pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
       toml_string.push('\n');
     }
 
-    fs::write(&local_config_file, toml_string)?;
+    fs::write(&local_config_file, toml_string).map_err(crate::AppError::Io)?;
 
     #[cfg(debug_assertions)]
     println!("\t- New config file created");
@@ -196,7 +198,9 @@ pub fn check_local_config() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
+fn is_directory_writable(dir: &Path) -> FunctionOutput<bool> {
+  crate::d3bug(">>> is_directory_writable", "log");
+
   let mut temp_file_path = dir.to_path_buf();
   temp_file_path.push(".tmp");
 
@@ -207,7 +211,7 @@ fn is_directory_writable(dir: &Path) -> Result<bool, io::Error> {
       }
       Ok(true)
     }
-    Err(_) => Ok(false),
+    Err(e) => Err(crate::AppError::Io(e)),
   }
 }
 

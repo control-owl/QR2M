@@ -13,6 +13,25 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+type FunctionOutput<T> = Result<T, AppError>;
+
+#[derive(Debug)]
+enum AppError {
+  Io(io::Error),
+  Custom(String),
+  // Parse(std::num::ParseIntError),
+}
+
+impl std::fmt::Display for AppError {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      AppError::Io(e) => write!(f, "IO error: {}", e),
+      AppError::Custom(msg) => write!(f, "{}", msg),
+      // AppError::Parse(e) => write!(f, "Parse error: {}", e),
+    }
+  }
+}
+
 use adw::prelude::*;
 use gtk::{Stack, StackSidebar, gio, glib::clone};
 use gtk4::{self as gtk};
@@ -379,14 +398,10 @@ impl AppSettings {
 
           match os::check_local_config() {
             Ok(_) => {
-              #[cfg(debug_assertions)]
-              println!("\t- New config file created");
+              d3bug("<<< check_local_config", "log");
             }
-            Err(_err) => {
-              #[cfg(debug_assertions)]
-              eprintln!("\t- New config file NOT created \n {}", _err);
-            }
-          }
+            Err(err) => d3bug(&format!("check_local_config: \n{:?}", err), "error"),
+          };
         } else {
           #[cfg(debug_assertions)]
           eprintln!(
@@ -1143,8 +1158,8 @@ struct WalletSettings {
   mnemonic_words: Option<String>,
   mnemonic_passphrase: Option<String>,
   seed: Option<String>,
-  master_xprv: Option<String>,
-  master_xpub: Option<String>,
+  master_private_key: Option<String>,
+  master_public_key: Option<String>,
   master_private_key_bytes: Option<Vec<u8>>,
   master_chain_code_bytes: Option<Vec<u8>>,
   master_public_key_bytes: Option<Vec<u8>>,
@@ -1164,8 +1179,8 @@ impl WalletSettings {
       mnemonic_words: None,
       mnemonic_passphrase: None,
       seed: None,
-      master_xprv: None,
-      master_xpub: None,
+      master_private_key: None,
+      master_public_key: None,
       master_private_key_bytes: None,
       master_chain_code_bytes: None,
       master_public_key_bytes: None,
@@ -1609,17 +1624,26 @@ async fn main() {
   #[cfg(feature = "dev")]
   let start_time = std::time::Instant::now();
 
-  print_program_info();
+  match print_program_info() {
+    Ok(_) => {
+      d3bug("<<< print_program_info", "log");
+    }
+    Err(err) => d3bug(&format!("print_program_info: \n{:?}", err), "error"),
+  };
 
-  os::detect_os_and_user_dir();
+  match os::detect_os_and_user_dir() {
+    Ok(_) => {
+      d3bug("<<< detect_os_and_user_dir", "log");
+    }
+    Err(err) => d3bug(&format!("detect_os_and_user_dir: \n{:?}", err), "error"),
+  };
 
-  if let Err(_err) = os::check_local_config() {
-    #[cfg(debug_assertions)]
-    eprintln!("\t- Error creating local config files: {}", _err);
-  } else {
-    #[cfg(debug_assertions)]
-    println!("\t- Config file ready");
-  }
+  match os::check_local_config() {
+    Ok(_) => {
+      d3bug("<<< check_local_config", "log");
+    }
+    Err(err) => d3bug(&format!("check_local_config: \n{:?}", err), "error"),
+  };
 
   AppSettings::load_settings();
 
@@ -1637,17 +1661,37 @@ async fn main() {
     gui_state,
     move |app| {
       #[cfg(not(feature = "dev"))]
-      create_main_window(app.clone(), gui_state.clone());
+      match create_main_window(app.clone(), gui_state.clone()) {
+        Ok(_) => {
+          #[cfg(debug_assertions)]
+          println!("create_main_window done");
+        }
+        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+      };
 
       #[cfg(feature = "dev")]
-      create_main_window(app.clone(), gui_state.clone(), Some(start_time));
+      match create_main_window(app.clone(), gui_state.clone(), Some(start_time)) {
+        Ok(_) => {
+          #[cfg(debug_assertions)]
+          println!("create_main_window done");
+        }
+        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+      };
     }
   ));
 
   application.run();
 }
 
-fn print_program_info() {
+fn print_program_info() -> FunctionOutput<()> {
+  d3bug(">>> print_program_info", "log");
+  d3bug(" ██████╗ ██████╗ ██████╗ ███╗   ███╗", "info");
+  d3bug("██╔═══██╗██╔══██╗╚════██╗████╗ ████║", "info");
+  d3bug("██║   ██║██████╔╝ █████╔╝██╔████╔██║", "info");
+  d3bug("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║", "info");
+  d3bug("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║", "info");
+  d3bug(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝", "info");
+
   let current_time = SystemTime::now();
   let timestamp = current_time
     .duration_since(std::time::UNIX_EPOCH)
@@ -1655,30 +1699,30 @@ fn print_program_info() {
     .as_secs();
   let feature = qr2m_lib::get_active_app_feature();
 
-  println!(" ██████╗ ██████╗ ██████╗ ███╗   ███╗");
-  println!("██╔═══██╗██╔══██╗╚════██╗████╗ ████║");
-  println!("██║   ██║██████╔╝ █████╔╝██╔████╔██║");
-  println!("██║▄▄ ██║██╔══██╗██╔═══╝ ██║╚██╔╝██║");
-  println!("╚██████╔╝██║  ██║███████╗██║ ╚═╝ ██║");
-  println!(" ╚══▀▀═╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝");
+  d3bug(
+    &format!(
+      "{} {} ({})",
+      APP_DESCRIPTION.unwrap(),
+      APP_VERSION.unwrap(),
+      feature
+    ),
+    "info",
+  );
+  d3bug(&format!("Start time (UNIX): {}", timestamp), "info");
 
-  println!(
-    "{} {} ({})",
-    &APP_DESCRIPTION.unwrap(),
-    &APP_VERSION.unwrap(),
-    feature
+  d3bug(
+    "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.",
+    "info",
   );
-  println!("Start time (UNIX): {:?}", &timestamp.to_string());
-  println!(
-    "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-."
-  );
+
+  Ok(())
 }
 
 fn setup_app_actions(
   application: adw::Application,
   gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
   app_messages_state: std::rc::Rc<std::cell::RefCell<AppMessages>>,
-) {
+) -> FunctionOutput<()> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.setup_app_actions").to_string());
 
@@ -1704,12 +1748,18 @@ fn setup_app_actions(
     #[strong]
     gui_state,
     move |_action, _parameter| {
-      create_main_window(
+      match create_main_window(
         application.clone(),
         gui_state.clone(),
         #[cfg(feature = "dev")]
         None,
-      );
+      ) {
+        Ok(_) => {
+          #[cfg(debug_assertions)]
+          println!("create_main_window done");
+        }
+        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+      };
     }
   ));
 
@@ -1738,8 +1788,10 @@ fn setup_app_actions(
     #[strong]
     gui_state,
     move |_action, _parameter| {
-      let log_window = create_log_window(gui_state.clone());
-      log_window.present()
+      match create_log_window(gui_state.clone()) {
+        Ok(window) => window.present(),
+        Err(err) => eprintln!("Error with log window: {:?}", err),
+      };
     }
   ));
 
@@ -1755,8 +1807,10 @@ fn setup_app_actions(
     #[weak]
     app_messages_state,
     move |_action, _parameter| {
-      let settings_window = create_settings_window(gui_state.clone(), app_messages_state);
-      settings_window.present();
+      match create_settings_window(gui_state.clone(), app_messages_state) {
+        Ok(window) => window.present(),
+        Err(err) => eprintln!("Error with settings window: {:?}", err),
+      };
     }
   ));
 
@@ -1803,13 +1857,15 @@ fn setup_app_actions(
 
   #[cfg(feature = "dev")]
   application.add_action(&test);
+
+  Ok(())
 }
 
 fn create_main_window(
   application: adw::Application,
   gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
   #[cfg(feature = "dev")] start_time: Option<std::time::Instant>,
-) {
+) -> FunctionOutput<()> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -1843,7 +1899,12 @@ fn create_main_window(
     }
   }
 
-  os::switch_locale(&gui_language);
+  match os::switch_locale(&gui_language) {
+    Ok(_) => {
+      d3bug("<<< switch_locale", "log");
+    }
+    Err(err) => d3bug(&format!("switch_locale: \n{:?}", err), "error"),
+  };
 
   qr2m_lib::setup_css();
 
@@ -1941,11 +2002,17 @@ fn create_main_window(
     }
   }
 
-  setup_app_actions(
+  match setup_app_actions(
     application.clone(),
     gui_state.clone(),
     app_messages_state.clone(),
-  );
+  ) {
+    Ok(_) => {
+      #[cfg(debug_assertions)]
+      println!("setup_app_actions done");
+    }
+    Err(err) => eprintln!("\t- Error in function setup_app_actions : {:?}", err),
+  };
 
   header_bar.pack_start(&*buttons["new"]);
   header_bar.pack_start(&*buttons["open"]);
@@ -1964,8 +2031,10 @@ fn create_main_window(
     #[strong]
     app_messages_state,
     move |_| {
-      let settings_window = create_settings_window(gui_state.clone(), app_messages_state.clone());
-      settings_window.present();
+      match create_settings_window(gui_state.clone(), app_messages_state.clone()) {
+        Ok(window) => window.present(),
+        Err(err) => eprintln!("Error with settings window: {:?}", err),
+      };
     }
   ));
 
@@ -1978,8 +2047,10 @@ fn create_main_window(
     #[strong]
     gui_state,
     move |_| {
-      let log_window = create_log_window(gui_state.clone());
-      log_window.present();
+      match create_log_window(gui_state.clone()) {
+        Ok(window) => window.present(),
+        Err(err) => eprintln!("Error with log window: {:?}", err),
+      };
     }
   ));
 
@@ -1995,12 +2066,18 @@ fn create_main_window(
     #[strong]
     gui_state,
     move |_| {
-      create_main_window(
+      match create_main_window(
         application.clone(),
         gui_state.clone(),
         #[cfg(feature = "dev")]
         None,
-      );
+      ) {
+        Ok(_) => {
+          #[cfg(debug_assertions)]
+          println!("create_main_window done");
+        }
+        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+      };
     }
   ));
 
@@ -3693,28 +3770,32 @@ fn create_main_window(
           let end_iter = buffer.end_iter();
           let seed_string = buffer.text(&start_iter, &end_iter, true);
 
-          match keys::generate_master_keys(&seed_string, &private_header, &public_header) {
-            Ok(xprv) => {
-              master_private_key_text.buffer().set_text(&xprv.0);
-              master_public_key_text.buffer().set_text(&xprv.1);
-            }
-            Err(_err) => {
-              {
-                let lock_gui_state = app_messages_state.borrow();
-                lock_gui_state.queue_message(
-                  t!("error.master.create").to_string(),
-                  gtk::MessageType::Warning,
-                );
-              }
-
-              #[cfg(debug_assertions)]
-              eprintln!("\t- {}: {}", &t!("error.master.create"), _err)
-            }
-          }
+          if key_derivation == "secp256k1" {
+            keys::generate_master_keys_secp256k1(&seed_string, &private_header, &public_header);
+          } else {
+            #[cfg(feature = "dev")]
+            dev::generate_master_keys_ed25519(&seed_string);
+          };
 
           coin_entry.set_text(&coin_index.to_string());
 
           let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+
+          let master_private_key = wallet_settings
+            .master_private_key
+            .clone()
+            .unwrap_or_default();
+
+          let master_public_key = wallet_settings
+            .master_public_key
+            .clone()
+            .unwrap_or_default();
+
+          master_private_key_text
+            .buffer()
+            .set_text(&master_private_key);
+          master_public_key_text.buffer().set_text(&master_public_key);
+
           wallet_settings.public_key_hash = Some(public_key_hash.clone());
           wallet_settings.wallet_import_format = Some(wallet_import_format.to_string());
           wallet_settings.key_derivation = Some(key_derivation.to_string());
@@ -3723,21 +3804,11 @@ fn create_main_window(
           wallet_settings.coin_name = Some(coin_name.parse().unwrap());
         }
       } else {
-        {
-          let app_messages_state = app_messages_state.borrow();
-          app_messages_state.queue_message(
-            t!("error.entropy.seed").to_string(),
-            gtk::MessageType::Warning,
-          );
-        }
-        // let lock_state = gui_state.lock().unwrap();
-        // lock_state.show_message(t!("error.entropy.seed").to_string(), gtk::MessageType::Warning);
-
-        // {
-        //     if let Ok(mut log_lock) = app_log.lock() {
-        //         log_lock.initialize_app_log(log_button.clone(), resources.clone());
-        //     }
-        // }
+        let app_messages_state = app_messages_state.borrow();
+        app_messages_state.queue_message(
+          t!("error.entropy.seed").to_string(),
+          gtk::MessageType::Warning,
+        );
       }
     }
   ));
@@ -4355,6 +4426,7 @@ fn create_main_window(
                       .clone()
                       .unwrap_or_default(),
                     hash: wallet_settings.hash.clone().unwrap_or_default(),
+                    // seed: wallet_settings.seed.clone().unwrap_or_default(),
                   };
 
                   if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
@@ -4902,6 +4974,8 @@ fn create_main_window(
       lock_app_messages.queue_message(message, gtk::MessageType::Info);
     };
   }
+
+  Ok(())
 }
 
 #[cfg(feature = "dev")]
@@ -4909,7 +4983,7 @@ fn create_log_window(
   gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
   // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
   // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
-) -> gtk::ApplicationWindow {
+) -> FunctionOutput<gtk::ApplicationWindow> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.create_log_window").to_string());
 
@@ -4925,13 +4999,13 @@ fn create_log_window(
   let new_log_button = std::rc::Rc::new(gtk::Button::new());
   lock_gui_state.register_button("log".to_string(), new_log_button);
 
-  log_window
+  Ok(log_window)
 }
 
 fn create_settings_window(
   gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
   app_messages_state: std::rc::Rc<std::cell::RefCell<AppMessages>>,
-) -> gtk::ApplicationWindow {
+) -> FunctionOutput<gtk::ApplicationWindow> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.create_settings_window").to_string());
 
@@ -6247,10 +6321,10 @@ fn create_settings_window(
         move |response| match response {
           Ok(1) => {
             let lock_app_messages = app_messages_state.borrow();
-            let ok = t!("UI.button.ok").to_string();
+            // let ok = t!("UI.button.ok").to_string();
 
             match reset_user_settings() {
-              Ok(result) if result == ok => {
+              Ok(_) => {
                 settings_window.close();
 
                 AppSettings::load_settings();
@@ -6272,7 +6346,7 @@ fn create_settings_window(
                   gtk::MessageType::Info,
                 );
               }
-              Ok(_) | Err(_) => {
+              Err(_) => {
                 lock_app_messages.queue_message(
                   t!("error.settings.reset").to_string(),
                   gtk::MessageType::Error,
@@ -6309,10 +6383,10 @@ fn create_settings_window(
   main_settings_box.append(&main_buttons_box);
   settings_window.set_child(Some(&main_settings_box));
 
-  settings_window
+  Ok(settings_window)
 }
 
-fn reset_user_settings() -> Result<String, String> {
+fn reset_user_settings() -> FunctionOutput<()> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.reset_user_settings").to_string());
 
@@ -6337,18 +6411,12 @@ fn reset_user_settings() -> Result<String, String> {
 
   match os::check_local_config() {
     Ok(_) => {
-      #[cfg(debug_assertions)]
-      println!("\t- New config file created");
-
-      Ok("OK".to_string())
+      d3bug("<<< check_local_config", "log");
     }
-    Err(_err) => {
-      #[cfg(debug_assertions)]
-      eprintln!("\t- New config file NOT created \n {}", _err);
+    Err(err) => d3bug(&format!("check_local_config: \n{:?}", err), "error"),
+  };
 
-      Err(_err.to_string())
-    }
-  }
+  Ok(())
 }
 
 fn create_about_window() {
@@ -6670,3 +6738,24 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+fn d3bug(message: &str, msg_type: &str) {
+  let (color_code, prefix) = match msg_type {
+    "info" => ("\x1b[34m", "[INFO] "),       // Blue
+    "log" => ("\x1b[32m", "[LOG] "),         // Green
+    "error" => ("\x1b[31m", "[ERROR] "),     // Red
+    "warning" => ("\x1b[33m", "[WARNING] "), // Yellow
+    _ => ("\x1b[0m", "[UNKNOWN] "),          // Default/reset
+  };
+
+  let reset = "\x1b[0m";
+
+  #[cfg(debug_assertions)]
+  if msg_type == "log" {
+    println!("{}{}{}{}", color_code, prefix, message, reset);
+  }
+
+  if msg_type != "log" {
+    println!("{}{}{}{}", color_code, prefix, message, reset);
+  }
+}

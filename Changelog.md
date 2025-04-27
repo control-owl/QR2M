@@ -1,3 +1,12 @@
+# version 0.82.2
+- cleaning code
+- color output
+- optimizing function output
+
+# version 0.82.1
+- crates update
+- removing RustRover inspection problems
+
 # version 0.82.0
 - custom derivation path (dev)
 - trying to derive ed25519 address

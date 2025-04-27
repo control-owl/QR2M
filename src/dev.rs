@@ -16,6 +16,7 @@ pub fn derive_from_path_ed25519(
   master_key: &[u8],
   master_chain_code: &[u8],
   path: &str,
+  // _seed: &str,
 ) -> Result<crate::keys::DerivationResult, String> {
   #[cfg(debug_assertions)]
   {
@@ -48,22 +49,23 @@ pub fn derive_from_path_ed25519(
   }
 
   let mut private_key = master_key.to_vec();
-  #[cfg(debug_assertions)]
-  dbg!(&private_key);
-
   let mut chain_code = master_chain_code.to_vec();
-  #[cfg(debug_assertions)]
-  dbg!(&chain_code);
-
   let mut public_key = Vec::new();
+
   #[cfg(debug_assertions)]
-  dbg!(&public_key);
+  {
+    dbg!(&private_key);
+    dbg!(&chain_code);
+    dbg!(&public_key);
+  }
 
-  for part in path.split('/') {
-    if part == "m" {
-      continue;
-    }
+  let signing_key = match SigningKey::try_from(private_key.as_slice()) {
+    Ok(sk) => sk,
+    Err(_) => return Err("Invalid master private key".to_string()),
+  };
+  public_key = signing_key.verifying_key().to_bytes().to_vec();
 
+  for part in path.split('/').skip(1) {
     let hardened = part.ends_with("'");
     let index: u32 = match part.trim_end_matches("'").parse() {
       Ok(index) => index,
@@ -81,12 +83,6 @@ pub fn derive_from_path_ed25519(
     #[cfg(debug_assertions)]
     dbg!(&derived);
 
-    // private_key.clone().copy_from_slice(&derived.0);
-    // private_key_array = derived.0;
-    //
-    // chain_code.clone().copy_from_slice(&derived.1);
-    // public_key = derived.2.clone();
-
     let derivation_result = match derived {
       Some(value) => value,
       None => return Err("Wrong derivation".to_string()),
@@ -95,20 +91,16 @@ pub fn derive_from_path_ed25519(
     dbg!(&derivation_result);
 
     private_key = derivation_result.0.to_vec();
-    #[cfg(debug_assertions)]
-    dbg!(&private_key);
-
     chain_code = derivation_result.1.to_vec();
-    #[cfg(debug_assertions)]
-    dbg!(&chain_code);
-
     public_key = derivation_result.2;
-    #[cfg(debug_assertions)]
-    dbg!(&public_key);
-  }
 
-  // let chain_code_array: [u8; 32] = chain_code.try_into().expect("Slice with incorrect length");
-  // Some((private_key_array, chain_code_array, public_key))
+    #[cfg(debug_assertions)]
+    {
+      dbg!(&private_key);
+      dbg!(&chain_code);
+      dbg!(&public_key);
+    }
+  }
 
   let chain_code_array: [u8; 32] = chain_code
     .try_into()
@@ -121,7 +113,7 @@ pub fn derive_from_path_ed25519(
   )))
 }
 
-fn derive_child_key_ed25519(
+pub fn derive_child_key_ed25519(
   parent_key: &[u8],
   parent_chain_code: &[u8],
   index: u32,
@@ -141,25 +133,37 @@ fn derive_child_key_ed25519(
 
   let is_hard = index >= 0x80000000;
 
+  // let data = if is_hard {
+  //   let mut d = Vec::with_capacity(37);
+  //   d.push(0u8);
+  //   d.extend_from_slice(parent_key);
+  //   d.extend_from_slice(&index.to_be_bytes());
+  //   d
+  // } else {
+  //   let parent_sk = match SigningKey::try_from(parent_key) {
+  //     Ok(sk) => sk,
+  //     Err(_) => {
+  //       eprintln!("Invalid parent private key");
+  //       return None;
+  //     }
+  //   };
+  //   let parent_public_key = parent_sk.verifying_key().to_bytes();
+  //   let mut d = Vec::with_capacity(36);
+  //   d.extend_from_slice(&parent_public_key);
+  //   d.extend_from_slice(&index.to_be_bytes());
+  //   d
+  // };
+
   let data = if is_hard {
     let mut d = Vec::with_capacity(37);
-    d.push(0u8);
+    d.push(0u8); // Hardened derivation prefix
     d.extend_from_slice(parent_key);
     d.extend_from_slice(&index.to_be_bytes());
     d
   } else {
-    let parent_sk = match SigningKey::try_from(parent_key) {
-      Ok(sk) => sk,
-      Err(_) => {
-        eprintln!("Invalid parent private key");
-        return None;
-      }
-    };
-    let parent_public_key = parent_sk.verifying_key().to_bytes();
-    let mut d = Vec::with_capacity(36);
-    d.extend_from_slice(&parent_public_key);
-    d.extend_from_slice(&index.to_be_bytes());
-    d
+    // non-hard derivation, use public key (not supported for Ed25519 in solAna)
+    eprintln!("Non-hardened derivation not supported for Ed25519");
+    return None;
   };
 
   let result = qr2m_lib::calculate_hmac_sha512_hash(parent_chain_code, &data);
@@ -173,6 +177,8 @@ fn derive_child_key_ed25519(
   child_private_key_bytes.copy_from_slice(&result[..32]);
   child_chain_code_bytes.copy_from_slice(&result[32..]);
 
+  clamp_ed25519_private_key(&mut child_private_key_bytes);
+
   let secret_key = match SigningKey::try_from(child_private_key_bytes.as_ref()) {
     Ok(sk) => sk,
     Err(_) => {
@@ -181,10 +187,9 @@ fn derive_child_key_ed25519(
     }
   };
 
-  let secret_key_bytes = secret_key.to_bytes();
   let public_key = secret_key.verifying_key().to_bytes().to_vec();
 
-  Some((secret_key_bytes, child_chain_code_bytes, public_key).into())
+  Some((child_private_key_bytes, child_chain_code_bytes, public_key).into())
 }
 
 pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> String {
@@ -200,6 +205,64 @@ pub fn generate_ed25519_address(public_key: &crate::keys::CryptoPublicKey) -> St
   bs58::encode(&public_key_bytes)
     .with_alphabet(bs58::Alphabet::DEFAULT)
     .into_string()
+}
+
+// Helper function to clamp Ed25519 private key
+fn clamp_ed25519_private_key(key: &mut [u8; 32]) {
+  key[0] &= 0b1111_1000; // Clear lowest 3 bits
+  key[31] &= 0b0111_1111; // Clear highest bit
+  key[31] |= 0b0100_0000; // Set second-highest bit
+}
+
+pub fn generate_master_keys_ed25519(seed: &str) {
+  #[cfg(debug_assertions)]
+  {
+    println!(
+      "[+] {}",
+      &t!("log.generate_master_keys_ed25519").to_string()
+    );
+    println!("\t- Seed: {:?}", seed);
+  }
+
+  let message = "ed25519 seed";
+  let seed_bytes = hex::decode(seed).expect("Invalid seed format");
+  let result = qr2m_lib::calculate_hmac_sha512_hash(message.as_bytes(), &seed_bytes);
+
+  if result.len() != 64 {
+    return;
+  }
+
+  let mut private_key = [0u8; 32];
+  private_key.copy_from_slice(&result[..32]);
+
+  let mut chain_code = [0u8; 32];
+  chain_code.copy_from_slice(&result[32..]);
+
+  clamp_ed25519_private_key(&mut private_key);
+
+  let signing_key =
+    SigningKey::try_from(private_key.as_ref()).expect("Invalid Ed25519 master private key");
+  let public_key = signing_key.verifying_key().to_bytes();
+  // let public_key_vec = public_key.to_vec();
+
+  let master_xprv = bs58::encode(&private_key).into_string();
+  let master_xpub = bs58::encode(&public_key).into_string();
+
+  #[cfg(debug_assertions)]
+  {
+    println!("\t- Master private key (base58): {:?}", master_xprv);
+    println!("\t- Master public key (base58): {:?}", master_xpub);
+    println!("\t- Master private key bytes: {:?}", private_key);
+    println!("\t- Master chain code bytes: {:?}", chain_code);
+    println!("\t- Master public key bytes: {:?}", public_key);
+  }
+
+  let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
+  wallet_settings.master_private_key = Some(master_xprv.clone());
+  wallet_settings.master_public_key = Some(master_xpub.clone());
+  wallet_settings.master_private_key_bytes = Some(private_key.to_vec());
+  wallet_settings.master_chain_code_bytes = Some(chain_code.to_vec());
+  wallet_settings.master_public_key_bytes = Some(public_key.to_vec());
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

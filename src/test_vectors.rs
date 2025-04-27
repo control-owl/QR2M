@@ -156,31 +156,30 @@ mod tests {
     ];
 
     for vector in test_vectors {
-      match keys::generate_master_keys(vector.seed, "0x0488ADE4", "0x0488B21E") {
-        Ok((
-          master_xprv,
-          master_xpub,
-          master_private_key,
-          master_chain_code,
-          master_public_key,
-        )) => {
-          assert_eq!(master_xprv, vector.expected_master_xprv);
-          assert_eq!(master_xpub, vector.expected_master_xpub);
-          assert_eq!(
-            hex::encode(master_private_key),
-            vector.expected_master_private_key
-          );
-          assert_eq!(
-            hex::encode(master_chain_code),
-            vector.expected_master_chain_code
-          );
-          assert_eq!(
-            hex::encode(master_public_key),
-            vector.expected_master_public_key
-          );
-        }
-        Err(e) => panic!("Error deriving keys: {}", e),
-      }
+      keys::generate_master_keys_secp256k1(vector.seed, "0x0488ADE4", "0x0488B21E");
+
+      let wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
+
+      assert_eq!(
+        wallet_settings.master_private_key,
+        Some(vector.expected_master_xprv.to_string())
+      );
+      assert_eq!(
+        wallet_settings.master_public_key,
+        Some(vector.expected_master_xpub.to_string())
+      );
+      assert_eq!(
+        hex::encode(wallet_settings.master_private_key_bytes.clone().unwrap()),
+        vector.expected_master_private_key
+      );
+      assert_eq!(
+        hex::encode(wallet_settings.master_chain_code_bytes.clone().unwrap()),
+        vector.expected_master_chain_code
+      );
+      assert_eq!(
+        hex::encode(wallet_settings.master_public_key_bytes.clone().unwrap()),
+        vector.expected_master_public_key
+      );
     }
   }
 
