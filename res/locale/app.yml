@@ -748,7 +748,7 @@ error:
       hr: "Nema više adresa"
     unsupported:
       en: "Unsupported coin"
-      de: "Nicht unterstützte Münze"
+      de: "Nicht unterstützte Coin"
       hr: "Nepodržani coin"
   wallet:
     open:

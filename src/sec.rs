@@ -87,9 +87,8 @@ impl SecurityStatus {
 //   }
 // }
 
-pub fn check_security_level() {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.check_security_level").to_string());
+pub fn check_security_level() -> FunctionOutput<()> {
+  d3bug(">>> check_security_level", "log");
 
   let mut security = SECURITY_STATUS.write().unwrap();
 
@@ -169,6 +168,8 @@ pub fn check_security_level() {
       security.app_key = Some(false);
     }
   }
+
+  Ok(())
 }
 
 fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
