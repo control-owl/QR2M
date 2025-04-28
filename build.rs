@@ -1,5 +1,12 @@
 fn main() {
   set_environment();
+  if let Ok(v) = std::env::var("DEP_OPENSSL_VERSION_NUMBER") {
+    let version = u64::from_str_radix(&v, 16).unwrap();
+
+    if version >= 0x1_01_01_00_0 {
+      println!("cargo:rustc-cfg=openssl111");
+    }
+  }
 
   if std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "windows" {
     use winres;

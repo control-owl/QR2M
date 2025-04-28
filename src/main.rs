@@ -13,25 +13,6 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-type FunctionOutput<T> = Result<T, AppError>;
-
-#[derive(Debug)]
-enum AppError {
-  Io(io::Error),
-  Custom(String),
-  // Parse(std::num::ParseIntError),
-}
-
-impl std::fmt::Display for AppError {
-  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      AppError::Io(e) => write!(f, "IO error: {}", e),
-      AppError::Custom(msg) => write!(f, "{}", msg),
-      // AppError::Parse(e) => write!(f, "Parse error: {}", e),
-    }
-  }
-}
-
 use adw::prelude::*;
 use gtk::{Stack, StackSidebar, gio, glib::clone};
 use gtk4::{self as gtk};
@@ -109,6 +90,25 @@ const VALID_GUI_ICONS: &[&str] = &["Thin", "Bold", "Fill"];
 const VALID_COIN_SEARCH_PARAMETER: &[&str] = &["Name", "Symbol", "Index"];
 const APP_LOG_LEVEL: &[&str] = &["Standard", "Verbose", "Ultimate"];
 const GUI_IMAGE_EXTENSION: &str = if cfg!(windows) { "png" } else { "svg" };
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+type FunctionOutput<T> = Result<T, AppError>;
+
+#[derive(Debug)]
+enum AppError {
+  Io(io::Error),
+  Custom(String),
+}
+
+impl std::fmt::Display for AppError {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      AppError::Io(e) => write!(f, "IO error: {}", e),
+      AppError::Custom(msg) => write!(f, "{}", msg),
+    }
+  }
+}
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -377,9 +377,8 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
-  fn load_settings() {
-    #[cfg(debug_assertions)]
-    println!("[+] {}", &t!("log.load_settings").to_string());
+  fn load_settings() -> FunctionOutput<()> {
+    d3bug(">>> load_settings", "log");
 
     let settings = AppSettings::default();
 
@@ -645,6 +644,8 @@ impl AppSettings {
     application_settings.proxy_ssl_certificate = proxy_ssl_certificate.clone();
     application_settings.proxy_retry_attempts = proxy_retry_attempts;
     application_settings.proxy_timeout = proxy_timeout;
+
+    Ok(())
   }
 
   fn update_value(
@@ -1645,7 +1646,12 @@ async fn main() {
     Err(err) => d3bug(&format!("check_local_config: \n{:?}", err), "error"),
   };
 
-  AppSettings::load_settings();
+  match AppSettings::load_settings() {
+    Ok(_) => {
+      d3bug("<<< load_settings", "log");
+    }
+    Err(err) => d3bug(&format!("load_settings: \n{:?}", err), "error"),
+  };
 
   let application = adw::Application::builder()
     .application_id("wtf.r_o0_t.qr2m")
@@ -1654,7 +1660,12 @@ async fn main() {
   let gui_state = std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
 
   #[cfg(feature = "dev")]
-  sec::check_security_level();
+  match sec::check_security_level() {
+    Ok(_) => {
+      d3bug("<<< check_security_level", "log");
+    }
+    Err(err) => d3bug(&format!("check_security_level: \n{:?}", err), "error"),
+  };
 
   application.connect_activate(clone!(
     #[strong]
@@ -1663,19 +1674,17 @@ async fn main() {
       #[cfg(not(feature = "dev"))]
       match create_main_window(app.clone(), gui_state.clone()) {
         Ok(_) => {
-          #[cfg(debug_assertions)]
-          println!("create_main_window done");
+          d3bug("<<< create_main_window", "log");
         }
-        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+        Err(err) => d3bug(&format!("create_main_window: \n{:?}", err), "error"),
       };
 
       #[cfg(feature = "dev")]
       match create_main_window(app.clone(), gui_state.clone(), Some(start_time)) {
         Ok(_) => {
-          #[cfg(debug_assertions)]
-          println!("create_main_window done");
+          d3bug("<<< create_main_window", "log");
         }
-        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+        Err(err) => d3bug(&format!("create_main_window: \n{:?}", err), "error"),
       };
     }
   ));
@@ -6327,7 +6336,13 @@ fn create_settings_window(
               Ok(_) => {
                 settings_window.close();
 
-                AppSettings::load_settings();
+                match AppSettings::load_settings() {
+                  Ok(_) => {
+                    d3bug("<<< load_settings", "log");
+                  }
+                  Err(err) => d3bug(&format!("load_settings: \n{:?}", err), "error"),
+                };
+
                 adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
 
                 let new_gui_state =

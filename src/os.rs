@@ -3,7 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-use crate::{APP_NAME, FunctionOutput};
+use crate::{APP_NAME, FunctionOutput, d3bug};
 use std::{
   env, fs,
   path::{Path, PathBuf},
@@ -29,7 +29,7 @@ pub struct LocalSettings {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
-  crate::d3bug(">>> detect_os_and_user_dir", "log");
+  d3bug(">>> detect_os_and_user_dir", "log");
 
   let os = match env::consts::OS {
     "windows" => "windows",
@@ -38,7 +38,7 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
     _ => "unknown",
   };
 
-  let app_name = APP_NAME.ok_or_else(|| crate::AppError::Custom("APP_NAME not set".into()))?;
+  let app_name = APP_NAME.ok_or_else(|| crate::AppError::Custom("APP_NAME not set".to_string()))?;
   let local_temp = env::temp_dir();
   let local_temp_dir = local_temp.join(app_name);
   let local_temp_file = local_temp_dir.join(APP_LOCAL_TEMP_FILE);
@@ -121,7 +121,7 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
 }
 
 pub fn switch_locale(lang: &str) -> FunctionOutput<()> {
-  crate::d3bug(">>> switch_locale", "log");
+  d3bug(">>> switch_locale", "log");
 
   match lang {
     "Deutsch" => rust_i18n::set_locale("de"),
@@ -136,7 +136,7 @@ pub fn switch_locale(lang: &str) -> FunctionOutput<()> {
 }
 
 pub fn check_local_config() -> FunctionOutput<()> {
-  crate::d3bug(">>> check_local_config", "log");
+  d3bug(">>> check_local_config", "log");
 
   let local_settings = LOCAL_SETTINGS
     .lock()
@@ -145,19 +145,21 @@ pub fn check_local_config() -> FunctionOutput<()> {
   let local_config_file = local_settings
     .local_config_file
     .clone()
-    .ok_or_else(|| crate::AppError::Custom("local_config_file not set".into()))?;
+    .ok_or_else(|| crate::AppError::Custom("local_config_file not set".to_string()))?;
 
   let local_config_dir = local_settings
     .local_config_dir
     .clone()
-    .ok_or_else(|| crate::AppError::Custom("local_config_dir not set".into()))?;
+    .ok_or_else(|| crate::AppError::Custom("local_config_dir not set".to_string()))?;
 
   if !local_config_dir.exists() {
     fs::create_dir_all(&local_config_dir).map_err(crate::AppError::Io)?;
   }
 
   if !is_directory_writable(&local_config_dir)? {
-    return Err(crate::AppError::Custom("Directory is not writable".into()));
+    return Err(crate::AppError::Custom(
+      "Directory is not writable".to_string(),
+    ));
   }
 
   if !Path::new(&local_config_file).exists() {
@@ -199,7 +201,7 @@ pub fn check_local_config() -> FunctionOutput<()> {
 }
 
 fn is_directory_writable(dir: &Path) -> FunctionOutput<bool> {
-  crate::d3bug(">>> is_directory_writable", "log");
+  d3bug(">>> is_directory_writable", "log");
 
   let mut temp_file_path = dir.to_path_buf();
   temp_file_path.push(".tmp");
