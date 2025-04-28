@@ -1,6 +1,7 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
 
+use crate::{FunctionOutput, d3bug};
 use adw::prelude::*;
 use gtk::glib::clone;
 use gtk4 as gtk;

@@ -68,9 +68,11 @@ pub fn get_entropy_from_anu(
           Err(err) => d3bug(&format!("write_api_response_to_log: \n{:?}", err), "error"),
         };
       }
+    } else {
+      return Err(AppError::Custom("Anu response was empty".to_string()));
     }
   } else {
-    return Err(AppError::Custom(format!("Anu response was empty")));
+    return Err(AppError::Custom("Anu response was empty".to_string()));
   }
 
   let entropy = match data_format {
@@ -81,7 +83,7 @@ pub fn get_entropy_from_anu(
           data
         }
         Err(err) => {
-          return Err(crate::AppError::Custom(format!(
+          return Err(AppError::Custom(format!(
             "Problem with extracting uint8 data from ANU {}",
             err
           )));
@@ -94,7 +96,7 @@ pub fn get_entropy_from_anu(
           data
         }
         Err(err) => {
-          return Err(crate::AppError::Custom(format!(
+          return Err(AppError::Custom(format!(
             "Problem with processing uint8 data from ANU {}",
             err
           )));
@@ -121,9 +123,7 @@ pub fn get_entropy_from_anu(
       }
     }
     std::cmp::Ordering::Equal => Ok(entropy),
-    std::cmp::Ordering::Less => {
-      return Err(AppError::Custom(t!("error.anu.short").to_string()));
-    }
+    std::cmp::Ordering::Less => Err(AppError::Custom(t!("error.anu.short").to_string())),
   }
 }
 
@@ -161,9 +161,7 @@ fn fetch_anu_qrng_data(
     ));
   }
 
-  let mut socket_addr = ANU_API_URL
-    .to_socket_addrs()
-    .map_err(|e| crate::AppError::Io(e))?;
+  let mut socket_addr = ANU_API_URL.to_socket_addrs().map_err(AppError::Io)?;
 
   let socket_addr = socket_addr.next().ok_or(AppError::Custom(
     "No socket addresses found for ANU API URL".to_string(),
@@ -173,7 +171,7 @@ fn fetch_anu_qrng_data(
     &socket_addr,
     Duration::from_secs(TCP_REQUEST_TIMEOUT_SECONDS),
   )
-  .map_err(|e| crate::AppError::Io(e))?;
+  .map_err(AppError::Io)?;
 
   let anu_request = format!(
     "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
@@ -181,11 +179,9 @@ fn fetch_anu_qrng_data(
   )
     .into_bytes();
 
-  stream
-    .write_all(&anu_request)
-    .map_err(|e| crate::AppError::Io(e))?;
+  stream.write_all(&anu_request).map_err(AppError::Io)?;
 
-  stream.flush().map_err(|e| crate::AppError::Io(e))?;
+  stream.flush().map_err(AppError::Io)?;
 
   let mut response = String::new();
   let mut buffer = [0; 256];
@@ -220,14 +216,15 @@ fn load_last_anu_request() -> FunctionOutput<SystemTime> {
 
   let local_settings = LOCAL_SETTINGS
     .lock()
-    .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
+    .map_err(|e| AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
 
   let local_temp_dir = local_settings
     .local_temp_dir
     .clone()
-    .ok_or_else(|| crate::AppError::Custom("local_temp_dir not set".to_string()))?;
+    .ok_or_else(|| AppError::Custom("local_temp_dir not set".to_string()))?;
 
   let path = Path::new(&local_temp_dir);
+
   if path.exists() {
     if let Ok(file) = File::open(path) {
       let reader = BufReader::new(file);
@@ -237,10 +234,6 @@ fn load_last_anu_request() -> FunctionOutput<SystemTime> {
         }
       }
     }
-  } else {
-    return Err(crate::AppError::Custom(
-      "local_temp_dir directory does not exists".to_string(),
-    ));
   }
 
   Ok(SystemTime::UNIX_EPOCH)
@@ -251,12 +244,12 @@ fn create_anu_timestamp(time: SystemTime) -> FunctionOutput<()> {
 
   let local_settings = LOCAL_SETTINGS
     .lock()
-    .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
+    .map_err(|e| AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
 
   let local_temp_dir = local_settings
     .local_temp_dir
     .clone()
-    .ok_or_else(|| crate::AppError::Custom("local_temp_dir not set".to_string()))?;
+    .ok_or_else(|| AppError::Custom("local_temp_dir not set".to_string()))?;
 
   let local_anu_timestamp_file = Path::new(&local_temp_dir).join(ANU_TIMESTAMP_FILE);
 
@@ -267,24 +260,22 @@ fn create_anu_timestamp(time: SystemTime) -> FunctionOutput<()> {
 
   let timestamp = time
     .duration_since(SystemTime::UNIX_EPOCH)
-    .map_err(|e| crate::AppError::Custom(format!("Failed to get system time: {}", e)))?
+    .map_err(|e| AppError::Custom(format!("Failed to get system time: {}", e)))?
     .as_secs()
     .to_string();
 
   if let Some(parent) = Path::new(&local_anu_timestamp_file).parent() {
     fs::create_dir_all(parent).map_err(|e| {
-      crate::AppError::Custom(format!(
+      AppError::Custom(format!(
         "Failed to create directory {:?}: {}",
         local_anu_timestamp_file, e
       ))
     })?;
   }
 
-  let mut file = File::create(local_anu_timestamp_file).map_err(|e| crate::AppError::Io(e))?;
+  let mut file = File::create(local_anu_timestamp_file).map_err(AppError::Io)?;
 
-  file
-    .write_all(timestamp.as_bytes())
-    .map_err(|e| crate::AppError::Io(e))?;
+  file.write_all(timestamp.as_bytes()).map_err(AppError::Io)?;
 
   Ok(())
 }
@@ -294,12 +285,12 @@ fn write_api_response_to_log(response: &Option<String>) -> FunctionOutput<()> {
 
   let local_settings = LOCAL_SETTINGS
     .lock()
-    .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
+    .map_err(|e| AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
 
   let local_temp_dir = local_settings
     .local_temp_dir
     .clone()
-    .ok_or_else(|| crate::AppError::Custom("local_temp_dir not set".to_string()))?;
+    .ok_or_else(|| AppError::Custom("local_temp_dir not set".to_string()))?;
 
   let local_anu_response_file = Path::new(&local_temp_dir).join(ANU_RESPONSE_FILE);
   d3bug(
@@ -313,7 +304,7 @@ fn write_api_response_to_log(response: &Option<String>) -> FunctionOutput<()> {
         let mut file = match File::create(&local_anu_response_file) {
           Ok(file) => file,
           Err(e) => {
-            return Err(crate::AppError::Io(e));
+            return Err(AppError::Io(e));
           }
         };
 
@@ -321,17 +312,17 @@ fn write_api_response_to_log(response: &Option<String>) -> FunctionOutput<()> {
           let bytes = data.as_bytes();
 
           if let Err(e) = file.write_all(bytes) {
-            return Err(crate::AppError::Custom(format!(
+            return Err(AppError::Custom(format!(
               "Can not write ANU response to log file: {}",
               e
             )));
           }
         } else {
-          return Err(crate::AppError::Custom("ANU response is empty".to_string()));
+          return Err(AppError::Custom("ANU response is empty".to_string()));
         }
       }
       Err(err) => {
-        return Err(crate::AppError::Io(err));
+        return Err(AppError::Io(err));
       }
     }
   }
@@ -345,14 +336,14 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
   let api_response = match api_response {
     Some(response) => response,
     None => {
-      return Err(crate::AppError::Custom("ANU response is None".to_string()));
+      return Err(AppError::Custom("ANU response is None".to_string()));
     }
   };
 
   let json_start_index = match api_response.find('{') {
     Some(index) => index,
     None => {
-      return Err(crate::AppError::Custom(
+      return Err(AppError::Custom(
         "JSON data not found in the response".to_string(),
       ));
     }
@@ -361,7 +352,7 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
   let json_end_index = match api_response.rfind('}') {
     Some(index) => index,
     None => {
-      return Err(crate::AppError::Custom(
+      return Err(AppError::Custom(
         "JSON data end not found in the response".to_string(),
       ));
     }
@@ -372,10 +363,7 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
   let parsed_json = match parsed_json {
     Ok(value) => value,
     Err(err) => {
-      return Err(crate::AppError::Custom(format!(
-        "Failed to parse JSON: {}",
-        err
-      )));
+      return Err(AppError::Custom(format!("Failed to parse JSON: {}", err)));
     }
   };
 
@@ -383,7 +371,7 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
   let data_array = match data_array {
     Some(arr) => arr,
     None => {
-      return Err(crate::AppError::Custom("No data array found".to_string()));
+      return Err(AppError::Custom("No data array found".to_string()));
     }
   };
 
@@ -394,12 +382,12 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
       if byte_val <= u8::MAX as u64 {
         uint8_data.push(byte_val as u8);
       } else {
-        return Err(crate::AppError::Custom(
+        return Err(AppError::Custom(
           "Error parsing byte: number too large to fit in target type".to_string(),
         ));
       }
     } else {
-      return Err(crate::AppError::Custom(format!(
+      return Err(AppError::Custom(format!(
         "Invalid byte value: {:?}",
         data_item
       )));
@@ -409,7 +397,7 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
   Ok(uint8_data)
 }
 
-fn process_uint8_data(data: &Vec<u8>) -> FunctionOutput<String> {
+fn process_uint8_data(data: &[u8]) -> FunctionOutput<String> {
   d3bug(">>> process_uint8_data", "log");
 
   let binary_string = data

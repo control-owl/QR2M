@@ -113,5 +113,5 @@
   "outline.collapseItems": "alwaysCollapse",
   "editor.formatOnSave": true,
   "git-graph.referenceLabels.alignment": "Branches (on the left) & Tags (on the right)",
-  "github-actions.workflows.pinned.workflows": [],
+  "github-actions.workflows.pinned.workflows": []
 }

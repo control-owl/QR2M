@@ -12,7 +12,7 @@
 // #![allow(unused_mut)]
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
+// when will I learn git? when idiot?
 use adw::prelude::*;
 use gtk::{Stack, StackSidebar, gio, glib::clone};
 use gtk4::{self as gtk};
@@ -3592,7 +3592,13 @@ fn create_main_window(
       let source = selected_entropy_source_value.unwrap().to_string();
       let entropy_length = selected_entropy_length_value.unwrap();
 
-      let pre_entropy = keys::generate_entropy(&source, *entropy_length as u64);
+      // let pre_entropy = keys::generate_entropy(&source, *entropy_length as u64);
+
+      let pre_entropy =
+        keys::generate_entropy(&source, *entropy_length as u64).unwrap_or_else(|err| {
+          d3bug(&format!("generate_entropy: \n{:?}", err), "error");
+          String::new()
+        });
 
       if !pre_entropy.is_empty() {
         let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy);
@@ -6128,7 +6134,7 @@ fn create_settings_window(
     move |_| {
       let mut settings = APP_SETTINGS.write().unwrap();
 
-      let _updates = vec![
+      let updates = vec![
         (
           "wallet_entropy_source",
           toml_edit::value(VALID_ENTROPY_SOURCES[entropy_source_dropdown.selected() as usize]),
@@ -6243,43 +6249,41 @@ fn create_settings_window(
       ];
 
       #[cfg(feature = "full")]
-      {
-        let _updates = {
-          let mut _updates = _updates.clone();
-          _updates.extend([
-            (
-              "anu_enabled",
-              toml_edit::value(_use_anu_api_checkbox.is_active()),
-            ),
-            (
-              "anu_log",
-              toml_edit::value(_log_anu_api_checkbox.is_active()),
-            ),
-            (
-              "anu_timeout",
-              toml_edit::value(_anu_connection_timeout_spinbutton.value_as_int() as i64),
-            ),
-            (
-              "anu_data_format",
-              toml_edit::value(
-                VALID_ANU_API_DATA_FORMAT[_anu_data_format_dropdown.selected() as usize],
-              ),
-            ),
-            (
-              "anu_array_length",
-              toml_edit::value(_default_anu_array_length_spinbutton.value_as_int() as i64),
-            ),
-            (
-              "anu_hex_block_size",
-              toml_edit::value(_default_anu_hex_length_spinbutton.value_as_int() as i64),
-            ),
-          ]);
+      let mut updates = updates;
 
-          _updates
-        };
+      #[cfg(feature = "full")]
+      {
+        updates.extend([
+          (
+            "anu_enabled",
+            toml_edit::value(_use_anu_api_checkbox.is_active()),
+          ),
+          (
+            "anu_log",
+            toml_edit::value(_log_anu_api_checkbox.is_active()),
+          ),
+          (
+            "anu_timeout",
+            toml_edit::value(_anu_connection_timeout_spinbutton.value_as_int() as i64),
+          ),
+          (
+            "anu_data_format",
+            toml_edit::value(
+              VALID_ANU_API_DATA_FORMAT[_anu_data_format_dropdown.selected() as usize],
+            ),
+          ),
+          (
+            "anu_array_length",
+            toml_edit::value(_default_anu_array_length_spinbutton.value_as_int() as i64),
+          ),
+          (
+            "anu_hex_block_size",
+            toml_edit::value(_default_anu_hex_length_spinbutton.value_as_int() as i64),
+          ),
+        ]);
       }
 
-      _updates.iter().for_each(|(key, value)| {
+      updates.iter().for_each(|(key, value)| {
         let gui_related = matches!(*key, "gui_theme" | "gui_log" | "gui_icons");
         settings.update_value(key, value.clone(), gui_related.then(|| gui_state.clone()));
       });
