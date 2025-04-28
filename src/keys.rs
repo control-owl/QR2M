@@ -3,6 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+use crate::{AppError, FunctionOutput};
 use adw::prelude::*;
 use gtk4 as gtk;
 use libadwaita as adw;
@@ -426,7 +427,7 @@ pub fn generate_entropy(
   source: &str,
   entropy_length: u64,
   // state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
-) -> String {
+) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
@@ -438,10 +439,15 @@ pub fn generate_entropy(
   match source {
     "RNG" | "RNG+" => {
       let mut rng = rand::rng();
-      let rng_entropy_string: String = (0..entropy_length)
+      let rng_entropy: Result<String, AppError> = (0..entropy_length)
         .map(|_| rng.random_range(0..=1))
-        .map(|bit| char::from_digit(bit, 10).unwrap())
+        .map(|bit| {
+          char::from_digit(bit, 10)
+            .ok_or_else(|| AppError::Custom(format!("Problem with RNG string for bit: {}", bit)))
+        })
         .collect();
+
+      let rng_entropy_string = rng_entropy?;
 
       #[cfg(debug_assertions)]
       println!(" - RNG Entropy: {:?}", rng_entropy_string);
@@ -449,21 +455,10 @@ pub fn generate_entropy(
       let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
       wallet_settings.entropy_string = Some(rng_entropy_string.clone());
 
-      rng_entropy_string
+      Ok(rng_entropy_string)
     }
     #[cfg(feature = "full")]
     "QRNG" => {
-      // if let Some(state) = &state {
-      //     let mut state = state.lock().unwrap();
-      //     let info_bar = state.info_bar.clone();
-
-      //     state.update_infobar_message(
-      //         "Requesting QRNG from ANU API ...".to_string(),
-      //         // info_bar.unwrap(),
-      //         gtk::MessageType::Info,
-      //     );
-      // }
-
       let (anu_data_format, array_length, hex_block_size, anu_log, entropy_length) = {
         let lock_app_settings = crate::APP_SETTINGS.read().unwrap();
         (
@@ -483,56 +478,47 @@ pub fn generate_entropy(
         #[strong]
         open_loop,
         move || {
-          // data_format: &str,
-          // array_length: u32,
-          // hex_block_size: Option<u32>,
-          // log: Option<bool>,
-
-          let qrng_entropy_string = crate::anu::get_entropy_from_anu(
+          let qrng_entropy_string = match crate::anu::get_entropy_from_anu(
             entropy_length as usize,
             &anu_data_format,
             array_length,
             hex_block_size,
             anu_log,
-          );
+          ) {
+            Ok(data) => data,
+            Err(err) => {
+              return Err(AppError::Custom(format!(
+                "Anu response was empty: {:?}",
+                err
+              )));
+            }
+          };
 
-          if let Err(err) = tx.send(qrng_entropy_string) {
+          if let Err(err) = tx.send(qrng_entropy_string.clone()) {
             eprintln!("Error sending data back: {}", err);
           }
 
           open_loop.quit();
+
+          Ok(qrng_entropy_string)
         }
       ));
 
       open_loop.run();
 
       match rx.recv() {
-        Ok(received_qrng_entropy_string) => {
-          // if let Some(state) = &state {
-          //     let mut state = state.lock().unwrap();
-          //     let info_bar = state.info_bar.clone();
-          //     state.update_infobar_message(
-          //         format!("QRNG Data received"),
-          //         // info_bar.unwrap(),
-          //         gtk::MessageType::Info,
-          //     );
-          // }
-
-          received_qrng_entropy_string
-        }
-        Err(_) => {
-          eprintln!("Error retrieving entropy from ANU API.");
-          String::new()
-        }
+        Ok(data) => Ok(data),
+        Err(err) => Err(AppError::Custom(format!(
+          "Problem with generating QRNG: {:?}",
+          err
+        ))),
       }
     }
     "File" => {
       let open_context = glib::MainContext::default();
       let open_loop = glib::MainLoop::new(Some(&open_context), false);
       let (tx, rx) = std::sync::mpsc::channel::<String>();
-
       let open_dialog = gtk::FileDialog::builder().title("Select file").build();
-
       let loop_clone = open_loop.clone();
 
       open_dialog.open(
@@ -576,19 +562,17 @@ pub fn generate_entropy(
           #[cfg(debug_assertions)]
           println!("Received entropy: {}", received_file_entropy_string);
 
-          received_file_entropy_string
+          Ok(received_file_entropy_string)
         }
-        Err(err) => {
-          eprintln!("{}", &t!("error.entropy.create.file"));
-          eprintln!("Failed to receive entropy: {}", err);
-          String::new()
-        }
+        Err(err) => Err(AppError::Custom(format!(
+          "Problem with generating entropy from a file: {:?}",
+          err
+        ))),
       }
     }
-    _ => {
-      eprintln!("{}", &t!("error.entropy.create.source"));
-      String::new()
-    }
+    _ => Err(AppError::Custom(
+      "Problem with generating entropy".to_string(),
+    )),
   }
 }
 
