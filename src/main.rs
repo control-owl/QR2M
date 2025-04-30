@@ -3,7 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#[windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 // #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -220,12 +220,19 @@ impl GuiState {
 
       let security = sec::SECURITY_STATUS.read().unwrap();
 
-      let security_texture = if security.app_key && security.author_key {
+      let security_texture = if security.app_key && security.author_key && !security.code_modified {
         qr2m_lib::get_texture_from_resource(
           security_icon_path
             .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
             .to_str()
             .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
+        )
+      } else if security.app_key && security.author_key {
+        qr2m_lib::get_texture_from_resource(
+          security_icon_path
+            .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
+            .to_str()
+            .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
         )
       } else {
         qr2m_lib::get_texture_from_resource(
@@ -354,8 +361,8 @@ impl Default for AppSettings {
       gui_log_level: Some("Standard".to_string()),
       anu_enabled: Some(false),
       anu_data_format: Some("uint8".to_string()),
-      anu_array_length: Some(24),
-      anu_hex_block_size: Some(1024),
+      anu_array_length: Some(128),
+      anu_hex_block_size: Some(128),
       anu_log: Some(true),
       anu_timeout: Some(5),
       proxy_status: Some(false),

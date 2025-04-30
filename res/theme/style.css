@@ -56,3 +56,9 @@
     color: green;
     font-weight: bold;
 }
+
+.security-modified {
+    /*font-size: medium;*/
+    color: orange;
+    font-weight: bold;
+}

@@ -32,7 +32,7 @@ pub struct SecurityStatus {
   pub build_target: String,
   pub author_key: bool,
   pub app_key: bool,
-  pub code_changed: bool,
+  pub code_modified: bool,
 }
 
 impl SecurityStatus {
@@ -44,7 +44,7 @@ impl SecurityStatus {
       build_target: env!("BUILD_TARGET").to_string(),
       author_key: false,
       app_key: false,
-      code_changed: false,
+      code_modified: false,
     }
   }
 }
@@ -91,8 +91,8 @@ impl SecurityStatus {
 //   }
 // }
 
-fn check_if_code_changed() -> FunctionOutput<bool> {
-  d3bug(">>> check_if_code_changed", "log");
+fn check_if_code_modified() -> FunctionOutput<bool> {
+  d3bug(">>> check_if_code_modified", "log");
   let output = Command::new("git")
     .arg("status")
     .arg("--porcelain")
@@ -114,19 +114,21 @@ pub fn check_security_level() -> FunctionOutput<()> {
 
   let mut security = SECURITY_STATUS.write().unwrap();
 
-  if security.commit_key == CONTROL_OWL_KEY_ID {
-    security.author_key = true;
-  } else {
-  }
+  // if security.commit_key == CONTROL_OWL_KEY_ID {
+  //   security.author_key = true;
+  // } else {
+  //   security.author_key = false;
+  // }
+  security.author_key = security.commit_key == CONTROL_OWL_KEY_ID;
 
-  match check_if_code_changed() {
+  match check_if_code_modified() {
     Ok(value) => {
-      d3bug("<<< check_if_code_changed", "log");
-      security.code_changed = value;
+      d3bug("<<< check_if_code_modified", "log");
+      security.code_modified = value;
     }
     Err(err) => {
-      d3bug(&format!("check_if_code_changed: \n{:?}", err), "error");
-      security.code_changed = true;
+      d3bug(&format!("check_if_code_modified: \n{:?}", err), "error");
+      security.code_modified = true;
     }
   };
 
@@ -308,13 +310,23 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
   let security_icon_path = std::path::Path::new("theme").join("color");
   let security = SECURITY_STATUS.read().unwrap();
 
-  let security_texture = if security.app_key && security.author_key && security.code_changed {
+  let security_image = if security.app_key && security.author_key && !security.code_modified {
     qr2m_lib::get_picture_from_resources(
       security_icon_path
         .join(format!("sec-good-128.{}", crate::GUI_IMAGE_EXTENSION))
         .to_str()
         .unwrap_or(&format!(
           "theme/color/sec-good-128.{}",
+          crate::GUI_IMAGE_EXTENSION
+        )),
+    )
+  } else if security.app_key && security.author_key {
+    qr2m_lib::get_picture_from_resources(
+      security_icon_path
+        .join(format!("sec-warn-128.{}", crate::GUI_IMAGE_EXTENSION))
+        .to_str()
+        .unwrap_or(&format!(
+          "theme/color/sec-warn-128.{}",
           crate::GUI_IMAGE_EXTENSION
         )),
     )
@@ -330,69 +342,31 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
     )
   };
 
-  let image = gtk::Image::from_paintable(security_texture.paintable().as_ref());
+  let image = gtk::Image::from_paintable(security_image.paintable().as_ref());
   image.set_pixel_size(128);
   main_sec_box.append(&image);
 
-  let status_text = if security.app_key && security.author_key && security.code_changed {
-    &t!("UI.security.level.verified")
+  let status_title = if security.app_key && security.author_key && !security.code_modified {
+    &t!("UI.security.status.verified")
+  } else if security.app_key && security.author_key {
+    &t!("UI.security.status.modified")
   } else {
-    &t!("UI.security.level.error")
+    &t!("UI.security.status.error")
   };
 
-  let status_label = gtk::Label::new(Some(status_text));
+  let status_label = gtk::Label::new(Some(status_title));
   status_label.set_css_classes(&["h1"]);
   status_label.set_margin_top(10);
   status_label.set_justify(gtk::Justification::Center);
   main_sec_box.append(&status_label);
 
-  let security_text = if security.app_key && security.author_key && security.code_changed {
-    &t!("UI.security.level.verified.message")
-  } else {
-    &t!("UI.security.level.error.message")
-  };
-
-  let detail_label = gtk::Label::new(Some(security_text));
-  detail_label.set_margin_top(5);
-  detail_label.set_wrap(true);
-  detail_label.set_justify(gtk::Justification::Center);
-  main_sec_box.append(&detail_label);
-
-  let build_info_label = gtk::Label::new(Some(&t!("UI.security.info.build")));
-  build_info_label.set_css_classes(&["h2"]);
-  build_info_label.set_margin_top(20);
-  main_sec_box.append(&build_info_label);
-
-  let build_details = gtk::Label::new(Some(&format!(
-    "• {}: {}\n\
-     • {}: {}\n\
-     • {}: {}\n\
-     • {}: {}",
-    t!("UI.security.details.hash"),
-    security.commit_hash,
-    t!("UI.security.details.date"),
-    security.commit_date,
-    t!("UI.security.details.key"),
-    if security.commit_key == "None" {
-      t!("UI.security.details.no_sign").to_string()
-    } else {
-      security.commit_key.to_string()
-    },
-    t!("UI.security.details.platform"),
-    security.build_target,
-  )));
-
-  build_details.set_margin_top(5);
-  build_details.set_justify(gtk::Justification::Left);
-  main_sec_box.append(&build_details);
-
   if security.commit_key != "None" {
     if security.author_key {
-      if security.code_changed {
-        let changed_message = gtk::Label::new(Some(&t!("UI.security.keys.author.changed")));
+      if security.code_modified {
+        let changed_message = gtk::Label::new(Some(&t!("UI.security.keys.author.modified")));
         // verified_message.set_margin_top(10);
         changed_message.set_wrap(true);
-        changed_message.set_css_classes(&["security-error"]);
+        changed_message.set_css_classes(&["security-modified"]);
         changed_message.set_justify(gtk::Justification::Left);
         main_sec_box.append(&changed_message);
       } else {
@@ -433,6 +407,34 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
     error_message.set_justify(gtk::Justification::Left);
     main_sec_box.append(&error_message);
   }
+
+  let build_info_label = gtk::Label::new(Some(&t!("UI.security.info.build")));
+  build_info_label.set_css_classes(&["h2"]);
+  build_info_label.set_margin_top(20);
+  main_sec_box.append(&build_info_label);
+
+  let build_details = gtk::Label::new(Some(&format!(
+    "• {}: {}\n\
+     • {}: {}\n\
+     • {}: {}\n\
+     • {}: {}",
+    t!("UI.security.details.hash"),
+    security.commit_hash,
+    t!("UI.security.details.date"),
+    security.commit_date,
+    t!("UI.security.details.key"),
+    if security.commit_key == "None" {
+      t!("UI.security.details.no_sign").to_string()
+    } else {
+      security.commit_key.to_string()
+    },
+    t!("UI.security.details.platform"),
+    security.build_target,
+  )));
+
+  build_details.set_margin_top(5);
+  build_details.set_justify(gtk::Justification::Left);
+  main_sec_box.append(&build_details);
 
   let our_key_box = gtk::Box::new(gtk::Orientation::Vertical, 10);
   let our_label = gtk::Label::new(Some(&t!("UI.security.details.developer")));

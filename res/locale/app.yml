@@ -193,6 +193,10 @@ UI:
       hr: "Kopirati"
     ok:
       en: "OK"
+    import:
+      en: "Import"
+      de: "Import"
+      hr: "Uvoz"
   about:
     description:
       en: "(Q)RNG crypto key generator"
@@ -368,6 +372,8 @@ UI:
           de: "Entfernen"
           hr: "Obriši"
       table:
+        id:
+          en: "ID"
         coin:
           en: "Coin"
         path:
@@ -507,23 +513,19 @@ UI:
     en: "Security check"
     de: "Sicherheitscheck"
     hr: "Sigurnosna provjera"
-    level:
+    status:
       error:
         en: "Danger"
         de: "Gefahr"
         hr: "Opasnost"
-        message:
-          en: "The application's cryptographic signature is invalid or missing, making it impossible to verify its authenticity. If you did not obtain this software from an official source, there is a risk that it has been modified or tampered with."
-          de: "Die kryptografische Signatur der Anwendung ist ungültig oder fehlt. Daher ist eine Überprüfung ihrer Authentizität nicht möglich. Wenn Sie die Software nicht aus einer offiziellen Quelle beziehen, besteht das Risiko, dass sie verändert oder manipuliert wurde."
-          hr: "Kriptografski potpis aplikacije je nevažeći ili nedostaje, što onemogućuje provjeru njezine autentičnosti. Ako ovaj softver niste nabavili iz službenog izvora, postoji rizik da je modificiran ili neovlašteno mijenjan."
       verified:
         en: "Verified"
         de: "Verifiziert"
         hr: "Provjeren"
-        message:
-          en: "This application is securely signed with both a valid GPG code signature and an application signature. The code signature verifies that the source code is authenticated and has not been altered, while the application signature ensures that the final build remains untampered with after compilation."
-          de: "Diese Anwendung ist sowohl mit einer gültigen GPG-Codesignatur als auch mit einer Anwendungssignatur sicher signiert. Die Codesignatur bestätigt, dass der Quellcode authentifiziert und unverändert ist, während die Anwendungssignatur sicherstellt, dass der endgültige Build nach der Kompilierung unverändert bleibt."
-          hr: "Ova je aplikacija sigurno potpisana važećim potpisom GPG koda i potpisom aplikacije. Potpis koda potvrđuje da je izvorni kod autentificiran i da nije mijenjan, dok potpis aplikacije osigurava da konačna verzija ostane neometana nakon kompilacije."
+      modified:
+        en: "Warning"
+        de: "Warnung"
+        hr: "Upozorenje"
     keys:
       author:
         verified:
@@ -538,10 +540,10 @@ UI:
           en: "This commit is not signed"
           de: "Dieses Commit ist nicht signiert"
           hr: "Ovo preuzimanje nije potpisano"
-        changed:
-          en: "The most recent commit by the author has been altered, modifying the codebase. Be aware that this change could potentially compromise your security."
-          de: "Der letzte Commit des Autors wurde geändert und die Codebasis modifiziert. Beachten Sie, dass diese Änderung Ihre Sicherheit gefährden kann."
-          hr: "Najnoviji commit autora je izmijenjen, mijenjajući kodnu bazu. Imajte na umu da bi ova promjena potencijalno mogla ugroziti vašu sigurnost."
+        modified:
+          en: "The code has been modified since the last official commit. Please proceed with caution, as we cannot guarantee its safety."
+          de: "Der Code wurde seit dem letzten offiziellen Commit geändert. Bitte gehen Sie vorsichtig vor, da wir seine Sicherheit nicht garantieren können."
+          hr: "Kod je izmijenjen od posljednje službene objave. Molimo vas da postupite s oprezom jer ne možemo jamčiti njegovu sigurnost."
       app:
         present:
           en: "The application key is present"
@@ -578,9 +580,9 @@ UI:
         de: "Nicht signiert"
         hr: "Nije potpisano"
       developer:
-        en: "Developer's keys"
-        de: "Entwicklerschlüssel"
-        hr: "Ključevi programera"
+        en: "Developer's keys:"
+        de: "Entwicklerschlüssel:"
+        hr: "Ključevi programera:"
       modified:
         en: "Code modified"
         de: "Code geändert"
