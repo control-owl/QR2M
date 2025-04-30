@@ -538,6 +538,10 @@ UI:
           en: "This commit is not signed"
           de: "Dieses Commit ist nicht signiert"
           hr: "Ovo preuzimanje nije potpisano"
+        changed:
+          en: "The most recent commit by the author has been altered, modifying the codebase. Be aware that this change could potentially compromise your security."
+          de: "Der letzte Commit des Autors wurde geändert und die Codebasis modifiziert. Beachten Sie, dass diese Änderung Ihre Sicherheit gefährden kann."
+          hr: "Najnoviji commit autora je izmijenjen, mijenjajući kodnu bazu. Imajte na umu da bi ova promjena potencijalno mogla ugroziti vašu sigurnost."
       app:
         present:
           en: "The application key is present"

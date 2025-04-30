@@ -6,7 +6,8 @@ use adw::prelude::*;
 use gtk::glib::clone;
 use gtk4 as gtk;
 use libadwaita as adw;
-use std::fs;
+use std::io::{self, Write};
+use std::{fs, process::Command};
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -29,8 +30,9 @@ pub struct SecurityStatus {
   pub commit_date: String,
   pub commit_key: String,
   pub build_target: String,
-  pub author_key: Option<bool>,
-  pub app_key: Option<bool>,
+  pub author_key: bool,
+  pub app_key: bool,
+  pub code_changed: bool,
 }
 
 impl SecurityStatus {
@@ -40,8 +42,9 @@ impl SecurityStatus {
       commit_date: env!("COMMIT_DATE").to_string(),
       commit_key: env!("COMMIT_KEY").to_string(),
       build_target: env!("BUILD_TARGET").to_string(),
-      author_key: None,
-      app_key: None,
+      author_key: false,
+      app_key: false,
+      code_changed: false,
     }
   }
 }
@@ -88,16 +91,44 @@ impl SecurityStatus {
 //   }
 // }
 
+fn check_if_code_changed() -> FunctionOutput<bool> {
+  d3bug(">>> check_if_code_changed", "log");
+  let output = Command::new("git")
+    .arg("status")
+    .arg("--porcelain")
+    .output()
+    .expect("Failed to execute git status");
+
+  if output.stdout.is_empty() {
+    println!("No changes since the last commit.");
+    Ok(false)
+  } else {
+    println!("There are changes since the last commit:");
+    io::stdout().write_all(&output.stdout).unwrap();
+    Ok(true)
+  }
+}
+
 pub fn check_security_level() -> FunctionOutput<()> {
   d3bug(">>> check_security_level", "log");
 
   let mut security = SECURITY_STATUS.write().unwrap();
 
   if security.commit_key == CONTROL_OWL_KEY_ID {
-    security.author_key = Some(true);
+    security.author_key = true;
   } else {
-    security.author_key = Some(false);
   }
+
+  match check_if_code_changed() {
+    Ok(value) => {
+      d3bug("<<< check_if_code_changed", "log");
+      security.code_changed = value;
+    }
+    Err(err) => {
+      d3bug(&format!("check_if_code_changed: \n{:?}", err), "error");
+      security.code_changed = true;
+    }
+  };
 
   let feature = qr2m_lib::get_active_app_feature();
 
@@ -123,6 +154,7 @@ pub fn check_security_level() -> FunctionOutput<()> {
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     let stdout = String::from_utf8_lossy(&output.stdout);
+
     let verification_succeeded = output.status.success()
       && (stdout.contains("Good signature") || !stderr.contains("BAD signature"));
 
@@ -142,16 +174,16 @@ pub fn check_security_level() -> FunctionOutput<()> {
           "\t- App signature created successfully. Status:\n{}",
           &status
         );
-        security.app_key = Some(true);
+        security.app_key = true;
       } else {
         #[cfg(debug_assertions)]
         eprintln!("\t- App signing failed. No secret key found",);
-        security.app_key = Some(false);
+        security.app_key = false;
       }
     } else {
       #[cfg(debug_assertions)]
       println!("\t- App signature verification succeeded");
-      security.app_key = Some(true);
+      security.app_key = true;
     }
   } else {
     #[cfg(debug_assertions)]
@@ -162,11 +194,11 @@ pub fn check_security_level() -> FunctionOutput<()> {
     if status {
       #[cfg(debug_assertions)]
       println!("\t- App signature created successfully");
-      security.app_key = Some(true);
+      security.app_key = true;
     } else {
       #[cfg(debug_assertions)]
       eprintln!("\t- GPG signing failed for. No secret key found",);
-      security.app_key = Some(false);
+      security.app_key = false;
     }
   }
 
@@ -174,22 +206,25 @@ pub fn check_security_level() -> FunctionOutput<()> {
 }
 
 fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.generate_new_app_signature").to_string());
+  d3bug(">>> generate_new_app_signature", "log");
 
   let key_check = std::process::Command::new("gpg")
     .args(["--list-secret-keys", QR2M_KEY_ID])
     .output();
 
   if let Err(_err) = key_check {
-    #[cfg(debug_assertions)]
-    eprintln!("Failed to check GPG key {}: {}", QR2M_KEY_ID, _err);
+    d3bug(
+      &format!("Failed to check GPG key {}: {}", QR2M_KEY_ID, _err),
+      "error",
+    );
     return false;
   }
 
   if !key_check.unwrap().status.success() {
-    #[cfg(debug_assertions)]
-    eprintln!("GPG secret key {} not found", QR2M_KEY_ID);
+    d3bug(
+      &format!("GPG secret key {} not found", QR2M_KEY_ID),
+      "error",
+    );
     return false;
   }
 
@@ -211,30 +246,36 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
       let _stdout = String::from_utf8_lossy(&output.stdout);
 
       if !output.status.success() {
-        #[cfg(debug_assertions)]
-        eprintln!(
-          "GPG signing failed. \n\tStdout: {}\n\tStderr: {}",
-          _stdout, _stderr
+        d3bug(
+          &format!(
+            "GPG signing failed. \n\tStdout: {}\n\tStderr: {}",
+            _stdout, _stderr
+          ),
+          "error",
         );
+
         return false;
       }
 
       if !std::path::Path::new(&sig_full_path).exists() {
-        #[cfg(debug_assertions)]
-        eprintln!(
-          "Signature file {} was not created despite successful GPG command",
-          sig_full_path
+        d3bug(
+          &format!(
+            "Signature file {} was not created despite successful GPG command",
+            sig_full_path
+          ),
+          "error",
         );
         return false;
       }
 
-      #[cfg(debug_assertions)]
-      println!("Signature created successfully at {}", sig_full_path);
+      d3bug(
+        &format!("Signature created successfully at {}", sig_full_path),
+        "info",
+      );
       true
     }
     Err(_err) => {
-      #[cfg(debug_assertions)]
-      eprintln!("Failed to execute GPG signing: {}", _err);
+      d3bug(&format!("Failed to execute GPG signing: {}", _err), "error");
       false
     }
   }
@@ -267,39 +308,37 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
   let security_icon_path = std::path::Path::new("theme").join("color");
   let security = SECURITY_STATUS.read().unwrap();
 
-  let security_texture =
-    if security.app_key.unwrap_or_default() && security.author_key.unwrap_or_default() {
-      qr2m_lib::get_picture_from_resources(
-        security_icon_path
-          .join(format!("sec-good-128.{}", crate::GUI_IMAGE_EXTENSION))
-          .to_str()
-          .unwrap_or(&format!(
-            "theme/color/sec-good-128.{}",
-            crate::GUI_IMAGE_EXTENSION
-          )),
-      )
-    } else {
-      qr2m_lib::get_picture_from_resources(
-        security_icon_path
-          .join(format!("sec-error-128.{}", crate::GUI_IMAGE_EXTENSION))
-          .to_str()
-          .unwrap_or(&format!(
-            "theme/color/sec-error-128.{}",
-            crate::GUI_IMAGE_EXTENSION
-          )),
-      )
-    };
+  let security_texture = if security.app_key && security.author_key && security.code_changed {
+    qr2m_lib::get_picture_from_resources(
+      security_icon_path
+        .join(format!("sec-good-128.{}", crate::GUI_IMAGE_EXTENSION))
+        .to_str()
+        .unwrap_or(&format!(
+          "theme/color/sec-good-128.{}",
+          crate::GUI_IMAGE_EXTENSION
+        )),
+    )
+  } else {
+    qr2m_lib::get_picture_from_resources(
+      security_icon_path
+        .join(format!("sec-error-128.{}", crate::GUI_IMAGE_EXTENSION))
+        .to_str()
+        .unwrap_or(&format!(
+          "theme/color/sec-error-128.{}",
+          crate::GUI_IMAGE_EXTENSION
+        )),
+    )
+  };
 
   let image = gtk::Image::from_paintable(security_texture.paintable().as_ref());
   image.set_pixel_size(128);
   main_sec_box.append(&image);
 
-  let status_text =
-    if security.app_key.unwrap_or_default() && security.author_key.unwrap_or_default() {
-      &t!("UI.security.level.verified")
-    } else {
-      &t!("UI.security.level.error")
-    };
+  let status_text = if security.app_key && security.author_key && security.code_changed {
+    &t!("UI.security.level.verified")
+  } else {
+    &t!("UI.security.level.error")
+  };
 
   let status_label = gtk::Label::new(Some(status_text));
   status_label.set_css_classes(&["h1"]);
@@ -307,12 +346,11 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
   status_label.set_justify(gtk::Justification::Center);
   main_sec_box.append(&status_label);
 
-  let security_text =
-    if security.app_key.unwrap_or_default() && security.author_key.unwrap_or_default() {
-      &t!("UI.security.level.verified.message")
-    } else {
-      &t!("UI.security.level.error.message")
-    };
+  let security_text = if security.app_key && security.author_key && security.code_changed {
+    &t!("UI.security.level.verified.message")
+  } else {
+    &t!("UI.security.level.error.message")
+  };
 
   let detail_label = gtk::Label::new(Some(security_text));
   detail_label.set_margin_top(5);
@@ -349,13 +387,22 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
   main_sec_box.append(&build_details);
 
   if security.commit_key != "None" {
-    if security.author_key.unwrap_or_default() {
-      let verified_message = gtk::Label::new(Some(&t!("UI.security.keys.author.verified")));
-      // verified_message.set_margin_top(10);
-      verified_message.set_wrap(true);
-      verified_message.set_css_classes(&["security-verified"]);
-      verified_message.set_justify(gtk::Justification::Left);
-      main_sec_box.append(&verified_message);
+    if security.author_key {
+      if security.code_changed {
+        let changed_message = gtk::Label::new(Some(&t!("UI.security.keys.author.changed")));
+        // verified_message.set_margin_top(10);
+        changed_message.set_wrap(true);
+        changed_message.set_css_classes(&["security-error"]);
+        changed_message.set_justify(gtk::Justification::Left);
+        main_sec_box.append(&changed_message);
+      } else {
+        let verified_message = gtk::Label::new(Some(&t!("UI.security.keys.author.verified")));
+        // verified_message.set_margin_top(10);
+        verified_message.set_wrap(true);
+        verified_message.set_css_classes(&["security-verified"]);
+        verified_message.set_justify(gtk::Justification::Left);
+        main_sec_box.append(&verified_message);
+      }
     } else {
       let error_message = gtk::Label::new(Some(&t!("UI.security.keys.author.error")));
       error_message.set_wrap(true);
@@ -372,7 +419,7 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
     main_sec_box.append(&not_signed_label);
   }
 
-  if security.app_key.unwrap_or_default() {
+  if security.app_key {
     let verified_message = gtk::Label::new(Some(&t!("UI.security.keys.app.present")));
     // verified_message.set_margin_top(10);
     verified_message.set_wrap(true);

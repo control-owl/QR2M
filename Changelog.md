@@ -1,3 +1,8 @@
+# version 0.82.3
+- fix copy to clipboard when field is empty
+- cargo update
+- security window improved
+
 # version 0.82.2
 - cleaning code
 - color output

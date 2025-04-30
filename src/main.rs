@@ -3,7 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#![windows_subsystem = "windows"]
+#[windows_subsystem = "windows"]
 // #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -12,7 +12,6 @@
 // #![allow(unused_mut)]
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-// when will I learn git? when idiot?
 use adw::prelude::*;
 use gtk::{Stack, StackSidebar, gio, glib::clone};
 use gtk4::{self as gtk};
@@ -221,22 +220,21 @@ impl GuiState {
 
       let security = sec::SECURITY_STATUS.read().unwrap();
 
-      let security_texture =
-        if security.app_key.unwrap_or_default() && security.author_key.unwrap_or_default() {
-          qr2m_lib::get_texture_from_resource(
-            security_icon_path
-              .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
-              .to_str()
-              .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
-          )
-        } else {
-          qr2m_lib::get_texture_from_resource(
-            security_icon_path
-              .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
-              .to_str()
-              .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
-          )
-        };
+      let security_texture = if security.app_key && security.author_key {
+        qr2m_lib::get_texture_from_resource(
+          security_icon_path
+            .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
+            .to_str()
+            .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
+        )
+      } else {
+        qr2m_lib::get_texture_from_resource(
+          security_icon_path
+            .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
+            .to_str()
+            .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
+        )
+      };
 
       icons.insert("security".to_string(), security_texture);
     }
@@ -2290,7 +2288,6 @@ fn create_main_window(
   delete_seed_button.set_width_request(200);
   delete_seed_button.set_label(&t!("UI.main.seed.delete"));
 
-  // Lets fucking do it
   // Copy button!
   let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
   let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy")));
@@ -2321,12 +2318,14 @@ fn create_main_window(
   copy_entropy_button.connect_clicked(clone!(
     #[weak]
     entropy_text,
-    move |copy_entropy_button| {
+    move |button| {
       let buffer = entropy_text.buffer();
       let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
-      let display = copy_entropy_button.display();
-      let clipboard = display.clipboard();
-      clipboard.set_text(&text);
+      if !text.is_empty() {
+        let display = button.display();
+        let clipboard = display.clipboard();
+        clipboard.set_text(&text);
+      };
     }
   ));
 
@@ -2359,12 +2358,14 @@ fn create_main_window(
   copy_mnemonic_button.connect_clicked(clone!(
     #[weak]
     mnemonic_words_text,
-    move |copy_mnemonic_button| {
+    move |button| {
       let buffer = mnemonic_words_text.buffer();
       let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
-      let display = copy_mnemonic_button.display();
-      let clipboard = display.clipboard();
-      clipboard.set_text(&text);
+      if !text.is_empty() {
+        let display = button.display();
+        let clipboard = display.clipboard();
+        clipboard.set_text(&text);
+      };
     }
   ));
 
@@ -2397,12 +2398,14 @@ fn create_main_window(
   copy_seed_button.connect_clicked(clone!(
     #[weak]
     seed_text,
-    move |copy_seed_button| {
+    move |button| {
       let buffer = seed_text.buffer();
       let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
-      let display = copy_seed_button.display();
-      let clipboard = display.clipboard();
-      clipboard.set_text(&text);
+      if !text.is_empty() {
+        let display = button.display();
+        let clipboard = display.clipboard();
+        clipboard.set_text(&text);
+      };
     }
   ));
 
@@ -3121,12 +3124,14 @@ fn create_main_window(
   copy_master_xprv_button.connect_clicked(clone!(
     #[weak]
     master_private_key_text,
-    move |copy_master_xprv_button| {
+    move |button| {
       let buffer = master_private_key_text.buffer();
       let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
-      let display = copy_master_xprv_button.display();
-      let clipboard = display.clipboard();
-      clipboard.set_text(&text);
+      if !text.is_empty() {
+        let display = button.display();
+        let clipboard = display.clipboard();
+        clipboard.set_text(&text);
+      };
     }
   ));
 
@@ -3152,12 +3157,14 @@ fn create_main_window(
   copy_master_xpub_button.connect_clicked(clone!(
     #[weak]
     master_public_key_text,
-    move |copy_master_xpub_button| {
+    move |button| {
       let buffer = master_public_key_text.buffer();
       let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
-      let display = copy_master_xpub_button.display();
-      let clipboard = display.clipboard();
-      clipboard.set_text(&text);
+      if !text.is_empty() {
+        let display = button.display();
+        let clipboard = display.clipboard();
+        clipboard.set_text(&text);
+      };
     }
   ));
 
