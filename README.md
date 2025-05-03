@@ -54,7 +54,7 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
   - User-supplied files for custom entropy
 - **Cross-platform GUI** built with **GTK4** for Linux, macOS and Windows
 - **Secure and lightweight**: Written in Rust, ensuring robust performance and security.
-- **Really fast**: Generate 1000 addresses in 1 second
+- **Really fast**: Generate 7500 addresses in 1 second
 
 
 ## Installation

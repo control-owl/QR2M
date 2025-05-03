@@ -92,7 +92,7 @@ impl SecurityStatus {
 // }
 
 fn check_if_code_modified() -> FunctionOutput<bool> {
-  d3bug(">>> check_if_code_modified", "log");
+  d3bug(">>> check_if_code_modified", "debug");
   let output = Command::new("git")
     .arg("status")
     .arg("--porcelain")
@@ -110,7 +110,7 @@ fn check_if_code_modified() -> FunctionOutput<bool> {
 }
 
 pub fn check_security_level() -> FunctionOutput<()> {
-  d3bug(">>> check_security_level", "log");
+  d3bug(">>> check_security_level", "debug");
 
   let mut security = SECURITY_STATUS.write().unwrap();
 
@@ -123,7 +123,7 @@ pub fn check_security_level() -> FunctionOutput<()> {
 
   match check_if_code_modified() {
     Ok(value) => {
-      d3bug("<<< check_if_code_modified", "log");
+      d3bug("<<< check_if_code_modified", "debug");
       security.code_modified = value;
     }
     Err(err) => {
@@ -145,7 +145,7 @@ pub fn check_security_level() -> FunctionOutput<()> {
   // println!("Signature file path: {}", sig_full_path);
 
   if std::path::Path::new(&sig_full_path).exists() {
-    let output = std::process::Command::new("gpg")
+    let output = Command::new("gpg")
       .args([
         "--verify",
         &sig_full_path,
@@ -208,9 +208,9 @@ pub fn check_security_level() -> FunctionOutput<()> {
 }
 
 fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
-  d3bug(">>> generate_new_app_signature", "log");
+  d3bug(">>> generate_new_app_signature", "debug");
 
-  let key_check = std::process::Command::new("gpg")
+  let key_check = Command::new("gpg")
     .args(["--list-secret-keys", QR2M_KEY_ID])
     .output();
 
@@ -230,7 +230,7 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
     return false;
   }
 
-  let output = std::process::Command::new("gpg")
+  let output = Command::new("gpg")
     .args([
       "--detach-sign",
       "--armor",

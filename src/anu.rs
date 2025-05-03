@@ -30,19 +30,19 @@ pub fn get_entropy_from_anu(
   hex_block_size: u32,
   log: bool,
 ) -> FunctionOutput<String> {
-  d3bug(">>> get_entropy_from_anu", "log");
-  d3bug(&format!("entropy_length: {:?}", entropy_length), "log");
-  d3bug(&format!("data_format: {:?}", data_format), "log");
-  d3bug(&format!("array_length: {:?}", array_length), "log");
-  d3bug(&format!("hex_block_size: {:?}", hex_block_size), "log");
-  d3bug(&format!("log: {:?}", log), "log");
+  d3bug(">>> get_entropy_from_anu", "debug");
+  d3bug(&format!("entropy_length: {:?}", entropy_length), "debug");
+  d3bug(&format!("data_format: {:?}", data_format), "debug");
+  d3bug(&format!("array_length: {:?}", array_length), "debug");
+  d3bug(&format!("hex_block_size: {:?}", hex_block_size), "debug");
+  d3bug(&format!("log: {:?}", log), "debug");
 
   let start_time = SystemTime::now();
   let (sender, receiver) = std::sync::mpsc::channel();
 
   match fetch_anu_qrng_data(data_format, array_length, hex_block_size, sender) {
     Ok(_) => {
-      d3bug("<<< fetch_anu_qrng_data", "log");
+      d3bug("<<< fetch_anu_qrng_data", "debug");
     }
     Err(err) => d3bug(&format!("fetch_anu_qrng_data: \n{:?}", err), "error"),
   };
@@ -56,14 +56,14 @@ pub fn get_entropy_from_anu(
       if log {
         match create_anu_timestamp(start_time) {
           Ok(_) => {
-            d3bug("<<< create_anu_timestamp", "log");
+            d3bug("<<< create_anu_timestamp", "debug");
           }
           Err(err) => d3bug(&format!("create_anu_timestamp: \n{:?}", err), "error"),
         };
 
         match write_api_response_to_log(&Some(anu_data.to_string())) {
           Ok(_) => {
-            d3bug("<<< write_api_response_to_log", "log");
+            d3bug("<<< write_api_response_to_log", "debug");
           }
           Err(err) => d3bug(&format!("write_api_response_to_log: \n{:?}", err), "error"),
         };
@@ -79,7 +79,7 @@ pub fn get_entropy_from_anu(
     "uint8" => {
       let uint8 = match extract_uint8_data(&anu_data) {
         Ok(data) => {
-          d3bug("<<< extract_uint8_data", "log");
+          d3bug("<<< extract_uint8_data", "debug");
           data
         }
         Err(err) => {
@@ -92,7 +92,7 @@ pub fn get_entropy_from_anu(
 
       match process_uint8_data(&uint8) {
         Ok(data) => {
-          d3bug("<<< process_uint8_data", "log");
+          d3bug("<<< process_uint8_data", "debug");
           data
         }
         Err(err) => {
@@ -133,10 +133,10 @@ fn fetch_anu_qrng_data(
   block_size: u32,
   sender: std::sync::mpsc::Sender<Option<String>>,
 ) -> FunctionOutput<()> {
-  d3bug(">>> fetch_anu_qrng_data", "log");
-  d3bug(&format!("fetch_anu_qrng_data: {:?}", data_format), "log");
-  d3bug(&format!("array_length: {:?}", array_length), "log");
-  d3bug(&format!("block_size: {:?}", block_size), "log");
+  d3bug(">>> fetch_anu_qrng_data", "debug");
+  d3bug(&format!("fetch_anu_qrng_data: {:?}", data_format), "debug");
+  d3bug(&format!("array_length: {:?}", array_length), "debug");
+  d3bug(&format!("block_size: {:?}", block_size), "debug");
 
   let data_format_owned = data_format.to_string();
   let current_time = SystemTime::now();
@@ -212,7 +212,7 @@ fn fetch_anu_qrng_data(
 }
 
 fn load_last_anu_request() -> FunctionOutput<SystemTime> {
-  d3bug(">>> load_last_anu_request", "log");
+  d3bug(">>> load_last_anu_request", "debug");
 
   let local_settings = LOCAL_SETTINGS
     .lock()
@@ -240,7 +240,7 @@ fn load_last_anu_request() -> FunctionOutput<SystemTime> {
 }
 
 fn create_anu_timestamp(time: SystemTime) -> FunctionOutput<()> {
-  d3bug(">>> create_anu_timestamp", "log");
+  d3bug(">>> create_anu_timestamp", "debug");
 
   let local_settings = LOCAL_SETTINGS
     .lock()
@@ -281,7 +281,7 @@ fn create_anu_timestamp(time: SystemTime) -> FunctionOutput<()> {
 }
 
 fn write_api_response_to_log(response: &Option<String>) -> FunctionOutput<()> {
-  d3bug(">>> write_api_response_to_log", "log");
+  d3bug(">>> write_api_response_to_log", "debug");
 
   let local_settings = LOCAL_SETTINGS
     .lock()
@@ -331,7 +331,7 @@ fn write_api_response_to_log(response: &Option<String>) -> FunctionOutput<()> {
 }
 
 fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> {
-  d3bug(">>> extract_uint8_data", "log");
+  d3bug(">>> extract_uint8_data", "debug");
 
   let api_response = match api_response {
     Some(response) => response,
@@ -398,7 +398,7 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
 }
 
 fn process_uint8_data(data: &[u8]) -> FunctionOutput<String> {
-  d3bug(">>> process_uint8_data", "log");
+  d3bug(">>> process_uint8_data", "debug");
 
   let binary_string = data
     .iter()

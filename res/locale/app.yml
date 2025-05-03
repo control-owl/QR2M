@@ -405,7 +405,12 @@ UI:
           en: "Hardened address"
           de: "Gehärtete Adresse"
           hr: "Tvrda adresa"
-
+    generator:
+      en: "Generator"
+      import:
+        en: "Please select source"
+        button:
+          en: "Create wallet"
     database:
       column:
         status:

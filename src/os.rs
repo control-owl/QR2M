@@ -29,7 +29,7 @@ pub struct LocalSettings {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
-  d3bug(">>> detect_os_and_user_dir", "log");
+  d3bug(">>> detect_os_and_user_dir", "debug");
 
   let os = match env::consts::OS {
     "windows" => "windows",
@@ -38,10 +38,14 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
     _ => "unknown",
   };
 
+  d3bug(&format!("OS: {:?}", os), "info");
+
   let app_name = APP_NAME.ok_or_else(|| crate::AppError::Custom("APP_NAME not set".to_string()))?;
   let local_temp = env::temp_dir();
   let local_temp_dir = local_temp.join(app_name);
+
   let local_temp_file = local_temp_dir.join(APP_LOCAL_TEMP_FILE);
+  d3bug(&format!("Temp file: {:?}", local_temp_file), "info");
 
   let local_config_dir = match os {
     "windows" => {
@@ -67,6 +71,7 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
   };
 
   let local_config_file = local_config_dir.join(APP_LOCAL_CONFIG_FILE);
+  d3bug(&format!("Config file: {:?}", local_config_file), "info");
 
   let (config_dir, config_file) = if local_config_dir.is_symlink() {
     match fs::read_link(&local_config_dir) {
@@ -79,8 +84,11 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
               target
             )));
           } else {
-            #[cfg(debug_assertions)]
-            println!("\t- Using writable symlink target: {:?}", &target);
+            d3bug(
+              &format!("Using writable symlink target: {:?}", target),
+              "debug",
+            );
+
             (target.clone(), target.join(APP_LOCAL_CONFIG_FILE))
           }
         } else {
@@ -108,20 +116,11 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
   local_settings.local_config_file = Some(config_file.clone());
   local_settings.local_temp_file = Some(local_temp_file.clone());
 
-  #[cfg(debug_assertions)]
-  {
-    println!("\t- OS: {:?}", &os);
-    println!("\t- Config directory: {:?}", &config_dir);
-    println!("\t- Configuration file: {:?}", &config_file);
-    println!("\t- Temp directory: {:?}", &local_temp_dir);
-    println!("\t- Temp file: {:?}", &local_temp_file);
-  }
-
   Ok(())
 }
 
 pub fn switch_locale(lang: &str) -> FunctionOutput<()> {
-  d3bug(">>> switch_locale", "log");
+  d3bug(">>> switch_locale", "debug");
 
   match lang {
     "Deutsch" => rust_i18n::set_locale("de"),
@@ -136,7 +135,7 @@ pub fn switch_locale(lang: &str) -> FunctionOutput<()> {
 }
 
 pub fn check_local_config() -> FunctionOutput<()> {
-  d3bug(">>> check_local_config", "log");
+  d3bug(">>> check_local_config", "debug");
 
   let local_settings = LOCAL_SETTINGS
     .lock()
@@ -153,13 +152,19 @@ pub fn check_local_config() -> FunctionOutput<()> {
     .ok_or_else(|| crate::AppError::Custom("local_config_dir not set".to_string()))?;
 
   if !local_config_dir.exists() {
+    d3bug("Local config directory does not exists", "warning");
+
     fs::create_dir_all(&local_config_dir).map_err(crate::AppError::Io)?;
+  } else {
+    d3bug("Local config directory found", "debug");
   }
 
   if !is_directory_writable(&local_config_dir)? {
     return Err(crate::AppError::Custom(
       "Directory is not writable".to_string(),
     ));
+  } else {
+    d3bug("<<< is_directory_writable", "debug");
   }
 
   if !Path::new(&local_config_file).exists() {
@@ -201,7 +206,8 @@ pub fn check_local_config() -> FunctionOutput<()> {
 }
 
 fn is_directory_writable(dir: &Path) -> FunctionOutput<bool> {
-  d3bug(">>> is_directory_writable", "log");
+  d3bug(">>> is_directory_writable", "debug");
+  d3bug(&format!("Directory: {:?}", dir), "debug");
 
   let mut temp_file_path = dir.to_path_buf();
   temp_file_path.push(".tmp");
@@ -209,8 +215,10 @@ fn is_directory_writable(dir: &Path) -> FunctionOutput<bool> {
   match fs::File::create(&temp_file_path) {
     Ok(_) => {
       if let Err(err) = fs::remove_file(&temp_file_path) {
-        eprintln!("Failed to delete temporary file: {}", err);
+        // eprintln!("Failed to delete temporary file: {}", err);
+        return Err(crate::AppError::Io(err));
       }
+      d3bug(&format!("Directory is writtable: {:?}", dir), "info");
       Ok(true)
     }
     Err(e) => Err(crate::AppError::Io(e)),

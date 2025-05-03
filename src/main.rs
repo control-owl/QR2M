@@ -59,16 +59,18 @@ const VALID_ENTROPY_LENGTHS: [u32; 5] = [128, 160, 192, 224, 256];
 const VALID_BIP_DERIVATIONS: &[&str] = &[
   "32",
   "44",
-  #[cfg(feature = "dev")]
-  "49",
-  #[cfg(feature = "dev")]
-  "84",
-  #[cfg(feature = "dev")]
-  "86",
+  // #[cfg(feature = "dev")]
+  // "49",
+  // #[cfg(feature = "dev")]
+  // "84",
+  // #[cfg(feature = "dev")]
+  // "86",
   #[cfg(feature = "dev")]
   "Custom",
 ];
 const VALID_ENTROPY_SOURCES: &[&str] = &["RNG+", "File", "QRNG"];
+#[cfg(feature = "dev")]
+const VALID_IMPORT_SOURCES: &[&str] = &["Entropy", "Mnemonic", "Seed"];
 const VALID_WALLET_PURPOSE: &[&str] = &["Internal", "External"];
 const VALID_ANU_API_DATA_FORMAT: &[&str] = &[
   "uint8",
@@ -315,6 +317,7 @@ struct AppSettings {
   gui_icons: Option<String>,
   gui_language: Option<String>,
   gui_search: Option<String>,
+  gui_notifications: Option<bool>,
   gui_notification_timeout: Option<u32>,
   gui_log: Option<bool>,
   gui_log_level: Option<String>,
@@ -356,7 +359,8 @@ impl Default for AppSettings {
       gui_icons: Some("Thin".to_string()),
       gui_language: Some("English".to_string()),
       gui_search: Some("Name".to_string()),
-      gui_notification_timeout: Some(5),
+      gui_notifications: Some(true),
+      gui_notification_timeout: Some(3),
       gui_log: Some(true),
       gui_log_level: Some("Standard".to_string()),
       anu_enabled: Some(false),
@@ -383,7 +387,7 @@ impl Default for AppSettings {
 
 impl AppSettings {
   fn load_settings() -> FunctionOutput<()> {
-    d3bug(">>> load_settings", "log");
+    d3bug(">>> load_settings", "debug");
 
     let settings = AppSettings::default();
 
@@ -402,9 +406,9 @@ impl AppSettings {
 
           match os::check_local_config() {
             Ok(_) => {
-              d3bug("<<< check_local_config", "log");
+              d3bug("<<< check_local_config", "debug");
             }
-            Err(err) => d3bug(&format!("check_local_config: \n{:?}", err), "error"),
+            Err(err) => d3bug(&format!("check_local_config: {:?}", err), "error"),
           };
         } else {
           #[cfg(debug_assertions)]
@@ -464,6 +468,11 @@ impl AppSettings {
     let gui_icons = get_str(&gui_section, "icons", settings.gui_icons);
     let gui_language = get_str(&gui_section, "language", settings.gui_language);
     let gui_search = get_str(&gui_section, "search", settings.gui_search);
+    let gui_notifications = get_bool(
+      &gui_section,
+      "notification_enabled",
+      settings.gui_notifications,
+    );
     let gui_notification_timeout = get_u32(
       &gui_section,
       "notification_timeout",
@@ -482,6 +491,7 @@ impl AppSettings {
       println!("\t- Icons: {:?}", gui_icons);
       println!("\t- Language: {:?}", gui_language);
       println!("\t- Search: {:?}", gui_search);
+      println!("\t- Notification enabled: {:?}", gui_notifications);
       println!("\t- Notification timeout: {:?}", gui_notification_timeout);
       println!("\t- Log enabled: {:?}", gui_log);
       println!("\t- Log level: {:?}", gui_log_level);
@@ -626,6 +636,7 @@ impl AppSettings {
     application_settings.gui_icons = gui_icons.clone();
     application_settings.gui_language = gui_language.clone();
     application_settings.gui_search = gui_search.clone();
+    application_settings.gui_notifications = gui_notifications;
     application_settings.gui_notification_timeout = gui_notification_timeout;
     application_settings.gui_log = gui_log;
     application_settings.gui_log_level = gui_log_level.clone();
@@ -849,6 +860,16 @@ impl AppSettings {
           }
         }
       }
+      "gui_notifications" => {
+        if let Some(value) = new_value.as_bool() {
+          if Some(value) != self.gui_notifications {
+            self.gui_notifications = Some(value);
+
+            #[cfg(debug_assertions)]
+            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+          }
+        }
+      }
       "gui_notification_timeout" => {
         if let Some(value) = new_value.as_integer() {
           let value = value as u32;
@@ -1060,8 +1081,10 @@ impl AppSettings {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.app_settings.save_settings").to_string());
 
-    let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
-    let local_config_file = local_settings.local_config_file.clone().unwrap();
+    let local_config_file = {
+      let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
+      local_settings.local_config_file.clone().unwrap()
+    };
 
     let config_str = qr2m_lib::read_config_from_file(&local_config_file).unwrap_or_else(|_| {
       eprintln!("Failed to read config, using defaults.");
@@ -1106,6 +1129,7 @@ impl AppSettings {
         gui_table["icons"] = toml_edit::value(self.gui_icons.clone().unwrap());
         gui_table["language"] = toml_edit::value(self.gui_language.clone().unwrap());
         gui_table["search"] = toml_edit::value(self.gui_search.clone().unwrap());
+        gui_table["notification_enabled"] = toml_edit::value(self.gui_notifications.unwrap());
         gui_table["notification_timeout"] =
           toml_edit::value(self.gui_notification_timeout.unwrap() as i64);
         gui_table["log"] = toml_edit::value(self.gui_log.unwrap());
@@ -1230,22 +1254,34 @@ impl AppMessages {
     }
   }
 
-  fn queue_message(&self, new_message: String, message_type: gtk::MessageType) {
-    #[cfg(debug_assertions)]
-    println!("[+] {}", &t!("log.app_messages.queue_message").to_string());
+  fn queue_message(
+    &self,
+    new_message: String,
+    message_type: gtk::MessageType,
+  ) -> FunctionOutput<()> {
+    d3bug(">>> queue_message", "debug");
+    d3bug(&format!("new_message: {:?}", new_message), "debug");
+    d3bug(&format!("message_type: {:?}", message_type), "debug");
 
     let mut queue = self.message_queue.lock().unwrap();
     let last_message_in_queue = queue.get(queue.len().wrapping_sub(1));
-    let default_message: &(String, gtk::MessageType) = &("".to_string(), gtk::MessageType::Info);
+    let default_message: &(String, gtk::MessageType) = &(String::new(), gtk::MessageType::Info);
     let some_message = last_message_in_queue.unwrap_or(default_message);
-    let last_message = some_message.0.clone();
+    let last_message = &some_message.0;
 
-    if new_message != last_message {
+    if &new_message != last_message {
+      d3bug(&format!("New notification: {:?}", new_message), "info");
       queue.push_back((new_message, message_type));
 
       if !*self.processing.lock().unwrap() {
         self.start_message_processor();
+        Ok(())
+      } else {
+        Err(AppError::Custom("Not processing message".to_string()))
       }
+    } else {
+      // d3bug(&format!("Duplicated message: {:?}", new_message), "debug");
+      Err(AppError::Custom("Duplicated message".to_string()))
     }
   }
 
@@ -1283,26 +1319,46 @@ impl AppMessages {
       let processing = processing.clone();
 
       move || {
+        let notification_status = {
+          let lock_app_settings = APP_SETTINGS.read().unwrap();
+          lock_app_settings.gui_notifications.unwrap()
+        };
+
+        if !notification_status {
+          *processing.lock().unwrap() = false;
+          return glib::ControlFlow::Break;
+        }
+
         let mut queue_lock = queue.lock().unwrap();
         if let Some((message, message_type)) = queue_lock.pop_front() {
           AppMessages::create_info_message(&info_bar, &message, message_type);
 
-          let lock_app_settings = APP_SETTINGS.read().unwrap();
-          let timeout = lock_app_settings.gui_notification_timeout.unwrap();
+          let notification_timeout = {
+            let lock_app_settings = APP_SETTINGS.read().unwrap();
+            lock_app_settings.gui_notification_timeout.unwrap()
+          };
 
-          glib::timeout_add_local(std::time::Duration::from_secs(timeout as u64), {
-            let queue = queue.clone();
-            let info_bar = info_bar.clone();
-            let processing = processing.clone();
+          glib::timeout_add_local(
+            std::time::Duration::from_secs(notification_timeout as u64),
+            {
+              let queue = queue.clone();
+              let info_bar = info_bar.clone();
+              let processing = processing.clone();
 
-            move || {
-              info_bar.set_reveal_child(false);
+              move || {
+                info_bar.set_reveal_child(false);
 
-              AppMessages::start_next_message(&queue, &info_bar, &processing, timeout);
+                AppMessages::start_next_message(
+                  &queue,
+                  &info_bar,
+                  &processing,
+                  notification_timeout,
+                );
 
-              glib::ControlFlow::Break
-            }
-          });
+                glib::ControlFlow::Break
+              }
+            },
+          );
 
           glib::ControlFlow::Break
         } else {
@@ -1632,30 +1688,30 @@ async fn main() {
 
   match print_program_info() {
     Ok(_) => {
-      d3bug("<<< print_program_info", "log");
+      d3bug("<<< print_program_info", "debug");
     }
-    Err(err) => d3bug(&format!("print_program_info: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("print_program_info: {:?}", err), "error"),
   };
 
   match os::detect_os_and_user_dir() {
     Ok(_) => {
-      d3bug("<<< detect_os_and_user_dir", "log");
+      d3bug("<<< detect_os_and_user_dir", "debug");
     }
-    Err(err) => d3bug(&format!("detect_os_and_user_dir: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("detect_os_and_user_dir: {:?}", err), "error"),
   };
 
   match os::check_local_config() {
     Ok(_) => {
-      d3bug("<<< check_local_config", "log");
+      d3bug("<<< check_local_config", "debug");
     }
-    Err(err) => d3bug(&format!("check_local_config: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("check_local_config: {:?}", err), "error"),
   };
 
   match AppSettings::load_settings() {
     Ok(_) => {
-      d3bug("<<< load_settings", "log");
+      d3bug("<<< load_settings", "debug");
     }
-    Err(err) => d3bug(&format!("load_settings: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("load_settings: {:?}", err), "error"),
   };
 
   let application = adw::Application::builder()
@@ -1667,9 +1723,9 @@ async fn main() {
   #[cfg(feature = "dev")]
   match sec::check_security_level() {
     Ok(_) => {
-      d3bug("<<< check_security_level", "log");
+      d3bug("<<< check_security_level", "debug");
     }
-    Err(err) => d3bug(&format!("check_security_level: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("check_security_level: {:?}", err), "error"),
   };
 
   application.connect_activate(clone!(
@@ -1679,17 +1735,17 @@ async fn main() {
       #[cfg(not(feature = "dev"))]
       match create_main_window(app.clone(), gui_state.clone()) {
         Ok(_) => {
-          d3bug("<<< create_main_window", "log");
+          d3bug("<<< create_main_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_main_window: \n{:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
       };
 
       #[cfg(feature = "dev")]
       match create_main_window(app.clone(), gui_state.clone(), Some(start_time)) {
         Ok(_) => {
-          d3bug("<<< create_main_window", "log");
+          d3bug("<<< create_main_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_main_window: \n{:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
       };
     }
   ));
@@ -1698,7 +1754,7 @@ async fn main() {
 }
 
 fn print_program_info() -> FunctionOutput<()> {
-  d3bug(">>> print_program_info", "log");
+  d3bug(">>> print_program_info", "debug");
   d3bug(" ██████╗ ██████╗ ██████╗ ███╗   ███╗", "info");
   d3bug("██╔═══██╗██╔══██╗╚════██╗████╗ ████║", "info");
   d3bug("██║   ██║██████╔╝ █████╔╝██╔████╔██║", "info");
@@ -1722,7 +1778,7 @@ fn print_program_info() -> FunctionOutput<()> {
     ),
     "info",
   );
-  d3bug(&format!("Start time (UNIX): {}", timestamp), "info");
+  d3bug(&format!("Start time (UNIX): {}", timestamp), "debug");
 
   d3bug(
     "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.",
@@ -1915,9 +1971,9 @@ fn create_main_window(
 
   match os::switch_locale(&gui_language) {
     Ok(_) => {
-      d3bug("<<< switch_locale", "log");
+      d3bug("<<< switch_locale", "debug");
     }
-    Err(err) => d3bug(&format!("switch_locale: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("switch_locale: {:?}", err), "error"),
   };
 
   qr2m_lib::setup_css();
@@ -2540,10 +2596,13 @@ fn create_main_window(
             eprintln!("\t Imported entropy invalid: {}", text);
 
             let lock_app_messages = app_messages_state.borrow();
-            lock_app_messages.queue_message(
+            match lock_app_messages.queue_message(
               t!("error.entropy.invalid").to_string(),
               gtk::MessageType::Error,
-            );
+            ) {
+              Ok(_) => {}
+              Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+            };
           };
 
           import_entropy_dialog.close();
@@ -2755,10 +2814,13 @@ fn create_main_window(
             eprintln!("\t Imported seed invalid: {}", text);
 
             let lock_app_messages = app_messages_state.borrow();
-            lock_app_messages.queue_message(
+            match lock_app_messages.queue_message(
               t!("error.seed.invalid").to_string(),
               gtk::MessageType::Error,
-            );
+            ) {
+              Ok(_) => {}
+              Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+            };
           };
 
           import_seed_dialog.close();
@@ -3276,7 +3338,6 @@ fn create_main_window(
     format!("m/{}'/0'/0'/0", wallet_bip)
   };
 
-  // JUMP: 111111111111111111111111111111111111111111111
   // let derivation_label_text = gtk4::Label::builder()
   //   .label(&default_bip_label)
   //   .halign(gtk::Align::Center)
@@ -3499,6 +3560,173 @@ fn create_main_window(
     &t!("UI.main.address"),
   );
 
+  // JUMP Generator
+  #[cfg(feature = "dev")]
+  {
+    let generator_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+    generator_main_box.set_hexpand(true);
+    generator_main_box.set_vexpand(true);
+    generator_main_box.set_margin_top(10);
+    generator_main_box.set_margin_start(10);
+    generator_main_box.set_margin_end(10);
+    generator_main_box.set_margin_bottom(10);
+
+    let generator_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+    let import_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+    // Import label
+    let import_label = gtk::Label::new(Some(&t!("UI.main.generator.import")));
+    import_main_box.append(&import_label);
+
+    // Import dropdown
+    let valid_import_as_string: Vec<String> = VALID_IMPORT_SOURCES
+      .iter()
+      .map(|&x| x.to_string())
+      .collect();
+    let valid_import_as_ref: Vec<&str> =
+      valid_import_as_string.iter().map(|s| s.as_ref()).collect();
+    let import_dropdown = gtk::DropDown::from_strings(&valid_import_as_ref);
+    import_main_box.append(&import_dropdown);
+
+    // Import entry
+    let import_text = gtk::TextView::new();
+    import_text.set_hexpand(true);
+    import_main_box.append(&import_text);
+
+    import_dropdown.connect_selected_notify(clone!(
+      #[weak]
+      import_text,
+      move |import_dropdown| {
+        let value = import_dropdown.selected() as usize;
+        let selected_import_source = VALID_IMPORT_SOURCES.get(value);
+        let source = selected_import_source.unwrap();
+
+        if *source == "Mnemonic" {
+          import_text.set_wrap_mode(gtk::WrapMode::Word);
+        } else {
+          import_text.set_wrap_mode(gtk::WrapMode::Char);
+        }
+      }
+    ));
+
+    // Derivation path label
+    let derivation_label = gtk::Label::new(Some(&t!("UI.main.address.derivation")));
+    import_main_box.append(&derivation_label);
+
+    // Derivation path dropdown
+    let valid_derivation_as_string: Vec<String> = VALID_BIP_DERIVATIONS
+      .iter()
+      .map(|&x| x.to_string())
+      .filter(|s| s != "Custom")
+      .collect();
+
+    let valid_derivation_as_ref: Vec<&str> = valid_derivation_as_string
+      .iter()
+      .map(|s| s.as_ref())
+      .collect();
+
+    let derivation_dropdown = gtk::DropDown::from_strings(&valid_derivation_as_ref);
+    import_main_box.append(&derivation_dropdown);
+
+    // Import button
+    let import_button = gtk::Button::new();
+    import_button.set_label(&t!("UI.main.generator.import.button"));
+    import_main_box.append(&import_button);
+
+    // Address table
+    let address_scrolled_window = gtk::ScrolledWindow::new();
+    let address_store = gio::ListStore::new::<AddressDatabase>();
+    let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
+      let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
+      let entry2 = obj2.downcast_ref::<AddressDatabase>().unwrap();
+
+      let id1 = entry1.property::<String>("id");
+      let id2 = entry2.property::<String>("id");
+      let coin1 = entry1.property::<String>("coin");
+      let coin2 = entry2.property::<String>("coin");
+
+      if id1 != id2 {
+        id1.cmp(&id2).into()
+      } else {
+        coin1.cmp(&coin2).into()
+      }
+    });
+    let address_sorted_model = gtk::SortListModel::new(Some(address_store.clone()), Some(sorter));
+    let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
+    let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
+
+    address_treeview.set_show_column_separators(true);
+    address_treeview.set_show_row_separators(true);
+    address_treeview.set_vexpand(true);
+    address_treeview.set_hexpand(true);
+    address_scrolled_window.set_child(Some(&address_treeview));
+
+    let columns = [
+      &t!("UI.main.address.table.id"),
+      &t!("UI.main.address.table.coin"),
+      &t!("UI.main.address.table.path"),
+      &t!("UI.main.address.table.address"),
+      &t!("UI.main.address.table.pub"),
+      &t!("UI.main.address.table.priv"),
+    ];
+
+    for (i, column_title) in columns.iter().enumerate() {
+      let factory = gtk::SignalListItemFactory::new();
+      factory.connect_setup(move |_factory, list_item| {
+        let list_item = list_item
+          .downcast_ref::<gtk::ListItem>()
+          .expect("Needs to be ListItem");
+        let label = gtk::Label::new(None);
+        list_item.set_child(Some(&label));
+      });
+
+      factory.connect_bind(move |_factory, list_item| {
+        let list_item = list_item
+          .downcast_ref::<gtk::ListItem>()
+          .expect("Needs to be ListItem");
+        let label = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
+        let entry = list_item
+          .item()
+          .unwrap()
+          .downcast::<AddressDatabase>()
+          .unwrap();
+
+        let text = match i {
+          0 => entry.property::<String>("id"),
+          1 => entry.property::<String>("coin"),
+          2 => entry.property::<String>("path"),
+          3 => entry.property::<String>("address"),
+          4 => entry.property::<String>("public-key"),
+          5 => entry.property::<String>("private-key"),
+          _ => unreachable!(),
+        };
+        label.set_text(&text);
+      });
+
+      let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
+      column.set_expand(true);
+
+      address_treeview.append_column(&column);
+    }
+    import_main_box.append(&address_scrolled_window);
+
+    generator_main_content_box.append(&import_main_box);
+
+    generator_main_box.append(&generator_main_content_box);
+    generator_main_box.set_margin_top(10);
+    generator_main_box.set_margin_start(10);
+    generator_main_box.set_margin_end(10);
+    generator_main_box.set_margin_bottom(10);
+    generator_main_content_box.append(&master_keys_box);
+
+    stack.add_titled(
+      &generator_main_box,
+      Some("sidebar-generator"),
+      &t!("UI.main.generator"),
+    );
+  }
+
   // JUMP: Action: Open Wallet
   buttons["open"].connect_clicked(clone!(
     #[strong]
@@ -3610,7 +3838,7 @@ fn create_main_window(
 
       let pre_entropy =
         keys::generate_entropy(&source, *entropy_length as u64).unwrap_or_else(|err| {
-          d3bug(&format!("generate_entropy: \n{:?}", err), "error");
+          d3bug(&format!("generate_entropy: {:?}", err), "error");
           String::new()
         });
 
@@ -3661,10 +3889,13 @@ fn create_main_window(
         eprintln!("\t- {}", &t!("error.entropy.empty"));
 
         let lock_app_messages = app_messages_state.borrow();
-        lock_app_messages.queue_message(
+        match lock_app_messages.queue_message(
           t!("error.entropy.empty").to_string(),
           gtk::MessageType::Warning,
-        );
+        ) {
+          Ok(_) => {}
+          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+        };
       }
     }
   ));
@@ -3834,10 +4065,13 @@ fn create_main_window(
         }
       } else {
         let app_messages_state = app_messages_state.borrow();
-        app_messages_state.queue_message(
+        match app_messages_state.queue_message(
           t!("error.entropy.seed").to_string(),
           gtk::MessageType::Warning,
-        );
+        ) {
+          Ok(_) => {}
+          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+        };
       }
     }
   ));
@@ -4306,10 +4540,13 @@ fn create_main_window(
 
       if master_private_key_string.is_empty() {
         let lock_app_messages = app_messages_state.borrow();
-        lock_app_messages.queue_message(
+        match lock_app_messages.queue_message(
           t!("error.address.master").to_string(),
           gtk::MessageType::Warning,
-        );
+        ) {
+          Ok(_) => {}
+          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+        };
         return;
       }
 
@@ -4329,10 +4566,13 @@ fn create_main_window(
       #[cfg(not(feature = "dev"))]
       if _key_derivation != "secp256k1" {
         let lock_app_messages = app_messages_state.borrow();
-        lock_app_messages.queue_message(
+        match lock_app_messages.queue_message(
           t!("error.address.unsupported").to_string(),
           gtk::MessageType::Error,
-        );
+        ) {
+          Ok(_) => {}
+          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+        };
         return;
       }
 
@@ -4582,7 +4822,10 @@ fn create_main_window(
               println!("{}", message);
 
               let lock_app_messages = app_messages_state.borrow();
-              lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info);
+              match lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info) {
+                Ok(_) => {}
+                Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+              };
 
               stop_addresses_button_box.set_visible(false);
               delete_addresses_button_box.set_visible(true);
@@ -4934,7 +5177,10 @@ fn create_main_window(
       println!("{}", message);
 
       let lock_app_messages = app_messages_state.borrow();
-      lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Warning);
+      match lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Warning) {
+        Ok(_) => {}
+        Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+      };
 
       delete_addresses_button_box.set_visible(true);
       stop_addresses_button_box.set_visible(false);
@@ -4956,7 +5202,10 @@ fn create_main_window(
 
   {
     let lock_app_messages = app_messages_state.borrow();
-    lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info);
+    match lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info) {
+      Ok(_) => {}
+      Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+    };
   }
 
   window.set_child(Some(&main_window_box));
@@ -5000,7 +5249,10 @@ fn create_main_window(
       println!("{}", message);
 
       let lock_app_messages = app_messages_state.borrow();
-      lock_app_messages.queue_message(message, gtk::MessageType::Info);
+      match lock_app_messages.queue_message(message, gtk::MessageType::Info) {
+        Ok(_) => {}
+        Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+      };
     };
   }
 
@@ -5214,6 +5466,28 @@ fn create_settings_window(
   default_search_parameter_box.append(&default_search_parameter_item_box);
   content_general_box.append(&default_search_parameter_box);
 
+  // APP notifications
+  let notification_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+  // Notification Status
+  let enable_gui_notifications_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let enable_gui_notifications_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+  let enable_gui_notifications_item_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+  let enable_gui_notifications_label = gtk::Label::new(Some(&t!("UI.main.notification")));
+  let enable_gui_notifications_checkbox = gtk::CheckButton::new();
+  let enable_gui_notifications = lock_app_settings.gui_notifications.unwrap();
+
+  enable_gui_notifications_checkbox.set_active(enable_gui_notifications);
+  enable_gui_notifications_box.set_hexpand(true);
+  enable_gui_notifications_item_box.set_hexpand(true);
+  enable_gui_notifications_item_box.set_margin_end(20);
+  enable_gui_notifications_item_box.set_halign(gtk::Align::End);
+
+  enable_gui_notifications_label_box.append(&enable_gui_notifications_label);
+  enable_gui_notifications_item_box.append(&enable_gui_notifications_checkbox);
+  enable_gui_notifications_box.append(&enable_gui_notifications_label_box);
+  enable_gui_notifications_box.append(&enable_gui_notifications_item_box);
+
   // Notification timeout
   let notification_timeout_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let notification_timeout_label_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -5236,7 +5510,14 @@ fn create_settings_window(
   notification_timeout_item_box.append(&notification_timeout_spinbutton);
   notification_timeout_box.append(&notification_timeout_label_box);
   notification_timeout_box.append(&notification_timeout_item_box);
-  content_general_box.append(&notification_timeout_box);
+
+  if !enable_gui_notifications {
+    notification_timeout_box.set_visible(false);
+  }
+
+  notification_main_box.append(&enable_gui_notifications_box);
+  notification_main_box.append(&notification_timeout_box);
+  content_general_box.append(&notification_main_box);
 
   // Log
   let enable_gui_log_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -5300,6 +5581,14 @@ fn create_settings_window(
     default_gui_log_level_box,
     move |cb| {
       default_gui_log_level_box.set_visible(cb.is_active());
+    }
+  ));
+
+  enable_gui_notifications_checkbox.connect_active_notify(clone!(
+    #[weak]
+    notification_timeout_box,
+    move |cb| {
+      notification_timeout_box.set_visible(cb.is_active());
     }
   ));
 
@@ -6200,6 +6489,10 @@ fn create_settings_window(
           ),
         ),
         (
+          "gui_notifications",
+          toml_edit::value(enable_gui_notifications_checkbox.is_active()),
+        ),
+        (
           "gui_notification_timeout",
           toml_edit::value(notification_timeout_spinbutton.value_as_int() as i64),
         ),
@@ -6304,12 +6597,17 @@ fn create_settings_window(
 
       AppSettings::save_settings(&settings);
 
-      {
-        let lock_app_messages = app_messages_state.borrow();
-        lock_app_messages.queue_message(
-          t!("UI.messages.dialog.settings_saved").to_string(),
-          gtk::MessageType::Info,
-        );
+      if enable_gui_notifications_checkbox.is_active() {
+        {
+          let lock_app_messages = app_messages_state.borrow();
+          match lock_app_messages.queue_message(
+            t!("UI.messages.dialog.settings_saved").to_string(),
+            gtk::MessageType::Info,
+          ) {
+            Ok(_) => {}
+            Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+          };
+        }
       }
 
       settings_window.close();
@@ -6356,9 +6654,9 @@ fn create_settings_window(
 
                 match AppSettings::load_settings() {
                   Ok(_) => {
-                    d3bug("<<< load_settings", "log");
+                    d3bug("<<< load_settings", "debug");
                   }
-                  Err(err) => d3bug(&format!("load_settings: \n{:?}", err), "error"),
+                  Err(err) => d3bug(&format!("load_settings: {:?}", err), "error"),
                 };
 
                 adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
@@ -6374,16 +6672,22 @@ fn create_settings_window(
                 lock_new_gui_state.reload_gui_icons();
                 lock_new_gui_state.apply_language();
 
-                lock_app_messages.queue_message(
+                match lock_app_messages.queue_message(
                   t!("UI.messages.dialog.settings_reset").to_string(),
                   gtk::MessageType::Info,
-                );
+                ) {
+                  Ok(_) => {}
+                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                };
               }
               Err(_) => {
-                lock_app_messages.queue_message(
+                match lock_app_messages.queue_message(
                   t!("error.settings.reset").to_string(),
                   gtk::MessageType::Error,
-                );
+                ) {
+                  Ok(_) => {}
+                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                };
               }
             }
           }
@@ -6444,9 +6748,9 @@ fn reset_user_settings() -> FunctionOutput<()> {
 
   match os::check_local_config() {
     Ok(_) => {
-      d3bug("<<< check_local_config", "log");
+      d3bug("<<< check_local_config", "debug");
     }
-    Err(err) => d3bug(&format!("check_local_config: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("check_local_config: {:?}", err), "error"),
   };
 
   Ok(())
@@ -6546,23 +6850,32 @@ fn open_wallet_from_file(
                 let passphrase = password.map(|s| s.to_string());
                 let lock_app_messages = app_messages_state_open.borrow();
                 if tx.send(Some((entropy, passphrase.clone()))).is_err() {
-                  lock_app_messages.queue_message(
+                  match lock_app_messages.queue_message(
                     format!("{} : {}", t!("error.wallet.send"), "Channel send failed"),
                     gtk::MessageType::Error,
-                  );
+                  ) {
+                    Ok(_) => {}
+                    Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  };
                 } else {
-                  lock_app_messages.queue_message(
+                  match lock_app_messages.queue_message(
                     t!("UI.messages.wallet.open").to_string(),
                     gtk::MessageType::Info,
-                  );
+                  ) {
+                    Ok(_) => {}
+                    Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  };
                 }
               }
               Err(err) => {
                 let lock_app_messages = app_messages_state_open.borrow();
-                lock_app_messages.queue_message(
+                match lock_app_messages.queue_message(
                   format!("{} : {}", t!("error.wallet.process"), err),
                   gtk::MessageType::Error,
-                );
+                ) {
+                  Ok(_) => {}
+                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                };
                 let _ = tx.send(None);
               }
             }
@@ -6585,10 +6898,13 @@ fn open_wallet_from_file(
     Ok(None) => (String::new(), None),
     Err(err) => {
       let lock_state = app_messages_state.borrow();
-      lock_state.queue_message(
+      match lock_state.queue_message(
         format!("{} : {}", t!("error.wallet.open"), err),
         gtk::MessageType::Error,
-      );
+      ) {
+        Ok(_) => {}
+        Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+      };
       (String::new(), None)
     }
   }
@@ -6652,27 +6968,36 @@ fn save_wallet_to_file(app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMe
             match fs::write(&path_with_extension, &wallet_data) {
               Ok(_) => {
                 let lock_app_messages = app_messages_state_clone.borrow();
-                lock_app_messages.queue_message(
+                match lock_app_messages.queue_message(
                   t!("UI.messages.wallet.save").to_string(),
                   gtk::MessageType::Info,
-                );
+                ) {
+                  Ok(_) => {}
+                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                };
               }
               Err(err) => {
                 let lock_app_messages = app_messages_state_clone.borrow();
-                lock_app_messages.queue_message(
+                match lock_app_messages.queue_message(
                   format!("{} : {}", t!("error.wallet.save"), err),
                   gtk::MessageType::Error,
-                );
+                ) {
+                  Ok(_) => {}
+                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                };
               }
             }
           }
         }
         Err(err) => {
           let lock_app_messages = app_messages_state_clone.borrow();
-          lock_app_messages.queue_message(
+          match lock_app_messages.queue_message(
             format!("{} : {}", t!("error.wallet.cancel"), err),
             gtk::MessageType::Error,
-          );
+          ) {
+            Ok(_) => {}
+            Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+          };
         }
       }
       save_loop_clone.quit();
@@ -6775,7 +7100,7 @@ fn parse_wallet_version(line: &str) -> Result<u8, String> {
 fn d3bug(message: &str, msg_type: &str) {
   let (color_code, prefix) = match msg_type {
     "info" => ("\x1b[34m", "[INFO] "),       // Blue
-    "log" => ("\x1b[32m", "[LOG] "),         // Green
+    "debug" => ("\x1b[32m", "[DEBUG] "),     // Green
     "error" => ("\x1b[31m", "[ERROR] "),     // Red
     "warning" => ("\x1b[33m", "[WARNING] "), // Yellow
     _ => ("\x1b[0m", "[UNKNOWN] "),          // Default/reset
@@ -6784,11 +7109,11 @@ fn d3bug(message: &str, msg_type: &str) {
   let reset = "\x1b[0m";
 
   #[cfg(debug_assertions)]
-  if msg_type == "log" {
+  if msg_type == "debug" {
     println!("{}{}{}{}", color_code, prefix, message, reset);
   }
 
-  if msg_type != "log" {
+  if msg_type != "debug" {
     println!("{}{}{}{}", color_code, prefix, message, reset);
   }
 }

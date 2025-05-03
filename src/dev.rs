@@ -59,12 +59,6 @@ pub fn derive_from_path_ed25519(
     dbg!(&public_key);
   }
 
-  let signing_key = match SigningKey::try_from(private_key.as_slice()) {
-    Ok(sk) => sk,
-    Err(_) => return Err("Invalid master private key".to_string()),
-  };
-  public_key = signing_key.verifying_key().to_bytes().to_vec();
-
   for part in path.split('/').skip(1) {
     let hardened = part.ends_with("'");
     let index: u32 = match part.trim_end_matches("'").parse() {

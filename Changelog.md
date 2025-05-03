@@ -1,3 +1,8 @@
+# version 0.82.4
+- settings: enable/disable GUI notifications
+- pivoting point: generate multi-wallet and advance view
+- benchmark: generating 7500 addresses in 1 second - new record
+
 # version 0.82.3
 - fix copy to clipboard when field is empty
 - cargo update
