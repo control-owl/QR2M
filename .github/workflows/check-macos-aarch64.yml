@@ -44,11 +44,11 @@ jobs:
       - name: Check formatting
         run: cargo fmt -- --check
 
-      - name: Run cargo check
-        run: cargo check --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
-
       - name: Run Clippy
         run: cargo clippy --no-deps --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}" -- -D warnings
+
+      - name: Run cargo check
+        run: cargo check --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
       - name: Build
         run: cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
