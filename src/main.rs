@@ -3518,6 +3518,41 @@ fn create_main_window(
   address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
   address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
 
+  // Address count
+  let address_total_generated_count_frame =
+    gtk::Frame::new(Some(&t!("UI.main.address.speed.count")));
+  let address_total_generated_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let address_total_generated_count_label = gtk::Label::new(Some("0"));
+
+  address_total_generated_count_box.set_halign(gtk4::Align::Center);
+  address_total_generated_count_frame.set_child(Some(&address_total_generated_count_box));
+  address_total_generated_count_box.append(&address_total_generated_count_label);
+
+  // Address speed
+  let items_added_in_last_second = std::rc::Rc::new(std::cell::RefCell::new(0u64));
+  let counts = std::rc::Rc::new(std::cell::RefCell::new(vec![0u64; 10]));
+  let index = std::rc::Rc::new(std::cell::RefCell::new(0usize));
+  let address_generation_speed_frame = gtk::Frame::new(Some(&t!("UI.main.address.speed")));
+  let address_generation_speed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let address_generation_speed_label = gtk::Label::new(Some("0/sec"));
+
+  address_generation_speed_box.set_halign(gtk4::Align::Center);
+  address_generation_speed_frame.set_child(Some(&address_generation_speed_box));
+  address_generation_speed_box.append(&address_generation_speed_label);
+
+  address_store.connect_items_changed(clone!(
+    #[strong]
+    address_store,
+    #[weak]
+    items_added_in_last_second,
+    move |_store, _position, _removed, added| {
+      let count = address_store.n_items();
+      address_total_generated_count_label.set_label(&count.to_string());
+
+      *items_added_in_last_second.borrow_mut() += added as u64;
+    }
+  ));
+
   // Address progress box
   let address_generation_progress_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let address_generation_progress_bar = gtk::ProgressBar::new();
@@ -3547,6 +3582,8 @@ fn create_main_window(
   address_options_content.append(&address_options_frame);
   address_options_content.append(&address_start_frame);
   address_options_content.append(&address_options_hardened_address_frame);
+  address_options_content.append(&address_total_generated_count_frame);
+  address_options_content.append(&address_generation_speed_frame);
   main_address_box.append(&derivation_box);
   main_address_box.append(&derivation_label_box);
   main_address_box.append(&address_generation_buttons_box);
@@ -3636,7 +3673,7 @@ fn create_main_window(
 
     // Address table
     let address_scrolled_window = gtk::ScrolledWindow::new();
-    let address_store = gio::ListStore::new::<AddressDatabase>();
+    let address_store_new = gio::ListStore::new::<AddressDatabase>();
     let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
       let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
       let entry2 = obj2.downcast_ref::<AddressDatabase>().unwrap();
@@ -3652,7 +3689,8 @@ fn create_main_window(
         coin1.cmp(&coin2).into()
       }
     });
-    let address_sorted_model = gtk::SortListModel::new(Some(address_store.clone()), Some(sorter));
+    let address_sorted_model =
+      gtk::SortListModel::new(Some(address_store_new.clone()), Some(sorter));
     let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
     let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
 
@@ -4615,7 +4653,38 @@ fn create_main_window(
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
       window.set_cursor(busy_cursor.as_ref());
 
+      let address_generation_speed_label = address_generation_speed_label.clone();
+      let items_added_in_last_second = items_added_in_last_second.clone();
+      let counts = counts.clone();
+      let index = index.clone();
+
+      // JUMP: Address speed
+      // FIX: Close this loop !! create handler and close by abort/stop
+      glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+        let current_count = *items_added_in_last_second.borrow();
+        let mut counts = counts.borrow_mut();
+        let mut idx = *index.borrow_mut();
+
+        counts[idx] = current_count;
+        idx = (idx + 1) % 10;
+        *index.borrow_mut() = idx;
+
+        let total_per_second = counts.iter().sum::<u64>();
+
+        address_generation_speed_label.set_label(&format!("{}/sec", total_per_second));
+        *items_added_in_last_second.borrow_mut() = 0;
+        glib::ControlFlow::Continue
+      });
+
       // JUMP: Address generation logic
+      let mut batch_size = 2;
+
+      #[cfg(not(feature = "dev"))]
+      let max_batch_size = 128;
+
+      #[cfg(feature = "dev")]
+      let max_batch_size = 256;
+
       let address_loop = tokio::spawn(async move {
         let mut handles = vec![];
         let cancel_rx = std::sync::Arc::new(tokio::sync::Mutex::new(cancel_rx));
@@ -4708,16 +4777,16 @@ fn create_main_window(
                       private_key: Some(address.private_key.clone()),
                     };
 
-                    // dbg!(buffered_addresses);
-
                     batch.push(new_entry);
 
-                    if batch.len() >= 50
+                    // JUMP: batch size
+                    if batch.len() >= batch_size
                       || batch.len() >= addresses_per_thread
                       || batch.len() >= address_count_int
                     {
                       tx.send(batch.clone()).unwrap_or_default();
                       batch.clear();
+                      batch_size = std::cmp::min(batch_size * 2, max_batch_size);
                     }
 
                     let current_total =
@@ -4738,7 +4807,7 @@ fn create_main_window(
                     generated_count += 1;
                     current_index += 1;
                   } else {
-                    eprintln!("problem with generating ed address");
+                    eprintln!("problem with generating address");
                     break;
                   }
                 }
