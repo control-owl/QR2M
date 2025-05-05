@@ -13,13 +13,16 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 use adw::prelude::*;
+use glib::{self, SourceId};
 use gtk::{Stack, StackSidebar, gio, glib::clone};
 use gtk4::{self as gtk};
 use libadwaita as adw;
 use rand::Rng;
 use std::{
+  cell::RefCell,
   fs::{self, File},
   io::{self, BufRead},
+  rc::Rc,
   time::SystemTime,
 };
 
@@ -128,9 +131,7 @@ struct GuiState {
   gui_theme: Option<String>,
   gui_icon_theme: Option<String>,
   gui_log_status: Option<bool>,
-  gui_main_buttons: std::rc::Rc<
-    std::cell::RefCell<std::collections::HashMap<String, Vec<std::rc::Rc<gtk::Button>>>>,
-  >,
+  gui_main_buttons: Rc<RefCell<std::collections::HashMap<String, Vec<Rc<gtk::Button>>>>>,
   gui_button_images: Option<std::collections::HashMap<String, gtk::gdk::Texture>>,
 }
 
@@ -141,7 +142,7 @@ impl GuiState {
       gui_theme: VALID_GUI_THEMES.first().map(|s| s.to_string()),
       gui_icon_theme: VALID_GUI_ICONS.first().map(|s| s.to_string()),
       gui_log_status: None,
-      gui_main_buttons: std::rc::Rc::new(std::cell::RefCell::new(std::collections::HashMap::new())),
+      gui_main_buttons: Rc::new(RefCell::new(std::collections::HashMap::new())),
       gui_button_images: None,
     }
   }
@@ -286,7 +287,7 @@ impl GuiState {
     }
   }
 
-  fn register_button(&self, name: String, button: std::rc::Rc<gtk::Button>) {
+  fn register_button(&self, name: String, button: Rc<gtk::Button>) {
     #[cfg(debug_assertions)]
     println!("[+] {}", &t!("log.register_button").to_string());
 
@@ -668,7 +669,7 @@ impl AppSettings {
     &mut self,
     key: &str,
     new_value: toml_edit::Item,
-    gui_state: Option<std::rc::Rc<std::cell::RefCell<GuiState>>>,
+    gui_state: Option<Rc<RefCell<GuiState>>>,
   ) {
     // println!("[+] {}", &t!("log.app_settings.update_value").to_string());
 
@@ -1460,7 +1461,7 @@ impl AppLog {
   fn initialize_app_log(
     &mut self,
     // log_button: gtk::Button,
-    gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
+    gui_state: Rc<RefCell<GuiState>>,
   ) {
     let status = self.status.clone();
     let is_active = status.lock().unwrap();
@@ -1718,7 +1719,7 @@ async fn main() {
     .application_id("wtf.r_o0_t.qr2m")
     .build();
 
-  let gui_state = std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
+  let gui_state = Rc::new(RefCell::new(GuiState::default_config()));
 
   #[cfg(feature = "dev")]
   match sec::check_security_level() {
@@ -1790,8 +1791,8 @@ fn print_program_info() -> FunctionOutput<()> {
 
 fn setup_app_actions(
   application: adw::Application,
-  gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
-  app_messages_state: std::rc::Rc<std::cell::RefCell<AppMessages>>,
+  gui_state: Rc<RefCell<GuiState>>,
+  app_messages_state: Rc<RefCell<AppMessages>>,
 ) -> FunctionOutput<()> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.setup_app_actions").to_string());
@@ -1933,7 +1934,7 @@ fn setup_app_actions(
 
 fn create_main_window(
   application: adw::Application,
-  gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
+  gui_state: Rc<RefCell<GuiState>>,
   #[cfg(feature = "dev")] start_time: Option<std::time::Instant>,
 ) -> FunctionOutput<()> {
   #[cfg(debug_assertions)]
@@ -2001,7 +2002,7 @@ fn create_main_window(
 
   for &name in &button_names {
     let button = gtk::Button::new();
-    buttons.insert(name.to_string(), std::rc::Rc::new(button));
+    buttons.insert(name.to_string(), Rc::new(button));
   }
 
   let gui_theme = lock_app_settings.gui_theme.clone().unwrap();
@@ -2046,9 +2047,7 @@ fn create_main_window(
     lock_app_log.initialize_app_log(gui_state.clone());
   }
 
-  let app_messages_state = std::rc::Rc::new(std::cell::RefCell::new(AppMessages::new(Some(
-    info_bar.clone(),
-  ))));
+  let app_messages_state = Rc::new(RefCell::new(AppMessages::new(Some(info_bar.clone()))));
 
   let button_tooltips = [
     ("new", "Ctrl+N"),
@@ -3369,6 +3368,7 @@ fn create_main_window(
     None::<(
       tokio::task::JoinHandle<()>,
       tokio::sync::watch::Sender<bool>,
+      tokio::sync::watch::Sender<bool>,
     )>,
   ));
   let stop_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -3518,6 +3518,43 @@ fn create_main_window(
   address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
   address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
 
+  // Address count
+  let address_total_generated_count_frame =
+    gtk::Frame::new(Some(&t!("UI.main.address.speed.count")));
+  let address_total_generated_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let address_total_generated_count_label = gtk::Label::new(Some("0"));
+
+  address_total_generated_count_box.set_halign(gtk4::Align::Center);
+  address_total_generated_count_frame.set_child(Some(&address_total_generated_count_box));
+  address_total_generated_count_box.append(&address_total_generated_count_label);
+
+  // Address speed
+  let items_added_in_last_second = Rc::new(RefCell::new(0u64));
+  let counts = Rc::new(RefCell::new(vec![0u64; 10]));
+  let index = Rc::new(RefCell::new(0usize));
+  let max_speed = Rc::new(RefCell::new(0u64));
+  let ema_speed = Rc::new(RefCell::new(0.0));
+  let address_generation_speed_frame = gtk::Frame::new(Some(&t!("UI.main.address.speed")));
+  let address_generation_speed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let address_generation_speed_label = gtk::Label::new(Some("0/sec"));
+
+  address_generation_speed_box.set_halign(gtk4::Align::Center);
+  address_generation_speed_frame.set_child(Some(&address_generation_speed_box));
+  address_generation_speed_box.append(&address_generation_speed_label);
+
+  address_store.connect_items_changed(clone!(
+    #[strong]
+    address_store,
+    #[weak]
+    items_added_in_last_second,
+    move |_store, _position, _removed, added| {
+      let count = address_store.n_items();
+      address_total_generated_count_label.set_label(&count.to_string());
+
+      *items_added_in_last_second.borrow_mut() += added as u64;
+    }
+  ));
+
   // Address progress box
   let address_generation_progress_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let address_generation_progress_bar = gtk::ProgressBar::new();
@@ -3547,6 +3584,8 @@ fn create_main_window(
   address_options_content.append(&address_options_frame);
   address_options_content.append(&address_start_frame);
   address_options_content.append(&address_options_hardened_address_frame);
+  address_options_content.append(&address_total_generated_count_frame);
+  address_options_content.append(&address_generation_speed_frame);
   main_address_box.append(&derivation_box);
   main_address_box.append(&derivation_label_box);
   main_address_box.append(&address_generation_buttons_box);
@@ -3636,7 +3675,7 @@ fn create_main_window(
 
     // Address table
     let address_scrolled_window = gtk::ScrolledWindow::new();
-    let address_store = gio::ListStore::new::<AddressDatabase>();
+    let address_store_new = gio::ListStore::new::<AddressDatabase>();
     let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
       let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
       let entry2 = obj2.downcast_ref::<AddressDatabase>().unwrap();
@@ -3652,7 +3691,8 @@ fn create_main_window(
         coin1.cmp(&coin2).into()
       }
     });
-    let address_sorted_model = gtk::SortListModel::new(Some(address_store.clone()), Some(sorter));
+    let address_sorted_model =
+      gtk::SortListModel::new(Some(address_store_new.clone()), Some(sorter));
     let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
     let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
 
@@ -4590,9 +4630,10 @@ fn create_main_window(
       let address_count = address_count_spinbutton.text();
       let address_count_int = address_count.parse::<usize>().unwrap_or(1);
 
-      let (tx, rx) = std::sync::mpsc::channel();
-      let (tp, rp) = std::sync::mpsc::channel();
+      let (channel_sender_addresses, channel_receiver_addresses) = std::sync::mpsc::channel();
+      let (channel_sender_progress, channel_receiver_progress) = std::sync::mpsc::channel();
       let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+      let (cancel_speed_tx, cancel_speed_rx) = tokio::sync::watch::channel(false);
 
       let cpu_threads = num_cpus::get();
 
@@ -4615,7 +4656,72 @@ fn create_main_window(
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
       window.set_cursor(busy_cursor.as_ref());
 
-      // JUMP: Address generation logic
+      let address_generation_speed_label = address_generation_speed_label.clone();
+      let items_added_in_last_second = items_added_in_last_second.clone();
+      let counts = counts.clone();
+      let index = index.clone();
+
+      // JUMP: Address speed
+      // FIX: Close this loop !! create handler and close by abort/stop
+      let speed_generator_id: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
+
+      *speed_generator_id.borrow_mut() = Some(glib::timeout_add_local(
+        std::time::Duration::from_millis(100),
+        {
+          let items_added_in_last_second = items_added_in_last_second.clone();
+          let counts = counts.clone();
+          let index = index.clone();
+          let max_speed = max_speed.clone();
+          let ema_speed = ema_speed.clone();
+          let address_generation_speed_label = address_generation_speed_label.clone();
+          let timeout_id = speed_generator_id.clone();
+
+          move || {
+            if *cancel_speed_rx.borrow() {
+              let _ = timeout_id.borrow_mut().take().map(SourceId::remove);
+              address_generation_speed_label.set_label("0/sec");
+
+              return glib::ControlFlow::Break;
+            }
+
+            let current_count = *items_added_in_last_second.borrow();
+            let mut counts = counts.borrow_mut();
+            let mut idx = *index.borrow_mut();
+
+            counts[idx] = current_count;
+            idx = (idx + 1) % 10;
+            *index.borrow_mut() = idx;
+
+            let total_per_second = counts.iter().sum::<u64>();
+            let avg_speed = total_per_second;
+
+            let mut max = max_speed.borrow_mut();
+            if avg_speed > *max {
+              *max = avg_speed;
+            }
+
+            // JUMP ema speed
+            let alpha = 0.5;
+            let current_speed = current_count as f64 * 10.0;
+            let mut ema = ema_speed.borrow_mut();
+            *ema = alpha * current_speed + (1.0 - alpha) * *ema;
+            let ema_avg_speed = *ema as u64;
+
+            address_generation_speed_label
+              .set_label(&format!("{}/sec (max: {}/sec)", ema_avg_speed, *max));
+
+            *items_added_in_last_second.borrow_mut() = 0;
+            glib::ControlFlow::Continue
+          }
+        },
+      ));
+
+      // let mut batch_size = 2;
+      // #[cfg(not(feature = "dev"))]
+      // let max_batch_size = 128;
+      // #[cfg(feature = "dev")]
+      // let max_batch_size = 200;
+
       let address_loop = tokio::spawn(async move {
         let mut handles = vec![];
         let cancel_rx = std::sync::Arc::new(tokio::sync::Mutex::new(cancel_rx));
@@ -4631,8 +4737,8 @@ fn create_main_window(
             continue;
           }
 
-          let tx = tx.clone();
-          let tp = tp.clone();
+          let channel_sender_addresses = channel_sender_addresses.clone();
+          let channel_sender_progress = channel_sender_progress.clone();
           let cancel_rx = cancel_rx.clone();
           let wallet_settings = wallet_settings.clone();
           let derivation_path = derivation_path.clone();
@@ -4652,10 +4758,10 @@ fn create_main_window(
                 println!("Address generation aborted (thread {})", thread_id);
 
                 if !batch.is_empty() {
-                  tx.send(batch).unwrap_or_default()
+                  channel_sender_addresses.send(batch).unwrap_or_default()
                 }
 
-                let _ = tp.send(1.0);
+                let _ = channel_sender_progress.send(1.0);
                 return;
               }
               drop(cancel_rx);
@@ -4708,16 +4814,18 @@ fn create_main_window(
                       private_key: Some(address.private_key.clone()),
                     };
 
-                    // dbg!(buffered_addresses);
-
                     batch.push(new_entry);
 
-                    if batch.len() >= 50
+                    // JUMP: batch size
+                    if batch.len() >= 100
                       || batch.len() >= addresses_per_thread
                       || batch.len() >= address_count_int
                     {
-                      tx.send(batch.clone()).unwrap_or_default();
+                      channel_sender_addresses
+                        .send(batch.clone())
+                        .unwrap_or_default();
                       batch.clear();
+                      // batch_size = std::cmp::min(batch_size * 2, max_batch_size);
                     }
 
                     let current_total =
@@ -4732,13 +4840,13 @@ fn create_main_window(
                     let mut last = progress_status.lock().unwrap();
                     if new_progress > *last + 0.01 || new_progress >= 1.0 {
                       *last = new_progress;
-                      let _ = tp.send(new_progress);
+                      let _ = channel_sender_progress.send(new_progress);
                     }
 
                     generated_count += 1;
                     current_index += 1;
                   } else {
-                    eprintln!("problem with generating ed address");
+                    eprintln!("problem with generating address");
                     break;
                   }
                 }
@@ -4750,7 +4858,7 @@ fn create_main_window(
             }
 
             if !batch.is_empty() {
-              tx.send(batch).unwrap_or_default()
+              channel_sender_addresses.send(batch).unwrap_or_default();
             }
 
             #[cfg(debug_assertions)]
@@ -4767,10 +4875,10 @@ fn create_main_window(
         for handle in handles {
           handle.await.unwrap();
         }
-        let _ = tp.send(1.0);
+        let _ = channel_sender_progress.send(1.0);
       });
 
-      *generator_handler.lock().unwrap() = Some((address_loop, cancel_tx));
+      *generator_handler.lock().unwrap() = Some((address_loop, cancel_tx, cancel_speed_tx));
 
       glib::idle_add_local(clone!(
         #[strong]
@@ -4784,7 +4892,7 @@ fn create_main_window(
         #[strong]
         delete_addresses_button_box,
         move || {
-          while let Ok(new_entry) = rx.try_recv() {
+          while let Ok(new_entry) = channel_receiver_addresses.try_recv() {
             let entries: Vec<AddressDatabase> = new_entry
               .into_iter()
               .filter(|new_coin| {
@@ -4811,7 +4919,7 @@ fn create_main_window(
             address_store.extend_from_slice(&entries);
           }
 
-          while let Ok(progress) = rp.try_recv() {
+          while let Ok(progress) = channel_receiver_progress.try_recv() {
             address_generation_progress_bar.set_fraction(progress);
 
             if progress >= 1.0 {
@@ -5164,12 +5272,13 @@ fn create_main_window(
     move |_| {
       window.set_cursor(None);
 
-      if let Some((handle, cancel_tx)) = generator_handler.lock().unwrap().take() {
+      if let Some((handle, cancel_tx, cancel_speed_tx)) = generator_handler.lock().unwrap().take() {
         cancel_tx.send(true).ok();
+        cancel_speed_tx.send(true).ok();
         handle.abort();
       } else {
         #[cfg(debug_assertions)]
-        eprintln!("No handle!");
+        eprintln!("No generator handle!");
       }
 
       let message = "Address generation aborted";
@@ -5261,7 +5370,7 @@ fn create_main_window(
 
 #[cfg(feature = "dev")]
 fn create_log_window(
-  gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
+  gui_state: Rc<RefCell<GuiState>>,
   // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
   // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
 ) -> FunctionOutput<gtk::ApplicationWindow> {
@@ -5277,15 +5386,15 @@ fn create_log_window(
     .build();
 
   let lock_gui_state = gui_state.borrow_mut();
-  let new_log_button = std::rc::Rc::new(gtk::Button::new());
+  let new_log_button = Rc::new(gtk::Button::new());
   lock_gui_state.register_button("log".to_string(), new_log_button);
 
   Ok(log_window)
 }
 
 fn create_settings_window(
-  gui_state: std::rc::Rc<std::cell::RefCell<GuiState>>,
-  app_messages_state: std::rc::Rc<std::cell::RefCell<AppMessages>>,
+  gui_state: Rc<RefCell<GuiState>>,
+  app_messages_state: Rc<RefCell<AppMessages>>,
 ) -> FunctionOutput<gtk::ApplicationWindow> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.create_settings_window").to_string());
@@ -6661,8 +6770,7 @@ fn create_settings_window(
 
                 adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
 
-                let new_gui_state =
-                  std::rc::Rc::new(std::cell::RefCell::new(GuiState::default_config()));
+                let new_gui_state = Rc::new(RefCell::new(GuiState::default_config()));
                 let mut lock_new_gui_state = new_gui_state.borrow_mut();
                 let mut lock_gui_state = gui_state.borrow_mut();
 
@@ -6810,7 +6918,7 @@ fn create_about_window() {
 }
 
 fn open_wallet_from_file(
-  app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMessages>>,
+  app_messages_state: &Rc<RefCell<AppMessages>>,
 ) -> (String, Option<String>) {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.open_wallet_from_file").to_string());
@@ -6910,7 +7018,7 @@ fn open_wallet_from_file(
   }
 }
 
-fn save_wallet_to_file(app_messages_state: &std::rc::Rc<std::cell::RefCell<AppMessages>>) {
+fn save_wallet_to_file(app_messages_state: &Rc<RefCell<AppMessages>>) {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.save_wallet_to_file").to_string());
 
