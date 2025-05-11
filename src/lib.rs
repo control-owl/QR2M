@@ -221,6 +221,7 @@ pub fn derivation_path_to_integer(path: &str) -> Result<String, &'static str> {
 
   Ok(result.to_string())
 }
+
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 pub fn get_text_from_resources(file_name: &str) -> String {

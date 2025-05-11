@@ -1,3 +1,11 @@
+# version 0.82.6
+- fixing function output
+
+# version 0.82.5
+- fixing speed
+- fixing function output
+- debugging 
+
 # version 0.82.4
 - settings: enable/disable GUI notifications
 - pivoting point: generate multi-wallet and advance view

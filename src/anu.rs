@@ -408,39 +408,4 @@ fn process_uint8_data(data: &[u8]) -> FunctionOutput<String> {
   Ok(binary_string)
 }
 
-// ANU extract hex16
-// TODO: recheck if hex16 code is still working
-// fn extract_hex_strings(response: &str, hex_block_size: usize) -> Vec<String> {
-//     let hex_block_size = hex_block_size * 2; // Adjust for byte format for ANU
-//     let mut hex_strings = Vec::new();
-//     let mut current_string = String::new();
-//     let mut in_hex_string = false;
-//     for c in response.chars() {
-//         if !in_hex_string {
-//             if c == '"' {
-//                 // Start of a potential hex string
-//                 in_hex_string = true;
-//                 current_string.clear();
-//             }
-//         } else {
-//             if c == '"' {
-//                 // End of hex string found, check if it's of expected length and contains valid hex characters
-//                 if current_string.len() == hex_block_size && current_string.chars().all(|c| c.is_ascii_hexdigit()) {
-//                     hex_strings.push(current_string.clone());
-//                 }
-//                 current_string.clear();
-//                 in_hex_string = false;
-//             } else if c == '\r' || c == '\n' || c == '\t' {
-//                 // Ignore control characters within the hex string
-//                 current_string.clear();
-//                 in_hex_string = false;
-//             } else {
-//                 // Character is part of hex string, add to current string
-//                 current_string.push(c);
-//             }
-//         }
-//     }
-//     hex_strings
-// }
-
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

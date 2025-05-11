@@ -4,20 +4,21 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+use super::{FunctionOutput, d3bug};
 use csv::ReaderBuilder;
 use glib::prelude::*;
 use gtk4 as gtk;
 
 const COINLIST_FILE: &str = "ECDB.csv";
 pub const COIN_STATUS_NOT_SUPPORTED: u32 = 911; // ECDB Status: 0
-pub const COIN_STATUS_VERIFIED: u32 = 254; // ECDB Status: 1
-pub const COIN_STATUS_NOT_VERIFIED: u32 = 10; // ECDB Status: 2
+pub const COIN_STATUS_VERIFIED: u32 = 257; // ECDB Status: 1
+pub const COIN_STATUS_NOT_VERIFIED: u32 = 7; // ECDB Status: 2
 pub const VALID_COIN_STATUS_NAME: &[&str] = &[
   // Coin status 2024-11-16
   "Not supported",
   "Verified",
   "Not verified",
-  "Not yet",
+  // "Not yet",
 ];
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -202,39 +203,51 @@ impl CoinDatabase {
   }
 }
 
-pub fn create_coin_store() -> gtk::gio::ListStore {
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+pub fn create_coin_store() -> FunctionOutput<gtk::gio::ListStore> {
+  d3bug(">>> create_coin_store", "debug");
+
   let resource_path = std::path::Path::new("coin").join(COINLIST_FILE);
-  let path_str = resource_path
+
+  let coin_store_path = resource_path
     .to_str()
-    .expect("Failed to convert path to string");
-  let csv_content = qr2m_lib::get_text_from_resources(path_str);
+    .ok_or_else(|| crate::AppError::Custom("Failed to find COINLIST_FILE".to_string()))?;
+
+  d3bug(&format!("Coin store path: {:?}", coin_store_path), "debug");
+
+  let csv_content = qr2m_lib::get_text_from_resources(coin_store_path);
 
   if csv_content.is_empty() {
-    eprintln!("Failed to retrieve CSV from embedded resources");
-    return gtk::gio::ListStore::new::<CoinDatabase>();
+    return Err(crate::AppError::Custom(
+      "Failed to retrieve CSV from COINLIST_FILE. CSV empty.".to_string(),
+    ));
+  } else {
+    d3bug("Coin store loaded", "debug");
   }
 
-  let mut rdr = ReaderBuilder::new()
+  let mut store_reader = ReaderBuilder::new()
     .has_headers(true)
     .from_reader(std::io::Cursor::new(csv_content));
   let store = gtk::gio::ListStore::new::<CoinDatabase>();
 
-  for result in rdr.records() {
-    let record = result.expect(&t!("error.csv.read"));
-
+  for result in store_reader.records() {
+    let record =
+      result.map_err(|e| crate::AppError::Custom(format!("Error reading CSV record: {}", e)))?;
     let number_status = record[0].to_string();
     let status = match number_status.as_str() {
       "0" => VALID_COIN_STATUS_NAME[0],
       "1" => VALID_COIN_STATUS_NAME[1],
       "2" => VALID_COIN_STATUS_NAME[2],
-      "3" => VALID_COIN_STATUS_NAME[3],
+      // "3" => VALID_COIN_STATUS_NAME[3],
       _ => "Unknown status",
     }
     .to_string();
 
     let coin_index: u32 = record[1]
       .parse()
-      .expect(&t!("error.csv.parse", value = "coin_index"));
+      .map_err(|e| crate::AppError::Custom(format!("Error parsing coin_index: {}", e)))?;
+
     let coin_symbol = record[2].to_string();
     let coin_name = record[3].to_string();
     let key_derivation = record[4].to_string();
@@ -270,28 +283,40 @@ pub fn create_coin_store() -> gtk::gio::ListStore {
     store.append(&coin);
   }
 
-  store
+  Ok(store)
 }
 
-pub fn create_coin_completion_model() -> gtk::gio::ListStore {
-  let crypto_coins = create_coin_database();
+pub fn create_coin_completion_model() -> FunctionOutput<gtk::gio::ListStore> {
+  d3bug(">>> create_coin_completion_model", "debug");
+
+  let crypto_coins = create_coin_database()?;
   let store = gtk::gio::ListStore::new::<CoinDatabase>();
 
   for item in crypto_coins.iter() {
     store.append(item);
   }
 
-  store
+  Ok(store)
 }
 
-pub fn create_filter(part: &str, target_value: &str) -> gtk::CustomFilter {
+pub fn create_coin_store_filters(
+  part: &str,
+  target_value: &str,
+) -> FunctionOutput<gtk::CustomFilter> {
+  d3bug(">>> create_coin_store_filters", "debug");
+
   let part = part.to_string();
   let target_value = target_value.to_string();
 
   let filter_func = move |item: &glib::Object| {
-    let coin = item
-      .downcast_ref::<CoinDatabase>()
-      .expect("Failed to downcast to CoinDatabase");
+    let coin = match item.downcast_ref::<CoinDatabase>() {
+      Some(c) => c,
+      None => {
+        d3bug("Failed to downcast to CoinDatabase", "error");
+        return false;
+      }
+    };
+
     match part.as_str() {
       "Cmc_top" => match target_value.as_str() {
         "10" => coin.property::<String>("cmc-top").to_lowercase() == "10",
@@ -314,32 +339,59 @@ pub fn create_filter(part: &str, target_value: &str) -> gtk::CustomFilter {
     }
   };
 
-  gtk::CustomFilter::new(filter_func)
+  Ok(gtk::CustomFilter::new(filter_func))
 }
 
-pub fn create_sorter() -> gtk::CustomSorter {
-  fn extract_cmc_top(item: &glib::Object) -> usize {
+pub fn create_sorter() -> FunctionOutput<gtk::CustomSorter> {
+  fn extract_cmc_top(item: &glib::Object) -> FunctionOutput<usize> {
     item
       .downcast_ref::<CoinDatabase>()
-      .and_then(|coin| coin.property::<String>("cmc-top").parse::<usize>().ok())
-      .unwrap_or(usize::MAX)
+      .map(|coin| {
+        coin
+          .property::<String>("cmc-top")
+          .parse::<usize>()
+          .map_err(|e| {
+            crate::AppError::Custom(format!("Failed to parse cmc-top as usize: {:?}", e))
+          })
+      })
+      .ok_or_else(|| crate::AppError::Custom("local_config_file not set".to_string()))?
   }
 
   let sorter = move |item1: &glib::Object, item2: &glib::Object| -> gtk::Ordering {
-    extract_cmc_top(item1).cmp(&extract_cmc_top(item2)).into()
+    let cmc_top1 = extract_cmc_top(item1);
+    let cmc_top2 = extract_cmc_top(item2);
+
+    match (cmc_top1, cmc_top2) {
+      (Ok(value1), Ok(value2)) => value1.cmp(&value2).into(),
+      (Err(e), _) => {
+        d3bug(
+          &format!("Failed to extract cmc-top for item1: {}", e),
+          "error",
+        );
+        gtk::Ordering::Larger
+      }
+      (_, Err(e)) => {
+        d3bug(
+          &format!("Failed to extract cmc-top for item2: {}", e),
+          "error",
+        );
+        gtk::Ordering::Smaller
+      }
+    }
   };
 
-  gtk::CustomSorter::new(sorter)
+  Ok(gtk::CustomSorter::new(sorter))
 }
 
-fn create_coin_database() -> Vec<CoinDatabase> {
+fn create_coin_database() -> FunctionOutput<Vec<CoinDatabase>> {
   let resource_path = std::path::Path::new("coin").join("ECDB.csv");
   let resource_path_str = resource_path.to_str().unwrap_or_default();
   let csv_content = qr2m_lib::get_text_from_resources(resource_path_str);
 
   if csv_content.is_empty() {
-    eprintln!("Error: Failed to retrieve CSV file from resources.");
-    return Vec::new();
+    return Err(crate::AppError::Custom(
+      "Failed to retrieve CSV content from resources".to_string(),
+    ));
   }
 
   let mut rdr = ReaderBuilder::new()
@@ -386,7 +438,7 @@ fn create_coin_database() -> Vec<CoinDatabase> {
     })
     .collect();
 
-  coin_types
+  Ok(coin_types)
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

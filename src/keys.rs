@@ -3,7 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-use crate::{AppError, FunctionOutput};
+use crate::{AppError, FunctionOutput, d3bug};
 use adw::prelude::*;
 use gtk4 as gtk;
 use libadwaita as adw;
@@ -50,19 +50,18 @@ pub fn derive_child_key_secp256k1(
   parent_chain_code: &[u8],
   index: u32,
   hardened: bool,
-) -> DerivationResult {
-  #[cfg(debug_assertions)]
-  {
-    println!("[+] {}", &t!("log.derive_child_key").to_string());
-
-    println!("parent_key {:?}", parent_key);
-    println!("parent_chain_code {:?}", parent_chain_code);
-    println!("index {:?}", index);
-    println!("hardened {:?}", hardened);
-  }
+) -> FunctionOutput<DerivationResult> {
+  d3bug(">>> derive_child_key_secp256k1", "debug");
+  d3bug(&format!("parent_key {:?}", parent_key), "debug");
+  d3bug(
+    &format!("parent_chain_code {:?}", parent_chain_code),
+    "debug",
+  );
+  d3bug(&format!("index {:?}", index), "debug");
+  d3bug(&format!("hardened {:?}", hardened), "debug");
 
   if index & 0x80000000 != 0 && !hardened {
-    return None;
+    return Err(AppError::Custom(format!("Problem with index {:?}", index)));
   }
 
   let secp = secp256k1::Secp256k1::new();
@@ -72,7 +71,13 @@ pub fn derive_child_key_secp256k1(
     data.push(0x00);
     data.extend_from_slice(parent_key);
   } else {
-    let parent_secret_key = secp256k1::SecretKey::from_slice(parent_key).ok()?;
+    let array: [u8; 32] = parent_key
+      .try_into()
+      .map_err(|_| AppError::Custom("parent_key must be 32 bytes".into()))?;
+
+    let parent_secret_key = secp256k1::SecretKey::from_byte_array(array)
+      .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {}", e)))?;
+
     let parent_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &parent_secret_key);
     data.extend_from_slice(&parent_pubkey.serialize()[..]);
   }
@@ -86,17 +91,17 @@ pub fn derive_child_key_secp256k1(
 
   data.extend_from_slice(&index_bytes);
 
-  #[cfg(debug_assertions)]
-  println!("data_for_hmac_sha512 {:?}", data);
+  d3bug(&format!("data_for_hmac_sha512 {:?}", data), "debug");
 
   let result = qr2m_lib::calculate_hmac_sha512_hash(parent_chain_code, &data);
 
   let child_private_key_bytes: [u8; 32] = result[..32]
     .try_into()
-    .expect("Slice with incorrect length");
+    .map_err(|_| AppError::Custom("Slice with incorrect length for private key".to_string()))?;
+
   let child_chain_code_bytes: [u8; 32] = result[32..]
     .try_into()
-    .expect("Slice with incorrect length");
+    .map_err(|_| AppError::Custom("Slice with incorrect length for chain code".to_string()))?;
 
   let child_key_int = BigUint::from_bytes_be(&child_private_key_bytes);
   let parent_key_int = BigUint::from_bytes_be(parent_key);
@@ -109,7 +114,13 @@ pub fn derive_child_key_secp256k1(
     padded[offset..].copy_from_slice(&combined_bytes);
     padded
   };
-  let child_secret_key = secp256k1::SecretKey::from_slice(&combined_bytes_padded).ok()?;
+  // let array: [u8; 32] = combined_bytes_padded
+  //   .try_into()
+  //   .map_err(|_| AppError::Custom("combined_bytes_padded must be 32 bytes".into()))?;
+
+  let child_secret_key = secp256k1::SecretKey::from_byte_array(combined_bytes_padded)
+    .map_err(|e| AppError::Custom(format!("Invalid child_secret_key: {}", e)))?;
+
   let child_secret_key_bytes = child_secret_key.secret_bytes();
   let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
   let child_public_key_bytes = child_pubkey.serialize().to_vec();
@@ -121,11 +132,11 @@ pub fn derive_child_key_secp256k1(
     println!("child_public_key_bytes {:?}", child_public_key_bytes);
   }
 
-  Some((
+  Ok(Some((
     child_secret_key_bytes,
     child_chain_code_bytes,
     child_public_key_bytes,
-  ))
+  )))
 }
 
 pub fn create_private_key_for_address(
@@ -134,12 +145,8 @@ pub fn create_private_key_for_address(
   wif: Option<&str>,
   hash: &str,
   coin_index: u32,
-) -> Result<String, String> {
-  #[cfg(debug_assertions)]
-  println!(
-    "[+] {}",
-    &t!("log.create_private_key_for_address").to_string()
-  );
+) -> FunctionOutput<String> {
+  d3bug(">>> create_private_key_for_address", "debug");
 
   let wallet_import_format = match wif {
     Some(w) => {
@@ -156,7 +163,7 @@ pub fn create_private_key_for_address(
 
   let wallet_import_format_bytes = match hex::decode(wallet_import_format) {
     Ok(bytes) => bytes,
-    Err(_) => return Err("Invalid WIF format".to_string()),
+    Err(e) => return Err(AppError::Custom(format!("Invalid WIF format {:?}", e))),
   };
 
   match hash {
@@ -171,7 +178,7 @@ pub fn create_private_key_for_address(
           extended_key.push(0x01);
         }
       } else {
-        return Err("Private key must be provided".to_string());
+        return Err(AppError::Custom("Private key must be provided".to_string()));
       }
 
       let checksum = qr2m_lib::calculate_double_sha256_hash(&extended_key);
@@ -188,7 +195,7 @@ pub fn create_private_key_for_address(
           Ok(format!("0x{}", hex::encode(private_key.secret_bytes())))
         }
       } else {
-        Err("Private key must be provided".to_string())
+        Err(AppError::Custom("Private key must be provided".to_string()))
       }
     }
     "sha256+ripemd160" => match private_key {
@@ -200,10 +207,13 @@ pub fn create_private_key_for_address(
       }
       None => {
         println!("Private key must be provided");
-        Err("Private key must be provided".to_string())
+        Err(AppError::Custom("Private key must be provided".to_string()))
       }
     },
-    _ => Err(format!("Unsupported hash method: {}", hash)),
+    _ => Err(AppError::Custom(format!(
+      "Unsupported hash method: {}",
+      hash
+    ))),
   }
 }
 
@@ -211,12 +221,14 @@ pub fn derive_from_path_secp256k1(
   master_key: &[u8],
   master_chain_code: &[u8],
   path: &str,
-) -> DerivationResult {
-  #[cfg(debug_assertions)]
-  {
-    println!("[+] {}", &t!("log.derive_from_path_secp256k1").to_string());
-    println!("Derivation path {:?}", path);
-  }
+) -> FunctionOutput<DerivationResult> {
+  d3bug(">>> derive_from_path_secp256k1", "debug");
+  d3bug(&format!("master_key {:?}", master_key), "debug");
+  d3bug(
+    &format!("master_chain_code {:?}", master_chain_code),
+    "debug",
+  );
+  d3bug(&format!("path {:?}", path), "debug");
 
   let mut private_key = master_key.to_vec();
   let mut chain_code = master_chain_code.to_vec();
@@ -230,36 +242,50 @@ pub fn derive_from_path_secp256k1(
     let hardened = part.ends_with("'");
     let index: u32 = match part.trim_end_matches("'").parse() {
       Ok(index) => {
-        #[cfg(debug_assertions)]
-        println!("Index: {:?}", &index);
+        d3bug(&format!("index {:?}", index), "debug");
 
         index
       }
-      Err(_) => {
-        eprintln!("Error: Unable to parse index from path part: {}", part);
-        return None;
+      Err(err) => {
+        return Err(AppError::Custom(format!(
+          "Error: Unable to parse index from path part: {}",
+          err
+        )));
       }
     };
 
-    let derived =
-      derive_child_key_secp256k1(&private_key, &chain_code, index, hardened).unwrap_or_default();
+    let derived = match derive_child_key_secp256k1(&private_key, &chain_code, index, hardened) {
+      Ok(Some(value)) => value,
+      Ok(None) => {
+        return Err(AppError::Custom(
+          "Problem with derivation result: value is None".to_string(),
+        ));
+      }
+      Err(err) => {
+        return Err(AppError::Custom(format!(
+          "Problem with deriving child keys: {:?}",
+          err
+        )));
+      }
+    };
 
     private_key = derived.0.to_vec();
     chain_code = derived.1.to_vec();
     public_key = derived.2;
   }
 
-  let secret_key = match secp256k1::SecretKey::from_slice(&private_key) {
-    Ok(sk) => sk,
-    Err(e) => {
-      eprintln!("Error: Unable to create SecretKey from key slice: {}", e);
-      return None;
-    }
-  };
+  let array: [u8; 32] = private_key
+    .try_into()
+    .map_err(|_| AppError::Custom("private_key must be 32 bytes".into()))?;
+
+  let secret_key = secp256k1::SecretKey::from_byte_array(array)
+    .map_err(|e| AppError::Custom(format!("Invalid secret_key: {}", e)))?;
 
   if chain_code.len() != 32 {
-    eprintln!("Error: Invalid chain code length");
-    return None;
+    return Err(AppError::Custom(format!(
+      "Invalid chain code length {:?}",
+      chain_code.len()
+    )));
   }
 
   let mut chain_code_array = [0u8; 32];
@@ -268,14 +294,17 @@ pub fn derive_from_path_secp256k1(
   let mut public_key_array = [0u8; 33];
   public_key_array.copy_from_slice(&public_key);
 
-  Some((
+  Ok(Some((
     secret_key.secret_bytes(),
     chain_code_array,
     public_key_array.to_vec(),
-  ))
+  )))
 }
 
-pub fn generate_address_sha256(public_key: &CryptoPublicKey, public_key_hash: &[u8]) -> String {
+pub fn generate_address_sha256(
+  public_key: &CryptoPublicKey,
+  public_key_hash: &[u8],
+) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.generate_address_sha256").to_string());
 
@@ -309,14 +338,14 @@ pub fn generate_address_sha256(public_key: &CryptoPublicKey, public_key_hash: &[
   #[cfg(debug_assertions)]
   println!("Extended Address payload: {:?}", address_payload);
 
-  bs58::encode(address_payload).into_string()
+  Ok(bs58::encode(address_payload).into_string())
 }
 
 pub fn generate_address_keccak256(
   public_key: &CryptoPublicKey,
   public_key_hash: &[u8],
   coin_index: u32,
-) -> String {
+) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.generate_address_keccak256").to_string());
 
@@ -371,14 +400,14 @@ pub fn generate_address_keccak256(
   #[cfg(debug_assertions)]
   println!("Generated address: {}", address);
 
-  address
+  Ok(address)
 }
 
 pub fn generate_sha256_ripemd160_address(
   coin_index: u32,
   public_key: &CryptoPublicKey,
   public_key_hash: &[u8],
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   println!(
     "[+] {}",
@@ -423,11 +452,7 @@ pub fn generate_sha256_ripemd160_address(
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-pub fn generate_entropy(
-  source: &str,
-  entropy_length: u64,
-  // state: Option<std::sync::Arc<std::sync::Mutex<AppState>>>,
-) -> FunctionOutput<String> {
+pub fn generate_entropy(source: &str, entropy_length: u64) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
@@ -532,7 +557,17 @@ pub fn generate_entropy(
               #[cfg(debug_assertions)]
               println!(" - Entropy file name: {:?}", file_path);
 
-              let file_entropy_string = generate_entropy_from_file(&file_path, entropy_length);
+              let file_entropy_string = match generate_entropy_from_file(&file_path, entropy_length)
+              {
+                Ok(entropy) => {
+                  d3bug("<<< generate_entropy_from_file", "debug");
+                  entropy
+                }
+                Err(e) => {
+                  d3bug(&format!("generate_entropy_from_file: {:?}", e), "error");
+                  return;
+                }
+              };
 
               let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
               wallet_settings.entropy_string = Some(file_entropy_string.clone());
@@ -576,7 +611,10 @@ pub fn generate_entropy(
   }
 }
 
-pub fn generate_mnemonic_words(final_entropy_binary: &str, dictionary: Option<&str>) -> String {
+pub fn generate_mnemonic_words(
+  final_entropy_binary: &str,
+  dictionary: Option<&str>,
+) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_mnemonic_words").to_string());
@@ -636,10 +674,10 @@ pub fn generate_mnemonic_words(final_entropy_binary: &str, dictionary: Option<&s
   let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
   wallet_settings.mnemonic_words = Some(mnemonic_words_as_string.clone());
 
-  mnemonic_words_as_string
+  Ok(mnemonic_words_as_string)
 }
 
-pub fn generate_seed_from_mnemonic(mnemonic: &str, passphrase: &str) -> [u8; 64] {
+pub fn generate_seed_from_mnemonic(mnemonic: &str, passphrase: &str) -> FunctionOutput<[u8; 64]> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.generate_seed_from_mnemonic").to_string());
 
@@ -652,10 +690,11 @@ pub fn generate_seed_from_mnemonic(mnemonic: &str, passphrase: &str) -> [u8; 64]
     mnemonic.as_bytes(),
     &mut seed,
   );
-  seed
+
+  Ok(seed)
 }
 
-pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> String {
+pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_entropy_from_file").to_string());
@@ -666,8 +705,10 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
   let mut file = match File::open(file_path) {
     Ok(file) => file,
     Err(err) => {
-      eprintln!("{}", &t!("error.file.open", value = file_path, error = err));
-      return String::new();
+      return Err(AppError::Custom(format!(
+        "Problem with opening file: {:?}",
+        err
+      )));
     }
   };
 
@@ -695,14 +736,14 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Strin
     println!(" - File entropy: {:?}", entropy);
   }
 
-  entropy
+  Ok(entropy)
 }
 
 pub fn generate_master_keys_secp256k1(
   seed: &str,
   mut private_header: &str,
   mut public_header: &str,
-) {
+) -> FunctionOutput<()> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.derive_master_keys").to_string());
@@ -742,8 +783,16 @@ pub fn generate_master_keys_secp256k1(
 
   let master_private_key_encoded = bs58::encode(&master_private_key).into_string();
   let secp = secp256k1::Secp256k1::new();
-  let master_secret_key =
-    secp256k1::SecretKey::from_slice(master_private_key_bytes).expect(&t!("error.master.create"));
+
+  let array: [u8; 32] = master_private_key_bytes
+    .try_into()
+    .map_err(|_| AppError::Custom("master_private_key_bytes must be 32 bytes".into()))?;
+
+  let master_secret_key = secp256k1::SecretKey::from_byte_array(array)
+    .map_err(|e| AppError::Custom(format!("Invalid master_secret_key: {:?}", e)))?;
+
+  // let master_secret_key =
+  //   secp256k1::SecretKey::from_slice(master_private_key_bytes).expect(&t!("error.master.create"));
   let master_public_key_bytes =
     secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
   let mut master_public_key = Vec::new();
@@ -784,9 +833,11 @@ pub fn generate_master_keys_secp256k1(
   wallet_settings.master_private_key_bytes = Some(master_private_key_bytes.to_vec());
   wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
   wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
+
+  Ok(())
 }
 
-pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult, String> {
+pub fn generate_address(ingredients: AddressHocusPokus) -> FunctionOutput<AddressResult> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_address").to_string());
@@ -801,8 +852,12 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
       .strip_prefix("0x")
       .unwrap_or(&ingredients.public_key_hash);
 
-    hex::decode(trimmed_public_key_hash)
-      .map_err(|e| format!("Problem with decoding public_key_hash_vec: {:?}", e))?
+    hex::decode(trimmed_public_key_hash).map_err(|e| {
+      AppError::Custom(format!(
+        "Problem with decoding public_key_hash_vec: {:?}",
+        e
+      ))
+    })?
   } else {
     Vec::new()
   };
@@ -822,25 +877,35 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
       &ingredients.master_chain_code_bytes,
       &ingredients.derivation_path,
       // &ingredients.seed,
-    )?,
+    ),
     _ => {
-      return Err(format!(
+      return Err(AppError::Custom(format!(
         "Unsupported key derivation method: {:?}",
         ingredients.key_derivation
-      ));
+      )));
     }
-  }
-  .expect("Can not derive child key");
+  }?
+  .ok_or_else(|| {
+    AppError::Custom(format!(
+      "Key derivation returned no result for path: {:?}",
+      ingredients.derivation_path
+    ))
+  })?;
 
   #[cfg(debug_assertions)]
   dbg!(&derived_child_keys);
 
   let public_key = match ingredients.key_derivation.as_str() {
     "secp256k1" => {
-      let secp_pub_key = secp256k1::PublicKey::from_secret_key(
-        &secp,
-        &secp256k1::SecretKey::from_slice(&derived_child_keys.0).expect("Invalid secret key"),
-      );
+      // let array: [u8; 32] = derived_child_keys
+      //   .0
+      //   .map_err(|_| AppError::Custom("child secret_key must be 32 bytes".into()))?;
+
+      let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
+        .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {:?}", e)))?;
+
+      let secp_pub_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+
       CryptoPublicKey::Secp256k1(secp_pub_key)
     }
     #[cfg(feature = "dev")]
@@ -851,10 +916,10 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
       CryptoPublicKey::Ed25519(pub_key)
     }
     _ => {
-      return Err(format!(
+      return Err(AppError::Custom(format!(
         "Unsupported key derivation method: {:?}",
         ingredients.key_derivation
-      ));
+      )));
     }
   };
 
@@ -886,7 +951,10 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
       _ => String::new(),
     },
     _ => {
-      return Err(format!("Unsupported hash method: {:?}", ingredients.hash));
+      return Err(AppError::Custom(format!(
+        "Unsupported hash method: {:?}",
+        ingredients.hash
+      )));
     }
   };
 
@@ -898,22 +966,18 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
     "keccak256" => {
       generate_address_keccak256(&public_key, &public_key_hash_vec, ingredients.coin_index)
     }
-    "sha256+ripemd160" => match generate_sha256_ripemd160_address(
-      ingredients.coin_index,
-      &public_key,
-      &public_key_hash_vec,
-    ) {
-      Ok(addr) => addr,
-      Err(e) => {
-        return Err(format!("Error generating address: {}", e));
-      }
-    },
+    "sha256+ripemd160" => {
+      generate_sha256_ripemd160_address(ingredients.coin_index, &public_key, &public_key_hash_vec)
+    }
     #[cfg(feature = "dev")]
     "ed25519" => crate::dev::generate_ed25519_address(&public_key),
     _ => {
-      return Err(format!("Unsupported hash method: {:?}", ingredients.hash));
+      return Err(AppError::Custom(format!(
+        "Unsupported hash method: {:?}",
+        ingredients.hash
+      )));
     }
-  };
+  }?;
 
   #[cfg(debug_assertions)]
   dbg!(&address);
@@ -924,17 +988,23 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
       .into_string()
   } else {
     let compressed = true;
+
+    // let array: [u8; 32] = derived_child_keys
+    //   .0
+    //   .try_into()
+    //   .map_err(|_| AppError::Custom("child secret key must be 32 bytes".into()))?;
+
+    let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
+      .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {:?}", e)))?;
+
     create_private_key_for_address(
-      Some(
-        &secp256k1::SecretKey::from_slice(&derived_child_keys.0)
-          .map_err(|e| format!("Invalid secret key: {:?}", e))?,
-      ),
+      Some(&secret_key),
       Some(compressed),
       Some(&ingredients.wallet_import_format),
       &ingredients.hash,
       ingredients.coin_index,
     )
-    .map_err(|e| format!("Failed to convert private key to WIF: {:?}", e))?
+    .map_err(|e| AppError::Custom(format!("Failed to convert private key to WIF: {:?}", e)))?
   };
 
   #[cfg(debug_assertions)]
@@ -949,7 +1019,7 @@ pub fn generate_address(ingredients: AddressHocusPokus) -> Result<AddressResult,
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-pub fn convert_seed_to_mnemonic(seed: &[u8]) -> String {
+pub fn convert_seed_to_mnemonic(seed: &[u8]) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.convert_seed_to_mnemonic").to_string());
 
@@ -959,5 +1029,5 @@ pub fn convert_seed_to_mnemonic(seed: &[u8]) -> String {
     hex.push_str(&format!("{:02x}", byte));
   }
 
-  hex
+  Ok(hex)
 }

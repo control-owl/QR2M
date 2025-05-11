@@ -1,13 +1,16 @@
 // authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 // license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
 
-use crate::{FunctionOutput, d3bug};
+use crate::{AppError, FunctionOutput, d3bug};
 use adw::prelude::*;
 use gtk::glib::clone;
 use gtk4 as gtk;
 use libadwaita as adw;
-use std::io::{self, Write};
-use std::{fs, process::Command};
+use std::{
+  fs,
+  io::{self, Write},
+  process::Command,
+};
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -24,7 +27,7 @@ lazy_static::lazy_static! {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct SecurityStatus {
   pub commit_hash: String,
   pub commit_date: String,
@@ -51,48 +54,9 @@ impl SecurityStatus {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-// fn hash_me_baby() -> String {
-//   use sha1::{Digest, Sha1};
-//   // let mut hasher = std::collections::hash_map::DefaultHasher::new();
-//   let mut hasher = Sha1::new();
-//   let mut paths = Vec::new();
-//   get_project_files(std::path::Path::new("."), &mut paths);
-//   paths.sort();
-//
-//   for path in paths {
-//     if let Ok(contents) = fs::read(&path) {
-//       // let rel_path = path.strip_prefix(".").unwrap().to_string_lossy();
-//       let rel_path = path
-//         .strip_prefix(".")
-//         .unwrap()
-//         .to_string_lossy()
-//         .replace("\\", "/");
-//       hasher.update(rel_path.as_bytes());
-//       hasher.update(&contents);
-//     }
-//   }
-//
-//   format!("{:x}", hasher.finalize())
-// }
-//
-// fn get_project_files(dir: &std::path::Path, paths: &mut Vec<std::path::PathBuf>) {
-//   if let Ok(entries) = fs::read_dir(dir) {
-//     for entry in entries.filter_map(|e| e.ok()) {
-//       let path = entry.path();
-//       if path.is_file() {
-//         let path_str = path.to_string_lossy();
-//         if !path_str.contains(".git") && !path_str.contains("target") {
-//           paths.push(path);
-//         }
-//       } else if path.is_dir() {
-//         get_project_files(&path, paths);
-//       }
-//     }
-//   }
-// }
-
 fn check_if_code_modified() -> FunctionOutput<bool> {
   d3bug(">>> check_if_code_modified", "debug");
+
   let output = Command::new("git")
     .arg("status")
     .arg("--porcelain")
@@ -100,10 +64,13 @@ fn check_if_code_modified() -> FunctionOutput<bool> {
     .expect("Failed to execute git status");
 
   if output.stdout.is_empty() {
-    println!("No changes since the last commit.");
+    d3bug("No changes since the last commit", "info");
     Ok(false)
   } else {
-    println!("There are changes since the last commit:");
+    d3bug(
+      "There are changes since the last commit. This files have been modiefied:",
+      "warning",
+    );
     io::stdout().write_all(&output.stdout).unwrap();
     Ok(true)
   }
@@ -114,11 +81,6 @@ pub fn check_security_level() -> FunctionOutput<()> {
 
   let mut security = SECURITY_STATUS.write().unwrap();
 
-  // if security.commit_key == CONTROL_OWL_KEY_ID {
-  //   security.author_key = true;
-  // } else {
-  //   security.author_key = false;
-  // }
   security.author_key = security.commit_key == CONTROL_OWL_KEY_ID;
 
   match check_if_code_modified() {
@@ -133,16 +95,17 @@ pub fn check_security_level() -> FunctionOutput<()> {
   };
 
   let feature = qr2m_lib::get_active_app_feature();
-
   let sig_name = format!("{}-{}.sig", crate::APP_NAME.unwrap(), feature);
-  let app_executable = std::env::current_exe().expect("Failed to get current executable path");
-  let executable_dir = app_executable
-    .parent()
-    .expect("Failed to extract executable directory");
-  let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
 
-  // #[cfg(debug_assertions)]
-  // println!("Signature file path: {}", sig_full_path);
+  let app_executable = std::env::current_exe()
+    .map_err(|e| AppError::Custom(format!("Failed to get current executable path: {:?}", e)))?;
+
+  let executable_dir = app_executable.parent().ok_or(AppError::Custom(
+    "Failed to extract executable directory".to_string(),
+  ))?;
+
+  let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
+  d3bug(&format!("sig_full_path {:?}", sig_full_path), "debug");
 
   if std::path::Path::new(&sig_full_path).exists() {
     let output = Command::new("gpg")
@@ -152,7 +115,7 @@ pub fn check_security_level() -> FunctionOutput<()> {
         &app_executable.to_string_lossy(),
       ])
       .output()
-      .expect("Failed to execute GPG verification");
+      .map_err(|e| AppError::Custom(format!("Failed to execute GPG verification: {:?}", e)))?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -161,45 +124,43 @@ pub fn check_security_level() -> FunctionOutput<()> {
       && (stdout.contains("Good signature") || !stderr.contains("BAD signature"));
 
     if !verification_succeeded {
-      #[cfg(debug_assertions)]
-      eprintln!(
-        "\t- App signature verification failed! \n\tStdout: {}\n\tStderr: {}",
-        stdout, stderr
+      d3bug(
+        &format!(
+          "App signature verification failed! \n\
+          Stdout: {}\n\
+          Stderr: {}",
+          stdout, stderr
+        ),
+        "warning",
       );
 
       let _ = fs::remove_file(&sig_full_path);
-      let status = generate_new_app_signature(&app_executable, &sig_full_path);
+      let status = generate_new_app_signature(&app_executable, &sig_full_path)?;
 
       if status {
-        #[cfg(debug_assertions)]
-        println!(
-          "\t- App signature created successfully. Status:\n{}",
-          &status
-        );
+        d3bug("App signature created successfully", "info");
         security.app_key = true;
       } else {
-        #[cfg(debug_assertions)]
-        eprintln!("\t- App signing failed. No secret key found",);
+        d3bug("App signing failed. No secret key found", "error");
         security.app_key = false;
       }
     } else {
-      #[cfg(debug_assertions)]
-      println!("\t- App signature verification succeeded");
+      d3bug("App signature verification succeeded", "info");
       security.app_key = true;
     }
   } else {
-    #[cfg(debug_assertions)]
-    eprintln!("\t- App signature file not found. Try to generate new a one...");
+    d3bug(
+      "App signature file not found. Try to generate new a one...",
+      "warning",
+    );
 
-    let status = generate_new_app_signature(&app_executable, &sig_full_path);
+    let status = generate_new_app_signature(&app_executable, &sig_full_path)?;
 
     if status {
-      #[cfg(debug_assertions)]
-      println!("\t- App signature created successfully");
+      d3bug("App signature created successfully", "info");
       security.app_key = true;
     } else {
-      #[cfg(debug_assertions)]
-      eprintln!("\t- GPG signing failed for. No secret key found",);
+      d3bug("GPG signing failed. No secret key found", "error");
       security.app_key = false;
     }
   }
@@ -207,7 +168,10 @@ pub fn check_security_level() -> FunctionOutput<()> {
   Ok(())
 }
 
-fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &str) -> bool {
+fn generate_new_app_signature(
+  app_executable: &std::path::Path,
+  sig_full_path: &str,
+) -> FunctionOutput<bool> {
   d3bug(">>> generate_new_app_signature", "debug");
 
   let key_check = Command::new("gpg")
@@ -219,7 +183,7 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
       &format!("Failed to check GPG key {}: {}", QR2M_KEY_ID, _err),
       "error",
     );
-    return false;
+    return Ok(false);
   }
 
   if !key_check.unwrap().status.success() {
@@ -227,7 +191,7 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
       &format!("GPG secret key {} not found", QR2M_KEY_ID),
       "error",
     );
-    return false;
+    return Ok(false);
   }
 
   let output = Command::new("gpg")
@@ -256,7 +220,7 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
           "error",
         );
 
-        return false;
+        return Ok(false);
       }
 
       if !std::path::Path::new(&sig_full_path).exists() {
@@ -267,23 +231,23 @@ fn generate_new_app_signature(app_executable: &std::path::Path, sig_full_path: &
           ),
           "error",
         );
-        return false;
+        return Ok(false);
       }
 
       d3bug(
-        &format!("Signature created successfully at {}", sig_full_path),
+        &format!("Signature created successfully at: {}", sig_full_path),
         "info",
       );
-      true
+      Ok(true)
     }
     Err(_err) => {
       d3bug(&format!("Failed to execute GPG signing: {}", _err), "error");
-      false
+      Ok(false)
     }
   }
 }
 
-pub fn create_security_window() -> gtk::ApplicationWindow {
+pub fn create_security_window() -> FunctionOutput<gtk::ApplicationWindow> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.create_security_window").to_string());
 
@@ -501,7 +465,7 @@ pub fn create_security_window() -> gtk::ApplicationWindow {
 
   security_window.set_child(Some(&security_layout_box));
 
-  security_window
+  Ok(security_window)
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.

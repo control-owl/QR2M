@@ -1868,8 +1868,13 @@ fn setup_app_actions(
 
   #[cfg(feature = "dev")]
   security.connect_activate(move |_action, _parameter| {
-    let security_window = sec::create_security_window();
-    security_window.present();
+    match sec::create_security_window() {
+      Ok(window) => {
+        window.present();
+        d3bug("<<< create_security_window", "debug");
+      }
+      Err(err) => d3bug(&format!("create_security_window: \n{:?}", err), "error"),
+    };
   });
 
   settings.connect_activate(clone!(
@@ -2125,8 +2130,13 @@ fn create_main_window(
 
   #[cfg(feature = "dev")]
   buttons["security"].connect_clicked(move |_| {
-    let security_window = sec::create_security_window();
-    security_window.present();
+    match sec::create_security_window() {
+      Ok(window) => {
+        window.present();
+        d3bug("<<< create_security_window", "debug");
+      }
+      Err(err) => d3bug(&format!("create_security_window: \n{:?}", err), "error"),
+    };
   });
 
   buttons["new"].connect_clicked(clone!(
@@ -2580,15 +2590,43 @@ fn create_main_window(
               mnemonic_dictionary_dropdown.set_selected(0);
             }
 
-            let mnemonic_words = keys::generate_mnemonic_words(&text, Some(&mnemonic_dictionary));
+            let mnemonic_words =
+              match keys::generate_mnemonic_words(&text, Some(&mnemonic_dictionary)) {
+                Ok(mnemonic) => {
+                  d3bug("<<< generate_mnemonic_words", "debug");
+                  mnemonic
+                }
+                Err(e) => {
+                  d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+                  return;
+                }
+              };
             mnemonic_words_text.buffer().set_text(&mnemonic_words);
 
-            let seed = keys::generate_seed_from_mnemonic(
+            let seed = match keys::generate_seed_from_mnemonic(
               &mnemonic_words,
               &mnemonic_passphrase_text.buffer().text(),
-            );
+            ) {
+              Ok(seed) => {
+                d3bug("<<< generate_seed_from_mnemonic", "debug");
+                seed
+              }
+              Err(e) => {
+                d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+                return;
+              }
+            };
 
-            let seed = keys::convert_seed_to_mnemonic(&seed);
+            let seed = match keys::convert_seed_to_mnemonic(&seed) {
+              Ok(seed) => {
+                d3bug("<<< convert_seed_to_mnemonic", "debug");
+                seed
+              }
+              Err(e) => {
+                d3bug(&format!("convert_seed_to_mnemonic: {:?}", e), "error");
+                return;
+              }
+            };
 
             seed_text.buffer().set_text(&seed);
           } else {
@@ -2719,16 +2757,32 @@ fn create_main_window(
             mnemonic_dictionary_dropdown.set_selected(0);
           }
 
-          let seed =
-            keys::generate_seed_from_mnemonic(&text, &mnemonic_passphrase_text.buffer().text());
+          let seed = match keys::generate_seed_from_mnemonic(
+            &text,
+            &mnemonic_passphrase_text.buffer().text(),
+          ) {
+            Ok(seed) => {
+              d3bug("<<< generate_seed_from_mnemonic", "debug");
+              seed
+            }
+            Err(e) => {
+              d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+              return;
+            }
+          };
 
-          let seed = keys::convert_seed_to_mnemonic(&seed);
+          let seed = match keys::convert_seed_to_mnemonic(&seed) {
+            Ok(seed) => {
+              d3bug("<<< convert_seed_to_mnemonic", "debug");
+              seed
+            }
+            Err(e) => {
+              d3bug(&format!("convert_seed_to_mnemonic: {:?}", e), "error");
+              return;
+            }
+          };
 
           seed_text.buffer().set_text(&seed);
-          // } else {
-          // TODO: Show error message
-          // };
-
           import_mnemonic_dialog.close();
         }
       ));
@@ -3011,18 +3065,23 @@ fn create_main_window(
   let scrolled_window = gtk::ScrolledWindow::new();
   let coin_frame = gtk::Frame::new(Some(&t!("UI.main.coin")));
 
-  coin_db::create_coin_completion_model();
+  match coin_db::create_coin_completion_model() {
+    Ok(_) => {
+      d3bug("<<< create_coin_completion_model", "debug");
+    }
+    Err(err) => d3bug(&format!("create_coin_completion_model: {:?}", err), "error"),
+  };
 
-  let coin_store = coin_db::create_coin_store();
-  let cmc_top_filter = coin_db::create_filter("Cmc_top", "100");
-  let status_filter = coin_db::create_filter("Status", "Verified");
+  let coin_store = coin_db::create_coin_store()?;
+  let cmc_top_filter = coin_db::create_coin_store_filters("Cmc_top", "100")?;
+  let status_filter = coin_db::create_coin_store_filters("Status", "Verified")?;
   let combined_filter = gtk::EveryFilter::new();
 
   combined_filter.append(cmc_top_filter);
   combined_filter.append(status_filter);
 
   let filter_model = gtk::FilterListModel::new(Some(coin_store), Some(combined_filter));
-  let sorter = coin_db::create_sorter();
+  let sorter = coin_db::create_sorter()?;
   let sort_model = gtk::SortListModel::new(Some(filter_model.clone()), Some(sorter));
 
   let coin_selection_model = gtk::SingleSelection::new(Some(sort_model.clone()));
@@ -3529,7 +3588,7 @@ fn create_main_window(
   address_total_generated_count_box.append(&address_total_generated_count_label);
 
   // Address speed
-  let items_added_in_last_second = Rc::new(RefCell::new(0u64));
+  let items_added_in_last_second = std::sync::Arc::new(std::sync::Mutex::new(0u64));
   let counts = Rc::new(RefCell::new(vec![0u64; 10]));
   let index = Rc::new(RefCell::new(0usize));
   let max_speed = Rc::new(RefCell::new(0u64));
@@ -3538,6 +3597,7 @@ fn create_main_window(
   let address_generation_speed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let address_generation_speed_label = gtk::Label::new(Some("0/sec"));
 
+  address_generation_speed_frame.set_visible(false);
   address_generation_speed_box.set_halign(gtk4::Align::Center);
   address_generation_speed_frame.set_child(Some(&address_generation_speed_box));
   address_generation_speed_box.append(&address_generation_speed_label);
@@ -3545,13 +3605,9 @@ fn create_main_window(
   address_store.connect_items_changed(clone!(
     #[strong]
     address_store,
-    #[weak]
-    items_added_in_last_second,
-    move |_store, _position, _removed, added| {
+    move |_store, _position, _removed, _added| {
       let count = address_store.n_items();
       address_total_generated_count_label.set_label(&count.to_string());
-
-      *items_added_in_last_second.borrow_mut() += added as u64;
     }
   ));
 
@@ -3816,14 +3872,32 @@ fn create_main_window(
           };
 
           let mnemonic_words =
-            keys::generate_mnemonic_words(&full_entropy, Some(&mnemonic_dictionary));
+            match keys::generate_mnemonic_words(&full_entropy, Some(&mnemonic_dictionary)) {
+              Ok(mnemonic) => {
+                d3bug("<<< generate_mnemonic_words", "debug");
+                mnemonic
+              }
+              Err(e) => {
+                d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+                return;
+              }
+            };
 
           mnemonic_words_text.buffer().set_text(&mnemonic_words);
 
-          let seed = keys::generate_seed_from_mnemonic(
+          let seed = match keys::generate_seed_from_mnemonic(
             &mnemonic_words,
             &mnemonic_passphrase_text.buffer().text(),
-          );
+          ) {
+            Ok(seed) => {
+              d3bug("<<< generate_seed_from_mnemonic", "debug");
+              seed
+            }
+            Err(e) => {
+              d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+              return;
+            }
+          };
 
           let seed_hex = hex::encode(&seed[..]);
           seed_text.buffer().set_text(&seed_hex.to_string());
@@ -3897,9 +3971,27 @@ fn create_main_window(
         let mnemonic_dictionary = selected_dictionary.unwrap();
 
         let mnemonic_words =
-          keys::generate_mnemonic_words(&full_entropy, Some(mnemonic_dictionary));
+          match keys::generate_mnemonic_words(&full_entropy, Some(mnemonic_dictionary)) {
+            Ok(mnemonic) => {
+              d3bug("<<< generate_mnemonic_words", "debug");
+              mnemonic
+            }
+            Err(e) => {
+              d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+              return;
+            }
+          };
         let passphrase_text = mnemonic_passphrase_text.text().to_string();
-        let seed = keys::generate_seed_from_mnemonic(&mnemonic_words, &passphrase_text);
+        let seed = match keys::generate_seed_from_mnemonic(&mnemonic_words, &passphrase_text) {
+          Ok(seed) => {
+            d3bug("<<< generate_seed_from_mnemonic", "debug");
+            seed
+          }
+          Err(e) => {
+            d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+            return;
+          }
+        };
         let seed_hex = hex::encode(&seed[..]);
 
         entropy_text.buffer().set_text(&full_entropy);
@@ -4071,7 +4163,19 @@ fn create_main_window(
           let seed_string = buffer.text(&start_iter, &end_iter, true);
 
           if key_derivation == "secp256k1" {
-            keys::generate_master_keys_secp256k1(&seed_string, &private_header, &public_header);
+            match keys::generate_master_keys_secp256k1(
+              &seed_string,
+              &private_header,
+              &public_header,
+            ) {
+              Ok(_) => {
+                d3bug("<<< generate_master_keys_secp256k1", "debug");
+              }
+              Err(err) => d3bug(
+                &format!("generate_master_keys_secp256k1: \n{:?}", err),
+                "error",
+              ),
+            };
           } else {
             #[cfg(feature = "dev")]
             dev::generate_master_keys_ed25519(&seed_string);
@@ -4162,13 +4266,31 @@ fn create_main_window(
 
       if !entropy_text.is_empty() {
         let mnemonic_words =
-          keys::generate_mnemonic_words(&entropy_text, Some(selected_dictionary));
+          match keys::generate_mnemonic_words(&entropy_text, Some(selected_dictionary)) {
+            Ok(mnemonic) => {
+              d3bug("<<< generate_mnemonic_words", "debug");
+              mnemonic
+            }
+            Err(e) => {
+              d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+              return;
+            }
+          };
         mnemonic_words_text.buffer().set_text(&mnemonic_words);
 
-        let seed = keys::generate_seed_from_mnemonic(
+        let seed = match keys::generate_seed_from_mnemonic(
           &mnemonic_words,
           &mnemonic_passphrase_text.buffer().text(),
-        );
+        ) {
+          Ok(seed) => {
+            d3bug("<<< generate_seed_from_mnemonic", "debug");
+            seed
+          }
+          Err(e) => {
+            d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+            return;
+          }
+        };
 
         let seed_hex = hex::encode(&seed[..]);
         seed_text.buffer().set_text(&seed_hex.to_string());
@@ -4227,10 +4349,19 @@ fn create_main_window(
           .to_string();
         let final_mnemonic_passphrase = mnemonic_passphrase_text.buffer().text().to_string();
 
-        let seed = keys::generate_seed_from_mnemonic(
+        let seed = match keys::generate_seed_from_mnemonic(
           &final_mnemonic_words,
           &mnemonic_passphrase_text.buffer().text(),
-        );
+        ) {
+          Ok(seed) => {
+            d3bug("<<< generate_seed_from_mnemonic", "debug");
+            seed
+          }
+          Err(e) => {
+            d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+            return;
+          }
+        };
         let seed_hex = hex::encode(&seed[..]);
         seed_text.buffer().set_text(&seed_hex.to_string());
 
@@ -4544,6 +4675,7 @@ fn create_main_window(
     }
   ));
 
+  let address_generation_active = std::sync::Arc::new(std::sync::Mutex::new(false));
   // JUMP: Generate Addresses button
   // // Working version
   // #[cfg(not(feature = "dev"))]
@@ -4572,6 +4704,12 @@ fn create_main_window(
     delete_addresses_button_box,
     #[weak]
     window,
+    #[strong]
+    address_generation_speed_label,
+    #[weak]
+    address_generation_speed_frame,
+    #[weak]
+    address_generation_active,
     move |_| {
       let buffer = master_private_key_text.buffer();
       let start_iter = buffer.start_iter();
@@ -4589,6 +4727,11 @@ fn create_main_window(
         };
         return;
       }
+
+      if *address_generation_active.lock().unwrap() {
+        return;
+      }
+      address_generation_speed_label.set_label("0/sec");
 
       let wallet_settings = {
         let lock = WALLET_SETTINGS.lock().unwrap();
@@ -4660,13 +4803,13 @@ fn create_main_window(
       let items_added_in_last_second = items_added_in_last_second.clone();
       let counts = counts.clone();
       let index = index.clone();
+      let address_generation_active = address_generation_active.clone();
 
       // JUMP: Address speed
       // FIX: Close this loop !! create handler and close by abort/stop
       let speed_generator_id: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
-
       *speed_generator_id.borrow_mut() = Some(glib::timeout_add_local(
-        std::time::Duration::from_millis(100),
+        std::time::Duration::from_millis(500),
         {
           let items_added_in_last_second = items_added_in_last_second.clone();
           let counts = counts.clone();
@@ -4679,48 +4822,46 @@ fn create_main_window(
           move || {
             if *cancel_speed_rx.borrow() {
               let _ = timeout_id.borrow_mut().take().map(SourceId::remove);
-              address_generation_speed_label.set_label("0/sec");
 
+              // address_generation_speed_label.set_label("0/sec");
+              *items_added_in_last_second.lock().unwrap() = 0;
+              counts.borrow_mut().fill(0);
+              *ema_speed.borrow_mut() = 0.0;
               return glib::ControlFlow::Break;
             }
 
-            let current_count = *items_added_in_last_second.borrow();
+            let current_count = *items_added_in_last_second.lock().unwrap();
             let mut counts = counts.borrow_mut();
             let mut idx = *index.borrow_mut();
+            let mut max = max_speed.borrow_mut();
 
             counts[idx] = current_count;
-            idx = (idx + 1) % 10;
+            idx = (idx + 1) % 2;
             *index.borrow_mut() = idx;
 
-            let total_per_second = counts.iter().sum::<u64>();
-            let avg_speed = total_per_second;
-
-            let mut max = max_speed.borrow_mut();
-            if avg_speed > *max {
-              *max = avg_speed;
+            let raw_speed = current_count as f64 * 2.0;
+            if raw_speed as u64 > *max {
+              *max = raw_speed as u64;
             }
 
             // JUMP ema speed
             let alpha = 0.5;
-            let current_speed = current_count as f64 * 10.0;
             let mut ema = ema_speed.borrow_mut();
-            *ema = alpha * current_speed + (1.0 - alpha) * *ema;
+            *ema = alpha * raw_speed + (1.0 - alpha) * *ema;
             let ema_avg_speed = *ema as u64;
 
+            address_generation_speed_frame.set_visible(true);
             address_generation_speed_label
               .set_label(&format!("{}/sec (max: {}/sec)", ema_avg_speed, *max));
 
-            *items_added_in_last_second.borrow_mut() = 0;
+            *items_added_in_last_second.lock().unwrap() = 0;
+
             glib::ControlFlow::Continue
           }
         },
       ));
 
-      // let mut batch_size = 2;
-      // #[cfg(not(feature = "dev"))]
-      // let max_batch_size = 128;
-      // #[cfg(feature = "dev")]
-      // let max_batch_size = 200;
+      *address_generation_active.lock().unwrap() = true;
 
       let address_loop = tokio::spawn(async move {
         let mut handles = vec![];
@@ -4745,6 +4886,7 @@ fn create_main_window(
           let coin_name = coin_name.clone();
           let generated_addresses = generated_addresses.clone();
           let progress_status = progress_status.clone();
+          let items_added_in_last_second = items_added_in_last_second.clone();
 
           let handle = tokio::spawn(async move {
             let mut generated_count = 0;
@@ -4845,6 +4987,7 @@ fn create_main_window(
 
                     generated_count += 1;
                     current_index += 1;
+                    *items_added_in_last_second.lock().unwrap() += 1u64;
                   } else {
                     eprintln!("problem with generating address");
                     break;
@@ -4891,6 +5034,8 @@ fn create_main_window(
         stop_addresses_button_box,
         #[strong]
         delete_addresses_button_box,
+        #[strong]
+        generator_handler,
         move || {
           while let Ok(new_entry) = channel_receiver_addresses.try_recv() {
             let entries: Vec<AddressDatabase> = new_entry
@@ -4937,6 +5082,7 @@ fn create_main_window(
 
               stop_addresses_button_box.set_visible(false);
               delete_addresses_button_box.set_visible(true);
+              // address_generation_speed_label.set_label("0/sec");
 
               window.set_cursor(None);
 
@@ -4948,6 +5094,19 @@ fn create_main_window(
 
               address_start_spinbutton.set_value(next_address as f64);
 
+              if let Some((handle, cancel_tx, cancel_speed_tx)) =
+                generator_handler.lock().unwrap().take()
+              {
+                cancel_tx.send(true).ok();
+                cancel_speed_tx.send(true).ok();
+                handle.abort();
+              } else {
+                #[cfg(debug_assertions)]
+                eprintln!("No generator handle!");
+              }
+
+              *address_generation_active.lock().unwrap() = false;
+
               return glib::ControlFlow::Break;
             }
           }
@@ -4958,282 +5117,7 @@ fn create_main_window(
     }
   ));
 
-  //     // #[cfg(feature = "dev")]
-  //     generate_addresses_button.connect_clicked(clone!(
-  //         #[strong]
-  //         address_store,
-  //         #[strong]
-  //         stop_addresses_button_box,
-  //         #[strong]
-  //         generator_handler,
-  //         #[strong]
-  //         app_messages_state,
-  //         #[weak]
-  //         derivation_label_text,
-  //         #[weak]
-  //         master_private_key_text,
-  //         #[weak]
-  //         address_start_spinbutton,
-  //         #[weak]
-  //         address_count_spinbutton,
-  //         #[weak]
-  //         address_options_hardened_address_checkbox,
-  //         #[weak]
-  //         address_generation_progress_bar,
-  //         #[weak]
-  //         delete_addresses_button_box,
-  //         move |_| {
-  //             let buffer = master_private_key_text.buffer();
-  //             let start_iter = buffer.start_iter();
-  //             let end_iter = buffer.end_iter();
-  //             let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
-  //
-  //             if master_private_key_string.is_empty() {
-  //                 let lock_app_messages = app_messages_state.borrow();
-  //                 lock_app_messages.queue_message(
-  //                     t!("error.address.master").to_string(),
-  //                     gtk::MessageType::Warning,
-  //                 );
-  //                 return;
-  //             }
-  //
-  //             let wallet_settings = {
-  //                 let lock = WALLET_SETTINGS.lock().unwrap();
-  //                 lock.clone()
-  //             };
-  //
-  //             address_generation_progress_bar.set_fraction(0.0);
-  //             address_generation_progress_bar.set_show_text(true);
-  //             stop_addresses_button_box.set_visible(true);
-  //             delete_addresses_button_box.set_visible(false);
-  //
-  //             let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
-  //             let key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-  //
-  //             if key_derivation != "secp256k1" {
-  //                 let lock_app_messages = app_messages_state.borrow();
-  //                 lock_app_messages.queue_message(
-  //                     t!("error.address.unsupported").to_string(),
-  //                     gtk::MessageType::Error,
-  //                 );
-  //                 return;
-  //             }
-  //
-  //             let derivation_path = derivation_label_text.text();
-  //             let hardened_address = address_options_hardened_address_checkbox.is_active();
-  //             let address_start_point = address_start_spinbutton.text();
-  //             let mut address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
-  //
-  //             let address_count = address_count_spinbutton.text();
-  //             let address_count_int = address_count.parse::<usize>().unwrap_or(1);
-  //
-  //             let last_address_int = address_start_point_int + address_count_int;
-  //             dbg!(&last_address_int);
-  //
-  //             let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-  //             let generated_addresses = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-  //             let start_time = std::time::Instant::now();
-  //
-  //             let generation_task = tokio::spawn({
-  //                 let wallet_settings = wallet_settings.clone();
-  //                 let derivation_path = derivation_path.clone();
-  //                 let coin_name = coin_name.clone();
-  //                 let generated_addresses = generated_addresses.clone();
-  //                 let cancel_rx = std::sync::Arc::new(tokio::sync::Mutex::new(cancel_rx));
-  //
-  //                 async move {
-  //                     let cpu_threads = num_cpus::get();
-  //                     let generating_threads = if address_count_int <= cpu_threads {
-  //                         1
-  //                     } else {
-  //                         cpu_threads
-  //                     };
-  //                     let addresses_per_thread = address_count_int / generating_threads;
-  //                     let extra_addresses = address_count_int % generating_threads;
-  //
-  //                     let mut handles = Vec::new();
-  //
-  //                     for thread_id in 0..generating_threads {
-  //                         let num_addresses = if thread_id < extra_addresses {
-  //                             addresses_per_thread + 1
-  //                         } else {
-  //                             addresses_per_thread
-  //                         };
-  //
-  //                         if num_addresses == 0 {
-  //                             continue;
-  //                         }
-  //
-  //                         let cancel_rx = cancel_rx.clone();
-  //                         let wallet_settings = wallet_settings.clone();
-  //                         let derivation_path = derivation_path.clone();
-  //                         let coin_name = coin_name.clone();
-  //                         let generated_addresses = generated_addresses.clone();
-  //
-  //                         let handle = tokio::spawn(async move {
-  //                             let mut current_index = address_start_point_int;
-  //                             let mut generated_count = 0;
-  //
-  //                             while generated_count < num_addresses {
-  //                                 let cancel_rx = cancel_rx.lock().await;
-  //                                 if *cancel_rx.borrow() {
-  //                                     return;
-  //                                 }
-  //                                 drop(cancel_rx);
-  //
-  //                                 if current_index > WALLET_MAX_ADDRESSES as usize {
-  //                                     break;
-  //                                 }
-  //
-  //                                 let derivation_path = if hardened_address {
-  //                                     format!("{}/{}'", derivation_path, current_index)
-  //                                 } else {
-  //                                     format!("{}/{}", derivation_path, current_index)
-  //                                 };
-  //
-  //                                 let coin_path_id =
-  //                                     match derivation_path_to_integer(&derivation_path) {
-  //                                         Ok(value) => value,
-  //                                         Err(_) => return,
-  //                                     };
-  //
-  //                                 if !CRYPTO_ADDRESS.contains_key(&coin_path_id) {
-  //                                     let magic_ingredients = keys::AddressHocusPokus {
-  //                                         coin_index: wallet_settings.coin_index.unwrap_or_default(),
-  //                                         derivation_path: derivation_path.clone(),
-  //                                         master_private_key_bytes: wallet_settings
-  //                                             .master_private_key_bytes
-  //                                             .clone()
-  //                                             .unwrap_or_default(),
-  //                                         master_chain_code_bytes: wallet_settings
-  //                                             .master_chain_code_bytes
-  //                                             .clone()
-  //                                             .unwrap_or_default(),
-  //                                         public_key_hash: wallet_settings
-  //                                             .public_key_hash
-  //                                             .clone()
-  //                                             .unwrap_or_default(),
-  //                                         key_derivation: wallet_settings
-  //                                             .key_derivation
-  //                                             .clone()
-  //                                             .unwrap_or_default(),
-  //                                         wallet_import_format: wallet_settings
-  //                                             .wallet_import_format
-  //                                             .clone()
-  //                                             .unwrap_or_default(),
-  //                                         hash: wallet_settings.hash.clone().unwrap_or_default(),
-  //                                     };
-  //
-  //                                     if let Ok((address, public_key, private_key)) =
-  //                                         keys::generate_address(magic_ingredients)
-  //                                     {
-  //                                         let new_entry = CryptoAddresses {
-  //                                             id: Some(coin_path_id.clone()),
-  //                                             coin_name: Some(coin_name.clone()),
-  //                                             derivation_path: Some(derivation_path.clone()),
-  //                                             address: Some(address),
-  //                                             public_key: Some(public_key),
-  //                                             private_key: Some(private_key),
-  //                                         };
-  //                                         CRYPTO_ADDRESS.insert(coin_path_id, new_entry);
-  //                                         generated_addresses
-  //                                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-  //                                         generated_count += 1;
-  //                                     }
-  //                                 }
-  //                                 current_index += 1;
-  //                             }
-  //                         });
-  //
-  //                         handles.push(handle);
-  //                         address_start_point_int += num_addresses;
-  //                     }
-  //
-  //                     for handle in handles {
-  //                         handle.await.unwrap();
-  //                     }
-  //                 }
-  //             });
-  //
-  //             *generator_handler.lock().unwrap() = Some((generation_task, cancel_tx));
-  //
-  //             glib::idle_add_local(clone!(
-  //                 #[strong]
-  //                 address_store,
-  //                 #[strong]
-  //                 generator_handler,
-  //                 #[strong]
-  //                 app_messages_state,
-  //                 #[strong]
-  //                 address_generation_progress_bar,
-  //                 #[strong]
-  //                 stop_addresses_button_box,
-  //                 #[strong]
-  //                 delete_addresses_button_box,
-  //                 move || {
-  //                     if generator_handler.lock().unwrap().is_none() {
-  //                         return glib::ControlFlow::Break;
-  //                     }
-  //
-  //                     let total_generated =
-  //                         generated_addresses.load(std::sync::atomic::Ordering::Relaxed);
-  //                     let progress = if address_count_int > 0 {
-  //                         (total_generated as f64) / (address_count_int as f64)
-  //                     } else {
-  //                         0.0
-  //                     };
-  //
-  //                     address_generation_progress_bar.set_fraction(progress);
-  //
-  //                     // let mut batch = Vec::new();
-  //                     // let mut keys_to_remove = Vec::new();
-  //
-  //                     for entry in CRYPTO_ADDRESS.iter().take(50) {
-  //                         let coin = entry.value().clone();
-  //                         let id = coin.id.as_ref().unwrap_or(&String::new()).clone();
-  //                         // keys_to_remove.push(id.clone());
-  //
-  //                         let new_address = AddressDatabase::new(
-  //                             &id,
-  //                             &coin.coin_name.unwrap_or_default(),
-  //                             &coin.derivation_path.unwrap_or_default(),
-  //                             &coin.address.unwrap_or_default(),
-  //                             &coin.public_key.unwrap_or_default(),
-  //                             &coin.private_key.unwrap_or_default(),
-  //                         );
-  //
-  //                         address_store.append(&new_address);
-  //                     }
-  //
-  //                     // if !batch.is_empty() {
-  //                     //     // for key in keys_to_remove {
-  //                     //     //     CRYPTO_ADDRESS.remove(&key);
-  //                     //     // }
-  //                     //     batch.clear();
-  //                     // }
-  //
-  //                     if total_generated >= address_count_int {
-  //                         let duration = start_time.elapsed();
-  //                         let message = format!("Address generation completed in {:.2?}", duration);
-  //                         #[cfg(debug_assertions)]
-  //                         println!("{}", message);
-  //
-  //                         let lock_app_messages = app_messages_state.borrow();
-  //                         lock_app_messages.queue_message(message, gtk::MessageType::Info);
-  //
-  //                         stop_addresses_button_box.set_visible(false);
-  //                         delete_addresses_button_box.set_visible(true);
-  //                         address_start_spinbutton.set_text(&address_start_point_int.to_string());
-  //
-  //                         return glib::ControlFlow::Break;
-  //                     }
-  //
-  //                     glib::ControlFlow::Continue
-  //                 }
-  //             ));
-  //         }
-  //     ));
-
+  // JUMP: Delete Addresses button
   delete_addresses_button.connect_clicked(clone!(
     #[strong]
     address_store,
@@ -5245,6 +5129,8 @@ fn create_main_window(
     address_generation_progress_bar,
     #[weak]
     window,
+    #[strong]
+    address_generation_speed_label,
     move |_| {
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
       window.set_cursor(busy_cursor.as_ref());
@@ -5254,10 +5140,12 @@ fn create_main_window(
       address_generation_progress_bar.set_fraction(0.0);
       address_generation_progress_bar.set_show_text(false);
       delete_addresses_button_box.set_visible(false);
+      address_generation_speed_label.set_label("0/sec");
       window.set_cursor(None);
     }
   ));
 
+  // JUMP: Stop Addresses button
   stop_address_generation_button.connect_clicked(clone!(
     #[strong]
     generator_handler,
@@ -5269,6 +5157,8 @@ fn create_main_window(
     stop_addresses_button_box,
     #[weak]
     window,
+    #[strong]
+    address_generation_active,
     move |_| {
       window.set_cursor(None);
 
@@ -5281,6 +5171,8 @@ fn create_main_window(
         eprintln!("No generator handle!");
       }
 
+      *address_generation_active.lock().unwrap() = false;
+
       let message = "Address generation aborted";
       #[cfg(debug_assertions)]
       println!("{}", message);
@@ -5291,6 +5183,7 @@ fn create_main_window(
         Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
       };
 
+      // address_generation_speed_label.set_label("0/sec");
       delete_addresses_button_box.set_visible(true);
       stop_addresses_button_box.set_visible(false);
     }
@@ -5340,11 +5233,9 @@ fn create_main_window(
           settings.update_value("gui_maximized", toml_edit::value(gui_maximized), None);
           AppSettings::save_settings(&settings);
         });
-
-        glib::Propagation::Proceed
-      } else {
-        glib::Propagation::Proceed
       }
+
+      glib::Propagation::Proceed
     }
   ));
 
@@ -5355,7 +5246,7 @@ fn create_main_window(
       let elapsed = value.elapsed();
 
       let message = format!("Application startup time: {:.2?}", elapsed);
-      println!("{}", message);
+      // println!("{}", message);
 
       let lock_app_messages = app_messages_state.borrow();
       match lock_app_messages.queue_message(message, gtk::MessageType::Info) {

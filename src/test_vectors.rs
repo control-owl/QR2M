@@ -35,9 +35,8 @@ struct _MasterChildVector {
 
 #[cfg(test)]
 mod tests {
-  use crate::keys;
-
   use super::*;
+  use crate::keys;
 
   #[test]
   fn test_entropy_to_mnemonic() {
@@ -77,7 +76,12 @@ mod tests {
     ];
 
     for vector in entropy_mnemonic_vectors {
-      let mnemonic = keys::generate_mnemonic_words(vector.entropy, None);
+      let mnemonic = match keys::generate_mnemonic_words(vector.entropy, None) {
+        Ok(mnemonic) => mnemonic,
+        Err(_) => {
+          panic!("Error deriving mnemonic words")
+        }
+      };
       assert_eq!(mnemonic, vector.mnemonic);
     }
   }
@@ -103,8 +107,18 @@ mod tests {
     ];
 
     for vector in mnemonic_seed_vectors {
-      let seed_raw = keys::generate_seed_from_mnemonic(vector.mnemonic, vector.passphrase);
-      let seed = keys::convert_seed_to_mnemonic(&seed_raw);
+      let seed_raw = match keys::generate_seed_from_mnemonic(vector.mnemonic, vector.passphrase) {
+        Ok(seed) => seed,
+        Err(_) => {
+          panic!("Can not generate seed from mnemonic");
+        }
+      };
+      let seed = match keys::convert_seed_to_mnemonic(&seed_raw) {
+        Ok(seed) => seed,
+        Err(_) => {
+          panic!("Can not convert seed to mnemonic");
+        }
+      };
 
       assert_eq!(seed, vector.seed);
     }
@@ -156,7 +170,15 @@ mod tests {
     ];
 
     for vector in test_vectors {
-      keys::generate_master_keys_secp256k1(vector.seed, "0x0488ADE4", "0x0488B21E");
+      match keys::generate_master_keys_secp256k1(vector.seed, "0x0488ADE4", "0x0488B21E") {
+        Ok(_) => {
+          crate::d3bug("<<< generate_master_keys_secp256k1", "debug");
+        }
+        Err(err) => crate::d3bug(
+          &format!("generate_master_keys_secp256k1: \n{:?}", err),
+          "error",
+        ),
+      };
 
       let wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
 
@@ -272,7 +294,7 @@ mod tests {
         vector.index,
         vector.hardened,
       ) {
-        Some((child_private_key_bytes, child_chain_code_bytes, child_public_key_bytes)) => {
+        Ok(Some((child_private_key_bytes, child_chain_code_bytes, child_public_key_bytes))) => {
           assert_eq!(
             hex::encode(child_private_key_bytes),
             vector.expected_child_private_key_bytes
@@ -286,7 +308,7 @@ mod tests {
             vector.expected_child_public_key_bytes
           );
         }
-        None => panic!("Error deriving keys"),
+        _ => panic!("Error deriving keys"),
       }
     }
   }
