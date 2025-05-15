@@ -1,3 +1,6 @@
+# version 0.83.0
+- welcome screen (dev feature)
+- 
 # version 0.82.6
 - fixing function output
 

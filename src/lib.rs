@@ -382,14 +382,14 @@ pub fn save_config_to_file(
   let mut file = std::fs::File::create(local_config_file).map_err(|_err| {
     #[cfg(debug_assertions)]
     eprintln!("\t- Failed to create config file: {}", _err);
-    io::Error::new(io::ErrorKind::Other, "Failed to create config file")
+    io::Error::other("Failed to create config file")
   })?;
 
   file.write_all(toml_str.as_bytes()).map_err(|_err| {
     #[cfg(debug_assertions)]
     eprintln!("\t- Failed to write to config file: {}", _err);
 
-    io::Error::new(io::ErrorKind::Other, "Failed to write to config file")
+    io::Error::other("Failed to write to config file")
   })?;
 
   #[cfg(debug_assertions)]

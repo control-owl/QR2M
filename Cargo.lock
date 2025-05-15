@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "QR2M"
-version = "0.82.6"
+version = "0.83.0"
 dependencies = [
  "bs58",
  "csv",

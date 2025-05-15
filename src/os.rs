@@ -23,6 +23,7 @@ pub struct LocalSettings {
   pub local_config_file: Option<PathBuf>,
   pub local_temp_dir: Option<PathBuf>,
   pub local_temp_file: Option<PathBuf>,
+  pub first_run: bool,
   // pub local_do_not_show_file: Option<PathBuf>,
 }
 
@@ -137,7 +138,7 @@ pub fn switch_locale(lang: &str) -> FunctionOutput<()> {
 pub fn check_local_config() -> FunctionOutput<()> {
   d3bug(">>> check_local_config", "debug");
 
-  let local_settings = LOCAL_SETTINGS
+  let mut local_settings = LOCAL_SETTINGS
     .lock()
     .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
 
@@ -168,6 +169,7 @@ pub fn check_local_config() -> FunctionOutput<()> {
   }
 
   if !Path::new(&local_config_file).exists() {
+    local_settings.first_run = true;
     let default_settings = crate::AppSettings::default();
     let serialized = toml::to_string(&default_settings)
       .map_err(|e| crate::AppError::Custom(format!("Failed to serialize settings: {}", e)))?;
@@ -200,6 +202,8 @@ pub fn check_local_config() -> FunctionOutput<()> {
 
     #[cfg(debug_assertions)]
     println!("\t- New config file created");
+  } else {
+    local_settings.first_run = false;
   }
 
   Ok(())

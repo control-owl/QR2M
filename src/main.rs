@@ -1094,12 +1094,7 @@ impl AppSettings {
 
     let mut doc = config_str
       .parse::<toml_edit::DocumentMut>()
-      .map_err(|e| {
-        io::Error::new(
-          io::ErrorKind::Other,
-          format!("\t- Failed to parse config string: {}", e),
-        )
-      })
+      .map_err(|e| io::Error::other(format!("\t- Failed to parse config string: {}", e)))
       .unwrap_or(toml_edit::DocumentMut::new());
 
     {
@@ -1742,12 +1737,19 @@ async fn main() {
       };
 
       #[cfg(feature = "dev")]
-      match create_main_window(app.clone(), gui_state.clone(), Some(start_time)) {
-        Ok(_) => {
-          d3bug("<<< create_main_window", "debug");
+      {
+        let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
+        if local_settings.first_run {
+          create_welcome_screen(app.clone())
+        } else {
+          match create_main_window(app.clone(), gui_state.clone(), Some(start_time)) {
+            Ok(_) => {
+              d3bug("<<< create_main_window", "debug");
+            }
+            Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+          };
         }
-        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
-      };
+      }
     }
   ));
 
@@ -3654,174 +3656,6 @@ fn create_main_window(
     Some("sidebar-address"),
     &t!("UI.main.address"),
   );
-
-  // JUMP Generator
-  #[cfg(feature = "dev")]
-  {
-    let generator_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-    generator_main_box.set_hexpand(true);
-    generator_main_box.set_vexpand(true);
-    generator_main_box.set_margin_top(10);
-    generator_main_box.set_margin_start(10);
-    generator_main_box.set_margin_end(10);
-    generator_main_box.set_margin_bottom(10);
-
-    let generator_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-
-    let import_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-
-    // Import label
-    let import_label = gtk::Label::new(Some(&t!("UI.main.generator.import")));
-    import_main_box.append(&import_label);
-
-    // Import dropdown
-    let valid_import_as_string: Vec<String> = VALID_IMPORT_SOURCES
-      .iter()
-      .map(|&x| x.to_string())
-      .collect();
-    let valid_import_as_ref: Vec<&str> =
-      valid_import_as_string.iter().map(|s| s.as_ref()).collect();
-    let import_dropdown = gtk::DropDown::from_strings(&valid_import_as_ref);
-    import_main_box.append(&import_dropdown);
-
-    // Import entry
-    let import_text = gtk::TextView::new();
-    import_text.set_hexpand(true);
-    import_main_box.append(&import_text);
-
-    import_dropdown.connect_selected_notify(clone!(
-      #[weak]
-      import_text,
-      move |import_dropdown| {
-        let value = import_dropdown.selected() as usize;
-        let selected_import_source = VALID_IMPORT_SOURCES.get(value);
-        let source = selected_import_source.unwrap();
-
-        if *source == "Mnemonic" {
-          import_text.set_wrap_mode(gtk::WrapMode::Word);
-        } else {
-          import_text.set_wrap_mode(gtk::WrapMode::Char);
-        }
-      }
-    ));
-
-    // Derivation path label
-    let derivation_label = gtk::Label::new(Some(&t!("UI.main.address.derivation")));
-    import_main_box.append(&derivation_label);
-
-    // Derivation path dropdown
-    let valid_derivation_as_string: Vec<String> = VALID_BIP_DERIVATIONS
-      .iter()
-      .map(|&x| x.to_string())
-      .filter(|s| s != "Custom")
-      .collect();
-
-    let valid_derivation_as_ref: Vec<&str> = valid_derivation_as_string
-      .iter()
-      .map(|s| s.as_ref())
-      .collect();
-
-    let derivation_dropdown = gtk::DropDown::from_strings(&valid_derivation_as_ref);
-    import_main_box.append(&derivation_dropdown);
-
-    // Import button
-    let import_button = gtk::Button::new();
-    import_button.set_label(&t!("UI.main.generator.import.button"));
-    import_main_box.append(&import_button);
-
-    // Address table
-    let address_scrolled_window = gtk::ScrolledWindow::new();
-    let address_store_new = gio::ListStore::new::<AddressDatabase>();
-    let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
-      let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
-      let entry2 = obj2.downcast_ref::<AddressDatabase>().unwrap();
-
-      let id1 = entry1.property::<String>("id");
-      let id2 = entry2.property::<String>("id");
-      let coin1 = entry1.property::<String>("coin");
-      let coin2 = entry2.property::<String>("coin");
-
-      if id1 != id2 {
-        id1.cmp(&id2).into()
-      } else {
-        coin1.cmp(&coin2).into()
-      }
-    });
-    let address_sorted_model =
-      gtk::SortListModel::new(Some(address_store_new.clone()), Some(sorter));
-    let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
-    let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
-
-    address_treeview.set_show_column_separators(true);
-    address_treeview.set_show_row_separators(true);
-    address_treeview.set_vexpand(true);
-    address_treeview.set_hexpand(true);
-    address_scrolled_window.set_child(Some(&address_treeview));
-
-    let columns = [
-      &t!("UI.main.address.table.id"),
-      &t!("UI.main.address.table.coin"),
-      &t!("UI.main.address.table.path"),
-      &t!("UI.main.address.table.address"),
-      &t!("UI.main.address.table.pub"),
-      &t!("UI.main.address.table.priv"),
-    ];
-
-    for (i, column_title) in columns.iter().enumerate() {
-      let factory = gtk::SignalListItemFactory::new();
-      factory.connect_setup(move |_factory, list_item| {
-        let list_item = list_item
-          .downcast_ref::<gtk::ListItem>()
-          .expect("Needs to be ListItem");
-        let label = gtk::Label::new(None);
-        list_item.set_child(Some(&label));
-      });
-
-      factory.connect_bind(move |_factory, list_item| {
-        let list_item = list_item
-          .downcast_ref::<gtk::ListItem>()
-          .expect("Needs to be ListItem");
-        let label = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
-        let entry = list_item
-          .item()
-          .unwrap()
-          .downcast::<AddressDatabase>()
-          .unwrap();
-
-        let text = match i {
-          0 => entry.property::<String>("id"),
-          1 => entry.property::<String>("coin"),
-          2 => entry.property::<String>("path"),
-          3 => entry.property::<String>("address"),
-          4 => entry.property::<String>("public-key"),
-          5 => entry.property::<String>("private-key"),
-          _ => unreachable!(),
-        };
-        label.set_text(&text);
-      });
-
-      let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
-      column.set_expand(true);
-
-      address_treeview.append_column(&column);
-    }
-    import_main_box.append(&address_scrolled_window);
-
-    generator_main_content_box.append(&import_main_box);
-
-    generator_main_box.append(&generator_main_content_box);
-    generator_main_box.set_margin_top(10);
-    generator_main_box.set_margin_start(10);
-    generator_main_box.set_margin_end(10);
-    generator_main_box.set_margin_bottom(10);
-    generator_main_content_box.append(&master_keys_box);
-
-    stack.add_titled(
-      &generator_main_box,
-      Some("sidebar-generator"),
-      &t!("UI.main.generator"),
-    );
-  }
 
   // JUMP: Action: Open Wallet
   buttons["open"].connect_clicked(clone!(
@@ -7115,4 +6949,219 @@ fn d3bug(message: &str, msg_type: &str) {
   if msg_type != "debug" {
     println!("{}{}{}{}", color_code, prefix, message, reset);
   }
+}
+
+#[cfg(feature = "dev")]
+fn create_welcome_screen(application: adw::Application) {
+  let welcome_window = gtk::ApplicationWindow::builder()
+    .application(&application)
+    .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
+    .decorated(true)
+    .valign(gtk::Align::Center)
+    .resizable(false)
+    .build();
+
+  println!("Welcome");
+
+  let main_welcome_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
+  main_welcome_box.set_margin_start(50);
+  main_welcome_box.set_margin_end(50);
+  main_welcome_box.set_margin_top(50);
+  main_welcome_box.set_margin_bottom(50);
+
+  let new_wallet_button = gtk::Button::with_label("New wallet");
+  main_welcome_box.append(&new_wallet_button);
+
+  new_wallet_button.connect_clicked(clone!(
+    #[strong]
+    application,
+    #[strong]
+    welcome_window,
+    move |_| {
+      // match create_settings_window(gui_state.clone(), app_messages_state.clone()) {
+      //   Ok(window) => window.present(),
+      //   Err(err) => eprintln!("Error with settings window: {:?}", err),
+      // };
+      welcome_window.close();
+      create_new_wallet_window(application.clone());
+    }
+  ));
+
+  let open_wallet_button = gtk::Button::with_label("Open wallet");
+  main_welcome_box.append(&open_wallet_button);
+
+  let advance_wallet_button = gtk::Button::with_label("Advance");
+  main_welcome_box.append(&advance_wallet_button);
+
+  welcome_window.set_child(Some(&main_welcome_box));
+  welcome_window.present();
+}
+
+#[cfg(feature = "dev")]
+fn create_new_wallet_window(application: adw::Application) {
+  let window = gtk::ApplicationWindow::builder()
+    .application(&application)
+    .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
+    .width_request(600)
+    .height_request(400)
+    .build();
+
+  // JUMP Generator
+  let generator_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+  generator_main_box.set_hexpand(true);
+  generator_main_box.set_vexpand(true);
+  generator_main_box.set_margin_top(10);
+  generator_main_box.set_margin_start(10);
+  generator_main_box.set_margin_end(10);
+  generator_main_box.set_margin_bottom(10);
+
+  let generator_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+  let import_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+
+  // Import label
+  let import_label = gtk::Label::new(Some(&t!("UI.main.generator.import")));
+  import_main_box.append(&import_label);
+
+  // Import dropdown
+  let valid_import_as_string: Vec<String> = VALID_ENTROPY_SOURCES
+    .iter()
+    .map(|&x| x.to_string())
+    .collect();
+  let valid_import_as_ref: Vec<&str> = valid_import_as_string.iter().map(|s| s.as_ref()).collect();
+  let import_dropdown = gtk::DropDown::from_strings(&valid_import_as_ref);
+  import_main_box.append(&import_dropdown);
+
+  // Import entry
+  let import_text = gtk::TextView::new();
+  import_text.set_hexpand(true);
+  import_main_box.append(&import_text);
+
+  import_dropdown.connect_selected_notify(clone!(
+    #[weak]
+    import_text,
+    move |import_dropdown| {
+      let value = import_dropdown.selected() as usize;
+      let selected_import_source = VALID_IMPORT_SOURCES.get(value);
+      let source = selected_import_source.unwrap();
+
+      if *source == "Mnemonic" {
+        import_text.set_wrap_mode(gtk::WrapMode::Word);
+      } else {
+        import_text.set_wrap_mode(gtk::WrapMode::Char);
+      }
+    }
+  ));
+
+  // Derivation path label
+  let derivation_label = gtk::Label::new(Some(&t!("UI.main.address.derivation")));
+  import_main_box.append(&derivation_label);
+
+  // Derivation path dropdown
+  let valid_derivation_as_string: Vec<String> = VALID_BIP_DERIVATIONS
+    .iter()
+    .map(|&x| x.to_string())
+    .filter(|s| s != "Custom")
+    .collect();
+
+  let valid_derivation_as_ref: Vec<&str> = valid_derivation_as_string
+    .iter()
+    .map(|s| s.as_ref())
+    .collect();
+
+  let derivation_dropdown = gtk::DropDown::from_strings(&valid_derivation_as_ref);
+  import_main_box.append(&derivation_dropdown);
+
+  // Import button
+  let import_button = gtk::Button::new();
+  import_button.set_label(&t!("UI.main.generator.import.button"));
+  import_main_box.append(&import_button);
+
+  // Address table
+  let address_scrolled_window = gtk::ScrolledWindow::new();
+  let address_store_new = gio::ListStore::new::<AddressDatabase>();
+  let sorter = gtk::CustomSorter::new(move |obj1, obj2| {
+    let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
+    let entry2 = obj2.downcast_ref::<AddressDatabase>().unwrap();
+
+    let id1 = entry1.property::<String>("id");
+    let id2 = entry2.property::<String>("id");
+    let coin1 = entry1.property::<String>("coin");
+    let coin2 = entry2.property::<String>("coin");
+
+    if id1 != id2 {
+      id1.cmp(&id2).into()
+    } else {
+      coin1.cmp(&coin2).into()
+    }
+  });
+  let address_sorted_model = gtk::SortListModel::new(Some(address_store_new.clone()), Some(sorter));
+  let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
+  let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
+
+  address_treeview.set_show_column_separators(true);
+  address_treeview.set_show_row_separators(true);
+  address_treeview.set_vexpand(true);
+  address_treeview.set_hexpand(true);
+  address_scrolled_window.set_child(Some(&address_treeview));
+
+  let columns = [
+    &t!("UI.main.address.table.id"),
+    &t!("UI.main.address.table.coin"),
+    &t!("UI.main.address.table.path"),
+    &t!("UI.main.address.table.address"),
+    &t!("UI.main.address.table.pub"),
+    &t!("UI.main.address.table.priv"),
+  ];
+
+  for (i, column_title) in columns.iter().enumerate() {
+    let factory = gtk::SignalListItemFactory::new();
+    factory.connect_setup(move |_factory, list_item| {
+      let list_item = list_item
+        .downcast_ref::<gtk::ListItem>()
+        .expect("Needs to be ListItem");
+      let label = gtk::Label::new(None);
+      list_item.set_child(Some(&label));
+    });
+
+    factory.connect_bind(move |_factory, list_item| {
+      let list_item = list_item
+        .downcast_ref::<gtk::ListItem>()
+        .expect("Needs to be ListItem");
+      let label = list_item.child().unwrap().downcast::<gtk::Label>().unwrap();
+      let entry = list_item
+        .item()
+        .unwrap()
+        .downcast::<AddressDatabase>()
+        .unwrap();
+
+      let text = match i {
+        0 => entry.property::<String>("id"),
+        1 => entry.property::<String>("coin"),
+        2 => entry.property::<String>("path"),
+        3 => entry.property::<String>("address"),
+        4 => entry.property::<String>("public-key"),
+        5 => entry.property::<String>("private-key"),
+        _ => unreachable!(),
+      };
+      label.set_text(&text);
+    });
+
+    let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
+    column.set_expand(true);
+
+    address_treeview.append_column(&column);
+  }
+  import_main_box.append(&address_scrolled_window);
+
+  generator_main_content_box.append(&import_main_box);
+
+  generator_main_box.append(&generator_main_content_box);
+  generator_main_box.set_margin_top(10);
+  generator_main_box.set_margin_start(10);
+  generator_main_box.set_margin_end(10);
+  generator_main_box.set_margin_bottom(10);
+
+  window.set_child(Some(&generator_main_box));
+  window.present();
 }
