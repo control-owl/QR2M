@@ -542,9 +542,9 @@ UI:
     keys:
       author:
         verified:
-          en: "This application is signed with the author's key"
-          de: "Diese Anwendung ist mit dem Schlüssel des Autors signiert"
-          hr: "Ova aplikacija je potpisana autorskim ključem"
+          en: "The most recent commit belongs to the author, and the app matches the GitHub version"
+          de: "Das aktuellste Commit gehört dem Autor und die App entspricht der GitHub-Version"
+          hr: "Najnoviji commit pripada autoru, a aplikacija odgovara verziji s GitHub-a"
         error:
           en: "This key is not recognized. Proceed with extreme caution !!!"
           de: "Dieser Schlüssel wird nicht erkannt. Gehen Sie mit äußerster Vorsicht vor !!!"
