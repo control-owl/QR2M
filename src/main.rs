@@ -1731,7 +1731,7 @@ async fn main() {
     gui_state,
     move |app| {
       #[cfg(not(feature = "dev"))]
-      match create_main_window(&app, gui_state.clone()) {
+      match create_main_window(app, gui_state.clone()) {
         Ok(window) => {
           window.present();
           d3bug("<<< create_main_window", "debug");
@@ -7006,13 +7006,11 @@ fn create_welcome_window(
 ) -> FunctionOutput<gtk::ApplicationWindow> {
   let welcome_window = gtk::ApplicationWindow::builder()
     .application(application)
-    .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
+    .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap()))
     .decorated(true)
     .valign(gtk::Align::Center)
     .resizable(false)
     .build();
-
-  println!("Welcome");
 
   let main_welcome_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
   main_welcome_box.set_margin_start(50);
