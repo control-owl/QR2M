@@ -6947,7 +6947,7 @@ fn d3bug(message: &str, msg_type: &str) {
   }
 }
 
-// #[cfg(feature = "dev")]
+#[cfg(feature = "dev")]
 fn create_welcome_screen(application: &adw::Application) {
   let welcome_window = gtk::ApplicationWindow::builder()
     .application(application)
@@ -6997,7 +6997,7 @@ fn create_welcome_screen(application: &adw::Application) {
   welcome_window.present();
 }
 
-// #[cfg(feature = "dev")]
+#[cfg(feature = "dev")]
 fn create_new_wallet_window(
   application: &adw::Application,
   welcome_window: &gtk::ApplicationWindow,
