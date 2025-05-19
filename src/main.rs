@@ -1273,7 +1273,9 @@ impl AppMessages {
         self.start_message_processor();
         Ok(())
       } else {
-        Err(AppError::Custom("Not processing message".to_string()))
+        // Queue is empty
+        Ok(())
+        // Err(AppError::Custom("Not processing message".to_string()))
       }
     } else {
       // d3bug(&format!("Duplicated message: {:?}", new_message), "debug");
@@ -1730,7 +1732,8 @@ async fn main() {
     move |app| {
       #[cfg(not(feature = "dev"))]
       match create_main_window(&app, gui_state.clone()) {
-        Ok(_) => {
+        Ok(window) => {
+          window.present();
           d3bug("<<< create_main_window", "debug");
         }
         Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
@@ -1740,10 +1743,17 @@ async fn main() {
       {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         if local_settings.first_run {
-          create_welcome_screen(app)
+          match create_welcome_window(app, gui_state.clone()) {
+            Ok(window) => {
+              window.present();
+              d3bug("<<< create_welcome_window", "debug");
+            }
+            Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
+          };
         } else {
-          match create_main_window(app, gui_state.clone(), Some(start_time)) {
-            Ok(_) => {
+          match create_main_window(app, gui_state.clone(), None, Some(start_time)) {
+            Ok(window) => {
+              window.present();
               d3bug("<<< create_main_window", "debug");
             }
             Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
@@ -1815,6 +1825,9 @@ fn setup_app_actions(
   #[cfg(feature = "dev")]
   let test = gio::SimpleAction::new("test", None);
 
+  #[cfg(feature = "dev")]
+  let welcome = gio::SimpleAction::new("welcome", None);
+
   new.connect_activate(clone!(
     #[strong]
     application,
@@ -1824,6 +1837,8 @@ fn setup_app_actions(
       match create_main_window(
         &application,
         gui_state.clone(),
+        #[cfg(feature = "dev")]
+        None,
         #[cfg(feature = "dev")]
         None,
       ) {
@@ -1910,6 +1925,23 @@ fn setup_app_actions(
     }
   ));
 
+  #[cfg(feature = "dev")]
+  welcome.connect_activate(clone!(
+    #[strong]
+    application,
+    #[strong]
+    gui_state,
+    move |_action, _parameter| {
+      match create_welcome_window(&application, gui_state.clone()) {
+        Ok(window) => {
+          d3bug("<<< create_welcome_window", "debug");
+          window.present();
+        }
+        Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
+      };
+    }
+  ));
+
   application.set_accels_for_action("app.new", &["<Primary>N"]);
   application.set_accels_for_action("app.open", &["<Primary>O"]);
   application.set_accels_for_action("app.save", &["<Primary>S"]);
@@ -1922,6 +1954,9 @@ fn setup_app_actions(
 
   #[cfg(feature = "dev")]
   application.set_accels_for_action("app.test", &["<Primary>T"]);
+
+  #[cfg(feature = "dev")]
+  application.set_accels_for_action("app.welcome", &["<Primary>W"]);
 
   application.add_action(&new);
   application.add_action(&open);
@@ -1936,14 +1971,18 @@ fn setup_app_actions(
   #[cfg(feature = "dev")]
   application.add_action(&test);
 
+  #[cfg(feature = "dev")]
+  application.add_action(&welcome);
+
   Ok(())
 }
 
 fn create_main_window(
   application: &adw::Application,
   gui_state: Rc<RefCell<GuiState>>,
+  #[cfg(feature = "dev")] welcome_window: Option<gtk::ApplicationWindow>,
   #[cfg(feature = "dev")] start_time: Option<std::time::Instant>,
-) -> FunctionOutput<()> {
+) -> FunctionOutput<gtk::ApplicationWindow> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.create_main_window").to_string());
 
@@ -1960,6 +1999,18 @@ fn create_main_window(
     .show_menubar(true)
     .decorated(true)
     .build();
+
+  // Thanks to fucking microsoft, I need this stupid block! Tnx Gates!
+  #[cfg(feature = "dev")]
+  window.connect_destroy(clone!(
+    #[strong]
+    welcome_window,
+    move |_| {
+      if let Some(window) = welcome_window.as_ref() {
+        window.close()
+      }
+    }
+  ));
 
   let lock_app_settings = APP_SETTINGS.read().unwrap();
   let window_width = lock_app_settings.gui_last_width.unwrap();
@@ -2146,6 +2197,8 @@ fn create_main_window(
       match create_main_window(
         &application,
         gui_state.clone(),
+        #[cfg(feature = "dev")]
+        None,
         #[cfg(feature = "dev")]
         None,
       ) {
@@ -5069,7 +5122,6 @@ fn create_main_window(
     }
   ));
 
-  window.present();
   #[cfg(feature = "dev")]
   {
     if let Some(value) = start_time {
@@ -5086,7 +5138,7 @@ fn create_main_window(
     };
   }
 
-  Ok(())
+  Ok(window)
 }
 
 #[cfg(feature = "dev")]
@@ -6948,7 +7000,10 @@ fn d3bug(message: &str, msg_type: &str) {
 }
 
 #[cfg(feature = "dev")]
-fn create_welcome_screen(application: &adw::Application) {
+fn create_welcome_window(
+  application: &adw::Application,
+  gui_state: Rc<RefCell<GuiState>>,
+) -> FunctionOutput<gtk::ApplicationWindow> {
   let welcome_window = gtk::ApplicationWindow::builder()
     .application(application)
     .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
@@ -6976,14 +7031,15 @@ fn create_welcome_screen(application: &adw::Application) {
     #[weak]
     welcome_window,
     move |_| {
-      create_new_wallet_window(&application, &welcome_window);
-
-      // Panic
-      welcome_window.set_hide_on_close(true);
       welcome_window.close();
-      // if let Some(window) = welcome_window_rc.borrow_mut().take() {
-      //   window.close();
-      // }
+
+      match create_new_wallet_window(&application, Some(welcome_window)) {
+        Ok(window) => {
+          window.present();
+          d3bug("<<< create_new_wallet_window", "debug");
+        }
+        Err(err) => d3bug(&format!("create_new_wallet_window: {:?}", err), "error"),
+      };
     }
   ));
 
@@ -6993,15 +7049,43 @@ fn create_welcome_screen(application: &adw::Application) {
   let advance_wallet_button = gtk::Button::with_label("Advance");
   main_welcome_box.append(&advance_wallet_button);
 
+  advance_wallet_button.connect_clicked(clone!(
+    #[strong]
+    application,
+    #[weak]
+    welcome_window,
+    #[strong]
+    gui_state,
+    move |_| {
+      welcome_window.close();
+
+      let start_time = std::time::Instant::now();
+
+      match create_main_window(
+        &application,
+        gui_state.clone(),
+        Some(welcome_window),
+        Some(start_time),
+      ) {
+        Ok(window) => {
+          window.present();
+          d3bug("<<< create_main_window", "debug");
+        }
+        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+      };
+    }
+  ));
+
   welcome_window.set_child(Some(&main_welcome_box));
-  welcome_window.present();
+
+  Ok(welcome_window)
 }
 
 #[cfg(feature = "dev")]
 fn create_new_wallet_window(
   application: &adw::Application,
-  welcome_window: &gtk::ApplicationWindow,
-) {
+  welcome_window: Option<gtk::ApplicationWindow>,
+) -> FunctionOutput<gtk::ApplicationWindow> {
   let window = gtk::ApplicationWindow::builder()
     .application(application)
     .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
@@ -7013,9 +7097,12 @@ fn create_new_wallet_window(
     #[strong]
     welcome_window,
     move |_| {
-      welcome_window.destroy();
+      if let Some(window) = welcome_window.as_ref() {
+        window.close()
+      }
     }
   ));
+
   // JUMP Generator
   let generator_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
   generator_main_box.set_hexpand(true);
@@ -7173,5 +7260,6 @@ fn create_new_wallet_window(
   generator_main_box.set_margin_bottom(10);
 
   window.set_child(Some(&generator_main_box));
-  window.present();
+
+  Ok(window)
 }

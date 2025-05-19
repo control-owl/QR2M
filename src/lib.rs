@@ -416,6 +416,6 @@ pub fn get_active_app_feature() -> &'static str {
   } else if cfg!(feature = "full") {
     "Full"
   } else {
-    "Basic"
+    "Offline"
   }
 }
