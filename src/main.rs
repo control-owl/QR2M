@@ -1740,9 +1740,9 @@ async fn main() {
       {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         if local_settings.first_run {
-          create_welcome_screen(&app)
+          create_welcome_screen(app)
         } else {
-          match create_main_window(&app, gui_state.clone(), Some(start_time)) {
+          match create_main_window(app, gui_state.clone(), Some(start_time)) {
             Ok(_) => {
               d3bug("<<< create_main_window", "debug");
             }
@@ -2078,7 +2078,7 @@ fn create_main_window(
     }
   }
 
-  match setup_app_actions(&application, gui_state.clone(), app_messages_state.clone()) {
+  match setup_app_actions(application, gui_state.clone(), app_messages_state.clone()) {
     Ok(_) => {
       #[cfg(debug_assertions)]
       println!("setup_app_actions done");
