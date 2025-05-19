@@ -72,8 +72,8 @@ const VALID_BIP_DERIVATIONS: &[&str] = &[
   "Custom",
 ];
 const VALID_ENTROPY_SOURCES: &[&str] = &["RNG+", "File", "QRNG"];
-#[cfg(feature = "dev")]
-const VALID_IMPORT_SOURCES: &[&str] = &["Entropy", "Mnemonic", "Seed"];
+// #[cfg(feature = "dev")]
+// const VALID_IMPORT_SOURCES: &[&str] = &["Entropy", "Mnemonic", "Seed"];
 const VALID_WALLET_PURPOSE: &[&str] = &["Internal", "External"];
 const VALID_ANU_API_DATA_FORMAT: &[&str] = &[
   "uint8",
@@ -1729,7 +1729,7 @@ async fn main() {
     gui_state,
     move |app| {
       #[cfg(not(feature = "dev"))]
-      match create_main_window(app.clone(), gui_state.clone()) {
+      match create_main_window(&app, gui_state.clone()) {
         Ok(_) => {
           d3bug("<<< create_main_window", "debug");
         }
@@ -1740,9 +1740,9 @@ async fn main() {
       {
         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
         if local_settings.first_run {
-          create_welcome_screen(app.clone())
+          create_welcome_screen(&app)
         } else {
-          match create_main_window(app.clone(), gui_state.clone(), Some(start_time)) {
+          match create_main_window(&app, gui_state.clone(), Some(start_time)) {
             Ok(_) => {
               d3bug("<<< create_main_window", "debug");
             }
@@ -1792,7 +1792,7 @@ fn print_program_info() -> FunctionOutput<()> {
 }
 
 fn setup_app_actions(
-  application: adw::Application,
+  application: &adw::Application,
   gui_state: Rc<RefCell<GuiState>>,
   app_messages_state: Rc<RefCell<AppMessages>>,
 ) -> FunctionOutput<()> {
@@ -1822,7 +1822,7 @@ fn setup_app_actions(
     gui_state,
     move |_action, _parameter| {
       match create_main_window(
-        application.clone(),
+        &application,
         gui_state.clone(),
         #[cfg(feature = "dev")]
         None,
@@ -1893,7 +1893,7 @@ fn setup_app_actions(
   ));
 
   quit.connect_activate(clone!(
-    #[weak]
+    #[strong]
     application,
     move |_action, _parameter| {
       application.quit();
@@ -1940,7 +1940,7 @@ fn setup_app_actions(
 }
 
 fn create_main_window(
-  application: adw::Application,
+  application: &adw::Application,
   gui_state: Rc<RefCell<GuiState>>,
   #[cfg(feature = "dev")] start_time: Option<std::time::Instant>,
 ) -> FunctionOutput<()> {
@@ -1950,7 +1950,7 @@ fn create_main_window(
   let feature = qr2m_lib::get_active_app_feature();
 
   let window = gtk::ApplicationWindow::builder()
-    .application(&application)
+    .application(application)
     .title(format!(
       "{} {} ({})",
       APP_NAME.unwrap(),
@@ -2078,11 +2078,7 @@ fn create_main_window(
     }
   }
 
-  match setup_app_actions(
-    application.clone(),
-    gui_state.clone(),
-    app_messages_state.clone(),
-  ) {
+  match setup_app_actions(&application, gui_state.clone(), app_messages_state.clone()) {
     Ok(_) => {
       #[cfg(debug_assertions)]
       println!("setup_app_actions done");
@@ -2148,7 +2144,7 @@ fn create_main_window(
     gui_state,
     move |_| {
       match create_main_window(
-        application.clone(),
+        &application,
         gui_state.clone(),
         #[cfg(feature = "dev")]
         None,
@@ -6951,10 +6947,10 @@ fn d3bug(message: &str, msg_type: &str) {
   }
 }
 
-#[cfg(feature = "dev")]
-fn create_welcome_screen(application: adw::Application) {
+// #[cfg(feature = "dev")]
+fn create_welcome_screen(application: &adw::Application) {
   let welcome_window = gtk::ApplicationWindow::builder()
-    .application(&application)
+    .application(application)
     .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
     .decorated(true)
     .valign(gtk::Align::Center)
@@ -6972,18 +6968,22 @@ fn create_welcome_screen(application: adw::Application) {
   let new_wallet_button = gtk::Button::with_label("New wallet");
   main_welcome_box.append(&new_wallet_button);
 
+  // let welcome_window_rc = Rc::new(RefCell::new(Some(welcome_window.clone())));
+
   new_wallet_button.connect_clicked(clone!(
     #[strong]
     application,
-    #[strong]
+    #[weak]
     welcome_window,
     move |_| {
-      // match create_settings_window(gui_state.clone(), app_messages_state.clone()) {
-      //   Ok(window) => window.present(),
-      //   Err(err) => eprintln!("Error with settings window: {:?}", err),
-      // };
+      create_new_wallet_window(&application, &welcome_window);
+
+      // Panic
+      welcome_window.set_hide_on_close(true);
       welcome_window.close();
-      create_new_wallet_window(application.clone());
+      // if let Some(window) = welcome_window_rc.borrow_mut().take() {
+      //   window.close();
+      // }
     }
   ));
 
@@ -6997,15 +6997,25 @@ fn create_welcome_screen(application: adw::Application) {
   welcome_window.present();
 }
 
-#[cfg(feature = "dev")]
-fn create_new_wallet_window(application: adw::Application) {
+// #[cfg(feature = "dev")]
+fn create_new_wallet_window(
+  application: &adw::Application,
+  welcome_window: &gtk::ApplicationWindow,
+) {
   let window = gtk::ApplicationWindow::builder()
-    .application(&application)
+    .application(application)
     .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
     .width_request(600)
     .height_request(400)
     .build();
 
+  window.connect_destroy(clone!(
+    #[strong]
+    welcome_window,
+    move |_| {
+      welcome_window.destroy();
+    }
+  ));
   // JUMP Generator
   let generator_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
   generator_main_box.set_hexpand(true);
@@ -7042,7 +7052,7 @@ fn create_new_wallet_window(application: adw::Application) {
     import_text,
     move |import_dropdown| {
       let value = import_dropdown.selected() as usize;
-      let selected_import_source = VALID_IMPORT_SOURCES.get(value);
+      let selected_import_source = VALID_ENTROPY_SOURCES.get(value);
       let source = selected_import_source.unwrap();
 
       if *source == "Mnemonic" {
