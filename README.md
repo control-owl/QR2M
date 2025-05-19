@@ -55,6 +55,7 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 - **Cross-platform GUI** built with **GTK4** for Linux, macOS and Windows
 - **Secure and lightweight**: Written in Rust, ensuring robust performance and security.
 - **Really fast**: Generate **7500** addresses per second
+- **Offline** version
 
 
 ## Installation
