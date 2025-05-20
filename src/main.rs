@@ -2009,41 +2009,8 @@ fn create_main_window(
     .build();
 
   if let Some(window) = last_window.as_ref() {
-    window.set_hide_on_close(true);
-    window.close();
+    window.set_visible(false);
   }
-
-  window.connect_close_request(clone!(
-    #[strong]
-    last_window,
-    move |window| {
-      let gui_last_width = window.width() as i64;
-      let gui_last_height = window.height() as i64;
-      let gui_maximized = window.is_maximized();
-
-      let gui_save_size = {
-        let app_settings_lock = APP_SETTINGS.read().unwrap();
-        app_settings_lock.gui_save_size.unwrap()
-      };
-
-      if gui_save_size {
-        std::thread::spawn(move || {
-          let mut settings = APP_SETTINGS.write().unwrap();
-          settings.update_value("gui_last_width", toml_edit::value(gui_last_width), None);
-          settings.update_value("gui_last_height", toml_edit::value(gui_last_height), None);
-          settings.update_value("gui_maximized", toml_edit::value(gui_maximized), None);
-          AppSettings::save_settings(&settings);
-        });
-      }
-
-      if let Some(window) = last_window.as_ref() {
-        window.set_hide_on_close(false);
-        window.present()
-      }
-
-      glib::Propagation::Proceed
-    }
-  ));
 
   let lock_app_settings = APP_SETTINGS.read().unwrap();
   let window_width = lock_app_settings.gui_last_width.unwrap();
@@ -5142,6 +5109,49 @@ fn create_main_window(
     };
   }
 
+  window.connect_close_request(clone!(
+    #[strong]
+    last_window,
+    #[strong]
+    generator_handler,
+    move |window| {
+      let gui_last_width = window.width() as i64;
+      let gui_last_height = window.height() as i64;
+      let gui_maximized = window.is_maximized();
+
+      let gui_save_size = {
+        let app_settings_lock = APP_SETTINGS.read().unwrap();
+        app_settings_lock.gui_save_size.unwrap()
+      };
+
+      if gui_save_size {
+        std::thread::spawn(move || {
+          let mut settings = APP_SETTINGS.write().unwrap();
+          settings.update_value("gui_last_width", toml_edit::value(gui_last_width), None);
+          settings.update_value("gui_last_height", toml_edit::value(gui_last_height), None);
+          settings.update_value("gui_maximized", toml_edit::value(gui_maximized), None);
+          AppSettings::save_settings(&settings);
+        });
+      }
+
+      if let Some(window) = last_window.as_ref() {
+        window.set_visible(true);
+        window.present()
+      }
+
+      if let Some((handle, cancel_tx, cancel_speed_tx)) = generator_handler.lock().unwrap().take() {
+        cancel_tx.send(true).ok();
+        cancel_speed_tx.send(true).ok();
+        handle.abort();
+      } else {
+        #[cfg(debug_assertions)]
+        eprintln!("No generator handle!");
+      }
+
+      glib::Propagation::Proceed
+    }
+  ));
+
   Ok(window)
 }
 
@@ -7017,18 +7027,6 @@ fn create_welcome_window(
     .resizable(false)
     .build();
 
-  welcome_window.connect_close_request(clone!(
-    #[strong]
-    application,
-    move |window| {
-      if !window.hides_on_close() {
-        application.quit();
-      }
-
-      glib::Propagation::Proceed
-    }
-  ));
-
   let welcome_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
   welcome_main_box.set_margin_top(50);
   welcome_main_box.set_margin_start(50);
@@ -7044,7 +7042,6 @@ fn create_welcome_window(
   logo_picture.set_paintable(Some(&pixy));
 
   logo_box.append(&logo_picture);
-  // logo_box.set_hexpand(true);
   logo_box.set_halign(gtk::Align::Center);
   welcome_main_box.append(&logo_box);
 
@@ -7066,6 +7063,8 @@ fn create_welcome_window(
     #[weak]
     welcome_window,
     move |_| {
+      d3bug("new_wallet_button.connect_clicked", "debug");
+
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
       welcome_window.set_cursor(busy_cursor.as_ref());
 
@@ -7076,8 +7075,8 @@ fn create_welcome_window(
         }
         Err(err) => d3bug(&format!("create_new_wallet_window: {:?}", err), "error"),
       };
+
       welcome_window.set_cursor(None);
-      // welcome_window.close();
     }
   ));
 
@@ -7095,6 +7094,8 @@ fn create_welcome_window(
     #[strong]
     gui_state,
     move |_| {
+      d3bug("advance_wallet_button.connect_clicked", "debug");
+
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
       welcome_window.set_cursor(busy_cursor.as_ref());
 
@@ -7131,12 +7132,10 @@ fn create_new_wallet_window(
     .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
     .width_request(600)
     .height_request(400)
-    .hide_on_close(true)
     .build();
 
   if let Some(window) = last_window.as_ref() {
-    window.set_hide_on_close(true);
-    window.close();
+    window.set_visible(false);
   }
 
   new_wallet_window.connect_close_request(clone!(
@@ -7146,7 +7145,7 @@ fn create_new_wallet_window(
     application,
     move |_| {
       if let Some(window) = last_window.as_ref() {
-        window.set_hide_on_close(false);
+        window.set_visible(true);
         window.present()
       } else {
         application.quit();
@@ -7156,58 +7155,35 @@ fn create_new_wallet_window(
     }
   ));
 
-  // JUMP Generator
-  let generator_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-  generator_main_box.set_hexpand(true);
-  generator_main_box.set_vexpand(true);
-  generator_main_box.set_margin_top(10);
-  generator_main_box.set_margin_start(10);
-  generator_main_box.set_margin_end(10);
-  generator_main_box.set_margin_bottom(10);
+  let wallet_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+  wallet_main_box.set_hexpand(true);
+  wallet_main_box.set_vexpand(true);
+  wallet_main_box.set_margin_top(10);
+  wallet_main_box.set_margin_start(10);
+  wallet_main_box.set_margin_end(10);
+  wallet_main_box.set_margin_bottom(10);
 
-  let generator_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+  let wallet_main_content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
 
-  let import_main_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+  // Source
+  let source_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let source_label = gtk::Label::new(Some(&t!("UI.wallet.source")));
+  source_main_box.append(&source_label);
 
-  // Import label
-  let import_label = gtk::Label::new(Some(&t!("UI.main.generator.import")));
-  import_main_box.append(&import_label);
-
-  // Import dropdown
-  let valid_import_as_string: Vec<String> = VALID_ENTROPY_SOURCES
+  let valid_source_as_string: Vec<String> = VALID_ENTROPY_SOURCES
     .iter()
     .map(|&x| x.to_string())
     .collect();
-  let valid_import_as_ref: Vec<&str> = valid_import_as_string.iter().map(|s| s.as_ref()).collect();
-  let import_dropdown = gtk::DropDown::from_strings(&valid_import_as_ref);
-  import_main_box.append(&import_dropdown);
+  let valid_source_as_ref: Vec<&str> = valid_source_as_string.iter().map(|s| s.as_ref()).collect();
+  let source_dropdown = gtk::DropDown::from_strings(&valid_source_as_ref);
+  source_main_box.append(&source_dropdown);
+  wallet_main_content_box.append(&source_main_box);
 
-  // Import entry
-  let import_text = gtk::TextView::new();
-  import_text.set_hexpand(true);
-  import_main_box.append(&import_text);
-
-  import_dropdown.connect_selected_notify(clone!(
-    #[weak]
-    import_text,
-    move |import_dropdown| {
-      let value = import_dropdown.selected() as usize;
-      let selected_import_source = VALID_ENTROPY_SOURCES.get(value);
-      let source = selected_import_source.unwrap();
-
-      if *source == "Mnemonic" {
-        import_text.set_wrap_mode(gtk::WrapMode::Word);
-      } else {
-        import_text.set_wrap_mode(gtk::WrapMode::Char);
-      }
-    }
-  ));
-
-  // Derivation path label
+  // Derivation path
+  let derivation_main_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let derivation_label = gtk::Label::new(Some(&t!("UI.main.address.derivation")));
-  import_main_box.append(&derivation_label);
+  derivation_main_box.append(&derivation_label);
 
-  // Derivation path dropdown
   let valid_derivation_as_string: Vec<String> = VALID_BIP_DERIVATIONS
     .iter()
     .map(|&x| x.to_string())
@@ -7220,12 +7196,13 @@ fn create_new_wallet_window(
     .collect();
 
   let derivation_dropdown = gtk::DropDown::from_strings(&valid_derivation_as_ref);
-  import_main_box.append(&derivation_dropdown);
+  derivation_main_box.append(&derivation_dropdown);
+  wallet_main_content_box.append(&derivation_main_box);
 
-  // Import button
-  let import_button = gtk::Button::new();
-  import_button.set_label(&t!("UI.main.generator.import.button"));
-  import_main_box.append(&import_button);
+  // Button
+  let generate_wallet_button = gtk::Button::new();
+  generate_wallet_button.set_label(&t!("UI.wallet.button"));
+  wallet_main_content_box.append(&generate_wallet_button);
 
   // Address table
   let address_scrolled_window = gtk::ScrolledWindow::new();
@@ -7302,17 +7279,15 @@ fn create_new_wallet_window(
 
     address_treeview.append_column(&column);
   }
-  import_main_box.append(&address_scrolled_window);
+  wallet_main_content_box.append(&address_scrolled_window);
 
-  generator_main_content_box.append(&import_main_box);
+  wallet_main_box.append(&wallet_main_content_box);
+  wallet_main_box.set_margin_top(10);
+  wallet_main_box.set_margin_start(10);
+  wallet_main_box.set_margin_end(10);
+  wallet_main_box.set_margin_bottom(10);
 
-  generator_main_box.append(&generator_main_content_box);
-  generator_main_box.set_margin_top(10);
-  generator_main_box.set_margin_start(10);
-  generator_main_box.set_margin_end(10);
-  generator_main_box.set_margin_bottom(10);
-
-  new_wallet_window.set_child(Some(&generator_main_box));
+  new_wallet_window.set_child(Some(&wallet_main_box));
 
   Ok(new_wallet_window)
 }

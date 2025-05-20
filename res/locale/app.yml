@@ -413,12 +413,6 @@ UI:
           en: "Total addresses"
           de: "Adressen insgesamt"
           hr: "Ukupno adresa"
-    generator:
-      en: "Generator"
-      import:
-        en: "Please select source"
-        button:
-          en: "Create wallet"
     database:
       column:
         status:
@@ -612,6 +606,11 @@ UI:
         en: "Application key present"
         de: "Anwendungsschlüssel vorhanden"
         hr: "Ključ aplikacije prisutan"
+  wallet:
+    source:
+      en: "Please select source"
+    button:
+      en: "Create wallet"
 error:
   settings:
     config:
