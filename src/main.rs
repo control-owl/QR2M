@@ -3,7 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 // #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -1681,8 +1681,8 @@ impl AddressDatabase {
 
 #[tokio::main]
 async fn main() {
-  #[cfg(feature = "dev")]
-  let start_time = std::time::Instant::now();
+  // #[cfg(feature = "dev")]
+  // let start_time = std::time::Instant::now();
 
   match print_program_info() {
     Ok(_) => {
@@ -1730,36 +1730,44 @@ async fn main() {
     #[strong]
     gui_state,
     move |app| {
-      #[cfg(not(feature = "dev"))]
-      match create_main_window(app, gui_state.clone()) {
+      //       #[cfg(not(feature = "dev"))]
+      //       match create_main_window(app, gui_state.clone()) {
+      //         Ok(window) => {
+      //           window.present();
+      //           d3bug("<<< create_main_window", "debug");
+      //         }
+      //         Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+      //       };
+      //
+      //       #[cfg(feature = "dev")]
+      //       {
+      //         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
+      //         if local_settings.first_run {
+      //           match create_welcome_window(app, gui_state.clone(), None) {
+      //             Ok(window) => {
+      //               window.present();
+      //               d3bug("<<< create_welcome_window", "debug");
+      //             }
+      //             Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
+      //           };
+      //         } else {
+      //           match create_main_window(app, gui_state.clone(), None, Some(start_time)) {
+      //             Ok(window) => {
+      //               window.present();
+      //               d3bug("<<< create_main_window", "debug");
+      //             }
+      //             Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+      //           };
+      //         }
+      //       }
+
+      match create_welcome_window(app, gui_state.clone()) {
         Ok(window) => {
           window.present();
-          d3bug("<<< create_main_window", "debug");
+          d3bug("<<< create_welcome_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
       };
-
-      #[cfg(feature = "dev")]
-      {
-        let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
-        if local_settings.first_run {
-          match create_welcome_window(app, gui_state.clone()) {
-            Ok(window) => {
-              window.present();
-              d3bug("<<< create_welcome_window", "debug");
-            }
-            Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
-          };
-        } else {
-          match create_main_window(app, gui_state.clone(), None, Some(start_time)) {
-            Ok(window) => {
-              window.present();
-              d3bug("<<< create_main_window", "debug");
-            }
-            Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
-          };
-        }
-      }
     }
   ));
 
@@ -1837,16 +1845,15 @@ fn setup_app_actions(
       match create_main_window(
         &application,
         gui_state.clone(),
-        #[cfg(feature = "dev")]
         None,
         #[cfg(feature = "dev")]
         None,
       ) {
-        Ok(_) => {
-          #[cfg(debug_assertions)]
-          println!("create_main_window done");
+        Ok(window) => {
+          window.present();
+          d3bug("<<< create_main_window", "debug");
         }
-        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
       };
     }
   ));
@@ -1980,7 +1987,7 @@ fn setup_app_actions(
 fn create_main_window(
   application: &adw::Application,
   gui_state: Rc<RefCell<GuiState>>,
-  #[cfg(feature = "dev")] welcome_window: Option<gtk::ApplicationWindow>,
+  last_window: Option<gtk::ApplicationWindow>,
   #[cfg(feature = "dev")] start_time: Option<std::time::Instant>,
 ) -> FunctionOutput<gtk::ApplicationWindow> {
   #[cfg(debug_assertions)]
@@ -1998,17 +2005,43 @@ fn create_main_window(
     ))
     .show_menubar(true)
     .decorated(true)
+    // .hide_on_close(true)
     .build();
 
-  // Thanks to fucking microsoft, I need this stupid block! Tnx Gates!
-  #[cfg(feature = "dev")]
-  window.connect_destroy(clone!(
+  if let Some(window) = last_window.as_ref() {
+    window.set_hide_on_close(true);
+    window.close();
+  }
+
+  window.connect_close_request(clone!(
     #[strong]
-    welcome_window,
-    move |_| {
-      if let Some(window) = welcome_window.as_ref() {
-        window.close()
+    last_window,
+    move |window| {
+      let gui_last_width = window.width() as i64;
+      let gui_last_height = window.height() as i64;
+      let gui_maximized = window.is_maximized();
+
+      let gui_save_size = {
+        let app_settings_lock = APP_SETTINGS.read().unwrap();
+        app_settings_lock.gui_save_size.unwrap()
+      };
+
+      if gui_save_size {
+        std::thread::spawn(move || {
+          let mut settings = APP_SETTINGS.write().unwrap();
+          settings.update_value("gui_last_width", toml_edit::value(gui_last_width), None);
+          settings.update_value("gui_last_height", toml_edit::value(gui_last_height), None);
+          settings.update_value("gui_maximized", toml_edit::value(gui_maximized), None);
+          AppSettings::save_settings(&settings);
+        });
       }
+
+      if let Some(window) = last_window.as_ref() {
+        window.set_hide_on_close(false);
+        window.present()
+      }
+
+      glib::Propagation::Proceed
     }
   ));
 
@@ -2197,16 +2230,15 @@ fn create_main_window(
       match create_main_window(
         &application,
         gui_state.clone(),
-        #[cfg(feature = "dev")]
         None,
         #[cfg(feature = "dev")]
         None,
       ) {
-        Ok(_) => {
-          #[cfg(debug_assertions)]
-          println!("create_main_window done");
+        Ok(window) => {
+          window.present();
+          d3bug("<<< create_main_window", "debug");
         }
-        Err(err) => eprintln!("\t- Error in function create_main_window : {:?}", err),
+        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
       };
     }
   ));
@@ -4559,9 +4591,8 @@ fn create_main_window(
   ));
 
   let address_generation_active = std::sync::Arc::new(std::sync::Mutex::new(false));
+
   // JUMP: Generate Addresses button
-  // // Working version
-  // #[cfg(not(feature = "dev"))]
   generate_addresses_button.connect_clicked(clone!(
     #[strong]
     address_store,
@@ -5094,33 +5125,6 @@ fn create_main_window(
   }
 
   window.set_child(Some(&main_window_box));
-
-  window.connect_close_request(clone!(
-    #[strong]
-    window,
-    move |_| {
-      let gui_last_width = window.width() as i64;
-      let gui_last_height = window.height() as i64;
-      let gui_maximized = window.is_maximized();
-
-      let gui_save_size = {
-        let app_settings_lock = APP_SETTINGS.read().unwrap();
-        app_settings_lock.gui_save_size.unwrap()
-      };
-
-      if gui_save_size {
-        std::thread::spawn(move || {
-          let mut settings = APP_SETTINGS.write().unwrap();
-          settings.update_value("gui_last_width", toml_edit::value(gui_last_width), None);
-          settings.update_value("gui_last_height", toml_edit::value(gui_last_height), None);
-          settings.update_value("gui_maximized", toml_edit::value(gui_maximized), None);
-          AppSettings::save_settings(&settings);
-        });
-      }
-
-      glib::Propagation::Proceed
-    }
-  ));
 
   #[cfg(feature = "dev")]
   {
@@ -6999,11 +7003,12 @@ fn d3bug(message: &str, msg_type: &str) {
   }
 }
 
-#[cfg(feature = "dev")]
 fn create_welcome_window(
   application: &adw::Application,
   gui_state: Rc<RefCell<GuiState>>,
 ) -> FunctionOutput<gtk::ApplicationWindow> {
+  d3bug(">>> create_welcome_window", "debug");
+
   let welcome_window = gtk::ApplicationWindow::builder()
     .application(application)
     .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap()))
@@ -7012,40 +7017,75 @@ fn create_welcome_window(
     .resizable(false)
     .build();
 
-  let main_welcome_box = gtk::Box::new(gtk::Orientation::Horizontal, 50);
-  main_welcome_box.set_margin_start(50);
-  main_welcome_box.set_margin_end(50);
-  main_welcome_box.set_margin_top(50);
-  main_welcome_box.set_margin_bottom(50);
+  welcome_window.connect_close_request(clone!(
+    #[strong]
+    application,
+    move |window| {
+      if !window.hides_on_close() {
+        application.quit();
+      }
+
+      glib::Propagation::Proceed
+    }
+  ));
+
+  let welcome_main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+  welcome_main_box.set_margin_top(50);
+  welcome_main_box.set_margin_start(50);
+  welcome_main_box.set_margin_end(50);
+  welcome_window.set_child(Some(&welcome_main_box));
+
+  let logo_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+  let pixy: gtk4::gdk::Texture =
+    qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}", GUI_IMAGE_EXTENSION));
+
+  let logo_picture = gtk::Image::from_paintable(Some(&pixy));
+  logo_picture.set_size_request(256, 256);
+  logo_picture.set_paintable(Some(&pixy));
+
+  logo_box.append(&logo_picture);
+  // logo_box.set_hexpand(true);
+  logo_box.set_halign(gtk::Align::Center);
+  welcome_main_box.append(&logo_box);
+
+  let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+  button_box.set_margin_start(50);
+  button_box.set_margin_end(50);
+  button_box.set_margin_top(50);
+  button_box.set_margin_bottom(50);
+  button_box.set_halign(gtk::Align::Center);
+  welcome_main_box.append(&button_box);
 
   let new_wallet_button = gtk::Button::with_label("New wallet");
-  main_welcome_box.append(&new_wallet_button);
+  button_box.append(&new_wallet_button);
 
-  // let welcome_window_rc = Rc::new(RefCell::new(Some(welcome_window.clone())));
-
+  #[cfg(feature = "dev")]
   new_wallet_button.connect_clicked(clone!(
     #[strong]
     application,
     #[weak]
     welcome_window,
     move |_| {
-      welcome_window.close();
+      let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
+      welcome_window.set_cursor(busy_cursor.as_ref());
 
-      match create_new_wallet_window(&application, Some(welcome_window)) {
+      match create_new_wallet_window(&application, Some(welcome_window.clone())) {
         Ok(window) => {
           window.present();
           d3bug("<<< create_new_wallet_window", "debug");
         }
         Err(err) => d3bug(&format!("create_new_wallet_window: {:?}", err), "error"),
       };
+      welcome_window.set_cursor(None);
+      // welcome_window.close();
     }
   ));
 
   let open_wallet_button = gtk::Button::with_label("Open wallet");
-  main_welcome_box.append(&open_wallet_button);
+  button_box.append(&open_wallet_button);
 
   let advance_wallet_button = gtk::Button::with_label("Advance");
-  main_welcome_box.append(&advance_wallet_button);
+  button_box.append(&advance_wallet_button);
 
   advance_wallet_button.connect_clicked(clone!(
     #[strong]
@@ -7055,15 +7095,15 @@ fn create_welcome_window(
     #[strong]
     gui_state,
     move |_| {
-      welcome_window.close();
-
-      let start_time = std::time::Instant::now();
+      let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
+      welcome_window.set_cursor(busy_cursor.as_ref());
 
       match create_main_window(
         &application,
         gui_state.clone(),
-        Some(welcome_window),
-        Some(start_time),
+        Some(welcome_window.clone()),
+        #[cfg(feature = "dev")]
+        Some(std::time::Instant::now()),
       ) {
         Ok(window) => {
           window.present();
@@ -7071,10 +7111,10 @@ fn create_welcome_window(
         }
         Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
       };
+
+      welcome_window.set_cursor(None);
     }
   ));
-
-  welcome_window.set_child(Some(&main_welcome_box));
 
   Ok(welcome_window)
 }
@@ -7082,22 +7122,37 @@ fn create_welcome_window(
 #[cfg(feature = "dev")]
 fn create_new_wallet_window(
   application: &adw::Application,
-  welcome_window: Option<gtk::ApplicationWindow>,
+  last_window: Option<gtk::ApplicationWindow>,
 ) -> FunctionOutput<gtk::ApplicationWindow> {
-  let window = gtk::ApplicationWindow::builder()
+  d3bug(">>> create_new_wallet_window", "debug");
+
+  let new_wallet_window = gtk::ApplicationWindow::builder()
     .application(application)
     .title(format!("{} {}", APP_NAME.unwrap(), APP_VERSION.unwrap(),))
     .width_request(600)
     .height_request(400)
+    .hide_on_close(true)
     .build();
 
-  window.connect_destroy(clone!(
+  if let Some(window) = last_window.as_ref() {
+    window.set_hide_on_close(true);
+    window.close();
+  }
+
+  new_wallet_window.connect_close_request(clone!(
     #[strong]
-    welcome_window,
+    last_window,
+    #[strong]
+    application,
     move |_| {
-      if let Some(window) = welcome_window.as_ref() {
-        window.close()
+      if let Some(window) = last_window.as_ref() {
+        window.set_hide_on_close(false);
+        window.present()
+      } else {
+        application.quit();
       }
+
+      glib::Propagation::Proceed
     }
   ));
 
@@ -7257,7 +7312,7 @@ fn create_new_wallet_window(
   generator_main_box.set_margin_end(10);
   generator_main_box.set_margin_bottom(10);
 
-  window.set_child(Some(&generator_main_box));
+  new_wallet_window.set_child(Some(&generator_main_box));
 
-  Ok(window)
+  Ok(new_wallet_window)
 }

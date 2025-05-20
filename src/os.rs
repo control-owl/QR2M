@@ -222,7 +222,7 @@ fn is_directory_writable(dir: &Path) -> FunctionOutput<bool> {
         // eprintln!("Failed to delete temporary file: {}", err);
         return Err(crate::AppError::Io(err));
       }
-      d3bug(&format!("Directory is writtable: {:?}", dir), "info");
+      d3bug(&format!("Directory is writable: {:?}", dir), "info");
       Ok(true)
     }
     Err(e) => Err(crate::AppError::Io(e)),

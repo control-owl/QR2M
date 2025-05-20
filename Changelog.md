@@ -1,8 +1,11 @@
+# version 0.84.0
+- welcome window
+
 # version 0.83.1
 - Renamed Basic feature to Offline
 
 # version 0.83.0
-- welcome screen (dev feature)
+- welcome window (dev feature)
 
 # version 0.82.6
 - fixing function output
