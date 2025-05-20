@@ -17,9 +17,10 @@
       <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Cargo_Format" />
       <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Cargo_Clippy" />
       <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Cargo_Check" />
-      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Basic" run_configuration_type="CargoCommandRunConfiguration" run_configuration_target="RsBuildProfile:release" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Offline" run_configuration_type="CargoCommandRunConfiguration" run_configuration_target="RsBuildProfile:release" />
       <option name="RunConfigurationTask" enabled="true" run_configuration_name="Full" run_configuration_type="CargoCommandRunConfiguration" run_configuration_target="RsBuildProfile:release" />
       <option name="RunConfigurationTask" enabled="true" run_configuration_name="Dev" run_configuration_type="CargoCommandRunConfiguration" run_configuration_target="RsBuildProfile:release" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="Test keys" run_configuration_type="CargoCommandRunConfiguration" />
     </method>
   </configuration>
 </component>
