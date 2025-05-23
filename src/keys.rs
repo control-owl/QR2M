@@ -125,12 +125,18 @@ pub fn derive_child_key_secp256k1(
   let child_pubkey = secp256k1::PublicKey::from_secret_key(&secp, &child_secret_key);
   let child_public_key_bytes = child_pubkey.serialize().to_vec();
 
-  #[cfg(debug_assertions)]
-  {
-    println!("child_private_key_bytes {:?}", child_secret_key_bytes);
-    println!("child_chain_code_bytes {:?}", child_chain_code_bytes);
-    println!("child_public_key_bytes {:?}", child_public_key_bytes);
-  }
+  d3bug(
+    &format!("child_private_key_bytes {:?}", child_private_key_bytes),
+    "debug",
+  );
+  d3bug(
+    &format!("child_chain_code_bytes {:?}", child_chain_code_bytes),
+    "debug",
+  );
+  d3bug(
+    &format!("child_public_key_bytes {:?}", child_public_key_bytes),
+    "debug",
+  );
 
   Ok(Some((
     child_secret_key_bytes,
@@ -201,14 +207,10 @@ pub fn create_private_key_for_address(
     "sha256+ripemd160" => match private_key {
       Some(key) => {
         let private_key_hex = hex::encode(key.secret_bytes());
-        #[cfg(debug_assertions)]
-        println!("Private key hex: {}", private_key_hex);
+        d3bug(&format!("private_key_hex {:?}", private_key_hex), "debug");
         Ok(private_key_hex)
       }
-      None => {
-        println!("Private key must be provided");
-        Err(AppError::Custom("Private key must be provided".to_string()))
-      }
+      None => Err(AppError::Custom("Private key must be provided".to_string())),
     },
     _ => Err(AppError::Custom(format!(
       "Unsupported hash method: {}",
@@ -305,8 +307,7 @@ pub fn generate_address_sha256(
   public_key: &CryptoPublicKey,
   public_key_hash: &[u8],
 ) -> FunctionOutput<String> {
-  #[cfg(debug_assertions)]
-  println!("[+] {}", &t!("log.generate_address_sha256").to_string());
+  d3bug(">>> generate_address_sha256", "debug");
 
   let public_key_bytes = match public_key {
     CryptoPublicKey::Secp256k1(key) => key.serialize().to_vec(),

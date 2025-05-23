@@ -18,11 +18,13 @@ use gtk::{Stack, StackSidebar, gio, glib::clone};
 use gtk4::{self as gtk};
 use libadwaita as adw;
 use rand::Rng;
+use rayon::prelude::*;
 use std::{
   cell::RefCell,
   fs::{self, File},
   io::{self, BufRead},
   rc::Rc,
+  sync::{Arc, Mutex, mpsc},
   time::SystemTime,
 };
 
@@ -117,11 +119,11 @@ impl std::fmt::Display for AppError {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 lazy_static::lazy_static! {
-    static ref APP_SETTINGS: std::sync::Arc<std::sync::RwLock<AppSettings>> = std::sync::Arc::new(std::sync::RwLock::new(AppSettings::default()));
-    static ref APP_LOG: std::sync::Arc<std::sync::Mutex<AppLog>> = std::sync::Arc::new(std::sync::Mutex::new(AppLog::new()));
-    static ref WALLET_SETTINGS: std::sync::Arc<std::sync::Mutex<WalletSettings>> = std::sync::Arc::new(std::sync::Mutex::new(WalletSettings::new()));
-    static ref CRYPTO_ADDRESS: std::sync::Arc<dashmap::DashMap<String, CryptoAddresses>> = std::sync::Arc::new(dashmap::DashMap::new());
-    static ref DERIVATION_PATH: std::sync::Arc<std::sync::RwLock<DerivationPath>> = std::sync::Arc::new(std::sync::RwLock::new(DerivationPath::default()));
+    static ref APP_SETTINGS: Arc<std::sync::RwLock<AppSettings>> = Arc::new(std::sync::RwLock::new(AppSettings::default()));
+    static ref APP_LOG: Arc<Mutex<AppLog>> = Arc::new(Mutex::new(AppLog::new()));
+    static ref WALLET_SETTINGS: Arc<Mutex<WalletSettings>> = Arc::new(Mutex::new(WalletSettings::new()));
+    static ref CRYPTO_ADDRESS: Arc<dashmap::DashMap<String, CryptoAddresses>> = Arc::new(dashmap::DashMap::new());
+    static ref DERIVATION_PATH: Arc<std::sync::RwLock<DerivationPath>> = Arc::new(std::sync::RwLock::new(DerivationPath::default()));
 }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -1236,17 +1238,16 @@ struct CryptoAddresses {
 
 struct AppMessages {
   gui_info_bar: Option<gtk::Revealer>,
-  message_queue:
-    std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
-  processing: std::sync::Arc<std::sync::Mutex<bool>>,
+  message_queue: Arc<Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
+  processing: Arc<Mutex<bool>>,
 }
 
 impl AppMessages {
   fn new(info_bar: Option<gtk::Revealer>) -> Self {
     Self {
       gui_info_bar: info_bar,
-      message_queue: std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::new())),
-      processing: std::sync::Arc::new(std::sync::Mutex::new(false)),
+      message_queue: Arc::new(Mutex::new(std::collections::VecDeque::new())),
+      processing: Arc::new(Mutex::new(false)),
     }
   }
 
@@ -1368,11 +1369,9 @@ impl AppMessages {
   }
 
   fn start_next_message(
-    queue: &std::sync::Arc<
-      std::sync::Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>,
-    >,
+    queue: &Arc<Mutex<std::collections::VecDeque<(String, gtk::MessageType)>>>,
     info_bar: &gtk::Revealer,
-    processing: &std::sync::Arc<std::sync::Mutex<bool>>,
+    processing: &Arc<Mutex<bool>>,
     timeout: u32,
   ) {
     #[cfg(debug_assertions)]
@@ -1441,7 +1440,7 @@ impl AppMessages {
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 struct AppLog {
-  status: std::sync::Arc<std::sync::Mutex<bool>>,
+  status: Arc<Mutex<bool>>,
   // log_button: Option<gtk::Button>,
   _messages: Option<std::collections::VecDeque<(String, gtk::MessageType)>>,
 }
@@ -1449,7 +1448,7 @@ struct AppLog {
 impl AppLog {
   fn new() -> Self {
     Self {
-      status: std::sync::Arc::new(std::sync::Mutex::new(false)),
+      status: Arc::new(Mutex::new(false)),
       // log_button: Some(log_button),
       _messages: None,
     }
@@ -1679,11 +1678,8 @@ impl AddressDatabase {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#[tokio::main]
-async fn main() {
-  // #[cfg(feature = "dev")]
-  // let start_time = std::time::Instant::now();
-
+// #[tokio::main]
+fn main() {
   match print_program_info() {
     Ok(_) => {
       d3bug("<<< print_program_info", "debug");
@@ -2100,7 +2096,7 @@ fn create_main_window(
 
   {
     let mut lock_app_log = APP_LOG.lock().unwrap();
-    lock_app_log.status = std::sync::Arc::new(std::sync::Mutex::new(app_log_status));
+    lock_app_log.status = Arc::new(Mutex::new(app_log_status));
 
     lock_app_log.initialize_app_log(gui_state.clone());
   }
@@ -3446,13 +3442,6 @@ fn create_main_window(
     format!("m/{}'/0'/0'/0", wallet_bip)
   };
 
-  // let derivation_label_text = gtk4::Label::builder()
-  //   .label(&default_bip_label)
-  //   .halign(gtk::Align::Center)
-  //   .valign(gtk::Align::Center)
-  //   .css_classes(["large-title"])
-  //   .build();
-
   let derivation_label_text = gtk::TextView::new();
   derivation_label_text.set_editable(false);
   derivation_label_text.set_wrap_mode(gtk::WrapMode::Char);
@@ -3473,13 +3462,14 @@ fn create_main_window(
   delete_addresses_button_box.append(&delete_addresses_button);
   delete_addresses_button_box.set_visible(false);
 
-  let generator_handler = std::sync::Arc::new(std::sync::Mutex::new(
+  let generator_handler = Arc::new(Mutex::new(
     None::<(
-      tokio::task::JoinHandle<()>,
-      tokio::sync::watch::Sender<bool>,
-      tokio::sync::watch::Sender<bool>,
+      std::thread::JoinHandle<()>,
+      Arc<Mutex<bool>>,
+      Arc<Mutex<bool>>,
     )>,
   ));
+
   let stop_addresses_button_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let stop_address_generation_button =
     gtk::Button::with_label(&t!("UI.main.address.generate.stop"));
@@ -3638,7 +3628,7 @@ fn create_main_window(
   address_total_generated_count_box.append(&address_total_generated_count_label);
 
   // Address speed
-  let items_added_in_last_second = std::sync::Arc::new(std::sync::Mutex::new(0u64));
+  let items_added_in_last_second = Arc::new(Mutex::new(0u64));
   let counts = Rc::new(RefCell::new(vec![0u64; 10]));
   let index = Rc::new(RefCell::new(0usize));
   let max_speed = Rc::new(RefCell::new(0u64));
@@ -4557,7 +4547,7 @@ fn create_main_window(
     }
   ));
 
-  let address_generation_active = std::sync::Arc::new(std::sync::Mutex::new(false));
+  let address_generation_active = Arc::new(Mutex::new(false));
 
   // JUMP: Generate Addresses button
   generate_addresses_button.connect_clicked(clone!(
@@ -4624,11 +4614,8 @@ fn create_main_window(
       stop_addresses_button_box.set_visible(true);
       delete_addresses_button_box.set_visible(false);
 
-      let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
-      let _key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
-
       #[cfg(not(feature = "dev"))]
-      if _key_derivation != "secp256k1" {
+      if wallet_settings.key_derivation.clone().unwrap_or_default() != "secp256k1" {
         let lock_app_messages = app_messages_state.borrow();
         match lock_app_messages.queue_message(
           t!("error.address.unsupported").to_string(),
@@ -4649,32 +4636,32 @@ fn create_main_window(
 
       let hardened_address = address_options_hardened_address_checkbox.is_active();
       let address_start_point = address_start_spinbutton.text();
-      let mut address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
+      let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
 
       let address_count = address_count_spinbutton.text();
       let address_count_int = address_count.parse::<usize>().unwrap_or(1);
 
-      let (channel_sender_addresses, channel_receiver_addresses) = std::sync::mpsc::channel();
-      let (channel_sender_progress, channel_receiver_progress) = std::sync::mpsc::channel();
-      let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
-      let (cancel_speed_tx, cancel_speed_rx) = tokio::sync::watch::channel(false);
+      let (channel_sender_addresses, channel_receiver_addresses) = mpsc::channel();
+      let (channel_sender_progress, channel_receiver_progress) = mpsc::channel();
+      let cancel_flag = Arc::new(Mutex::new(false));
+      let cancel_speed_flag = Arc::new(Mutex::new(false));
+      let cancel_flag_for_thread = cancel_flag.clone();
 
       let cpu_threads = num_cpus::get();
-
+      let multiplier = if cfg!(feature = "dev") { 2 } else { 1 };
       let generating_threads = if address_count_int <= cpu_threads || address_count_int < 100 {
-        1
+        multiplier
       } else {
-        cpu_threads
+        6
       };
 
       let addresses_per_thread = address_count_int / generating_threads;
       let extra_addresses = address_count_int % generating_threads;
 
-      let generated_addresses = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-      let progress_status = std::sync::Arc::new(std::sync::Mutex::new(0.0));
+      let generated_addresses = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+      let progress_status = Arc::new(Mutex::new(0.0));
 
       let next_generator = generated_addresses.clone();
-
       let start_time = std::time::Instant::now();
 
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
@@ -4686,8 +4673,7 @@ fn create_main_window(
       let index = index.clone();
       let address_generation_active = address_generation_active.clone();
 
-      // JUMP: Address speed
-      // FIX: Close this loop !! create handler and close by abort/stop
+      // Speed update timeout
       let speed_generator_id: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
       *speed_generator_id.borrow_mut() = Some(glib::timeout_add_local(
         std::time::Duration::from_millis(500),
@@ -4699,12 +4685,13 @@ fn create_main_window(
           let ema_speed = ema_speed.clone();
           let address_generation_speed_label = address_generation_speed_label.clone();
           let timeout_id = speed_generator_id.clone();
+          let cancel_speed_flag = cancel_speed_flag.clone();
 
           move || {
-            if *cancel_speed_rx.borrow() {
-              let _ = timeout_id.borrow_mut().take().map(SourceId::remove);
-
-              // address_generation_speed_label.set_label("0/sec");
+            if *cancel_speed_flag.lock().unwrap() {
+              if let Some(id) = timeout_id.borrow_mut().take() {
+                SourceId::remove(id);
+              }
               *items_added_in_last_second.lock().unwrap() = 0;
               counts.borrow_mut().fill(0);
               *ema_speed.borrow_mut() = 0.0;
@@ -4725,7 +4712,6 @@ fn create_main_window(
               *max = raw_speed as u64;
             }
 
-            // JUMP ema speed
             let alpha = 0.5;
             let mut ema = ema_speed.borrow_mut();
             *ema = alpha * raw_speed + (1.0 - alpha) * *ema;
@@ -4744,165 +4730,159 @@ fn create_main_window(
 
       *address_generation_active.lock().unwrap() = true;
 
-      let address_loop = tokio::spawn(async move {
-        let mut handles = vec![];
-        let cancel_rx = std::sync::Arc::new(tokio::sync::Mutex::new(cancel_rx));
+      // Configure Rayon thread pool
+      let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(generating_threads)
+        .build()
+        .expect("Failed to build Rayon thread pool");
 
-        for thread_id in 0..generating_threads {
-          let num_addresses = if thread_id < extra_addresses {
-            addresses_per_thread + 1
-          } else {
-            addresses_per_thread
-          };
+      // Run address generation in a separate thread
+      let generation_handle = std::thread::spawn(move || {
+        pool.install(|| {
+          (0..generating_threads)
+            .into_par_iter()
+            .for_each(|thread_id| {
+              let num_addresses = if thread_id < extra_addresses {
+                addresses_per_thread + 1
+              } else {
+                addresses_per_thread
+              };
 
-          if num_addresses == 0 {
-            continue;
-          }
-
-          let channel_sender_addresses = channel_sender_addresses.clone();
-          let channel_sender_progress = channel_sender_progress.clone();
-          let cancel_rx = cancel_rx.clone();
-          let wallet_settings = wallet_settings.clone();
-          let derivation_path = derivation_path.clone();
-          let coin_name = coin_name.clone();
-          let generated_addresses = generated_addresses.clone();
-          let progress_status = progress_status.clone();
-          let items_added_in_last_second = items_added_in_last_second.clone();
-
-          let handle = tokio::spawn(async move {
-            let mut generated_count = 0;
-            let mut current_index = address_start_point_int;
-            let mut batch: Vec<CryptoAddresses> = Vec::new();
-
-            while generated_count < num_addresses {
-              let cancel_rx = cancel_rx.lock().await;
-              if *cancel_rx.borrow() {
-                #[cfg(debug_assertions)]
-                println!("Address generation aborted (thread {})", thread_id);
-
-                if !batch.is_empty() {
-                  channel_sender_addresses.send(batch).unwrap_or_default()
-                }
-
-                let _ = channel_sender_progress.send(1.0);
+              if num_addresses == 0 {
                 return;
               }
-              drop(cancel_rx);
 
-              if current_index > WALLET_MAX_ADDRESSES as usize {
-                break;
-              }
+              let mut generated_count = 0;
+              let mut current_index =
+                thread_id * addresses_per_thread + std::cmp::min(thread_id, extra_addresses);
+              let mut batch: Vec<CryptoAddresses> = Vec::new();
+              let mut batch_size = 512;
+              let max_batch_size = generating_threads * batch_size;
 
-              let derivation_path = if hardened_address {
-                format!("{}/{}'", derivation_path, current_index)
-              } else {
-                format!("{}/{}", derivation_path, current_index)
-              };
+              while generated_count < num_addresses {
+                if *cancel_flag_for_thread.lock().unwrap() {
+                  #[cfg(debug_assertions)]
+                  println!("Address generation aborted (thread {})", thread_id);
 
-              let coin_path_id = match qr2m_lib::derivation_path_to_integer(&derivation_path) {
-                Ok(value) => value,
-                Err(_) => return,
-              };
+                  if !batch.is_empty() {
+                    channel_sender_addresses.send(batch).unwrap_or_default();
+                  }
+                  channel_sender_progress.send(1.0).unwrap_or_default();
+                  return;
+                }
 
-              match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
-                dashmap::mapref::entry::Entry::Vacant(_) => {
-                  let magic_ingredients = keys::AddressHocusPokus {
-                    coin_index: wallet_settings.coin_index.unwrap_or_default(),
-                    derivation_path: derivation_path.clone(),
-                    master_private_key_bytes: wallet_settings
-                      .master_private_key_bytes
-                      .clone()
-                      .unwrap_or_default(),
-                    master_chain_code_bytes: wallet_settings
-                      .master_chain_code_bytes
-                      .clone()
-                      .unwrap_or_default(),
-                    public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
-                    key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
-                    wallet_import_format: wallet_settings
-                      .wallet_import_format
-                      .clone()
-                      .unwrap_or_default(),
-                    hash: wallet_settings.hash.clone().unwrap_or_default(),
-                    // seed: wallet_settings.seed.clone().unwrap_or_default(),
-                  };
+                if current_index > WALLET_MAX_ADDRESSES as usize {
+                  break;
+                }
 
-                  if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
-                    let new_entry = CryptoAddresses {
-                      id: Some(coin_path_id.clone()),
-                      coin_name: Some(coin_name.clone()),
-                      derivation_path: Some(derivation_path.clone()),
-                      address: Some(address.address.clone()),
-                      public_key: Some(address.public_key.clone()),
-                      private_key: Some(address.private_key.clone()),
+                let derivation_path = if hardened_address {
+                  format!("{}/{}'", derivation_path, current_index)
+                } else {
+                  format!("{}/{}", derivation_path, current_index)
+                };
+
+                let coin_path_id = match qr2m_lib::derivation_path_to_integer(&derivation_path) {
+                  Ok(value) => value,
+                  Err(_) => return,
+                };
+
+                match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
+                  dashmap::mapref::entry::Entry::Vacant(_) => {
+                    let magic_ingredients = keys::AddressHocusPokus {
+                      coin_index: wallet_settings.coin_index.unwrap_or_default(),
+                      derivation_path: derivation_path.clone(),
+                      master_private_key_bytes: wallet_settings
+                        .master_private_key_bytes
+                        .clone()
+                        .unwrap_or_default(),
+                      master_chain_code_bytes: wallet_settings
+                        .master_chain_code_bytes
+                        .clone()
+                        .unwrap_or_default(),
+                      public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
+                      key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
+                      wallet_import_format: wallet_settings
+                        .wallet_import_format
+                        .clone()
+                        .unwrap_or_default(),
+                      hash: wallet_settings.hash.clone().unwrap_or_default(),
                     };
 
-                    batch.push(new_entry);
+                    if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
+                      let new_entry = CryptoAddresses {
+                        id: Some(coin_path_id),
+                        coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
+                        derivation_path: Some(derivation_path),
+                        address: Some(address.address),
+                        public_key: Some(address.public_key),
+                        private_key: Some(address.private_key),
+                      };
 
-                    // JUMP: batch size
-                    if batch.len() >= 100
-                      || batch.len() >= addresses_per_thread
-                      || batch.len() >= address_count_int
-                    {
-                      channel_sender_addresses
-                        .send(batch.clone())
-                        .unwrap_or_default();
-                      batch.clear();
-                      // batch_size = std::cmp::min(batch_size * 2, max_batch_size);
-                    }
+                      batch.push(new_entry);
 
-                    let current_total =
-                      generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                      // JUMP: batch size
+                      if batch.len() >= batch_size
+                        || batch.len() >= addresses_per_thread
+                        || batch.len() >= address_count_int
+                      {
+                        channel_sender_addresses
+                          .send(batch.clone())
+                          .unwrap_or_default();
+                        batch.clear();
+                        batch_size = std::cmp::min(batch_size + batch_size / 10, max_batch_size);
+                      }
 
-                    let new_progress = if address_count_int > 0 {
-                      (current_total as f64) / (address_count_int as f64)
+                      let current_total =
+                        generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+
+                      let new_progress = if address_count_int > 0 {
+                        (current_total as f64) / (address_count_int as f64)
+                      } else {
+                        0.0
+                      };
+
+                      let mut last = progress_status.lock().unwrap();
+                      if new_progress > *last + 0.01 || new_progress >= 1.0 {
+                        *last = new_progress;
+                        channel_sender_progress
+                          .send(new_progress)
+                          .unwrap_or_default();
+                      }
+
+                      generated_count += 1;
+                      current_index += 1;
+                      *items_added_in_last_second.lock().unwrap() += 1u64;
                     } else {
-                      0.0
-                    };
-
-                    let mut last = progress_status.lock().unwrap();
-                    if new_progress > *last + 0.01 || new_progress >= 1.0 {
-                      *last = new_progress;
-                      let _ = channel_sender_progress.send(new_progress);
+                      eprintln!("problem with generating address");
+                      break;
                     }
-
-                    generated_count += 1;
+                  }
+                  dashmap::mapref::entry::Entry::Occupied(_) => {
                     current_index += 1;
-                    *items_added_in_last_second.lock().unwrap() += 1u64;
-                  } else {
-                    eprintln!("problem with generating address");
-                    break;
+                    continue;
                   }
                 }
-                dashmap::mapref::entry::Entry::Occupied(_) => {
-                  current_index += 1;
-                  continue;
-                }
               }
-            }
 
-            if !batch.is_empty() {
-              channel_sender_addresses.send(batch).unwrap_or_default();
-            }
+              if !batch.is_empty() {
+                channel_sender_addresses.send(batch).unwrap_or_default();
+              }
 
-            #[cfg(debug_assertions)]
-            println!(
-              "Thread {} generating derivation_path: {}",
-              thread_id, &derivation_path
-            );
-          });
-
-          handles.push(handle);
-          address_start_point_int += num_addresses;
-        }
-
-        for handle in handles {
-          handle.await.unwrap();
-        }
-        let _ = channel_sender_progress.send(1.0);
+              #[cfg(debug_assertions)]
+              println!(
+                "Thread {} generating derivation_path: {}",
+                thread_id, &derivation_path
+              );
+            });
+        });
       });
 
-      *generator_handler.lock().unwrap() = Some((address_loop, cancel_tx, cancel_speed_tx));
+      // Store the thread handle and cancellation flags
+      *generator_handler.lock().unwrap() = Some((
+        generation_handle,
+        cancel_flag.clone(),
+        cancel_speed_flag.clone(),
+      ));
 
       glib::idle_add_local(clone!(
         #[strong]
@@ -4919,28 +4899,25 @@ fn create_main_window(
         generator_handler,
         move || {
           while let Ok(new_entry) = channel_receiver_addresses.try_recv() {
-            let entries: Vec<AddressDatabase> = new_entry
-              .into_iter()
-              .filter(|new_coin| {
-                let id = new_coin.id.as_deref().unwrap_or("");
-                if CRYPTO_ADDRESS.contains_key(id) {
-                  false
-                } else {
-                  CRYPTO_ADDRESS.insert(id.to_owned(), new_coin.clone());
-                  true
-                }
-              })
-              .map(|mut new_coin| {
-                AddressDatabase::new(
+            let mut entries: Vec<AddressDatabase> = Vec::new();
+
+            for mut new_coin in new_entry {
+              let id = new_coin.id.as_deref().unwrap_or("");
+
+              if CRYPTO_ADDRESS
+                .insert(id.to_owned(), new_coin.clone())
+                .is_none()
+              {
+                entries.push(AddressDatabase::new(
                   &new_coin.id.take().unwrap_or_default(),
                   &new_coin.coin_name.take().unwrap_or_default(),
                   &new_coin.derivation_path.take().unwrap_or_default(),
                   &new_coin.address.take().unwrap_or_default(),
                   &new_coin.public_key.take().unwrap_or_default(),
                   &new_coin.private_key.take().unwrap_or_default(),
-                )
-              })
-              .collect();
+                ));
+              }
+            }
 
             address_store.extend_from_slice(&entries);
           }
@@ -4963,27 +4940,19 @@ fn create_main_window(
 
               stop_addresses_button_box.set_visible(false);
               delete_addresses_button_box.set_visible(true);
-              // address_generation_speed_label.set_label("0/sec");
-
               window.set_cursor(None);
 
-              let next_address = next_generator
-                .as_ref()
-                .load(std::sync::atomic::Ordering::SeqCst)
-                // + address_count_int
-                + address_start_point_int;
+              let next_address =
+                next_generator.load(std::sync::atomic::Ordering::SeqCst) + address_start_point_int;
 
               address_start_spinbutton.set_value(next_address as f64);
 
-              if let Some((handle, cancel_tx, cancel_speed_tx)) =
+              if let Some((handle, cancel_flag, cancel_speed_flag)) =
                 generator_handler.lock().unwrap().take()
               {
-                cancel_tx.send(true).ok();
-                cancel_speed_tx.send(true).ok();
-                handle.abort();
-              } else {
-                #[cfg(debug_assertions)]
-                eprintln!("No generator handle!");
+                *cancel_flag.lock().unwrap() = true;
+                *cancel_speed_flag.lock().unwrap() = true;
+                let _ = handle.join();
               }
 
               *address_generation_active.lock().unwrap() = false;
@@ -4997,6 +4966,474 @@ fn create_main_window(
       ));
     }
   ));
+
+  // #[cfg(not(feature = "dev"))]
+  // generate_addresses_button.connect_clicked(clone!(
+  //   #[strong]
+  //   address_store,
+  //   #[strong]
+  //   stop_addresses_button_box,
+  //   #[strong]
+  //   generator_handler,
+  //   #[strong]
+  //   app_messages_state,
+  //   #[weak]
+  //   derivation_label_text,
+  //   #[weak]
+  //   master_private_key_text,
+  //   #[weak]
+  //   address_start_spinbutton,
+  //   #[weak]
+  //   address_count_spinbutton,
+  //   #[weak]
+  //   address_options_hardened_address_checkbox,
+  //   #[weak]
+  //   address_generation_progress_bar,
+  //   #[weak]
+  //   delete_addresses_button_box,
+  //   #[weak]
+  //   window,
+  //   #[strong]
+  //   address_generation_speed_label,
+  //   #[weak]
+  //   address_generation_speed_frame,
+  //   #[weak]
+  //   address_generation_active,
+  //   move |_| {
+  //     let buffer = master_private_key_text.buffer();
+  //     let start_iter = buffer.start_iter();
+  //     let end_iter = buffer.end_iter();
+  //     let master_private_key_string = buffer.text(&start_iter, &end_iter, true);
+  //
+  //     if master_private_key_string.is_empty() {
+  //       let lock_app_messages = app_messages_state.borrow();
+  //       match lock_app_messages.queue_message(
+  //         t!("error.address.master").to_string(),
+  //         gtk::MessageType::Warning,
+  //       ) {
+  //         Ok(_) => {}
+  //         Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+  //       };
+  //       return;
+  //     }
+  //
+  //     if *address_generation_active.lock().unwrap() {
+  //       return;
+  //     }
+  //     address_generation_speed_label.set_label("0/sec");
+  //
+  //     let wallet_settings = {
+  //       let lock = WALLET_SETTINGS.lock().unwrap();
+  //       lock.clone()
+  //     };
+  //
+  //     address_generation_progress_bar.set_fraction(0.0);
+  //     address_generation_progress_bar.set_show_text(true);
+  //     stop_addresses_button_box.set_visible(true);
+  //     delete_addresses_button_box.set_visible(false);
+  //
+  //     // let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+  //     let _key_derivation = wallet_settings.key_derivation.clone().unwrap_or_default();
+  //
+  //     #[cfg(not(feature = "dev"))]
+  //     if _key_derivation != "secp256k1" {
+  //       let lock_app_messages = app_messages_state.borrow();
+  //       match lock_app_messages.queue_message(
+  //         t!("error.address.unsupported").to_string(),
+  //         gtk::MessageType::Error,
+  //       ) {
+  //         Ok(_) => {}
+  //         Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+  //       };
+  //       return;
+  //     }
+  //
+  //     let derivation_path = {
+  //       let buffer = derivation_label_text.buffer();
+  //       let start_iter = buffer.start_iter();
+  //       let end_iter = buffer.end_iter();
+  //       buffer.text(&start_iter, &end_iter, false)
+  //     };
+  //
+  //     let hardened_address = address_options_hardened_address_checkbox.is_active();
+  //     let address_start_point = address_start_spinbutton.text();
+  //     let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
+  //
+  //     let address_count = address_count_spinbutton.text();
+  //     let address_count_int = address_count.parse::<usize>().unwrap_or(1);
+  //
+  //     let (channel_sender_addresses, channel_receiver_addresses) = std::sync::mpsc::channel();
+  //     let (channel_sender_progress, channel_receiver_progress) = std::sync::mpsc::channel();
+  //     let (cancel_tx, cancel_rx) = tokio::sync::watch::channel(false);
+  //     let (cancel_speed_tx, cancel_speed_rx) = tokio::sync::watch::channel(false);
+  //
+  //     let cpu_threads = num_cpus::get();
+  //
+  //     let multiplier = if cfg!(feature = "dev") { 2 } else { 1 };
+  //     let generating_threads = if address_count_int <= cpu_threads || address_count_int < 100 {
+  //       1
+  //     } else {
+  //       // cpu_threads * multiplier
+  //       2
+  //     };
+  //
+  //     let addresses_per_thread = address_count_int / generating_threads;
+  //     let extra_addresses = address_count_int % generating_threads;
+  //
+  //     let generated_addresses = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+  //     let progress_status = Arc::new(Mutex::new(0.0));
+  //
+  //     let next_generator = generated_addresses.clone();
+  //
+  //     let start_time = std::time::Instant::now();
+  //
+  //     let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
+  //     window.set_cursor(busy_cursor.as_ref());
+  //
+  //     let address_generation_speed_label = address_generation_speed_label.clone();
+  //     let items_added_in_last_second = items_added_in_last_second.clone();
+  //     let counts = counts.clone();
+  //     let index = index.clone();
+  //     let address_generation_active = address_generation_active.clone();
+  //
+  //     let speed_generator_id: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
+  //     *speed_generator_id.borrow_mut() = Some(glib::timeout_add_local(
+  //       std::time::Duration::from_millis(500),
+  //       {
+  //         let items_added_in_last_second = items_added_in_last_second.clone();
+  //         let counts = counts.clone();
+  //         let index = index.clone();
+  //         let max_speed = max_speed.clone();
+  //         let ema_speed = ema_speed.clone();
+  //         let address_generation_speed_label = address_generation_speed_label.clone();
+  //         let timeout_id = speed_generator_id.clone();
+  //
+  //         move || {
+  //           if *cancel_speed_rx.borrow() {
+  //             let _ = timeout_id.borrow_mut().take().map(SourceId::remove);
+  //
+  //             // address_generation_speed_label.set_label("0/sec");
+  //             *items_added_in_last_second.lock().unwrap() = 0;
+  //             counts.borrow_mut().fill(0);
+  //             *ema_speed.borrow_mut() = 0.0;
+  //             return glib::ControlFlow::Break;
+  //           }
+  //
+  //           let current_count = *items_added_in_last_second.lock().unwrap();
+  //           let mut counts = counts.borrow_mut();
+  //           let mut idx = *index.borrow_mut();
+  //           let mut max = max_speed.borrow_mut();
+  //
+  //           counts[idx] = current_count;
+  //           idx = (idx + 1) % 2;
+  //           *index.borrow_mut() = idx;
+  //
+  //           let raw_speed = current_count as f64 * 2.0;
+  //           if raw_speed as u64 > *max {
+  //             *max = raw_speed as u64;
+  //           }
+  //
+  //           // JUMP ema speed
+  //           let alpha = 0.5;
+  //           let mut ema = ema_speed.borrow_mut();
+  //           *ema = alpha * raw_speed + (1.0 - alpha) * *ema;
+  //           let ema_avg_speed = *ema as u64;
+  //
+  //           address_generation_speed_frame.set_visible(true);
+  //           address_generation_speed_label
+  //             .set_label(&format!("{}/sec (max: {}/sec)", ema_avg_speed, *max));
+  //
+  //           *items_added_in_last_second.lock().unwrap() = 0;
+  //
+  //           glib::ControlFlow::Continue
+  //         }
+  //       },
+  //     ));
+  //
+  //     *address_generation_active.lock().unwrap() = true;
+  //
+  //     let address_loop = tokio::spawn(async move {
+  //       let mut handles = vec![];
+  //       let cancel_rx = Arc::new(tokio::sync::Mutex::new(cancel_rx));
+  //
+  //       for thread_id in 0..generating_threads {
+  //         let num_addresses = if thread_id < extra_addresses {
+  //           addresses_per_thread + 1
+  //         } else {
+  //           addresses_per_thread
+  //         };
+  //
+  //         if num_addresses == 0 {
+  //           continue;
+  //         }
+  //
+  //         let channel_sender_addresses = channel_sender_addresses.clone();
+  //         let channel_sender_progress = channel_sender_progress.clone();
+  //         let cancel_rx = cancel_rx.clone();
+  //         let wallet_settings = wallet_settings.clone();
+  //         let derivation_path = derivation_path.clone();
+  //         // let coin_name = wallet_settings.coin_name.clone().unwrap_or_default();
+  //         let generated_addresses = generated_addresses.clone();
+  //         let progress_status = progress_status.clone();
+  //         let items_added_in_last_second = items_added_in_last_second.clone();
+  //         let start_index =
+  //           thread_id * addresses_per_thread + std::cmp::min(thread_id, extra_addresses);
+  //
+  //         let handle = tokio::spawn(async move {
+  //           let mut generated_count = 0;
+  //           let mut current_index = start_index;
+  //           let mut batch: Vec<CryptoAddresses> = Vec::new();
+  //           let mut batch_size = 24;
+  //           let max_batch_size = generating_threads * 48 * multiplier;
+  //
+  //           while generated_count < num_addresses {
+  //             let cancel_rx = cancel_rx.lock().await;
+  //             if *cancel_rx.borrow() {
+  //               #[cfg(debug_assertions)]
+  //               println!("Address generation aborted (thread {})", thread_id);
+  //
+  //               if !batch.is_empty() {
+  //                 channel_sender_addresses.send(batch).unwrap_or_default()
+  //               }
+  //
+  //               let _ = channel_sender_progress.send(1.0);
+  //               return;
+  //             }
+  //             drop(cancel_rx);
+  //
+  //             if current_index > WALLET_MAX_ADDRESSES as usize {
+  //               break;
+  //             }
+  //
+  //             let derivation_path = if hardened_address {
+  //               format!("{}/{}'", derivation_path, current_index)
+  //             } else {
+  //               format!("{}/{}", derivation_path, current_index)
+  //             };
+  //
+  //             let coin_path_id = match qr2m_lib::derivation_path_to_integer(&derivation_path) {
+  //               Ok(value) => value,
+  //               Err(_) => return,
+  //             };
+  //
+  //             match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
+  //               dashmap::mapref::entry::Entry::Vacant(_) => {
+  //                 let magic_ingredients = keys::AddressHocusPokus {
+  //                   coin_index: wallet_settings.coin_index.unwrap_or_default(),
+  //                   derivation_path: derivation_path.clone(),
+  //                   master_private_key_bytes: wallet_settings
+  //                     .master_private_key_bytes
+  //                     .clone()
+  //                     .unwrap_or_default(),
+  //                   master_chain_code_bytes: wallet_settings
+  //                     .master_chain_code_bytes
+  //                     .clone()
+  //                     .unwrap_or_default(),
+  //                   public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
+  //                   key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
+  //                   wallet_import_format: wallet_settings
+  //                     .wallet_import_format
+  //                     .clone()
+  //                     .unwrap_or_default(),
+  //                   hash: wallet_settings.hash.clone().unwrap_or_default(),
+  //                   // seed: wallet_settings.seed.clone().unwrap_or_default(),
+  //                 };
+  //
+  //                 if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
+  //                   let new_entry = CryptoAddresses {
+  //                     id: Some(coin_path_id),
+  //                     coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
+  //                     derivation_path: Some(derivation_path),
+  //                     address: Some(address.address),
+  //                     public_key: Some(address.public_key),
+  //                     private_key: Some(address.private_key),
+  //                   };
+  //
+  //                   batch.push(new_entry);
+  //
+  //
+  //                   if batch.len() >= batch_size
+  //                     || batch.len() >= addresses_per_thread
+  //                     || batch.len() >= address_count_int
+  //                   {
+  //                     channel_sender_addresses
+  //                       .send(batch.clone())
+  //                       .unwrap_or_default();
+  //                     batch.clear();
+  //                     batch_size = std::cmp::min(batch_size * 2, max_batch_size);
+  //                   }
+  //
+  //                   let current_total =
+  //                     generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+  //
+  //                   let new_progress = if address_count_int > 0 {
+  //                     (current_total as f64) / (address_count_int as f64)
+  //                   } else {
+  //                     0.0
+  //                   };
+  //
+  //                   let mut last = progress_status.lock().unwrap();
+  //                   if new_progress > *last + 0.01 || new_progress >= 1.0 {
+  //                     *last = new_progress;
+  //                     let _ = channel_sender_progress.send(new_progress);
+  //                   }
+  //
+  //                   generated_count += 1;
+  //                   current_index += 1;
+  //                   *items_added_in_last_second.lock().unwrap() += 1u64;
+  //                 } else {
+  //                   eprintln!("problem with generating address");
+  //                   break;
+  //                 }
+  //               }
+  //               dashmap::mapref::entry::Entry::Occupied(_) => {
+  //                 current_index += 1;
+  //                 continue;
+  //               }
+  //             }
+  //           }
+  //
+  //           if !batch.is_empty() {
+  //             channel_sender_addresses.send(batch).unwrap_or_default();
+  //           }
+  //
+  //           #[cfg(debug_assertions)]
+  //           println!(
+  //             "Thread {} generating derivation_path: {}",
+  //             thread_id, &derivation_path
+  //           );
+  //         });
+  //
+  //         handles.push(handle);
+  //       }
+  //
+  //       for handle in handles {
+  //         handle.await.unwrap();
+  //       }
+  //       let _ = channel_sender_progress.send(1.0);
+  //     });
+  //
+  //     *generator_handler.lock().unwrap() = Some((address_loop, cancel_tx, cancel_speed_tx));
+  //
+  //     glib::idle_add_local(clone!(
+  //       #[strong]
+  //       address_store,
+  //       #[strong]
+  //       app_messages_state,
+  //       #[strong]
+  //       address_generation_progress_bar,
+  //       #[strong]
+  //       stop_addresses_button_box,
+  //       #[strong]
+  //       delete_addresses_button_box,
+  //       #[strong]
+  //       generator_handler,
+  //       move || {
+  //         #[cfg(feature = "dev")]
+  //         while let Ok(new_entry) = channel_receiver_addresses.try_recv() {
+  //           let mut entries: Vec<AddressDatabase> = Vec::new();
+  //
+  //           for mut new_coin in new_entry {
+  //             let id = new_coin.id.as_deref().unwrap_or("");
+  //
+  //             if CRYPTO_ADDRESS
+  //               .insert(id.to_owned(), new_coin.clone())
+  //               .is_none()
+  //             {
+  //               entries.push(AddressDatabase::new(
+  //                 &new_coin.id.take().unwrap_or_default(),
+  //                 &new_coin.coin_name.take().unwrap_or_default(),
+  //                 &new_coin.derivation_path.take().unwrap_or_default(),
+  //                 &new_coin.address.take().unwrap_or_default(),
+  //                 &new_coin.public_key.take().unwrap_or_default(),
+  //                 &new_coin.private_key.take().unwrap_or_default(),
+  //               ));
+  //             }
+  //           }
+  //
+  //           address_store.extend_from_slice(&entries);
+  //         }
+  //
+  //         #[cfg(not(feature = "dev"))]
+  //         while let Ok(new_entry) = channel_receiver_addresses.try_recv() {
+  //           let entries: Vec<AddressDatabase> = new_entry
+  //             .into_iter()
+  //             .filter(|new_coin| {
+  //               let id = new_coin.id.as_deref().unwrap_or("");
+  //               if CRYPTO_ADDRESS.contains_key(id) {
+  //                 false
+  //               } else {
+  //                 CRYPTO_ADDRESS.insert(id.to_owned(), new_coin.clone());
+  //                 true
+  //               }
+  //             })
+  //             .map(|mut new_coin| {
+  //               AddressDatabase::new(
+  //                 &new_coin.id.take().unwrap_or_default(),
+  //                 &new_coin.coin_name.take().unwrap_or_default(),
+  //                 &new_coin.derivation_path.take().unwrap_or_default(),
+  //                 &new_coin.address.take().unwrap_or_default(),
+  //                 &new_coin.public_key.take().unwrap_or_default(),
+  //                 &new_coin.private_key.take().unwrap_or_default(),
+  //               )
+  //             })
+  //             .collect();
+  //
+  //           address_store.extend_from_slice(&entries);
+  //         }
+  //
+  //         while let Ok(progress) = channel_receiver_progress.try_recv() {
+  //           address_generation_progress_bar.set_fraction(progress);
+  //
+  //           if progress >= 1.0 {
+  //             let duration = start_time.elapsed();
+  //             let message = format!("Address generation completed in {:.2?}", duration);
+  //
+  //             #[cfg(debug_assertions)]
+  //             println!("{}", message);
+  //
+  //             let lock_app_messages = app_messages_state.borrow();
+  //             match lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info) {
+  //               Ok(_) => {}
+  //               Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+  //             };
+  //
+  //             stop_addresses_button_box.set_visible(false);
+  //             delete_addresses_button_box.set_visible(true);
+  //             // address_generation_speed_label.set_label("0/sec");
+  //
+  //             window.set_cursor(None);
+  //
+  //             let next_address = next_generator
+  //               .as_ref()
+  //               .load(std::sync::atomic::Ordering::SeqCst)
+  //               // + address_count_int
+  //               + address_start_point_int;
+  //
+  //             address_start_spinbutton.set_value(next_address as f64);
+  //
+  //             if let Some((handle, cancel_tx, cancel_speed_tx)) =
+  //               generator_handler.lock().unwrap().take()
+  //             {
+  //               cancel_tx.send(true).ok();
+  //               cancel_speed_tx.send(true).ok();
+  //               handle.abort();
+  //             } else {
+  //               #[cfg(debug_assertions)]
+  //               eprintln!("No generator handle!");
+  //             }
+  //
+  //             *address_generation_active.lock().unwrap() = false;
+  //
+  //             return glib::ControlFlow::Break;
+  //           }
+  //         }
+  //
+  //         glib::ControlFlow::Continue
+  //       }
+  //     ));
+  //   }
+  // ));
 
   // JUMP: Delete Addresses button
   delete_addresses_button.connect_clicked(clone!(
@@ -5043,10 +5480,9 @@ fn create_main_window(
     move |_| {
       window.set_cursor(None);
 
-      if let Some((handle, cancel_tx, cancel_speed_tx)) = generator_handler.lock().unwrap().take() {
-        cancel_tx.send(true).ok();
-        cancel_speed_tx.send(true).ok();
-        handle.abort();
+      if let Some((_, cancel_flag, cancel_speed_flag)) = generator_handler.lock().unwrap().take() {
+        *cancel_flag.lock().unwrap() = true;
+        *cancel_speed_flag.lock().unwrap() = true;
       } else {
         #[cfg(debug_assertions)]
         eprintln!("No generator handle!");
@@ -5139,10 +5575,9 @@ fn create_main_window(
         window.present()
       }
 
-      if let Some((handle, cancel_tx, cancel_speed_tx)) = generator_handler.lock().unwrap().take() {
-        cancel_tx.send(true).ok();
-        cancel_speed_tx.send(true).ok();
-        handle.abort();
+      if let Some((_, cancel_flag, cancel_speed_flag)) = generator_handler.lock().unwrap().take() {
+        *cancel_flag.lock().unwrap() = true;
+        *cancel_speed_flag.lock().unwrap() = true;
       } else {
         #[cfg(debug_assertions)]
         eprintln!("No generator handle!");
@@ -5158,8 +5593,8 @@ fn create_main_window(
 #[cfg(feature = "dev")]
 fn create_log_window(
   gui_state: Rc<RefCell<GuiState>>,
-  // resources: std::sync::Arc<std::sync::Mutex<GuiResources>>,
-  // log: std::sync::Arc<std::sync::Mutex<AppLog>>,
+  // resources: Arc<Mutex<GuiResources>>,
+  // log: Arc<Mutex<AppLog>>,
 ) -> FunctionOutput<gtk::ApplicationWindow> {
   #[cfg(debug_assertions)]
   println!("[+] {}", &t!("log.create_log_window").to_string());
@@ -6712,7 +7147,7 @@ fn open_wallet_from_file(
 
   let open_context = glib::MainContext::default();
   let open_loop = glib::MainLoop::new(Some(&open_context), false);
-  let (tx, rx) = std::sync::mpsc::channel::<Option<(String, Option<String>)>>();
+  let (tx, rx) = mpsc::channel::<Option<(String, Option<String>)>>();
 
   let open_window = gtk::Window::new();
   let open_dialog = gtk::FileDialog::builder()
