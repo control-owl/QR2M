@@ -1,3 +1,11 @@
+# version 0.85.0
+- tokio replaced with rayon
+- NEW RECORD: address generation: 35000/sec
+
+# version 0.84.1
+- cargo update
+- benchmark: address generation: 7500/sec
+
 # version 0.84.0
 - welcome window
 
