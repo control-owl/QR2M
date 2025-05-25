@@ -1,3 +1,7 @@
+# version 0.85.1
+- address optimization
+- cargo update
+
 # version 0.85.0
 - tokio replaced with rayon
 - NEW RECORD: address generation: 35000/sec

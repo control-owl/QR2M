@@ -1,7 +1,7 @@
 [package]
 name = "QR2M"
 description = "Quantum Random Rust Mnemonic"
-version = "0.85.0"
+version = "0.85.1"
 authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
 license = "CC-BY-NC-ND-4.0"
 repository = "https://github.com/control-owl/qr2m"
@@ -11,7 +11,8 @@ build = "build.rs"
 
 
 [dependencies]
-rust-i18n = "3.1.4"
+gtk4 = { version = "0.9.6", features = ["gnome_46"] }
+rust-i18n = "3.1.5"
 toml = "0.8.22"
 serde = { version = "1.0.219", features = ["derive"] }
 toml_edit = "0.22.26"
@@ -26,27 +27,28 @@ bs58 = "0.5.1"
 ripemd = "0.1.3"
 num-bigint = "0.4.6"
 sha3 = "0.10.8"
-glib = "0.20.9"
+glib = "0.20.10"
 libadwaita = "0.7.2"
 lazy_static = "1.5.0"
 include_dir = "0.7.4"
 dashmap = "7.0.0-rc2"
 num_cpus = "1.16.0"
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros", "sync"] }
-gtk4 = { version = "0.9.6", features = ["gnome_46"] }
+rayon = "1.10.0"
 
+tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros", "sync"], optional = true }
 native-tls = { version = "0.2.14", optional = true }
 ed25519-dalek = { version = "2.1.1", optional = true }
 reqwest = { version = "0.12.15", features = [
     "json",
     "rustls-tls",
 ], optional = true, default-features = false }
-rayon = { version = "1.10.0" }
 
 
 [features]
+default = []
+offline = []
 full = ["reqwest", "native-tls"]
-dev = ["full", "ed25519-dalek"]
+dev = ["full", "ed25519-dalek", "tokio"]
 
 
 [build-dependencies]

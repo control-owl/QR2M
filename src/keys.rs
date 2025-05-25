@@ -838,185 +838,181 @@ pub fn generate_master_keys_secp256k1(
   Ok(())
 }
 
-pub fn generate_address(ingredients: AddressHocusPokus) -> FunctionOutput<AddressResult> {
-  #[cfg(debug_assertions)]
-  {
-    println!("[+] {}", &t!("log.generate_address").to_string());
-    println!("\t- ingredients: {:?}", ingredients);
-  }
-
-  let secp = secp256k1::Secp256k1::new();
-
-  let public_key_hash_vec = if ingredients.key_derivation != "ed25519" {
-    let trimmed_public_key_hash = ingredients
-      .public_key_hash
-      .strip_prefix("0x")
-      .unwrap_or(&ingredients.public_key_hash);
-
-    hex::decode(trimmed_public_key_hash).map_err(|e| {
-      AppError::Custom(format!(
-        "Problem with decoding public_key_hash_vec: {:?}",
-        e
-      ))
-    })?
-  } else {
-    Vec::new()
-  };
-
-  #[cfg(debug_assertions)]
-  dbg!(&public_key_hash_vec);
-
-  let derived_child_keys = match ingredients.key_derivation.as_str() {
-    "secp256k1" => derive_from_path_secp256k1(
-      &ingredients.master_private_key_bytes,
-      &ingredients.master_chain_code_bytes,
-      &ingredients.derivation_path,
-    ),
-    #[cfg(feature = "dev")]
-    "ed25519" => crate::dev::derive_from_path_ed25519(
-      &ingredients.master_private_key_bytes,
-      &ingredients.master_chain_code_bytes,
-      &ingredients.derivation_path,
-      // &ingredients.seed,
-    ),
-    _ => {
-      return Err(AppError::Custom(format!(
-        "Unsupported key derivation method: {:?}",
-        ingredients.key_derivation
-      )));
-    }
-  }?
-  .ok_or_else(|| {
-    AppError::Custom(format!(
-      "Key derivation returned no result for path: {:?}",
-      ingredients.derivation_path
-    ))
-  })?;
-
-  #[cfg(debug_assertions)]
-  dbg!(&derived_child_keys);
-
-  let public_key = match ingredients.key_derivation.as_str() {
-    "secp256k1" => {
-      // let array: [u8; 32] = derived_child_keys
-      //   .0
-      //   .map_err(|_| AppError::Custom("child secret_key must be 32 bytes".into()))?;
-
-      let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
-        .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {:?}", e)))?;
-
-      let secp_pub_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
-
-      CryptoPublicKey::Secp256k1(secp_pub_key)
-    }
-    #[cfg(feature = "dev")]
-    "ed25519" => {
-      let sign_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
-      // let secret_key = sign_key.to_bytes();
-      let pub_key = sign_key.verifying_key();
-      CryptoPublicKey::Ed25519(pub_key)
-    }
-    _ => {
-      return Err(AppError::Custom(format!(
-        "Unsupported key derivation method: {:?}",
-        ingredients.key_derivation
-      )));
-    }
-  };
-
-  #[cfg(debug_assertions)]
-  dbg!(&public_key);
-
-  let public_key_encoded = match ingredients.hash.as_str() {
-    "sha256" | "sha256+ripemd160" => match &public_key {
-      CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
-      #[cfg(feature = "dev")]
-      _ => String::new(),
-    },
-    "keccak256" => match &public_key {
-      CryptoPublicKey::Secp256k1(public_key) => {
-        if ingredients.coin_index == 195 {
-          hex::encode(public_key.serialize())
-        } else {
-          format!("0x{}", hex::encode(public_key.serialize()))
-        }
-      }
-      #[cfg(feature = "dev")]
-      _ => String::new(),
-    },
-    #[cfg(feature = "dev")]
-    "ed25519" => match &public_key {
-      CryptoPublicKey::Ed25519(public_key) => bs58::encode(public_key.to_bytes())
-        .with_alphabet(bs58::Alphabet::DEFAULT)
-        .into_string(),
-      _ => String::new(),
-    },
-    _ => {
-      return Err(AppError::Custom(format!(
-        "Unsupported hash method: {:?}",
-        ingredients.hash
-      )));
-    }
-  };
-
-  #[cfg(debug_assertions)]
-  dbg!(&public_key_encoded);
-
-  let address = match ingredients.hash.as_str() {
-    "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
-    "keccak256" => {
-      generate_address_keccak256(&public_key, &public_key_hash_vec, ingredients.coin_index)
-    }
-    "sha256+ripemd160" => {
-      generate_sha256_ripemd160_address(ingredients.coin_index, &public_key, &public_key_hash_vec)
-    }
-    #[cfg(feature = "dev")]
-    "ed25519" => crate::dev::generate_ed25519_address(&public_key),
-    _ => {
-      return Err(AppError::Custom(format!(
-        "Unsupported hash method: {:?}",
-        ingredients.hash
-      )));
-    }
-  }?;
-
-  #[cfg(debug_assertions)]
-  dbg!(&address);
-
-  let priv_key_wif = if ingredients.key_derivation == "ed25519" {
-    bs58::encode(&derived_child_keys.0)
-      .with_alphabet(bs58::Alphabet::DEFAULT)
-      .into_string()
-  } else {
-    let compressed = true;
-
-    // let array: [u8; 32] = derived_child_keys
-    //   .0
-    //   .try_into()
-    //   .map_err(|_| AppError::Custom("child secret key must be 32 bytes".into()))?;
-
-    let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
-      .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {:?}", e)))?;
-
-    create_private_key_for_address(
-      Some(&secret_key),
-      Some(compressed),
-      Some(&ingredients.wallet_import_format),
-      &ingredients.hash,
-      ingredients.coin_index,
-    )
-    .map_err(|e| AppError::Custom(format!("Failed to convert private key to WIF: {:?}", e)))?
-  };
-
-  #[cfg(debug_assertions)]
-  dbg!(&priv_key_wif);
-
-  Ok(Some(Address {
-    address: address.clone(),
-    public_key: public_key_encoded.clone(),
-    private_key: priv_key_wif.clone(),
-  }))
-}
+// pub fn generate_address(ingredients: AddressHocusPokus) -> FunctionOutput<AddressResult> {
+//   d3bug(">>> generate_address", "debug");
+//   d3bug(&format!("ingredients {:?}", ingredients), "debug");
+//
+//   let public_key_hash_vec = if ingredients.key_derivation != "ed25519" {
+//     let trimmed_public_key_hash = ingredients
+//       .public_key_hash
+//       .strip_prefix("0x")
+//       .unwrap_or(&ingredients.public_key_hash);
+//
+//     hex::decode(trimmed_public_key_hash).map_err(|e| {
+//       AppError::Custom(format!(
+//         "Problem with decoding public_key_hash_vec: {:?}",
+//         e
+//       ))
+//     })?
+//   } else {
+//     Vec::new()
+//   };
+//
+//   d3bug(
+//     &format!("public_key_hash_vec {:?}", public_key_hash_vec),
+//     "debug",
+//   );
+//
+//   let derived_child_keys = match ingredients.key_derivation.as_str() {
+//     "secp256k1" => derive_from_path_secp256k1(
+//       &ingredients.master_private_key_bytes,
+//       &ingredients.master_chain_code_bytes,
+//       &ingredients.derivation_path,
+//     ),
+//     #[cfg(feature = "dev")]
+//     "ed25519" => crate::dev::derive_from_path_ed25519(
+//       &ingredients.master_private_key_bytes,
+//       &ingredients.master_chain_code_bytes,
+//       &ingredients.derivation_path,
+//       // &ingredients.seed,
+//     ),
+//     _ => {
+//       return Err(AppError::Custom(format!(
+//         "Unsupported key derivation method: {:?}",
+//         ingredients.key_derivation
+//       )));
+//     }
+//   }?
+//   .ok_or_else(|| {
+//     AppError::Custom(format!(
+//       "Key derivation returned no result for path: {:?}",
+//       ingredients.derivation_path
+//     ))
+//   })?;
+//
+//   d3bug(
+//     &format!("derived_child_keys {:?}", derived_child_keys),
+//     "debug",
+//   );
+//
+//   let public_key = match ingredients.key_derivation.as_str() {
+//     "secp256k1" => {
+//       let secp = secp256k1::Secp256k1::new();
+//
+//       let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
+//         .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {:?}", e)))?;
+//
+//       let secp_pub_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+//
+//       CryptoPublicKey::Secp256k1(secp_pub_key)
+//     }
+//     #[cfg(feature = "dev")]
+//     "ed25519" => {
+//       let sign_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+//       // let secret_key = sign_key.to_bytes();
+//       let pub_key = sign_key.verifying_key();
+//       CryptoPublicKey::Ed25519(pub_key)
+//     }
+//     _ => {
+//       return Err(AppError::Custom(format!(
+//         "Unsupported key derivation method: {:?}",
+//         ingredients.key_derivation
+//       )));
+//     }
+//   };
+//
+//   d3bug(&format!("public_key {:?}", public_key), "debug");
+//
+//   let public_key_encoded = match ingredients.hash.as_str() {
+//     "sha256" | "sha256+ripemd160" => match &public_key {
+//       CryptoPublicKey::Secp256k1(public_key) => hex::encode(public_key.serialize()),
+//       #[cfg(feature = "dev")]
+//       _ => String::new(),
+//     },
+//     "keccak256" => match &public_key {
+//       CryptoPublicKey::Secp256k1(public_key) => {
+//         if ingredients.coin_index == 195 {
+//           hex::encode(public_key.serialize())
+//         } else {
+//           format!("0x{}", hex::encode(public_key.serialize()))
+//         }
+//       }
+//       #[cfg(feature = "dev")]
+//       _ => String::new(),
+//     },
+//     #[cfg(feature = "dev")]
+//     "ed25519" => match &public_key {
+//       CryptoPublicKey::Ed25519(public_key) => bs58::encode(public_key.to_bytes())
+//         .with_alphabet(bs58::Alphabet::DEFAULT)
+//         .into_string(),
+//       _ => String::new(),
+//     },
+//     _ => {
+//       return Err(AppError::Custom(format!(
+//         "Unsupported hash method: {:?}",
+//         ingredients.hash
+//       )));
+//     }
+//   };
+//
+//   #[cfg(debug_assertions)]
+//   dbg!(&public_key_encoded);
+//
+//   let address = match ingredients.hash.as_str() {
+//     "sha256" => generate_address_sha256(&public_key, &public_key_hash_vec),
+//     "keccak256" => {
+//       generate_address_keccak256(&public_key, &public_key_hash_vec, ingredients.coin_index)
+//     }
+//     "sha256+ripemd160" => {
+//       generate_sha256_ripemd160_address(ingredients.coin_index, &public_key, &public_key_hash_vec)
+//     }
+//     #[cfg(feature = "dev")]
+//     "ed25519" => crate::dev::generate_ed25519_address(&public_key),
+//     _ => {
+//       return Err(AppError::Custom(format!(
+//         "Unsupported hash method: {:?}",
+//         ingredients.hash
+//       )));
+//     }
+//   }?;
+//
+//   #[cfg(debug_assertions)]
+//   dbg!(&address);
+//
+//   let priv_key_wif = if ingredients.key_derivation == "ed25519" {
+//     bs58::encode(&derived_child_keys.0)
+//       .with_alphabet(bs58::Alphabet::DEFAULT)
+//       .into_string()
+//   } else {
+//     let compressed = true;
+//
+//     // let array: [u8; 32] = derived_child_keys
+//     //   .0
+//     //   .try_into()
+//     //   .map_err(|_| AppError::Custom("child secret key must be 32 bytes".into()))?;
+//
+//     let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
+//       .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {:?}", e)))?;
+//
+//     create_private_key_for_address(
+//       Some(&secret_key),
+//       Some(compressed),
+//       Some(&ingredients.wallet_import_format),
+//       &ingredients.hash,
+//       ingredients.coin_index,
+//     )
+//     .map_err(|e| AppError::Custom(format!("Failed to convert private key to WIF: {:?}", e)))?
+//   };
+//
+//   #[cfg(debug_assertions)]
+//   dbg!(&priv_key_wif);
+//
+//   Ok(Some(Address {
+//     address: address.clone(),
+//     public_key: public_key_encoded.clone(),
+//     private_key: priv_key_wif.clone(),
+//   }))
+// }
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -1031,4 +1027,158 @@ pub fn convert_seed_to_mnemonic(seed: &[u8]) -> FunctionOutput<String> {
   }
 
   Ok(hex)
+}
+
+// -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+pub fn generate_address(ingredients: AddressHocusPokus) -> FunctionOutput<AddressResult> {
+  d3bug(">>> generate_address", "debug");
+  d3bug(&format!("ingredients {:?}", ingredients), "debug");
+
+  let public_key_hash_vec = if ingredients.key_derivation != "ed25519" {
+    let trimmed = ingredients.public_key_hash.trim_start_matches("0x");
+    hex::decode(trimmed).map_err(|e| AppError::Custom(format!("Invalid public_key_hash: {}", e)))?
+  } else {
+    Vec::new()
+  };
+
+  let derived_child_keys = derive_child_keys(&ingredients)?;
+  let derived_child_keys = derived_child_keys.ok_or_else(|| {
+    AppError::Custom(format!(
+      "Key derivation returned no result for path: {}",
+      ingredients.derivation_path
+    ))
+  })?;
+
+  let public_key = generate_public_key(&ingredients, &derived_child_keys)?;
+  let public_key_encoded = encode_public_key(&ingredients, &public_key)?;
+  let address = generate_address_internal(&ingredients, &public_key, &public_key_hash_vec)?;
+  let priv_key_wif = encode_private_key(&ingredients, &derived_child_keys.0)?;
+
+  Ok(Some(Address {
+    address,
+    public_key: public_key_encoded,
+    private_key: priv_key_wif,
+  }))
+}
+
+fn derive_child_keys(ingredients: &AddressHocusPokus) -> FunctionOutput<DerivationResult> {
+  match ingredients.key_derivation.as_str() {
+    "secp256k1" => derive_from_path_secp256k1(
+      &ingredients.master_private_key_bytes,
+      &ingredients.master_chain_code_bytes,
+      &ingredients.derivation_path,
+    ),
+    #[cfg(feature = "dev")]
+    "ed25519" => crate::dev::derive_from_path_ed25519(
+      &ingredients.master_private_key_bytes,
+      &ingredients.master_chain_code_bytes,
+      &ingredients.derivation_path,
+    ),
+    _ => Err(AppError::Custom(format!(
+      "Unsupported key derivation method: {}",
+      ingredients.key_derivation
+    ))),
+  }
+}
+
+fn generate_public_key(
+  ingredients: &AddressHocusPokus,
+  derived_child_keys: &([u8; 32], [u8; 32], Vec<u8>),
+) -> FunctionOutput<CryptoPublicKey> {
+  match ingredients.key_derivation.as_str() {
+    "secp256k1" => {
+      let secp = secp256k1::Secp256k1::new();
+      let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
+        .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {}", e)))?;
+      let secp_pub_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+      Ok(CryptoPublicKey::Secp256k1(secp_pub_key))
+    }
+    #[cfg(feature = "dev")]
+    "ed25519" => {
+      let sign_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
+      let pub_key = sign_key.verifying_key();
+      Ok(CryptoPublicKey::Ed25519(pub_key))
+    }
+    _ => Err(AppError::Custom(format!(
+      "Unsupported key derivation method: {}",
+      ingredients.key_derivation
+    ))),
+  }
+}
+
+fn encode_public_key(
+  ingredients: &AddressHocusPokus,
+  public_key: &CryptoPublicKey,
+) -> FunctionOutput<String> {
+  match ingredients.hash.as_str() {
+    "sha256" | "sha256+ripemd160" => match public_key {
+      CryptoPublicKey::Secp256k1(pk) => Ok(hex::encode(pk.serialize())),
+      #[cfg(feature = "dev")]
+      _ => Ok(String::new()),
+    },
+    "keccak256" => match public_key {
+      CryptoPublicKey::Secp256k1(pk) => {
+        let serialized = pk.serialize();
+        if ingredients.coin_index == 195 {
+          Ok(hex::encode(serialized))
+        } else {
+          Ok(format!("0x{}", hex::encode(serialized)))
+        }
+      }
+      #[cfg(feature = "dev")]
+      _ => Ok(String::new()),
+    },
+    #[cfg(feature = "dev")]
+    "ed25519" => match public_key {
+      CryptoPublicKey::Ed25519(pk) => Ok(bs58::encode(pk.to_bytes()).into_string()),
+      _ => Ok(String::new()),
+    },
+    _ => Err(AppError::Custom(format!(
+      "Unsupported hash method: {}",
+      ingredients.hash
+    ))),
+  }
+}
+
+fn generate_address_internal(
+  ingredients: &AddressHocusPokus,
+  public_key: &CryptoPublicKey,
+  public_key_hash_vec: &[u8],
+) -> FunctionOutput<String> {
+  match ingredients.hash.as_str() {
+    "sha256" => generate_address_sha256(public_key, public_key_hash_vec),
+    "keccak256" => {
+      generate_address_keccak256(public_key, public_key_hash_vec, ingredients.coin_index)
+    }
+    "sha256+ripemd160" => {
+      generate_sha256_ripemd160_address(ingredients.coin_index, public_key, public_key_hash_vec)
+    }
+    #[cfg(feature = "dev")]
+    "ed25519" => crate::dev::generate_ed25519_address(public_key),
+    _ => Err(AppError::Custom(format!(
+      "Unsupported hash method: {}",
+      ingredients.hash
+    ))),
+  }
+}
+
+fn encode_private_key(
+  ingredients: &AddressHocusPokus,
+  private_key_bytes: &[u8; 32],
+) -> FunctionOutput<String> {
+  if ingredients.key_derivation == "ed25519" {
+    Ok(bs58::encode(private_key_bytes).into_string())
+  } else {
+    let secret_key = secp256k1::SecretKey::from_byte_array(*private_key_bytes)
+      .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {}", e)))?;
+    create_private_key_for_address(
+      Some(&secret_key),
+      Some(true), // compressed
+      Some(&ingredients.wallet_import_format),
+      &ingredients.hash,
+      ingredients.coin_index,
+    )
+    .map_err(|e| AppError::Custom(format!("Failed to convert private key to WIF: {}", e)))
+  }
 }
