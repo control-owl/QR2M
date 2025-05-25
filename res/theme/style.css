@@ -62,3 +62,10 @@
     color: orange;
     font-weight: bold;
 }
+
+.custom-bip {
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    font-size: xx-large;
+    background-color: #ffffcc;
+}
