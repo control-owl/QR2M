@@ -4683,13 +4683,15 @@ fn create_main_window(
       let cancel_flag = Arc::new(Mutex::new(false));
       let cancel_speed_flag = Arc::new(Mutex::new(false));
       let cancel_flag_for_thread = cancel_flag.clone();
+      let generated_addresses = Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
       let cpu_threads = num_cpus::get();
-      let multiplier = if cfg!(feature = "dev") { 2 } else { 1 };
-      let generating_threads = if addresses_to_create <= (cpu_threads * 128) {
-        multiplier
+      // let multiplier = if cfg!(feature = "dev") { 2 } else { 1 };
+      let generating_threads = if addresses_to_create <= cpu_threads {
+        1
       } else {
-        std::cmp::max(multiplier, cpu_threads - 1)
+        // std::cmp::max(multiplier, cpu_threads)
+        cpu_threads
       };
       d3bug(
         &format!("generating_threads: {:?}", generating_threads),
@@ -4698,8 +4700,8 @@ fn create_main_window(
 
       let addresses_per_thread = addresses_to_create / generating_threads;
       let extra_addresses = addresses_to_create % generating_threads;
-      let generated_addresses = Arc::new(std::sync::atomic::AtomicUsize::new(0));
       let progress_status = Arc::new(Mutex::new(0.0));
+      let next_generator = generated_addresses.clone();
       let address_generation_speed_label = address_generation_speed_label.clone();
       let items_added_in_last_second = items_added_in_last_second.clone();
       let counts = counts.clone();
@@ -4710,8 +4712,8 @@ fn create_main_window(
       let busy_cursor = gtk::gdk::Cursor::from_name("wait", None);
       window.set_cursor(busy_cursor.as_ref());
 
-      let speed_generator_id_speed: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
-      *speed_generator_id_speed.borrow_mut() = Some(glib::timeout_add_local(
+      let speed_handler: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
+      *speed_handler.borrow_mut() = Some(glib::timeout_add_local(
         std::time::Duration::from_millis(500),
         {
           let items_added_in_last_second = items_added_in_last_second.clone();
@@ -4720,7 +4722,7 @@ fn create_main_window(
           let max_speed = max_speed.clone();
           let ema_speed = ema_speed.clone();
           let address_generation_speed_label = address_generation_speed_label.clone();
-          let timeout_id = speed_generator_id_speed.clone();
+          let timeout_id = speed_handler.clone();
           let cancel_speed_flag = cancel_speed_flag.clone();
 
           move || {
@@ -4731,6 +4733,7 @@ fn create_main_window(
               *items_added_in_last_second.lock().unwrap() = 0;
               counts.borrow_mut().fill(0);
               *ema_speed.borrow_mut() = 0.0;
+              *max_speed.borrow_mut() = 0;
               return glib::ControlFlow::Break;
             }
 
@@ -4791,7 +4794,7 @@ fn create_main_window(
         }
       };
 
-      let generation_handle = std::thread::spawn(move || {
+      let address_generation_handler = std::thread::spawn(move || {
         pool.install(|| {
           (0..generating_threads)
             .into_par_iter()
@@ -4823,6 +4826,8 @@ fn create_main_window(
                 ),
                 "debug",
               );
+
+              // let value = generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
               while generated_count < num_addresses {
                 if *cancel_flag_for_thread.lock().unwrap() {
@@ -4941,10 +4946,12 @@ fn create_main_window(
                 }
               }
 
+              let duration = start_time.elapsed();
+
               d3bug(
                 &format!(
-                  "Thread {} finished with generating addresses: {} - {}",
-                  thread_id, start_index, current_index
+                  "Thread {} finished with generating addresses: {} - {} in {:.2?}",
+                  thread_id, start_index, current_index, duration
                 ),
                 "info",
               );
@@ -4954,16 +4961,8 @@ fn create_main_window(
         channel_sender_progress.send(1.0).unwrap_or_default();
       });
 
-      let speed_generator_id_fill: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
-
-      *generator_handler.lock().unwrap() = Some((
-        generation_handle,
-        cancel_flag.clone(),
-        speed_generator_id_speed.clone(),
-        speed_generator_id_fill.clone(),
-      ));
-
-      *speed_generator_id_fill.borrow_mut() = Some(glib::timeout_add_local(
+      let progress_handler: Rc<RefCell<Option<SourceId>>> = Rc::new(RefCell::new(None));
+      *progress_handler.borrow_mut() = Some(glib::timeout_add_local(
         std::time::Duration::from_millis(500),
         clone!(
           #[strong]
@@ -4983,13 +4982,10 @@ fn create_main_window(
           #[strong]
           channel_sender_fill,
           #[strong]
-          speed_generator_id_fill,
+          progress_handler,
+          #[strong]
+          speed_handler,
           move || {
-            if speed_generator_id_fill.borrow().is_none() {
-              *address_generation_active.lock().unwrap() = false;
-              return glib::ControlFlow::Break;
-            }
-
             while let Ok(progress) = channel_receiver_progress.try_recv() {
               address_generation_progress_bar.set_fraction(progress);
             }
@@ -4998,10 +4994,15 @@ fn create_main_window(
               address_fill_progress_bar.set_fraction(fill_progress);
             }
 
+            if address_generation_progress_bar.fraction() < 1.0 {
+              return glib::ControlFlow::Continue;
+            }
+
             // JUMP: batch size
-            let batch_size = 1024 * 4;
+            let batch_size = 1024 * 10;
             let mut batch: Vec<CryptoAddresses> = Vec::new();
             let mut keys_to_remove = Vec::new();
+
             for entry in CRYPTO_ADDRESS.iter().take(batch_size) {
               batch.push(entry.value().clone());
               keys_to_remove.push(entry.key().clone());
@@ -5029,63 +5030,58 @@ fn create_main_window(
               address_store.extend_from_slice(&entries);
 
               added_count.fetch_add(entries.len(), std::sync::atomic::Ordering::Relaxed);
+
               let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
               let fill_progress = added as f64 / addresses_to_create as f64;
               channel_sender_fill.send(fill_progress).unwrap_or_default();
 
               if added >= addresses_to_create {
                 let duration = start_time.elapsed();
-                let message = format!(
-                  "Address generation and filling completed in {:.2?}",
-                  duration
-                );
+                let message = format!("Address generation done in {:.2?}", duration);
                 #[cfg(debug_assertions)]
                 println!("{}", message);
                 let lock_app_messages = app_messages_state.borrow();
-                match lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Info) {
+                match lock_app_messages
+                  .queue_message(message.to_string(), gtk::MessageType::Warning)
+                {
                   Ok(_) => {}
                   Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
                 };
+
                 stop_addresses_button_box.set_visible(false);
                 delete_addresses_button_box.set_visible(true);
+
+                let next_address = next_generator.load(std::sync::atomic::Ordering::SeqCst)
+                  + address_start_point_int;
+
+                address_start_spinbutton.set_value(next_address as f64);
                 address_fill_progress_bar.set_fraction(1.0);
-                window.set_cursor(None);
+
                 *address_generation_active.lock().unwrap() = false;
-                *speed_generator_id_fill.borrow_mut() = None;
-                return glib::ControlFlow::Break;
+                *progress_handler.borrow_mut() = None;
+                // *speed_handler.borrow_mut() = None;
+
+                if let Some(id) = speed_handler.borrow_mut().take() {
+                  SourceId::remove(id);
+                }
+
+                window.set_cursor(None);
+                glib::ControlFlow::Break
+              } else {
+                return glib::ControlFlow::Continue;
               }
-            }
-
-            if added_count.load(std::sync::atomic::Ordering::Relaxed) < addresses_to_create {
-              glib::ControlFlow::Continue
             } else {
-              let duration = start_time.elapsed();
-              let message = format!(
-                "Address filling completed in {:.2?} (possible generation shortfall)",
-                duration
-              );
-              #[cfg(debug_assertions)]
-              println!("{}", message);
-              let lock_app_messages = app_messages_state.borrow();
-              match lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Warning)
-              {
-                Ok(_) => {}
-                Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
-              };
-              stop_addresses_button_box.set_visible(false);
-              delete_addresses_button_box.set_visible(true);
-
-              let next_address = addresses_to_create + address_start_point_int + 7;
-
-              address_start_spinbutton.set_value(next_address as f64);
-
-              window.set_cursor(None);
-              *address_generation_active.lock().unwrap() = false;
-              *speed_generator_id_fill.borrow_mut() = None;
-              glib::ControlFlow::Break
+              return glib::ControlFlow::Continue;
             }
           }
         ),
+      ));
+
+      *generator_handler.lock().unwrap() = Some((
+        address_generation_handler,
+        cancel_flag.clone(),
+        speed_handler.clone(),
+        progress_handler.clone(),
       ));
     }
   ));
@@ -5139,16 +5135,13 @@ fn create_main_window(
     #[strong]
     address_generation_active,
     move |_| {
-      window.set_cursor(None);
-
-      if let Some((handle, cancel_flag, speed_generator_id_speed, speed_generator_id_fill)) =
+      if let Some((handle, cancel_flag, speed_handler, progress_handler)) =
         generator_handler.lock().unwrap().take()
       {
         *cancel_flag.lock().unwrap() = true;
+        *speed_handler.borrow_mut() = None;
+        *progress_handler.borrow_mut() = None;
         let _ = handle.join();
-
-        *speed_generator_id_speed.borrow_mut() = None;
-        *speed_generator_id_fill.borrow_mut() = None;
       } else {
         #[cfg(debug_assertions)]
         eprintln!("No generator handle!");
@@ -5168,6 +5161,8 @@ fn create_main_window(
 
       delete_addresses_button_box.set_visible(true);
       stop_addresses_button_box.set_visible(false);
+
+      window.set_cursor(None);
     }
   ));
 
@@ -5240,14 +5235,13 @@ fn create_main_window(
         window.present()
       }
 
-      if let Some((handle, cancel_flag, speed_generator_id_speed, speed_generator_id_fill)) =
+      if let Some((handle, cancel_flag, speed_handler, progress_handler)) =
         generator_handler.lock().unwrap().take()
       {
         *cancel_flag.lock().unwrap() = true;
+        *speed_handler.borrow_mut() = None;
+        *progress_handler.borrow_mut() = None;
         let _ = handle.join();
-
-        *speed_generator_id_speed.borrow_mut() = None;
-        *speed_generator_id_fill.borrow_mut() = None;
       } else {
         #[cfg(debug_assertions)]
         eprintln!("No generator handle!");
