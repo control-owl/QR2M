@@ -1,3 +1,7 @@
+# version 0.85.2
+- FPS
+- address optimization
+
 # version 0.85.1
 - address optimization
 - cargo update

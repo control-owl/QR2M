@@ -86,7 +86,7 @@ const VALID_ANU_API_DATA_FORMAT: &[&str] = &[
 ];
 const WALLET_DEFAULT_EXTENSION: &str = "qr2m";
 const WALLET_CURRENT_VERSION: u32 = 1;
-const WALLET_MAX_ADDRESSES: u32 = 2147483647;
+const WALLET_MAX_ADDRESSES: u32 = 2_147_483_647;
 const ANU_MAXIMUM_ARRAY_LENGTH: u32 = 1024;
 const ANU_MAXIMUM_CONNECTION_TIMEOUT: u32 = 60;
 const WINDOW_SETTINGS_DEFAULT_WIDTH: u32 = 700;
@@ -3556,13 +3556,6 @@ fn create_main_window(
     let column = gtk::ColumnViewColumn::new(Some(column_title), Some(factory));
     column.set_expand(true);
 
-    #[cfg(not(feature = "dev"))]
-    {
-      if i == 0 {
-        column.set_visible(false);
-      }
-    }
-
     address_treeview.append_column(&column);
   }
 
@@ -3587,6 +3580,7 @@ fn create_main_window(
 
   address_options_frame.set_child(Some(&address_options_address_count_box));
   address_options_address_count_box.append(&address_count_spinbutton);
+  address_options_content.append(&address_options_frame);
 
   // Address start
   let address_start_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.start")));
@@ -3603,6 +3597,7 @@ fn create_main_window(
 
   address_start_frame.set_child(Some(&address_start_address_count_box));
   address_start_address_count_box.append(&address_start_spinbutton);
+  address_options_content.append(&address_start_frame);
 
   // Hardened address
   let address_options_hardened_address_frame =
@@ -3613,8 +3608,9 @@ fn create_main_window(
 
   address_options_hardened_address_checkbox.set_active(wallet_hardened_address.unwrap());
   address_options_hardened_address_box.set_halign(gtk4::Align::Center);
-  address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
   address_options_hardened_address_box.append(&address_options_hardened_address_checkbox);
+  address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
+  address_options_content.append(&address_options_hardened_address_frame);
 
   // Address count
   let address_total_generated_count_frame =
@@ -3623,8 +3619,9 @@ fn create_main_window(
   let address_total_generated_count_label = gtk::Label::new(Some("0"));
 
   address_total_generated_count_box.set_halign(gtk4::Align::Center);
-  address_total_generated_count_frame.set_child(Some(&address_total_generated_count_box));
   address_total_generated_count_box.append(&address_total_generated_count_label);
+  address_total_generated_count_frame.set_child(Some(&address_total_generated_count_box));
+  address_options_content.append(&address_total_generated_count_frame);
 
   // Address speed
   let items_added_in_last_second = Arc::new(Mutex::new(0u64));
@@ -3636,10 +3633,22 @@ fn create_main_window(
   let address_generation_speed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let address_generation_speed_label = gtk::Label::new(Some("0/sec"));
 
-  address_generation_speed_frame.set_visible(false);
+  // address_generation_speed_frame.set_visible(false);
   address_generation_speed_box.set_halign(gtk4::Align::Center);
-  address_generation_speed_frame.set_child(Some(&address_generation_speed_box));
   address_generation_speed_box.append(&address_generation_speed_label);
+  address_generation_speed_frame.set_child(Some(&address_generation_speed_box));
+  address_options_content.append(&address_generation_speed_frame);
+
+  // FPS
+  let fps_monitor_frame = gtk::Frame::new(Some(&t!("UI.main.address.fps")));
+  let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let fps_monitor_label = gtk::Label::new(Some("0"));
+
+  // fps_monitor_frame.set_visible(false);
+  fps_monitor_box.set_halign(gtk4::Align::Center);
+  fps_monitor_frame.set_child(Some(&fps_monitor_box));
+  fps_monitor_box.append(&fps_monitor_label);
+  address_options_content.append(&fps_monitor_frame);
 
   address_store.connect_items_changed(clone!(
     #[strong]
@@ -3687,11 +3696,6 @@ fn create_main_window(
   address_treeview_box.append(&address_treeview_frame);
   address_treeview_frame.set_child(Some(&address_scrolled_window));
   address_scrolled_window.set_child(Some(&address_treeview));
-  address_options_content.append(&address_options_frame);
-  address_options_content.append(&address_start_frame);
-  address_options_content.append(&address_options_hardened_address_frame);
-  address_options_content.append(&address_total_generated_count_frame);
-  address_options_content.append(&address_generation_speed_frame);
   main_address_box.append(&derivation_box);
   main_address_box.append(&derivation_label_box);
   main_address_box.append(&address_generation_buttons_box);
@@ -4558,6 +4562,10 @@ fn create_main_window(
     }
   ));
 
+  let config = BatchConfig::default();
+  let brain_batch = Arc::new(Mutex::new(BrainBatch::new(config)));
+  let fps = monitor_fps(&fps_monitor_label);
+
   // JUMP: Generate Addresses button
   generate_addresses_button.connect_clicked(clone!(
     #[strong]
@@ -4959,8 +4967,6 @@ fn create_main_window(
         channel_sender_progress.send(1.0).unwrap_or_default();
       });
 
-      // let batch_size = Arc::new(Mutex::new(1024));
-
       // JUMP: progress_handler
       let progress_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
       *progress_handler.lock().unwrap() = Some(glib::timeout_add_local(
@@ -4984,6 +4990,10 @@ fn create_main_window(
           channel_sender_fill,
           #[strong]
           progress_handler,
+          #[strong]
+          brain_batch,
+          #[strong]
+          fps,
           move || {
             while let Ok(progress) = channel_receiver_progress.try_recv() {
               address_generation_progress_bar.set_fraction(progress);
@@ -4993,12 +5003,13 @@ fn create_main_window(
               address_fill_progress_bar.set_fraction(fill_progress);
             }
 
-            if address_generation_progress_bar.fraction() < 1.0 {
-              return glib::ControlFlow::Continue;
+            if *cancel_progress_flag.lock().unwrap() {
+              remove_active_handler(&progress_handler);
+              return glib::ControlFlow::Break;
             }
 
             // JUMP: batch size
-            let batch_size = 1024;
+            let batch_size = brain_batch.lock().unwrap().current_batch_size;
             let mut batch: Vec<CryptoAddresses> = Vec::with_capacity(batch_size);
             let mut keys_to_remove = Vec::with_capacity(batch_size);
 
@@ -5008,7 +5019,7 @@ fn create_main_window(
             }
 
             for key in keys_to_remove {
-              CRYPTO_ADDRESS.remove(&key);
+              CRYPTO_ADDRESS.remove(key.as_str());
             }
 
             if !batch.is_empty() {
@@ -5030,24 +5041,43 @@ fn create_main_window(
                 })
                 .collect();
 
-              address_store.extend_from_slice(&entries);
+              let duration = brain_batch.lock().unwrap().process_batch(
+                &address_store,
+                entries,
+                GTK_FPS_MAX as f64,
+              );
 
-              added_count.fetch_add(entries.len(), std::sync::atomic::Ordering::Relaxed);
-
+              added_count.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
               let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
               let fill_progress = added as f64 / addresses_to_create as f64;
               channel_sender_fill.send(fill_progress).unwrap_or_default();
 
+              d3bug(
+                &format!(
+                  "Processed batch of {} keys in {:.2?}, new batch size: {}, FPS: {:.2}",
+                  batch.len(),
+                  duration,
+                  brain_batch.lock().unwrap().current_batch_size,
+                  *fps.lock().unwrap()
+                ),
+                "debug",
+              );
+
+              // address_store.extend_from_slice(&entries);
+              // added_count.fetch_add(entries.len(), std::sync::atomic::Ordering::Relaxed);
+              // let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
+              // let fill_progress = added as f64 / addresses_to_create as f64;
+              // channel_sender_fill.send(fill_progress).unwrap_or_default();
+
               if added >= addresses_to_create {
                 let duration = start_time.elapsed();
                 let message = format!("Address generation done in {:.2?}", duration);
-                #[cfg(debug_assertions)]
-                println!("{}", message);
                 let lock_app_messages = app_messages_state.borrow();
+
                 match lock_app_messages
                   .queue_message(message.to_string(), gtk::MessageType::Warning)
                 {
-                  Ok(_) => {}
+                  Ok(_) => d3bug(&format!("{}", message), "debug"),
                   Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
                 };
 
@@ -5062,12 +5092,13 @@ fn create_main_window(
 
                 window.set_cursor(None);
 
-                glib::ControlFlow::Break
-              } else {
-                return glib::ControlFlow::Continue;
+                remove_active_handler(&progress_handler);
+                return glib::ControlFlow::Break;
               }
+
+              glib::ControlFlow::Continue
             } else {
-              return glib::ControlFlow::Continue;
+              glib::ControlFlow::Continue
             }
           }
         ),
@@ -7436,4 +7467,156 @@ fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) {
   if let Some(id) = lock.take() {
     SourceId::remove(id);
   }
+}
+
+// -----
+
+const GTK_FPS_MAX: u64 = 1000 / 60;
+const GTK_FPS_MIN: u64 = 10;
+
+struct BatchConfig {
+  min_batch_size: usize,
+  max_batch_size: usize,
+  target_duration: std::time::Duration,
+  growth_factor: f64,
+  shrink_factor: f64,
+  low_fps_shrink_factor: f64,
+  list_store_threshold: usize,
+  min_fps: u64,
+}
+
+impl Default for BatchConfig {
+  fn default() -> Self {
+    BatchConfig {
+      min_batch_size: 128,
+      max_batch_size: 1024 * 1024,
+      target_duration: std::time::Duration::from_millis(GTK_FPS_MAX),
+      growth_factor: 10.0,
+      shrink_factor: 0.5,
+      low_fps_shrink_factor: 0.25,
+      list_store_threshold: 1_000_000,
+      min_fps: GTK_FPS_MIN,
+    }
+  }
+}
+
+struct BrainBatch {
+  config: BatchConfig,
+  current_batch_size: usize,
+  list_store_size: usize,
+  last_duration: std::time::Duration,
+}
+
+impl BrainBatch {
+  fn new(config: BatchConfig) -> Self {
+    let min_batch_size = config.min_batch_size;
+    BrainBatch {
+      config,
+      current_batch_size: min_batch_size,
+      list_store_size: 0,
+      last_duration: std::time::Duration::from_millis(16),
+    }
+  }
+
+  fn adjust_batch_size(&mut self, fps: f64) {
+    let target = self.config.target_duration;
+    let current = self.last_duration;
+
+    if fps < self.config.min_fps as f64 {
+      let new_size = (self.current_batch_size as f64 * self.config.low_fps_shrink_factor) as usize;
+      self.current_batch_size = new_size.max(self.config.min_batch_size);
+    } else if fps > self.config.min_fps as f64 {
+      let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
+      self.current_batch_size = new_size.min(self.config.max_batch_size);
+    } else if current < target {
+      let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
+      self.current_batch_size = new_size.min(self.config.max_batch_size);
+    } else if current > target {
+      let new_size = (self.current_batch_size as f64 * self.config.shrink_factor) as usize;
+      self.current_batch_size = new_size.max(self.config.min_batch_size);
+    }
+
+    // if self.list_store_size > self.config.list_store_threshold {
+    //   let reduction_factor =
+    //     1.0 - (self.list_store_size as f64 / self.config.list_store_threshold as f64).min(2.0);
+    //   self.current_batch_size = (self.current_batch_size as f64 * reduction_factor) as usize;
+    //   self.current_batch_size = self.current_batch_size.max(self.config.min_batch_size);
+    // }
+  }
+
+  fn process_batch(
+    &mut self,
+    list_store: &gio::ListStore,
+    entries: Vec<AddressDatabase>,
+    fps: f64,
+  ) -> std::time::Duration {
+    let start = std::time::Instant::now();
+    list_store.extend_from_slice(&entries);
+    let duration = start.elapsed();
+    self.list_store_size += entries.len();
+    self.last_duration = duration;
+    self.adjust_batch_size(fps);
+    duration
+  }
+}
+
+fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
+  let fps = Arc::new(Mutex::new(0.0));
+  let fps_clone = fps.clone();
+  let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
+  let frame_count = Arc::new(Mutex::new(0));
+
+  let drawing_area = gtk4::DrawingArea::new();
+  drawing_area.set_size_request(1, 1);
+  if let Some(parent) = fps_label
+    .parent()
+    .and_then(|p| p.downcast::<gtk4::Box>().ok())
+  {
+    parent.append(&drawing_area);
+  } else {
+    eprintln!("Again something...");
+    fps_label.set_text("N/A");
+    return fps;
+  }
+  drawing_area.display();
+
+  drawing_area.set_draw_func(clone!(
+    #[strong]
+    fps_label,
+    #[strong]
+    fps_clone,
+    #[strong]
+    last_frame_time,
+    #[strong]
+    frame_count,
+    move |_, _, _, _| {
+      let mut last_time = last_frame_time.lock().unwrap();
+      let mut count = frame_count.lock().unwrap();
+      let now = std::time::Instant::now();
+      *count += 1;
+
+      if now.duration_since(*last_time).as_secs_f64() >= 1.0 {
+        let elapsed = now.duration_since(*last_time).as_secs_f64();
+        let current_fps = *count as f64 / elapsed;
+        *fps_clone.lock().unwrap() = current_fps;
+        fps_label.set_text(&format!("{:.1}", current_fps));
+        *last_time = now;
+        *count = 0;
+      }
+    }
+  ));
+
+  glib::timeout_add_local(
+    std::time::Duration::from_millis(GTK_FPS_MAX),
+    clone!(
+      #[strong]
+      drawing_area,
+      move || {
+        drawing_area.queue_draw();
+        glib::ControlFlow::Continue
+      }
+    ),
+  );
+
+  fps
 }
