@@ -2395,7 +2395,6 @@ fn create_main_window(
     .unwrap_or(0);
 
   mnemonic_dictionary_dropdown.set_selected(default_mnemonic_dictionary.try_into().unwrap());
-
   mnemonic_dictionary_frame.set_child(Some(&mnemonic_dictionary_dropdown));
 
   let generate_seed_button = gtk::Button::new();
@@ -2406,11 +2405,11 @@ fn create_main_window(
   delete_seed_button.set_width_request(200);
   delete_seed_button.set_label(&t!("UI.main.seed.delete"));
 
-  // Copy button!
+  // Entropy
   let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
   let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy")));
   let entropy_text = gtk::TextView::new();
-  entropy_text.set_vexpand(true);
+  // entropy_text.set_vexpand(true);
   entropy_text.set_hexpand(true);
   entropy_text.set_wrap_mode(gtk::WrapMode::Char);
   entropy_text.set_editable(false);
@@ -3404,9 +3403,10 @@ fn create_main_window(
   coin_hardened_checkbox.set_active(true);
   coin_hardened_checkbox.set_halign(gtk::Align::Center);
 
-  let adjustment = gtk::Adjustment::new(0.0, 0.0, WALLET_MAX_ADDRESSES as f64, 1.0, 100.0, 0.0);
+  let address_adjustment =
+    gtk::Adjustment::new(0.0, 0.0, WALLET_MAX_ADDRESSES as f64, 1.0, 100.0, 0.0);
 
-  let address_spinbutton = gtk::SpinButton::new(Some(&adjustment), 1.0, 0);
+  let address_spinbutton = gtk::SpinButton::new(Some(&address_adjustment), 1.0, 0);
   address_spinbutton.set_hexpand(true);
 
   let address_hardened_checkbox = gtk::CheckButton::new();
@@ -3582,7 +3582,7 @@ fn create_main_window(
   address_options_address_count_box.append(&address_count_spinbutton);
   address_options_content.append(&address_options_frame);
 
-  // Address start
+  // Address start position
   let address_start_frame = gtk::Frame::new(Some(&t!("UI.main.address.options.start")));
   let address_start_address_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let address_start_adjustment = gtk::Adjustment::new(
@@ -3612,7 +3612,31 @@ fn create_main_window(
   address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
   address_options_content.append(&address_options_hardened_address_frame);
 
-  // Address count
+  // Speed controller
+  let address_speed_controller_frame =
+    gtk::Frame::new(Some(&t!("UI.main.address.options.controller")));
+  let address_speed_controller_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+  let address_speed_controller_adjustment = gtk::Adjustment::new(1.0, 0.0, 4.0, 1.0, 1.0, 0.0);
+  let address_speed_controller_slider = gtk::Scale::new(
+    gtk::Orientation::Horizontal,
+    Some(&address_speed_controller_adjustment),
+  );
+  address_speed_controller_slider.set_draw_value(false);
+  address_speed_controller_slider.set_has_origin(false);
+
+  address_speed_controller_slider.add_mark(0.0, gtk::PositionType::Bottom, Some("Slower"));
+  address_speed_controller_slider.add_mark(1.0, gtk::PositionType::Bottom, Some("Slow"));
+  address_speed_controller_slider.add_mark(2.0, gtk::PositionType::Bottom, Some("Normal"));
+  address_speed_controller_slider.add_mark(3.0, gtk::PositionType::Bottom, Some("Fast"));
+  address_speed_controller_slider.add_mark(4.0, gtk::PositionType::Bottom, Some("Faster"));
+  address_speed_controller_slider.set_round_digits(0);
+
+  address_speed_controller_box.set_halign(gtk4::Align::Center);
+  address_speed_controller_box.append(&address_speed_controller_slider);
+  address_speed_controller_frame.set_child(Some(&address_speed_controller_box));
+  address_options_content.append(&address_speed_controller_frame);
+
+  // Address total generated
   let address_total_generated_count_frame =
     gtk::Frame::new(Some(&t!("UI.main.address.speed.count")));
   let address_total_generated_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
@@ -4562,9 +4586,9 @@ fn create_main_window(
     }
   ));
 
-  let config = BatchConfig::default();
-  let brain_batch = Arc::new(Mutex::new(BrainBatch::new(config)));
-  let fps = monitor_fps(&fps_monitor_label);
+  // let config = BatchConfig::default();
+  // let brain_batch = Arc::new(Mutex::new(BrainBatch::new(config)));
+  // let fps = monitor_fps(&fps_monitor_label);
 
   // JUMP: Generate Addresses button
   generate_addresses_button.connect_clicked(clone!(
@@ -4598,6 +4622,8 @@ fn create_main_window(
     address_generation_speed_label,
     #[weak]
     address_generation_speed_frame,
+    #[strong]
+    address_speed_controller_slider,
     move |_| {
       d3bug(">>> generate_addresses_button.connect_clicked", "debug");
 
@@ -4717,6 +4743,12 @@ fn create_main_window(
       if *address_generation_active.lock().unwrap() {
         return;
       }
+
+      let speed_value = Arc::new(Mutex::new(address_speed_controller_slider.value()));
+      let brain_batch = Arc::new(Mutex::new(BrainBatch::new(BatchConfig::from_speed(
+        *speed_value.lock().unwrap(),
+      ))));
+      let fps = monitor_fps(&fps_monitor_label);
 
       // JUMP: speed_handler
       let speed_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
@@ -4970,7 +5002,7 @@ fn create_main_window(
       // JUMP: progress_handler
       let progress_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
       *progress_handler.lock().unwrap() = Some(glib::timeout_add_local(
-        std::time::Duration::from_millis(50),
+        std::time::Duration::from_millis(100),
         clone!(
           #[strong]
           address_store,
@@ -7471,8 +7503,9 @@ fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) {
 
 // -----
 
-const GTK_FPS_MAX: u64 = 1000 / 60;
-const GTK_FPS_MIN: u64 = 10;
+const GTK_FPS_MAX: u64 = 1000 / 30;
+const GTK_FPS_MIN: u64 = GTK_FPS_MAX / 2;
+const HANDLER_SPEED: u64 = 250;
 
 struct BatchConfig {
   min_batch_size: usize,
@@ -7483,19 +7516,24 @@ struct BatchConfig {
   low_fps_shrink_factor: f64,
   list_store_threshold: usize,
   min_fps: u64,
+  speed_factor: f64,
 }
 
-impl Default for BatchConfig {
-  fn default() -> Self {
+impl BatchConfig {
+  fn from_speed(slider_value: f64) -> Self {
+    let speed_factor = slider_value; // 0.0 (Slower) to 4.0 (Faster)
+    let base_target_ms = 16.0; // Normal speed (slider = 2.0)
+    let target_ms = base_target_ms / (speed_factor / 2.0).max(0.5); // 32ms at 0.0, 8ms at 4.0
     BatchConfig {
-      min_batch_size: 128,
-      max_batch_size: 1024 * 1024,
-      target_duration: std::time::Duration::from_millis(GTK_FPS_MAX),
-      growth_factor: 10.0,
-      shrink_factor: 0.5,
+      min_batch_size: (100.0 * (speed_factor / 2.0).max(0.5)) as usize, // 50 at 0.0, 200 at 4.0
+      max_batch_size: (100_000.0 * (speed_factor / 2.0).min(2.0)) as usize, // 50,000 at 0.0, 200,000 at 4.0
+      target_duration: std::time::Duration::from_millis(target_ms as u64),
+      growth_factor: 1.5 + speed_factor * 0.25, // 1.5 at 0.0, 2.5 at 4.0
+      shrink_factor: 0.75 - speed_factor * 0.1, // 0.75 at 0.0, 0.35 at 4.0
       low_fps_shrink_factor: 0.25,
       list_store_threshold: 1_000_000,
-      min_fps: GTK_FPS_MIN,
+      min_fps: 10,
+      speed_factor,
     }
   }
 }
@@ -7514,34 +7552,92 @@ impl BrainBatch {
       config,
       current_batch_size: min_batch_size,
       list_store_size: 0,
-      last_duration: std::time::Duration::from_millis(16),
+      last_duration: std::time::Duration::from_millis(0),
     }
   }
+
+  // fn adjust_batch_size(&mut self, fps: f64) {
+  //   let target = self.config.target_duration;
+  //   let current = self.last_duration;
+  //
+  //   if fps < self.config.min_fps as f64 {
+  //     let new_size = (self.current_batch_size as f64 * self.config.low_fps_shrink_factor) as usize;
+  //     self.current_batch_size = new_size.max(self.config.min_batch_size);
+  //   } else if fps > self.config.min_fps as f64 {
+  //     let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
+  //     self.current_batch_size = new_size.min(self.config.max_batch_size);
+  //   } else if current < target {
+  //     let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
+  //     self.current_batch_size = new_size.min(self.config.max_batch_size);
+  //   } else if current > target {
+  //     let new_size = (self.current_batch_size as f64 * self.config.shrink_factor) as usize;
+  //     self.current_batch_size = new_size.max(self.config.min_batch_size);
+  //   }
+  //
+  //   // if self.list_store_size > self.config.list_store_threshold {
+  //   //   let reduction_factor =
+  //   //     1.0 - (self.list_store_size as f64 / self.config.list_store_threshold as f64).min(2.0);
+  //   //   self.current_batch_size = (self.current_batch_size as f64 * reduction_factor) as usize;
+  //   //   self.current_batch_size = self.current_batch_size.max(self.config.min_batch_size);
+  //   // }
+  // }
 
   fn adjust_batch_size(&mut self, fps: f64) {
     let target = self.config.target_duration;
     let current = self.last_duration;
+    let current_fps = fps.clamp(self.config.min_fps as f64, 60.0);
+    let mut new_size = self.current_batch_size as f64;
 
-    if fps < self.config.min_fps as f64 {
-      let new_size = (self.current_batch_size as f64 * self.config.low_fps_shrink_factor) as usize;
-      self.current_batch_size = new_size.max(self.config.min_batch_size);
-    } else if fps > self.config.min_fps as f64 {
-      let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
-      self.current_batch_size = new_size.min(self.config.max_batch_size);
-    } else if current < target {
-      let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
-      self.current_batch_size = new_size.min(self.config.max_batch_size);
+    if current_fps < self.config.min_fps as f64 {
+      new_size *= self.config.low_fps_shrink_factor;
+      println!(
+        "Low FPS ({:.2} < {:.2}), shrinking batch size by factor {:.2}",
+        current_fps, self.config.min_fps, self.config.low_fps_shrink_factor
+      );
     } else if current > target {
-      let new_size = (self.current_batch_size as f64 * self.config.shrink_factor) as usize;
-      self.current_batch_size = new_size.max(self.config.min_batch_size);
+      new_size *= self.config.shrink_factor;
+      println!(
+        "Duration ({:.2?} > {:.2?}), shrinking batch size by factor {:.2}",
+        current, target, self.config.shrink_factor
+      );
+    } else if current < target {
+      new_size *= self.config.growth_factor;
+      println!(
+        "Duration ({:.2?} < {:.2?}), growing batch size by factor {:.2}",
+        current, target, self.config.growth_factor
+      );
     }
 
-    // if self.list_store_size > self.config.list_store_threshold {
-    //   let reduction_factor =
-    //     1.0 - (self.list_store_size as f64 / self.config.list_store_threshold as f64).min(2.0);
-    //   self.current_batch_size = (self.current_batch_size as f64 * reduction_factor) as usize;
-    //   self.current_batch_size = self.current_batch_size.max(self.config.min_batch_size);
-    // }
+    if self.list_store_size > self.config.list_store_threshold {
+      let reduction_factor =
+        1.0 - (self.list_store_size as f64 / self.config.list_store_threshold as f64).min(2.0);
+      new_size *= reduction_factor;
+      println!(
+        "ListStore size ({}) exceeds threshold ({}), applying reduction factor {:.2}",
+        self.list_store_size, self.config.list_store_threshold, reduction_factor
+      );
+    }
+
+    new_size = new_size.max(self.config.min_batch_size as f64);
+    new_size = new_size.min(self.config.max_batch_size as f64);
+    self.current_batch_size = new_size.round() as usize;
+
+    if self.current_batch_size == 0 {
+      self.current_batch_size = self.config.min_batch_size;
+      println!(
+        "Batch size reset to min_batch_size ({}) to avoid zero",
+        self.config.min_batch_size
+      );
+    }
+
+    println!("New batch size: {}", self.current_batch_size);
+  }
+  fn update_config(&mut self, slider_value: f64) {
+    self.config = BatchConfig::from_speed(slider_value);
+    self.current_batch_size = self
+      .current_batch_size
+      .max(self.config.min_batch_size)
+      .min(self.config.max_batch_size);
   }
 
   fn process_batch(
