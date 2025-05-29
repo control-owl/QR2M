@@ -4702,17 +4702,19 @@ fn create_main_window(
         "debug",
       );
 
-      let added_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-      let (channel_sender_progress, channel_receiver_progress) = mpsc::channel();
-      let (channel_sender_fill, channel_receiver_fill) = mpsc::channel();
       let address_generation_active = Arc::new(Mutex::new(false));
 
-      let cancel_flag = Arc::new(Mutex::new(false));
+      let (channel_sender_progress, channel_receiver_progress) = mpsc::channel();
+      let (channel_sender_fill, channel_receiver_fill) = mpsc::channel();
+      let channel_receiver_progress = Arc::new(Mutex::new(channel_receiver_progress));
+      let channel_receiver_fill = Arc::new(Mutex::new(channel_receiver_fill));
 
+      let cancel_flag = Arc::new(Mutex::new(false));
       let cancel_speed_flag = cancel_flag.clone();
       let cancel_thread_flag = cancel_flag.clone();
       let cancel_progress_flag = cancel_flag.clone();
 
+      let added_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
       let generated_addresses = Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
       let cpu_threads = num_cpus::get();
@@ -4732,6 +4734,7 @@ fn create_main_window(
       let next_generator = generated_addresses.clone();
       let address_generation_speed_label = address_generation_speed_label.clone();
       let items_added_in_last_second = items_added_in_last_second.clone();
+      let items_added_in_last_second_threads = items_added_in_last_second.clone();
       let counts = counts.clone();
       let index = index.clone();
       let address_generation_active = address_generation_active.clone();
@@ -4750,19 +4753,34 @@ fn create_main_window(
       ))));
       let fps = monitor_fps(&fps_monitor_label);
 
+      let speed_factor = *speed_value.lock().unwrap() / 2.0; // Normalize to 1.0 at Normal (2.0)
+      let speed_interval_ms = (500.0 / speed_factor.max(0.5)) as u64; // 1000ms at 0.0, 250ms at 4.0
+      let progress_interval_ms = (100.0 / speed_factor.max(0.5)) as u64; // 200ms at 0.0, 50ms at 4.0
+
       // JUMP: speed_handler
       let speed_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
-      *speed_handler.lock().unwrap() = Some(glib::timeout_add_local(
-        std::time::Duration::from_millis(500),
-        {
-          let items_added_in_last_second = items_added_in_last_second.clone();
-          let counts = counts.clone();
-          let index = index.clone();
-          let max_speed = max_speed.clone();
-          let ema_speed = ema_speed.clone();
-          let address_generation_speed_label = address_generation_speed_label.clone();
-          let speed_handler = speed_handler.clone();
 
+      *speed_handler.lock().unwrap() = Some(glib::timeout_add_local(
+        std::time::Duration::from_millis(speed_interval_ms),
+        clone!(
+          #[strong]
+          items_added_in_last_second,
+          #[strong]
+          counts,
+          #[strong]
+          index,
+          #[strong]
+          max_speed,
+          #[strong]
+          ema_speed,
+          #[strong]
+          address_generation_speed_label,
+          #[strong]
+          speed_handler,
+          #[strong]
+          cancel_speed_flag,
+          #[strong]
+          items_added_in_last_second,
           move || {
             if *cancel_speed_flag.lock().unwrap() {
               *items_added_in_last_second.lock().unwrap() = 0;
@@ -4776,16 +4794,15 @@ fn create_main_window(
 
             let current_count = *items_added_in_last_second.lock().unwrap();
             let mut counts = counts.borrow_mut();
-            let mut idx = *index.borrow_mut();
-            let mut max = max_speed.borrow_mut();
+            let mut idx = *index.borrow();
 
             counts[idx] = current_count;
-            idx = (idx + 1) % 2;
+            idx = (idx + 1) % counts.len();
             *index.borrow_mut() = idx;
 
-            let raw_speed = current_count as f64 * 2.0;
-            if raw_speed as u64 > *max {
-              *max = raw_speed as u64;
+            let raw_speed = current_count as f64 * (1000.0 / speed_interval_ms as f64);
+            if raw_speed as u64 > *max_speed.borrow() {
+              *max_speed.borrow_mut() = raw_speed as u64;
             }
 
             // JUMP: EMA
@@ -4794,15 +4811,18 @@ fn create_main_window(
             *ema = alpha * raw_speed + (1.0 - alpha) * *ema;
             let ema_avg_speed = *ema as u64;
 
-            address_generation_speed_frame.set_visible(true);
-            address_generation_speed_label
-              .set_label(&format!("{}/sec (max: {}/sec)", ema_avg_speed, *max));
+            // address_generation_speed_frame.set_visible(true);
+            address_generation_speed_label.set_text(&format!(
+              "{}/sec (max: {}/sec)",
+              ema_avg_speed,
+              *max_speed.borrow()
+            ));
 
             *items_added_in_last_second.lock().unwrap() = 0;
 
             glib::ControlFlow::Continue
-          }
-        },
+          },
+        ),
       ));
 
       *address_generation_active.lock().unwrap() = true;
@@ -4963,7 +4983,7 @@ fn create_main_window(
 
                       generated_count += 1;
                       current_index += 1;
-                      *items_added_in_last_second.lock().unwrap() += 1u64;
+                      *items_added_in_last_second_threads.lock().unwrap() += 1u64;
                     } else {
                       d3bug(
                         &format!(
@@ -5002,7 +5022,7 @@ fn create_main_window(
       // JUMP: progress_handler
       let progress_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
       *progress_handler.lock().unwrap() = Some(glib::timeout_add_local(
-        std::time::Duration::from_millis(100),
+        std::time::Duration::from_millis(progress_interval_ms),
         clone!(
           #[strong]
           address_store,
@@ -5026,12 +5046,24 @@ fn create_main_window(
           brain_batch,
           #[strong]
           fps,
+          #[strong]
+          channel_receiver_progress,
+          #[strong]
+          channel_receiver_fill,
+          #[strong]
+          added_count,
+          #[strong]
+          cancel_progress_flag,
+          #[strong]
+          address_start_spinbutton,
+          #[strong]
+          next_generator,
           move || {
-            while let Ok(progress) = channel_receiver_progress.try_recv() {
+            while let Ok(progress) = channel_receiver_progress.lock().unwrap().try_recv() {
               address_generation_progress_bar.set_fraction(progress);
             }
 
-            while let Ok(fill_progress) = channel_receiver_fill.try_recv() {
+            while let Ok(fill_progress) = channel_receiver_fill.lock().unwrap().try_recv() {
               address_fill_progress_bar.set_fraction(fill_progress);
             }
 
@@ -5051,14 +5083,10 @@ fn create_main_window(
             }
 
             for key in keys_to_remove {
-              CRYPTO_ADDRESS.remove(key.as_str());
+              CRYPTO_ADDRESS.remove(&key);
             }
 
             if !batch.is_empty() {
-              if *cancel_progress_flag.lock().unwrap() {
-                remove_active_handler(&progress_handler);
-              }
-
               let entries: Vec<AddressDatabase> = batch
                 .iter()
                 .map(|new_coin| {
@@ -5073,11 +5101,12 @@ fn create_main_window(
                 })
                 .collect();
 
-              let duration = brain_batch.lock().unwrap().process_batch(
-                &address_store,
-                entries,
-                GTK_FPS_MAX as f64,
-              );
+              let current_fps = *fps.lock().unwrap();
+              let duration =
+                brain_batch
+                  .lock()
+                  .unwrap()
+                  .process_batch(&address_store, entries, current_fps);
 
               added_count.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
               let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
@@ -5134,6 +5163,255 @@ fn create_main_window(
             }
           }
         ),
+      ));
+
+      address_speed_controller_slider.connect_value_changed(clone!(
+        #[strong]
+        speed_value,
+        #[strong]
+        brain_batch,
+        #[strong]
+        speed_handler,
+        #[strong]
+        progress_handler,
+        #[strong]
+        channel_receiver_progress,
+        #[strong]
+        channel_receiver_fill,
+        #[strong]
+        channel_sender_fill,
+        #[strong]
+        max_speed,
+        #[strong]
+        ema_speed,
+        #[strong]
+        address_store,
+        #[strong]
+        app_messages_state,
+        #[strong]
+        stop_addresses_button_box,
+        #[strong]
+        fps_monitor_label,
+        #[strong]
+        items_added_in_last_second,
+        #[strong]
+        cancel_progress_flag,
+        #[strong]
+        added_count,
+        #[strong]
+        address_start_spinbutton,
+        #[strong]
+        next_generator,
+        move |slider| {
+          let new_speed = slider.value();
+          *speed_value.lock().unwrap() = new_speed;
+          brain_batch.lock().unwrap().update_config(new_speed);
+
+          remove_active_handler(&speed_handler);
+          remove_active_handler(&progress_handler);
+
+          let speed_factor = new_speed / 2.0; // Normalize to 1.0 at Normal (2.0)
+          let speed_interval_ms = (500.0 / speed_factor.max(0.5)) as u64; // 1000ms at 0.0, 250ms at 4.0
+          let progress_interval_ms = (100.0 / speed_factor.max(0.5)) as u64; // 200ms at 0.0, 50ms at 4.0
+
+          // Restart speed handler
+          *speed_handler.lock().unwrap() = Some(glib::timeout_add_local(
+            std::time::Duration::from_millis(speed_interval_ms),
+            clone!(
+              #[strong]
+              items_added_in_last_second,
+              #[strong]
+              counts,
+              #[strong]
+              index,
+              #[strong]
+              max_speed,
+              #[strong]
+              ema_speed,
+              #[strong]
+              address_generation_speed_label,
+              #[strong]
+              speed_handler,
+              #[strong]
+              cancel_speed_flag,
+              move || {
+                if *cancel_speed_flag.lock().unwrap() {
+                  *items_added_in_last_second.lock().unwrap() = 0;
+                  counts.borrow_mut().fill(0);
+                  *ema_speed.borrow_mut() = 0.0;
+                  *max_speed.borrow_mut() = 0;
+                  return glib::ControlFlow::Break;
+                }
+
+                let current_count = *items_added_in_last_second.lock().unwrap();
+                let mut counts = counts.borrow_mut();
+                let mut idx = *index.borrow();
+                counts[idx] = current_count;
+                idx = (idx + 1) % counts.len();
+                *index.borrow_mut() = idx;
+
+                let raw_speed = current_count as f64 * (1000.0 / speed_interval_ms as f64);
+                if raw_speed as u64 > *max_speed.borrow() {
+                  *max_speed.borrow_mut() = raw_speed as u64;
+                }
+
+                let alpha = 0.5;
+                let mut ema = ema_speed.borrow_mut();
+                *ema = alpha * raw_speed + (1.0 - alpha) * *ema;
+                let ema_avg_speed = *ema as u64;
+
+                address_generation_speed_label.set_text(&format!(
+                  "{}/sec (max: {}/sec)",
+                  ema_avg_speed,
+                  *max_speed.borrow()
+                ));
+
+                *items_added_in_last_second.lock().unwrap() = 0;
+                glib::ControlFlow::Continue
+              }
+            ),
+          ));
+
+          // Restart progress handler
+          *progress_handler.lock().unwrap() = Some(glib::timeout_add_local(
+            std::time::Duration::from_millis(progress_interval_ms),
+            clone!(
+              #[strong]
+              address_store,
+              #[strong]
+              app_messages_state,
+              #[strong]
+              address_generation_progress_bar,
+              #[strong]
+              address_fill_progress_bar,
+              #[strong]
+              stop_addresses_button_box,
+              #[strong]
+              delete_addresses_button_box,
+              #[strong]
+              window,
+              #[strong]
+              channel_receiver_progress,
+              #[strong]
+              channel_receiver_fill,
+              #[strong]
+              channel_sender_fill,
+              #[strong]
+              progress_handler,
+              #[strong]
+              brain_batch,
+              #[strong]
+              fps,
+              #[strong]
+              cancel_progress_flag,
+              #[strong]
+              added_count,
+              #[strong]
+              next_generator,
+              #[strong]
+              address_start_spinbutton,
+              #[strong]
+              fps_monitor_label,
+              #[strong]
+              address_start_point_int,
+              #[strong]
+              addresses_to_create,
+              #[strong]
+              start_time,
+              move || {
+                while let Ok(progress) = channel_receiver_progress.lock().unwrap().try_recv() {
+                  address_generation_progress_bar.set_fraction(progress);
+                }
+                while let Ok(fill_progress) = channel_receiver_fill.lock().unwrap().try_recv() {
+                  address_fill_progress_bar.set_fraction(fill_progress);
+                }
+
+                if *cancel_progress_flag.lock().unwrap() {
+                  remove_active_handler(&progress_handler);
+                  return glib::ControlFlow::Break;
+                }
+
+                let batch_size = brain_batch.lock().unwrap().current_batch_size;
+                let mut batch: Vec<CryptoAddresses> = Vec::with_capacity(batch_size);
+                let mut keys_to_remove = Vec::with_capacity(batch_size);
+
+                for entry in CRYPTO_ADDRESS.iter().take(batch_size) {
+                  batch.push(entry.value().clone());
+                  keys_to_remove.push(entry.key().clone());
+                }
+
+                for key in keys_to_remove {
+                  CRYPTO_ADDRESS.remove(&key);
+                }
+
+                if !batch.is_empty() {
+                  let entries: Vec<AddressDatabase> = batch
+                    .iter()
+                    .map(|new_coin| {
+                      AddressDatabase::new(
+                        new_coin.id.as_deref().unwrap_or_default(),
+                        new_coin.coin_name.as_deref().unwrap_or_default(),
+                        new_coin.derivation_path.as_deref().unwrap_or_default(),
+                        new_coin.address.as_deref().unwrap_or_default(),
+                        new_coin.public_key.as_deref().unwrap_or_default(),
+                        new_coin.private_key.as_deref().unwrap_or_default(),
+                      )
+                    })
+                    .collect();
+
+                  let current_fps = *fps.lock().unwrap();
+                  let duration =
+                    brain_batch
+                      .lock()
+                      .unwrap()
+                      .process_batch(&address_store, entries, current_fps);
+
+                  added_count.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
+                  let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
+                  let fill_progress = added as f64 / addresses_to_create as f64;
+                  channel_sender_fill.send(fill_progress).unwrap_or_default();
+
+                  println!(
+                    "Processed batch of {} keys in {:.2?}, new batch size: {}, FPS: {:.2}",
+                    batch.len(),
+                    duration,
+                    brain_batch.lock().unwrap().current_batch_size,
+                    current_fps
+                  );
+
+                  if added >= addresses_to_create {
+                    let duration = start_time.elapsed();
+                    let message = format!("Address generation done in {:.2?}", duration);
+                    let lock_app_messages = app_messages_state.borrow();
+                    match lock_app_messages
+                      .queue_message(message.to_string(), gtk4::MessageType::Warning)
+                    {
+                      Ok(_) => println!("{}", message),
+                      Err(err) => eprintln!("queue_message: {:?}", err),
+                    };
+
+                    stop_addresses_button_box.set_visible(false);
+                    delete_addresses_button_box.set_visible(true);
+
+                    let next_address = next_generator.load(std::sync::atomic::Ordering::SeqCst)
+                      + address_start_point_int;
+                    address_start_spinbutton.set_value(next_address as f64);
+                    address_fill_progress_bar.set_fraction(1.0);
+
+                    window.set_cursor(None);
+                    fps_monitor_label.set_text("FPS: Done");
+                    remove_active_handler(&progress_handler);
+                    return glib::ControlFlow::Break;
+                  }
+
+                  glib::ControlFlow::Continue
+                } else {
+                  glib::ControlFlow::Continue
+                }
+              }
+            ),
+          ));
+        }
       ));
 
       *generator_handler.lock().unwrap() = Some((address_generation_handler, cancel_flag.clone()));
@@ -7632,6 +7910,7 @@ impl BrainBatch {
 
     println!("New batch size: {}", self.current_batch_size);
   }
+
   fn update_config(&mut self, slider_value: f64) {
     self.config = BatchConfig::from_speed(slider_value);
     self.current_batch_size = self
