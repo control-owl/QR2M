@@ -2409,7 +2409,7 @@ fn create_main_window(
   let entropy_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
   let entropy_frame = gtk::Frame::new(Some(&t!("UI.main.seed.entropy")));
   let entropy_text = gtk::TextView::new();
-  // entropy_text.set_vexpand(true);
+  entropy_text.set_vexpand(true);
   entropy_text.set_hexpand(true);
   entropy_text.set_wrap_mode(gtk::WrapMode::Char);
   entropy_text.set_editable(false);
@@ -3612,11 +3612,11 @@ fn create_main_window(
   address_options_hardened_address_frame.set_child(Some(&address_options_hardened_address_box));
   address_options_content.append(&address_options_hardened_address_frame);
 
-  // Speed controller
+  // JUMP: Speed controller
   let address_speed_controller_frame =
-    gtk::Frame::new(Some(&t!("UI.main.address.options.controller")));
+    gtk::Frame::new(Some(&t!("UI.main.address.stats.controller")));
   let address_speed_controller_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
-  let address_speed_controller_adjustment = gtk::Adjustment::new(1.0, 0.0, 4.0, 1.0, 1.0, 0.0);
+  let address_speed_controller_adjustment = gtk::Adjustment::new(3.0, 1.0, 5.0, 1.0, 1.0, 0.0);
   let address_speed_controller_slider = gtk::Scale::new(
     gtk::Orientation::Horizontal,
     Some(&address_speed_controller_adjustment),
@@ -3624,11 +3624,11 @@ fn create_main_window(
   address_speed_controller_slider.set_draw_value(false);
   address_speed_controller_slider.set_has_origin(false);
 
-  address_speed_controller_slider.add_mark(0.0, gtk::PositionType::Bottom, Some("Slower"));
-  address_speed_controller_slider.add_mark(1.0, gtk::PositionType::Bottom, Some("Slow"));
-  address_speed_controller_slider.add_mark(2.0, gtk::PositionType::Bottom, Some("Normal"));
-  address_speed_controller_slider.add_mark(3.0, gtk::PositionType::Bottom, Some("Fast"));
-  address_speed_controller_slider.add_mark(4.0, gtk::PositionType::Bottom, Some("Faster"));
+  address_speed_controller_slider.add_mark(1.0, gtk::PositionType::Bottom, Some("Pause"));
+  address_speed_controller_slider.add_mark(2.0, gtk::PositionType::Bottom, Some("Slow"));
+  address_speed_controller_slider.add_mark(3.0, gtk::PositionType::Bottom, Some("Normal"));
+  address_speed_controller_slider.add_mark(4.0, gtk::PositionType::Bottom, Some("Fast"));
+  address_speed_controller_slider.add_mark(5.0, gtk::PositionType::Bottom, Some("Faster"));
   address_speed_controller_slider.set_round_digits(0);
 
   address_speed_controller_box.set_halign(gtk4::Align::Center);
@@ -3638,7 +3638,7 @@ fn create_main_window(
 
   // Address total generated
   let address_total_generated_count_frame =
-    gtk::Frame::new(Some(&t!("UI.main.address.speed.count")));
+    gtk::Frame::new(Some(&t!("UI.main.address.stats.count")));
   let address_total_generated_count_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let address_total_generated_count_label = gtk::Label::new(Some("0"));
 
@@ -3647,32 +3647,31 @@ fn create_main_window(
   address_total_generated_count_frame.set_child(Some(&address_total_generated_count_box));
   address_options_content.append(&address_total_generated_count_frame);
 
+  // FPS
+  let fps_monitor_frame = gtk::Frame::new(Some(&t!("UI.main.address.stats.fps")));
+  let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let fps_monitor_label = gtk::Label::new(Some(&GTK_TARGET_FPS.to_string()));
+
+  // fps_monitor_frame.size
+  fps_monitor_box.set_halign(gtk4::Align::Center);
+  fps_monitor_frame.set_child(Some(&fps_monitor_box));
+  fps_monitor_box.append(&fps_monitor_label);
+  address_options_content.append(&fps_monitor_frame);
+
   // Address speed
   let items_added_in_last_second = Arc::new(Mutex::new(0u64));
   let counts = Rc::new(RefCell::new(vec![0u64; 10]));
   let index = Rc::new(RefCell::new(0usize));
   let max_speed = Rc::new(RefCell::new(0u64));
   let ema_speed = Rc::new(RefCell::new(0.0));
-  let address_generation_speed_frame = gtk::Frame::new(Some(&t!("UI.main.address.speed")));
+  let address_generation_speed_frame = gtk::Frame::new(Some(&t!("UI.main.address.stats.speed")));
   let address_generation_speed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-  let address_generation_speed_label = gtk::Label::new(Some("0/sec"));
+  let address_generation_speed_label = gtk::Label::new(Some("0"));
 
-  // address_generation_speed_frame.set_visible(false);
   address_generation_speed_box.set_halign(gtk4::Align::Center);
   address_generation_speed_box.append(&address_generation_speed_label);
   address_generation_speed_frame.set_child(Some(&address_generation_speed_box));
   address_options_content.append(&address_generation_speed_frame);
-
-  // FPS
-  let fps_monitor_frame = gtk::Frame::new(Some(&t!("UI.main.address.fps")));
-  let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-  let fps_monitor_label = gtk::Label::new(Some("0"));
-
-  // fps_monitor_frame.set_visible(false);
-  fps_monitor_box.set_halign(gtk4::Align::Center);
-  fps_monitor_frame.set_child(Some(&fps_monitor_box));
-  fps_monitor_box.append(&fps_monitor_label);
-  address_options_content.append(&fps_monitor_frame);
 
   address_store.connect_items_changed(clone!(
     #[strong]
@@ -4586,9 +4585,12 @@ fn create_main_window(
     }
   ));
 
-  // let config = BatchConfig::default();
-  // let brain_batch = Arc::new(Mutex::new(BrainBatch::new(config)));
-  // let fps = monitor_fps(&fps_monitor_label);
+  let address_speed_generation_value =
+    Arc::new(Mutex::new(address_speed_controller_slider.value()));
+
+  let brain_batch = Arc::new(Mutex::new(BrainBatch::new(BatchConfig::from_speed(
+    *address_speed_generation_value.lock().unwrap(),
+  ))));
 
   // JUMP: Generate Addresses button
   generate_addresses_button.connect_clicked(clone!(
@@ -4620,8 +4622,6 @@ fn create_main_window(
     window,
     #[strong]
     address_generation_speed_label,
-    #[weak]
-    address_generation_speed_frame,
     #[strong]
     address_speed_controller_slider,
     move |_| {
@@ -4747,15 +4747,11 @@ fn create_main_window(
         return;
       }
 
-      let speed_value = Arc::new(Mutex::new(address_speed_controller_slider.value()));
-      let brain_batch = Arc::new(Mutex::new(BrainBatch::new(BatchConfig::from_speed(
-        *speed_value.lock().unwrap(),
-      ))));
       let fps = monitor_fps(&fps_monitor_label);
 
-      let speed_factor = *speed_value.lock().unwrap() / 2.0; // Normalize to 1.0 at Normal (2.0)
-      let speed_interval_ms = (500.0 / speed_factor.max(0.5)) as u64; // 1000ms at 0.0, 250ms at 4.0
-      let progress_interval_ms = (100.0 / speed_factor.max(0.5)) as u64; // 200ms at 0.0, 50ms at 4.0
+      let speed_factor = *address_speed_generation_value.lock().unwrap() / 2.0;
+      let speed_interval_ms = (500.0 / speed_factor.max(0.5)) as u64;
+      let progress_interval_ms = (100.0 / speed_factor.max(0.5)) as u64;
 
       // JUMP: speed_handler
       let speed_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
@@ -5138,7 +5134,7 @@ fn create_main_window(
                 match lock_app_messages
                   .queue_message(message.to_string(), gtk::MessageType::Warning)
                 {
-                  Ok(_) => d3bug(&format!("{}", message), "debug"),
+                  Ok(_) => d3bug(&message, "debug"),
                   Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
                 };
 
@@ -5167,250 +5163,23 @@ fn create_main_window(
 
       address_speed_controller_slider.connect_value_changed(clone!(
         #[strong]
-        speed_value,
+        address_speed_generation_value,
         #[strong]
         brain_batch,
-        #[strong]
-        speed_handler,
-        #[strong]
-        progress_handler,
-        #[strong]
-        channel_receiver_progress,
-        #[strong]
-        channel_receiver_fill,
-        #[strong]
-        channel_sender_fill,
-        #[strong]
-        max_speed,
-        #[strong]
-        ema_speed,
-        #[strong]
-        address_store,
-        #[strong]
-        app_messages_state,
-        #[strong]
-        stop_addresses_button_box,
-        #[strong]
-        fps_monitor_label,
-        #[strong]
-        items_added_in_last_second,
-        #[strong]
-        cancel_progress_flag,
-        #[strong]
-        added_count,
-        #[strong]
-        address_start_spinbutton,
-        #[strong]
-        next_generator,
         move |slider| {
+          d3bug(
+            ">>> address_speed_controller_slider.connect_value_changed",
+            "debug",
+          );
+
           let new_speed = slider.value();
-          *speed_value.lock().unwrap() = new_speed;
+          *address_speed_generation_value.lock().unwrap() = new_speed;
           brain_batch.lock().unwrap().update_config(new_speed);
 
-          remove_active_handler(&speed_handler);
-          remove_active_handler(&progress_handler);
-
-          let speed_factor = new_speed / 2.0; // Normalize to 1.0 at Normal (2.0)
-          let speed_interval_ms = (500.0 / speed_factor.max(0.5)) as u64; // 1000ms at 0.0, 250ms at 4.0
-          let progress_interval_ms = (100.0 / speed_factor.max(0.5)) as u64; // 200ms at 0.0, 50ms at 4.0
-
-          // Restart speed handler
-          *speed_handler.lock().unwrap() = Some(glib::timeout_add_local(
-            std::time::Duration::from_millis(speed_interval_ms),
-            clone!(
-              #[strong]
-              items_added_in_last_second,
-              #[strong]
-              counts,
-              #[strong]
-              index,
-              #[strong]
-              max_speed,
-              #[strong]
-              ema_speed,
-              #[strong]
-              address_generation_speed_label,
-              #[strong]
-              speed_handler,
-              #[strong]
-              cancel_speed_flag,
-              move || {
-                if *cancel_speed_flag.lock().unwrap() {
-                  *items_added_in_last_second.lock().unwrap() = 0;
-                  counts.borrow_mut().fill(0);
-                  *ema_speed.borrow_mut() = 0.0;
-                  *max_speed.borrow_mut() = 0;
-                  return glib::ControlFlow::Break;
-                }
-
-                let current_count = *items_added_in_last_second.lock().unwrap();
-                let mut counts = counts.borrow_mut();
-                let mut idx = *index.borrow();
-                counts[idx] = current_count;
-                idx = (idx + 1) % counts.len();
-                *index.borrow_mut() = idx;
-
-                let raw_speed = current_count as f64 * (1000.0 / speed_interval_ms as f64);
-                if raw_speed as u64 > *max_speed.borrow() {
-                  *max_speed.borrow_mut() = raw_speed as u64;
-                }
-
-                let alpha = 0.5;
-                let mut ema = ema_speed.borrow_mut();
-                *ema = alpha * raw_speed + (1.0 - alpha) * *ema;
-                let ema_avg_speed = *ema as u64;
-
-                address_generation_speed_label.set_text(&format!(
-                  "{}/sec (max: {}/sec)",
-                  ema_avg_speed,
-                  *max_speed.borrow()
-                ));
-
-                *items_added_in_last_second.lock().unwrap() = 0;
-                glib::ControlFlow::Continue
-              }
-            ),
-          ));
-
-          // Restart progress handler
-          *progress_handler.lock().unwrap() = Some(glib::timeout_add_local(
-            std::time::Duration::from_millis(progress_interval_ms),
-            clone!(
-              #[strong]
-              address_store,
-              #[strong]
-              app_messages_state,
-              #[strong]
-              address_generation_progress_bar,
-              #[strong]
-              address_fill_progress_bar,
-              #[strong]
-              stop_addresses_button_box,
-              #[strong]
-              delete_addresses_button_box,
-              #[strong]
-              window,
-              #[strong]
-              channel_receiver_progress,
-              #[strong]
-              channel_receiver_fill,
-              #[strong]
-              channel_sender_fill,
-              #[strong]
-              progress_handler,
-              #[strong]
-              brain_batch,
-              #[strong]
-              fps,
-              #[strong]
-              cancel_progress_flag,
-              #[strong]
-              added_count,
-              #[strong]
-              next_generator,
-              #[strong]
-              address_start_spinbutton,
-              #[strong]
-              fps_monitor_label,
-              #[strong]
-              address_start_point_int,
-              #[strong]
-              addresses_to_create,
-              #[strong]
-              start_time,
-              move || {
-                while let Ok(progress) = channel_receiver_progress.lock().unwrap().try_recv() {
-                  address_generation_progress_bar.set_fraction(progress);
-                }
-                while let Ok(fill_progress) = channel_receiver_fill.lock().unwrap().try_recv() {
-                  address_fill_progress_bar.set_fraction(fill_progress);
-                }
-
-                if *cancel_progress_flag.lock().unwrap() {
-                  remove_active_handler(&progress_handler);
-                  return glib::ControlFlow::Break;
-                }
-
-                let batch_size = brain_batch.lock().unwrap().current_batch_size;
-                let mut batch: Vec<CryptoAddresses> = Vec::with_capacity(batch_size);
-                let mut keys_to_remove = Vec::with_capacity(batch_size);
-
-                for entry in CRYPTO_ADDRESS.iter().take(batch_size) {
-                  batch.push(entry.value().clone());
-                  keys_to_remove.push(entry.key().clone());
-                }
-
-                for key in keys_to_remove {
-                  CRYPTO_ADDRESS.remove(&key);
-                }
-
-                if !batch.is_empty() {
-                  let entries: Vec<AddressDatabase> = batch
-                    .iter()
-                    .map(|new_coin| {
-                      AddressDatabase::new(
-                        new_coin.id.as_deref().unwrap_or_default(),
-                        new_coin.coin_name.as_deref().unwrap_or_default(),
-                        new_coin.derivation_path.as_deref().unwrap_or_default(),
-                        new_coin.address.as_deref().unwrap_or_default(),
-                        new_coin.public_key.as_deref().unwrap_or_default(),
-                        new_coin.private_key.as_deref().unwrap_or_default(),
-                      )
-                    })
-                    .collect();
-
-                  let current_fps = *fps.lock().unwrap();
-                  let duration =
-                    brain_batch
-                      .lock()
-                      .unwrap()
-                      .process_batch(&address_store, entries, current_fps);
-
-                  added_count.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
-                  let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
-                  let fill_progress = added as f64 / addresses_to_create as f64;
-                  channel_sender_fill.send(fill_progress).unwrap_or_default();
-
-                  println!(
-                    "Processed batch of {} keys in {:.2?}, new batch size: {}, FPS: {:.2}",
-                    batch.len(),
-                    duration,
-                    brain_batch.lock().unwrap().current_batch_size,
-                    current_fps
-                  );
-
-                  if added >= addresses_to_create {
-                    let duration = start_time.elapsed();
-                    let message = format!("Address generation done in {:.2?}", duration);
-                    let lock_app_messages = app_messages_state.borrow();
-                    match lock_app_messages
-                      .queue_message(message.to_string(), gtk4::MessageType::Warning)
-                    {
-                      Ok(_) => println!("{}", message),
-                      Err(err) => eprintln!("queue_message: {:?}", err),
-                    };
-
-                    stop_addresses_button_box.set_visible(false);
-                    delete_addresses_button_box.set_visible(true);
-
-                    let next_address = next_generator.load(std::sync::atomic::Ordering::SeqCst)
-                      + address_start_point_int;
-                    address_start_spinbutton.set_value(next_address as f64);
-                    address_fill_progress_bar.set_fraction(1.0);
-
-                    window.set_cursor(None);
-                    fps_monitor_label.set_text("FPS: Done");
-                    remove_active_handler(&progress_handler);
-                    return glib::ControlFlow::Break;
-                  }
-
-                  glib::ControlFlow::Continue
-                } else {
-                  glib::ControlFlow::Continue
-                }
-              }
-            ),
-          ));
+          d3bug(
+            "<<< address_speed_controller_slider.connect_value_changed",
+            "debug",
+          );
         }
       ));
 
@@ -7779,11 +7548,10 @@ fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) {
   }
 }
 
-// -----
+// ----- dev hokus pokus
 
-const GTK_FPS_MAX: u64 = 1000 / 30;
-const GTK_FPS_MIN: u64 = GTK_FPS_MAX / 2;
-const HANDLER_SPEED: u64 = 250;
+const GTK_TARGET_FPS: u64 = 30;
+const GTK_FPS_MAX: u64 = 1000 / GTK_TARGET_FPS;
 
 struct BatchConfig {
   min_batch_size: usize,
@@ -7794,24 +7562,22 @@ struct BatchConfig {
   low_fps_shrink_factor: f64,
   list_store_threshold: usize,
   min_fps: u64,
-  speed_factor: f64,
 }
 
 impl BatchConfig {
   fn from_speed(slider_value: f64) -> Self {
-    let speed_factor = slider_value; // 0.0 (Slower) to 4.0 (Faster)
-    let base_target_ms = 16.0; // Normal speed (slider = 2.0)
-    let target_ms = base_target_ms / (speed_factor / 2.0).max(0.5); // 32ms at 0.0, 8ms at 4.0
+    let speed_factor = slider_value;
+    let base_target_ms = GTK_FPS_MAX as f64;
+    let target_ms = base_target_ms / (speed_factor / 4.0);
     BatchConfig {
-      min_batch_size: (100.0 * (speed_factor / 2.0).max(0.5)) as usize, // 50 at 0.0, 200 at 4.0
-      max_batch_size: (100_000.0 * (speed_factor / 2.0).min(2.0)) as usize, // 50,000 at 0.0, 200,000 at 4.0
+      min_batch_size: (500.0 * (speed_factor / 2.0)) as usize,
+      max_batch_size: (1_000.0 * (speed_factor / 2.0)) as usize,
       target_duration: std::time::Duration::from_millis(target_ms as u64),
-      growth_factor: 1.5 + speed_factor * 0.25, // 1.5 at 0.0, 2.5 at 4.0
-      shrink_factor: 0.75 - speed_factor * 0.1, // 0.75 at 0.0, 0.35 at 4.0
-      low_fps_shrink_factor: 0.25,
-      list_store_threshold: 1_000_000,
-      min_fps: 10,
-      speed_factor,
+      growth_factor: 2.0 + speed_factor * 0.25,
+      shrink_factor: 0.75 - speed_factor * 0.1,
+      low_fps_shrink_factor: 0.50,
+      list_store_threshold: 2_000_000,
+      min_fps: GTK_TARGET_FPS / speed_factor as u64,
     }
   }
 }
@@ -7863,37 +7629,37 @@ impl BrainBatch {
   fn adjust_batch_size(&mut self, fps: f64) {
     let target = self.config.target_duration;
     let current = self.last_duration;
-    let current_fps = fps.clamp(self.config.min_fps as f64, 60.0);
+    let current_fps = fps.clamp(self.config.min_fps as f64, GTK_TARGET_FPS as f64);
     let mut new_size = self.current_batch_size as f64;
 
     if current_fps < self.config.min_fps as f64 {
       new_size *= self.config.low_fps_shrink_factor;
-      println!(
-        "Low FPS ({:.2} < {:.2}), shrinking batch size by factor {:.2}",
-        current_fps, self.config.min_fps, self.config.low_fps_shrink_factor
-      );
+      // println!(
+      //   "Low FPS ({:.2} < {:.2}), shrinking batch size by factor {:.2}",
+      //   current_fps, self.config.min_fps, self.config.low_fps_shrink_factor
+      // );
     } else if current > target {
       new_size *= self.config.shrink_factor;
-      println!(
-        "Duration ({:.2?} > {:.2?}), shrinking batch size by factor {:.2}",
-        current, target, self.config.shrink_factor
-      );
+      // println!(
+      //   "Duration ({:.2?} > {:.2?}), shrinking batch size by factor {:.2}",
+      //   current, target, self.config.shrink_factor
+      // );
     } else if current < target {
       new_size *= self.config.growth_factor;
-      println!(
-        "Duration ({:.2?} < {:.2?}), growing batch size by factor {:.2}",
-        current, target, self.config.growth_factor
-      );
+      // println!(
+      //   "Duration ({:.2?} < {:.2?}), growing batch size by factor {:.2}",
+      //   current, target, self.config.growth_factor
+      // );
     }
 
     if self.list_store_size > self.config.list_store_threshold {
       let reduction_factor =
         1.0 - (self.list_store_size as f64 / self.config.list_store_threshold as f64).min(2.0);
       new_size *= reduction_factor;
-      println!(
-        "ListStore size ({}) exceeds threshold ({}), applying reduction factor {:.2}",
-        self.list_store_size, self.config.list_store_threshold, reduction_factor
-      );
+      // println!(
+      //   "ListStore size ({}) exceeds threshold ({}), applying reduction factor {:.2}",
+      //   self.list_store_size, self.config.list_store_threshold, reduction_factor
+      // );
     }
 
     new_size = new_size.max(self.config.min_batch_size as f64);
@@ -7902,10 +7668,10 @@ impl BrainBatch {
 
     if self.current_batch_size == 0 {
       self.current_batch_size = self.config.min_batch_size;
-      println!(
-        "Batch size reset to min_batch_size ({}) to avoid zero",
-        self.config.min_batch_size
-      );
+      // println!(
+      //   "Batch size reset to min_batch_size ({}) to avoid zero",
+      //   self.config.min_batch_size
+      // );
     }
 
     println!("New batch size: {}", self.current_batch_size);

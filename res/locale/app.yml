@@ -405,14 +405,21 @@ UI:
           en: "Hardened address"
           de: "Gehärtete Adresse"
           hr: "Tvrda adresa"
-      speed:
-        en: "Speed"
-        de: "Geschwindigkeit"
-        hr: "Brzina"
+      stats:
+        speed:
+          en: "Speed"
+          de: "Geschwindigkeit"
+          hr: "Brzina"
         count:
           en: "Total addresses"
           de: "Adressen insgesamt"
           hr: "Ukupno adresa"
+        controller:
+          en: "Batch"
+          de: "Batch"
+          hr: "Runda"
+        fps:
+          en: "FPS"
     database:
       column:
         status:

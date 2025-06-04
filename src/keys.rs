@@ -1092,12 +1092,14 @@ fn generate_public_key(
       let secret_key = secp256k1::SecretKey::from_byte_array(derived_child_keys.0)
         .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {}", e)))?;
       let secp_pub_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+
       Ok(CryptoPublicKey::Secp256k1(secp_pub_key))
     }
     #[cfg(feature = "dev")]
     "ed25519" => {
       let sign_key = ed25519_dalek::SigningKey::from_bytes(&derived_child_keys.0);
       let pub_key = sign_key.verifying_key();
+
       Ok(CryptoPublicKey::Ed25519(pub_key))
     }
     _ => Err(AppError::Custom(format!(
@@ -1172,6 +1174,7 @@ fn encode_private_key(
   } else {
     let secret_key = secp256k1::SecretKey::from_byte_array(*private_key_bytes)
       .map_err(|e| AppError::Custom(format!("Invalid SecretKey: {}", e)))?;
+
     create_private_key_for_address(
       Some(&secret_key),
       Some(true), // compressed

@@ -1,3 +1,6 @@
+# version 0.85.3
+- address batch controller
+
 # version 0.85.2
 - FPS
 - address optimization
