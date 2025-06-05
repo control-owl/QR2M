@@ -7699,8 +7699,6 @@ impl BrainBatch {
 }
 
 fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
-  // BUG: fps_label's parent box grows in width by every run
-  // Remove drawing box before creating one
   let fps = Arc::new(Mutex::new(0.0));
   // let fps_clone = fps.clone();
   let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
@@ -7746,7 +7744,6 @@ fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
     }
   ));
 
-  // IMPROVE: Add process handler
   glib::timeout_add_local(
     std::time::Duration::from_millis(GTK_FPS_MAX),
     clone!(
