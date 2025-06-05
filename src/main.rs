@@ -3630,6 +3630,8 @@ fn create_main_window(
   address_speed_controller_slider.add_mark(4.0, gtk::PositionType::Bottom, Some("Fast"));
   address_speed_controller_slider.add_mark(5.0, gtk::PositionType::Bottom, Some("Faster"));
   address_speed_controller_slider.set_round_digits(0);
+  address_speed_controller_slider.set_margin_start(10);
+  address_speed_controller_slider.set_margin_end(10);
 
   address_speed_controller_box.set_halign(gtk4::Align::Center);
   address_speed_controller_box.append(&address_speed_controller_slider);
@@ -3650,12 +3652,13 @@ fn create_main_window(
   // FPS
   let fps_monitor_frame = gtk::Frame::new(Some(&t!("UI.main.address.stats.fps")));
   let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-  let fps_monitor_label = gtk::Label::new(Some(&GTK_TARGET_FPS.to_string()));
+  let fps_monitor_label = gtk::Label::new(Some(&format!("{}", GTK_TARGET_FPS.to_string())));
 
-  // fps_monitor_frame.size
+  fps_monitor_label.set_margin_start(10);
+  fps_monitor_label.set_margin_end(10);
   fps_monitor_box.set_halign(gtk4::Align::Center);
-  fps_monitor_frame.set_child(Some(&fps_monitor_box));
   fps_monitor_box.append(&fps_monitor_label);
+  fps_monitor_frame.set_child(Some(&fps_monitor_box));
   address_options_content.append(&fps_monitor_frame);
 
   // Address speed
@@ -3668,6 +3671,8 @@ fn create_main_window(
   let address_generation_speed_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let address_generation_speed_label = gtk::Label::new(Some("0"));
 
+  address_generation_speed_label.set_margin_start(10);
+  address_generation_speed_label.set_margin_end(10);
   address_generation_speed_box.set_halign(gtk4::Align::Center);
   address_generation_speed_box.append(&address_generation_speed_label);
   address_generation_speed_frame.set_child(Some(&address_generation_speed_box));
@@ -7695,7 +7700,7 @@ impl BrainBatch {
 
 fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
   let fps = Arc::new(Mutex::new(0.0));
-  let fps_clone = fps.clone();
+  // let fps_clone = fps.clone();
   let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
   let frame_count = Arc::new(Mutex::new(0));
 
@@ -7717,7 +7722,7 @@ fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
     #[strong]
     fps_label,
     #[strong]
-    fps_clone,
+    fps,
     #[strong]
     last_frame_time,
     #[strong]
@@ -7731,7 +7736,7 @@ fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
       if now.duration_since(*last_time).as_secs_f64() >= 1.0 {
         let elapsed = now.duration_since(*last_time).as_secs_f64();
         let current_fps = *count as f64 / elapsed;
-        *fps_clone.lock().unwrap() = current_fps;
+        *fps.lock().unwrap() = current_fps;
         fps_label.set_text(&format!("{:.1}", current_fps));
         *last_time = now;
         *count = 0;
