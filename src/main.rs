@@ -3652,7 +3652,7 @@ fn create_main_window(
   // FPS
   let fps_monitor_frame = gtk::Frame::new(Some(&t!("UI.main.address.stats.fps")));
   let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
-  let fps_monitor_label = gtk::Label::new(Some(&format!("{}", GTK_TARGET_FPS.to_string())));
+  let fps_monitor_label = gtk::Label::new(Some(&GTK_TARGET_FPS.to_string()));
 
   fps_monitor_label.set_margin_start(10);
   fps_monitor_label.set_margin_end(10);
@@ -7699,6 +7699,8 @@ impl BrainBatch {
 }
 
 fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
+  // BUG: fps_label's parent box grows in width by every run
+  // Remove drawing box before creating one
   let fps = Arc::new(Mutex::new(0.0));
   // let fps_clone = fps.clone();
   let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
@@ -7744,6 +7746,7 @@ fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
     }
   ));
 
+  // IMPROVE: Add process handler
   glib::timeout_add_local(
     std::time::Duration::from_millis(GTK_FPS_MAX),
     clone!(
