@@ -64,6 +64,7 @@
     "TODO",
     "todo!()",
     "IMPLEMENT",
+    "IMPROVE",
     "FEATURE",
     "VERIFY",
     "CHECK",
@@ -76,7 +77,8 @@
     "TODO": [
       "todo!()",
       "IMPLEMENT",
-      "IMPROVEMENT"
+      "IMPROVEMENT",
+      "IMPROVE"
     ],
     "FEATURE": [
       "FEATURE"
