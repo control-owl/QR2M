@@ -3624,7 +3624,7 @@ fn create_main_window(
   address_speed_controller_slider.set_draw_value(false);
   address_speed_controller_slider.set_has_origin(false);
 
-  address_speed_controller_slider.add_mark(1.0, gtk::PositionType::Bottom, Some("Pause"));
+  address_speed_controller_slider.add_mark(1.0, gtk::PositionType::Bottom, Some("Slower"));
   address_speed_controller_slider.add_mark(2.0, gtk::PositionType::Bottom, Some("Slow"));
   address_speed_controller_slider.add_mark(3.0, gtk::PositionType::Bottom, Some("Normal"));
   address_speed_controller_slider.add_mark(4.0, gtk::PositionType::Bottom, Some("Fast"));
@@ -7600,32 +7600,6 @@ impl BrainBatch {
     }
   }
 
-  // fn adjust_batch_size(&mut self, fps: f64) {
-  //   let target = self.config.target_duration;
-  //   let current = self.last_duration;
-  //
-  //   if fps < self.config.min_fps as f64 {
-  //     let new_size = (self.current_batch_size as f64 * self.config.low_fps_shrink_factor) as usize;
-  //     self.current_batch_size = new_size.max(self.config.min_batch_size);
-  //   } else if fps > self.config.min_fps as f64 {
-  //     let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
-  //     self.current_batch_size = new_size.min(self.config.max_batch_size);
-  //   } else if current < target {
-  //     let new_size = (self.current_batch_size as f64 * self.config.growth_factor) as usize;
-  //     self.current_batch_size = new_size.min(self.config.max_batch_size);
-  //   } else if current > target {
-  //     let new_size = (self.current_batch_size as f64 * self.config.shrink_factor) as usize;
-  //     self.current_batch_size = new_size.max(self.config.min_batch_size);
-  //   }
-  //
-  //   // if self.list_store_size > self.config.list_store_threshold {
-  //   //   let reduction_factor =
-  //   //     1.0 - (self.list_store_size as f64 / self.config.list_store_threshold as f64).min(2.0);
-  //   //   self.current_batch_size = (self.current_batch_size as f64 * reduction_factor) as usize;
-  //   //   self.current_batch_size = self.current_batch_size.max(self.config.min_batch_size);
-  //   // }
-  // }
-
   fn adjust_batch_size(&mut self, fps: f64) {
     let target = self.config.target_duration;
     let current = self.last_duration;
@@ -7634,32 +7608,44 @@ impl BrainBatch {
 
     if current_fps < self.config.min_fps as f64 {
       new_size *= self.config.low_fps_shrink_factor;
-      // println!(
-      //   "Low FPS ({:.2} < {:.2}), shrinking batch size by factor {:.2}",
-      //   current_fps, self.config.min_fps, self.config.low_fps_shrink_factor
-      // );
+      d3bug(
+        &format!(
+          "Low FPS ({:.2} < {:.2}), shrinking batch size by factor {:.2}",
+          current_fps, self.config.min_fps, self.config.low_fps_shrink_factor
+        ),
+        "debug",
+      );
     } else if current > target {
       new_size *= self.config.shrink_factor;
-      // println!(
-      //   "Duration ({:.2?} > {:.2?}), shrinking batch size by factor {:.2}",
-      //   current, target, self.config.shrink_factor
-      // );
+      d3bug(
+        &format!(
+          "Duration ({:.2?} > {:.2?}), shrinking batch size by factor {:.2}",
+          current, target, self.config.shrink_factor
+        ),
+        "debug",
+      );
     } else if current < target {
       new_size *= self.config.growth_factor;
-      // println!(
-      //   "Duration ({:.2?} < {:.2?}), growing batch size by factor {:.2}",
-      //   current, target, self.config.growth_factor
-      // );
+      d3bug(
+        &format!(
+          "Duration ({:.2?} < {:.2?}), growing batch size by factor {:.2}",
+          current, target, self.config.growth_factor
+        ),
+        "debug",
+      );
     }
 
     if self.list_store_size > self.config.list_store_threshold {
       let reduction_factor =
         1.0 - (self.list_store_size as f64 / self.config.list_store_threshold as f64).min(2.0);
       new_size *= reduction_factor;
-      // println!(
-      //   "ListStore size ({}) exceeds threshold ({}), applying reduction factor {:.2}",
-      //   self.list_store_size, self.config.list_store_threshold, reduction_factor
-      // );
+      d3bug(
+        &format!(
+          "ListStore size ({}) exceeds threshold ({}), applying reduction factor {:.2}",
+          self.list_store_size, self.config.list_store_threshold, reduction_factor
+        ),
+        "debug",
+      );
     }
 
     new_size = new_size.max(self.config.min_batch_size as f64);
@@ -7668,13 +7654,19 @@ impl BrainBatch {
 
     if self.current_batch_size == 0 {
       self.current_batch_size = self.config.min_batch_size;
-      // println!(
-      //   "Batch size reset to min_batch_size ({}) to avoid zero",
-      //   self.config.min_batch_size
-      // );
+      d3bug(
+        &format!(
+          "Batch size reset to min_batch_size ({}) to avoid zero",
+          self.config.min_batch_size
+        ),
+        "debug",
+      );
     }
 
-    println!("New batch size: {}", self.current_batch_size);
+    d3bug(
+      &format!("New batch size: {}", self.current_batch_size),
+      "debug",
+    );
   }
 
   fn update_config(&mut self, slider_value: f64) {
