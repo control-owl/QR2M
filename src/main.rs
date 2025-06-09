@@ -3653,11 +3653,14 @@ fn create_main_window(
   let fps_monitor_frame = gtk::Frame::new(Some(&t!("UI.main.address.stats.fps")));
   let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
   let fps_monitor_label = gtk::Label::new(Some(&GTK_TARGET_FPS.to_string()));
+  let fps_drawing_area = gtk4::DrawingArea::new();
 
   fps_monitor_label.set_margin_start(10);
   fps_monitor_label.set_margin_end(10);
+  fps_drawing_area.set_size_request(1, 1);
   fps_monitor_box.set_halign(gtk4::Align::Center);
   fps_monitor_box.append(&fps_monitor_label);
+  fps_monitor_box.append(&fps_drawing_area);
   fps_monitor_frame.set_child(Some(&fps_monitor_box));
   address_options_content.append(&fps_monitor_frame);
 
@@ -4715,9 +4718,6 @@ fn create_main_window(
       let channel_receiver_fill = Arc::new(Mutex::new(channel_receiver_fill));
 
       let cancel_flag = Arc::new(Mutex::new(false));
-      let cancel_speed_flag = cancel_flag.clone();
-      let cancel_thread_flag = cancel_flag.clone();
-      let cancel_progress_flag = cancel_flag.clone();
 
       let added_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
       let generated_addresses = Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -4752,15 +4752,56 @@ fn create_main_window(
         return;
       }
 
-      let fps = monitor_fps(&fps_monitor_label);
-
       let speed_factor = *address_speed_generation_value.lock().unwrap() / 2.0;
       let speed_interval_ms = (500.0 / speed_factor.max(0.5)) as u64;
       let progress_interval_ms = (100.0 / speed_factor.max(0.5)) as u64;
 
+      let fps = Arc::new(Mutex::new(0.0));
+
+      // JUMP: fps_handler
+      let fps_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
+      *fps_handler.lock().unwrap() = Some(glib::timeout_add_local(
+        std::time::Duration::from_millis(speed_interval_ms),
+        clone!(
+          #[strong]
+          fps_handler,
+          #[strong]
+          cancel_flag,
+          #[strong]
+          fps,
+          #[strong]
+          fps_monitor_box,
+          move || {
+            if *cancel_flag.lock().unwrap() {
+              match remove_active_handler(&fps_handler) {
+                Ok(_) => {
+                  d3bug("<<< remove_active_handler", "debug");
+                }
+                Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
+              };
+              return glib::ControlFlow::Break;
+            }
+
+            match monitor_fps(&fps_monitor_box) {
+              Ok(value) => {
+                let mut fps_lock = fps.lock().unwrap();
+                *fps_lock = *value.lock().unwrap();
+                d3bug("<<< monitor_fps", "info");
+              }
+              Err(err) => {
+                let mut fps_lock = fps.lock().unwrap();
+                *fps_lock = 0.0;
+                d3bug(&format!("monitor_fps: \n{:?}", err), "error");
+              }
+            };
+
+            glib::ControlFlow::Continue
+          }
+        ),
+      ));
+
       // JUMP: speed_handler
       let speed_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
-
       *speed_handler.lock().unwrap() = Some(glib::timeout_add_local(
         std::time::Duration::from_millis(speed_interval_ms),
         clone!(
@@ -4779,17 +4820,22 @@ fn create_main_window(
           #[strong]
           speed_handler,
           #[strong]
-          cancel_speed_flag,
+          cancel_flag,
           #[strong]
           items_added_in_last_second,
           move || {
-            if *cancel_speed_flag.lock().unwrap() {
+            if *cancel_flag.lock().unwrap() {
               *items_added_in_last_second.lock().unwrap() = 0;
               counts.borrow_mut().fill(0);
               *ema_speed.borrow_mut() = 0.0;
               *max_speed.borrow_mut() = 0;
 
-              remove_active_handler(&speed_handler);
+              match remove_active_handler(&speed_handler) {
+                Ok(_) => {
+                  d3bug("<<< remove_active_handler", "debug");
+                }
+                Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
+              };
               return glib::ControlFlow::Break;
             }
 
@@ -4853,172 +4899,180 @@ fn create_main_window(
       };
 
       // JUMP: address_generation_handler
-      let address_generation_handler = std::thread::spawn(move || {
-        pool.install(|| {
-          (0..generating_threads)
-            .into_par_iter()
-            .for_each(|thread_id| {
-              let num_addresses = if thread_id < extra_addresses {
-                addresses_per_thread + 1
-              } else {
-                addresses_per_thread
-              };
+      let address_generation_handler = std::thread::spawn(clone!(
+        #[strong]
+        cancel_flag,
+        move || {
+          pool.install(|| {
+            (0..generating_threads)
+              .into_par_iter()
+              .for_each(|thread_id| {
+                let num_addresses = if thread_id < extra_addresses {
+                  addresses_per_thread + 1
+                } else {
+                  addresses_per_thread
+                };
 
-              if num_addresses == 0 {
-                return;
-              }
-
-              let start_index = if thread_id <= extra_addresses {
-                address_start_point_int + thread_id * (addresses_per_thread + 1)
-              } else {
-                address_start_point_int
-                  + extra_addresses * (addresses_per_thread + 1)
-                  + (thread_id - extra_addresses) * addresses_per_thread
-              };
-              let mut current_index = start_index;
-              let mut generated_count = 0;
-
-              d3bug(
-                &format!(
-                  "Thread {} generating {} addresses starting from index {}",
-                  thread_id, num_addresses, current_index
-                ),
-                "debug",
-              );
-
-              // let value = generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-
-              while generated_count < num_addresses {
-                if *cancel_thread_flag.lock().unwrap() {
-                  d3bug(
-                    &format!("Address generation aborted (thread {})", thread_id),
-                    "warning",
-                  );
-
-                  channel_sender_progress.send(1.0).unwrap_or_default();
+                if num_addresses == 0 {
                   return;
                 }
 
-                if current_index > WALLET_MAX_ADDRESSES as usize {
-                  d3bug(
-                    &format!(
-                      "Address index {:?} above maximum limit {}",
-                      current_index, WALLET_MAX_ADDRESSES
-                    ),
-                    "error",
-                  );
-                  break;
-                }
-
-                let derivation_path = if hardened_address {
-                  format!("{}/{}'", derivation_path, current_index)
+                let start_index = if thread_id <= extra_addresses {
+                  address_start_point_int + thread_id * (addresses_per_thread + 1)
                 } else {
-                  format!("{}/{}", derivation_path, current_index)
+                  address_start_point_int
+                    + extra_addresses * (addresses_per_thread + 1)
+                    + (thread_id - extra_addresses) * addresses_per_thread
                 };
+                let mut current_index = start_index;
+                let mut generated_count = 0;
 
-                let coin_path_id = match derivation_path_to_integer(&derivation_path) {
-                  Ok(value) => value,
-                  Err(err) => {
+                d3bug(
+                  &format!(
+                    "Thread {} generating {} addresses starting from index {}",
+                    thread_id, num_addresses, current_index
+                  ),
+                  "debug",
+                );
+
+                // let value = generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+                while generated_count < num_addresses {
+                  if *cancel_flag.lock().unwrap() {
+                    d3bug(
+                      &format!("Address generation aborted (thread {})", thread_id),
+                      "warning",
+                    );
+
+                    channel_sender_progress.send(1.0).unwrap_or_default();
+                    return;
+                  }
+
+                  if current_index > WALLET_MAX_ADDRESSES as usize {
                     d3bug(
                       &format!(
-                        "Error parsing derivation path {}: {:?}",
-                        derivation_path, err
+                        "Address index {:?} above maximum limit {}",
+                        current_index, WALLET_MAX_ADDRESSES
                       ),
                       "error",
                     );
-                    current_index += 1;
-                    continue;
+                    break;
                   }
-                };
 
-                match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
-                  dashmap::mapref::entry::Entry::Vacant(entry) => {
-                    let magic_ingredients = keys::AddressHocusPokus {
-                      coin_index: wallet_settings.coin_index.unwrap_or_default(),
-                      derivation_path: derivation_path.clone(),
-                      master_private_key_bytes: wallet_settings
-                        .master_private_key_bytes
-                        .clone()
-                        .unwrap_or_default(),
-                      master_chain_code_bytes: wallet_settings
-                        .master_chain_code_bytes
-                        .clone()
-                        .unwrap_or_default(),
-                      public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
-                      key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
-                      wallet_import_format: wallet_settings
-                        .wallet_import_format
-                        .clone()
-                        .unwrap_or_default(),
-                      hash: wallet_settings.hash.clone().unwrap_or_default(),
-                    };
+                  let derivation_path = if hardened_address {
+                    format!("{}/{}'", derivation_path, current_index)
+                  } else {
+                    format!("{}/{}", derivation_path, current_index)
+                  };
 
-                    if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
-                      let new_entry = CryptoAddresses {
-                        id: Some(coin_path_id),
-                        coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
-                        derivation_path: Some(derivation_path),
-                        address: Some(address.address),
-                        public_key: Some(address.public_key),
-                        private_key: Some(address.private_key),
-                      };
-
-                      entry.insert(new_entry);
-
-                      let current_total =
-                        generated_addresses.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-
-                      let new_progress = if addresses_to_create > 0 {
-                        (current_total as f64) / (addresses_to_create as f64)
-                      } else {
-                        0.0
-                      };
-
-                      let mut last = progress_status.lock().unwrap();
-                      if new_progress > *last + 0.01 || new_progress >= 1.0 {
-                        *last = new_progress;
-                        channel_sender_progress
-                          .send(new_progress)
-                          .unwrap_or_default();
-                      }
-
-                      generated_count += 1;
-                      current_index += 1;
-                      *items_added_in_last_second_threads.lock().unwrap() += 1u64;
-                    } else {
+                  let coin_path_id = match derivation_path_to_integer(&derivation_path) {
+                    Ok(value) => value,
+                    Err(err) => {
                       d3bug(
                         &format!(
-                          "Problem with generating address with index {:?}",
-                          current_index
+                          "Error parsing derivation path {}: {:?}",
+                          derivation_path, err
                         ),
                         "error",
                       );
                       current_index += 1;
                       continue;
                     }
-                  }
-                  dashmap::mapref::entry::Entry::Occupied(_) => {
-                    d3bug("Address already exists in a table", "warning");
-                    current_index += 1;
-                    continue;
+                  };
+
+                  match CRYPTO_ADDRESS.entry(coin_path_id.clone()) {
+                    dashmap::mapref::entry::Entry::Vacant(entry) => {
+                      let magic_ingredients = keys::AddressHocusPokus {
+                        coin_index: wallet_settings.coin_index.unwrap_or_default(),
+                        derivation_path: derivation_path.clone(),
+                        master_private_key_bytes: wallet_settings
+                          .master_private_key_bytes
+                          .clone()
+                          .unwrap_or_default(),
+                        master_chain_code_bytes: wallet_settings
+                          .master_chain_code_bytes
+                          .clone()
+                          .unwrap_or_default(),
+                        public_key_hash: wallet_settings
+                          .public_key_hash
+                          .clone()
+                          .unwrap_or_default(),
+                        key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
+                        wallet_import_format: wallet_settings
+                          .wallet_import_format
+                          .clone()
+                          .unwrap_or_default(),
+                        hash: wallet_settings.hash.clone().unwrap_or_default(),
+                      };
+
+                      if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
+                        let new_entry = CryptoAddresses {
+                          id: Some(coin_path_id),
+                          coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
+                          derivation_path: Some(derivation_path),
+                          address: Some(address.address),
+                          public_key: Some(address.public_key),
+                          private_key: Some(address.private_key),
+                        };
+
+                        entry.insert(new_entry);
+
+                        let current_total = generated_addresses
+                          .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                          + 1;
+
+                        let new_progress = if addresses_to_create > 0 {
+                          (current_total as f64) / (addresses_to_create as f64)
+                        } else {
+                          0.0
+                        };
+
+                        let mut last = progress_status.lock().unwrap();
+                        if new_progress > *last + 0.01 || new_progress >= 1.0 {
+                          *last = new_progress;
+                          channel_sender_progress
+                            .send(new_progress)
+                            .unwrap_or_default();
+                        }
+
+                        generated_count += 1;
+                        current_index += 1;
+                        *items_added_in_last_second_threads.lock().unwrap() += 1u64;
+                      } else {
+                        d3bug(
+                          &format!(
+                            "Problem with generating address with index {:?}",
+                            current_index
+                          ),
+                          "error",
+                        );
+                        current_index += 1;
+                        continue;
+                      }
+                    }
+                    dashmap::mapref::entry::Entry::Occupied(_) => {
+                      d3bug("Address already exists in a table", "warning");
+                      current_index += 1;
+                      continue;
+                    }
                   }
                 }
-              }
 
-              let duration = start_time.elapsed();
+                let duration = start_time.elapsed();
 
-              d3bug(
-                &format!(
-                  "Thread {} finished with generating addresses: {} - {} in {:.2?}",
-                  thread_id, start_index, current_index, duration
-                ),
-                "info",
-              );
-            });
-        });
+                d3bug(
+                  &format!(
+                    "Thread {} finished with generating addresses: {} - {} in {:.2?}",
+                    thread_id, start_index, current_index, duration
+                  ),
+                  "info",
+                );
+              });
+          });
 
-        channel_sender_progress.send(1.0).unwrap_or_default();
-      });
+          channel_sender_progress.send(1.0).unwrap_or_default();
+        }
+      ));
 
       // JUMP: progress_handler
       let progress_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
@@ -5054,11 +5108,13 @@ fn create_main_window(
           #[strong]
           added_count,
           #[strong]
-          cancel_progress_flag,
+          cancel_flag,
           #[strong]
           address_start_spinbutton,
           #[strong]
           next_generator,
+          #[strong]
+          cancel_flag,
           move || {
             while let Ok(progress) = channel_receiver_progress.lock().unwrap().try_recv() {
               address_generation_progress_bar.set_fraction(progress);
@@ -5068,8 +5124,13 @@ fn create_main_window(
               address_fill_progress_bar.set_fraction(fill_progress);
             }
 
-            if *cancel_progress_flag.lock().unwrap() {
-              remove_active_handler(&progress_handler);
+            if *cancel_flag.lock().unwrap() {
+              match remove_active_handler(&progress_handler) {
+                Ok(_) => {
+                  d3bug("<<< remove_active_handler", "debug");
+                }
+                Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
+              };
               return glib::ControlFlow::Break;
             }
 
@@ -5125,12 +5186,6 @@ fn create_main_window(
                 "debug",
               );
 
-              // address_store.extend_from_slice(&entries);
-              // added_count.fetch_add(entries.len(), std::sync::atomic::Ordering::Relaxed);
-              // let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
-              // let fill_progress = added as f64 / addresses_to_create as f64;
-              // channel_sender_fill.send(fill_progress).unwrap_or_default();
-
               if added >= addresses_to_create {
                 let duration = start_time.elapsed();
                 let message = format!("Address generation done in {:.2?}", duration);
@@ -5154,7 +5209,14 @@ fn create_main_window(
 
                 window.set_cursor(None);
 
-                remove_active_handler(&progress_handler);
+                *cancel_flag.lock().unwrap() = true;
+
+                // match remove_active_handler(&progress_handler) {
+                //   Ok(_) => {
+                //     d3bug("<<< remove_active_handler", "debug");
+                //   }
+                //   Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
+                // };
                 return glib::ControlFlow::Break;
               }
 
@@ -7546,11 +7608,18 @@ fn derivation_path_to_integer(path: &str) -> FunctionOutput<String> {
   Ok(result.to_string())
 }
 
-fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) {
-  let mut lock = handler.lock().expect("Failed to lock mutex");
+fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) -> FunctionOutput<()> {
+  d3bug(">>> remove_active_handler", "debug");
+  d3bug(&format!("handler {:?}", handler), "debug");
+
+  let mut lock = handler
+    .lock()
+    .map_err(|e| AppError::Custom(format!("No active handler: {:?}", e)))?;
+
   if let Some(id) = lock.take() {
     SourceId::remove(id);
   }
+  Ok(())
 }
 
 // ----- dev hokus pokus
@@ -7575,7 +7644,7 @@ impl BatchConfig {
     let base_target_ms = GTK_FPS_MAX as f64;
     let target_ms = base_target_ms / (speed_factor / 4.0);
     BatchConfig {
-      min_batch_size: (500.0 * (speed_factor / 2.0)) as usize,
+      min_batch_size: (100.0 * (speed_factor / 2.0)) as usize,
       max_batch_size: (1_000.0 * (speed_factor / 2.0)) as usize,
       target_duration: std::time::Duration::from_millis(target_ms as u64),
       growth_factor: 2.0 + speed_factor * 0.25,
@@ -7698,26 +7767,39 @@ impl BrainBatch {
   }
 }
 
-fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
-  // BUG: fps_label's parent box grows in width by every run
-  // Remove drawing box before creating one
+fn monitor_fps(fps_box: &gtk::Box) -> FunctionOutput<Arc<Mutex<f64>>> {
   let fps = Arc::new(Mutex::new(0.0));
-  // let fps_clone = fps.clone();
   let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
   let frame_count = Arc::new(Mutex::new(0));
 
-  let drawing_area = gtk4::DrawingArea::new();
-  drawing_area.set_size_request(1, 1);
-  if let Some(parent) = fps_label
-    .parent()
-    .and_then(|p| p.downcast::<gtk4::Box>().ok())
-  {
-    parent.append(&drawing_area);
-  } else {
-    eprintln!("Again something...");
-    fps_label.set_text("N/A");
-    return fps;
-  }
+  let fps_label = {
+    let children = fps_box.observe_children();
+    let mut label = None;
+    for i in 0..children.n_items() {
+      if let Some(child) = children.item(i) {
+        if let Ok(found_label) = child.downcast::<gtk::Label>() {
+          label = Some(found_label);
+          break;
+        }
+      }
+    }
+    label.ok_or_else(|| AppError::Custom("FPS: No gtk::Label found in the box".to_string()))?
+  };
+
+  let drawing_area = {
+    let children = fps_box.observe_children();
+    let mut area = None;
+    for i in 0..children.n_items() {
+      if let Some(child) = children.item(i) {
+        if let Ok(found_area) = child.downcast::<gtk::DrawingArea>() {
+          area = Some(found_area);
+          break;
+        }
+      }
+    }
+    area.ok_or_else(|| AppError::Custom("FPS: No gtk::DrawingArea found in the box".to_string()))?
+  };
+
   drawing_area.display();
 
   drawing_area.set_draw_func(clone!(
@@ -7759,5 +7841,5 @@ fn monitor_fps(fps_label: &gtk::Label) -> Arc<Mutex<f64>> {
     ),
   );
 
-  fps
+  Ok(fps)
 }
