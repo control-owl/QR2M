@@ -3651,16 +3651,16 @@ fn create_main_window(
 
   // FPS
   let fps_monitor_frame = gtk::Frame::new(Some(&t!("UI.main.address.stats.fps")));
-  let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 20);
+  let fps_monitor_box = gtk::Box::new(gtk::Orientation::Horizontal, 1);
   let fps_monitor_label = gtk::Label::new(Some(&GTK_TARGET_FPS.to_string()));
-  let fps_drawing_area = gtk4::DrawingArea::new();
+  let fps_monitor_area = gtk4::DrawingArea::new();
 
   fps_monitor_label.set_margin_start(10);
   fps_monitor_label.set_margin_end(10);
-  fps_drawing_area.set_size_request(1, 1);
+  fps_monitor_area.set_size_request(1, 1);
   fps_monitor_box.set_halign(gtk4::Align::Center);
   fps_monitor_box.append(&fps_monitor_label);
-  fps_monitor_box.append(&fps_drawing_area);
+  fps_monitor_box.append(&fps_monitor_area);
   fps_monitor_frame.set_child(Some(&fps_monitor_box));
   address_options_content.append(&fps_monitor_frame);
 
@@ -4600,6 +4600,8 @@ fn create_main_window(
     *address_speed_generation_value.lock().unwrap(),
   ))));
 
+  let fps = Arc::new(Mutex::new(0.0));
+
   // JUMP: Generate Addresses button
   generate_addresses_button.connect_clicked(clone!(
     #[strong]
@@ -4756,12 +4758,13 @@ fn create_main_window(
       let speed_interval_ms = (500.0 / speed_factor.max(0.5)) as u64;
       let progress_interval_ms = (100.0 / speed_factor.max(0.5)) as u64;
 
-      let fps = Arc::new(Mutex::new(0.0));
+      let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
+      let frame_count = Arc::new(Mutex::new(0));
 
       // JUMP: fps_handler
       let fps_handler: Arc<Mutex<Option<SourceId>>> = Arc::new(Mutex::new(None));
       *fps_handler.lock().unwrap() = Some(glib::timeout_add_local(
-        std::time::Duration::from_millis(speed_interval_ms),
+        std::time::Duration::from_millis(1000),
         clone!(
           #[strong]
           fps_handler,
@@ -4770,30 +4773,64 @@ fn create_main_window(
           #[strong]
           fps,
           #[strong]
-          fps_monitor_box,
+          fps_monitor_label,
+          #[strong]
+          fps_monitor_area,
           move || {
             if *cancel_flag.lock().unwrap() {
               match remove_active_handler(&fps_handler) {
                 Ok(_) => {
-                  d3bug("<<< remove_active_handler", "debug");
+                  d3bug("<<< remove_active_handler: fps_handler", "test");
                 }
                 Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
               };
               return glib::ControlFlow::Break;
             }
 
-            match monitor_fps(&fps_monitor_box) {
-              Ok(value) => {
-                let mut fps_lock = fps.lock().unwrap();
-                *fps_lock = *value.lock().unwrap();
-                d3bug("<<< monitor_fps", "info");
+            fps_monitor_area.display();
+
+            fps_monitor_area.set_draw_func(clone!(
+              #[strong]
+              fps_monitor_label,
+              #[strong]
+              fps,
+              #[strong]
+              last_frame_time,
+              #[strong]
+              frame_count,
+              move |_, _, _, _| {
+                let mut last_time = last_frame_time.lock().unwrap();
+                let mut count = frame_count.lock().unwrap();
+                let now = std::time::Instant::now();
+                *count += 1;
+
+                if now.duration_since(*last_time).as_secs_f64() >= 1.0 {
+                  let elapsed = now.duration_since(*last_time).as_secs_f64();
+                  let current_fps = *count as f64 / elapsed;
+                  *fps.lock().unwrap() = current_fps;
+                  fps_monitor_label.set_text(&format!("{:.1}", current_fps));
+                  *last_time = now;
+                  *count = 0;
+                }
               }
-              Err(err) => {
-                let mut fps_lock = fps.lock().unwrap();
-                *fps_lock = 0.0;
-                d3bug(&format!("monitor_fps: \n{:?}", err), "error");
-              }
-            };
+            ));
+
+            glib::timeout_add_local(
+              std::time::Duration::from_millis(GTK_FPS_MAX),
+              clone!(
+                #[strong]
+                fps_monitor_area,
+                #[strong]
+                cancel_flag,
+                move || {
+                  if *cancel_flag.lock().unwrap() {
+                    return glib::ControlFlow::Break;
+                  }
+                  fps_monitor_area.queue_draw();
+                  glib::ControlFlow::Continue
+                }
+              ),
+            );
 
             glib::ControlFlow::Continue
           }
@@ -4832,7 +4869,7 @@ fn create_main_window(
 
               match remove_active_handler(&speed_handler) {
                 Ok(_) => {
-                  d3bug("<<< remove_active_handler", "debug");
+                  d3bug("<<< remove_active_handler: speed_handler", "test");
                 }
                 Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
               };
@@ -5127,7 +5164,7 @@ fn create_main_window(
             if *cancel_flag.lock().unwrap() {
               match remove_active_handler(&progress_handler) {
                 Ok(_) => {
-                  d3bug("<<< remove_active_handler", "debug");
+                  d3bug("<<< remove_active_handler: progress_handler", "test");
                 }
                 Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
               };
@@ -5211,12 +5248,6 @@ fn create_main_window(
 
                 *cancel_flag.lock().unwrap() = true;
 
-                // match remove_active_handler(&progress_handler) {
-                //   Ok(_) => {
-                //     d3bug("<<< remove_active_handler", "debug");
-                //   }
-                //   Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
-                // };
                 return glib::ControlFlow::Break;
               }
 
@@ -5411,8 +5442,6 @@ fn create_main_window(
       if let Some((handle, cancel_flag)) = generator_handler.lock().unwrap().take() {
         let _ = handle.join();
         *cancel_flag.lock().unwrap() = true;
-        // *speed_handler.borrow_mut() = None;
-        // *progress_handler.borrow_mut() = None;
       } else {
         #[cfg(debug_assertions)]
         eprintln!("No generator handle!");
@@ -7609,8 +7638,8 @@ fn derivation_path_to_integer(path: &str) -> FunctionOutput<String> {
 }
 
 fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) -> FunctionOutput<()> {
-  d3bug(">>> remove_active_handler", "debug");
-  d3bug(&format!("handler {:?}", handler), "debug");
+  d3bug(">>> remove_active_handler", "test");
+  d3bug(&format!("handler {:?}", handler), "test");
 
   let mut lock = handler
     .lock()
@@ -7651,7 +7680,7 @@ impl BatchConfig {
       shrink_factor: 0.75 - speed_factor * 0.1,
       low_fps_shrink_factor: 0.50,
       list_store_threshold: 2_000_000,
-      min_fps: GTK_TARGET_FPS / speed_factor as u64,
+      min_fps: 1,
     }
   }
 }
@@ -7767,79 +7796,81 @@ impl BrainBatch {
   }
 }
 
-fn monitor_fps(fps_box: &gtk::Box) -> FunctionOutput<Arc<Mutex<f64>>> {
-  let fps = Arc::new(Mutex::new(0.0));
-  let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
-  let frame_count = Arc::new(Mutex::new(0));
-
-  let fps_label = {
-    let children = fps_box.observe_children();
-    let mut label = None;
-    for i in 0..children.n_items() {
-      if let Some(child) = children.item(i) {
-        if let Ok(found_label) = child.downcast::<gtk::Label>() {
-          label = Some(found_label);
-          break;
-        }
-      }
-    }
-    label.ok_or_else(|| AppError::Custom("FPS: No gtk::Label found in the box".to_string()))?
-  };
-
-  let drawing_area = {
-    let children = fps_box.observe_children();
-    let mut area = None;
-    for i in 0..children.n_items() {
-      if let Some(child) = children.item(i) {
-        if let Ok(found_area) = child.downcast::<gtk::DrawingArea>() {
-          area = Some(found_area);
-          break;
-        }
-      }
-    }
-    area.ok_or_else(|| AppError::Custom("FPS: No gtk::DrawingArea found in the box".to_string()))?
-  };
-
-  drawing_area.display();
-
-  drawing_area.set_draw_func(clone!(
-    #[strong]
-    fps_label,
-    #[strong]
-    fps,
-    #[strong]
-    last_frame_time,
-    #[strong]
-    frame_count,
-    move |_, _, _, _| {
-      let mut last_time = last_frame_time.lock().unwrap();
-      let mut count = frame_count.lock().unwrap();
-      let now = std::time::Instant::now();
-      *count += 1;
-
-      if now.duration_since(*last_time).as_secs_f64() >= 1.0 {
-        let elapsed = now.duration_since(*last_time).as_secs_f64();
-        let current_fps = *count as f64 / elapsed;
-        *fps.lock().unwrap() = current_fps;
-        fps_label.set_text(&format!("{:.1}", current_fps));
-        *last_time = now;
-        *count = 0;
-      }
-    }
-  ));
-
-  // IMPROVE: Add process handler
-  glib::timeout_add_local(
-    std::time::Duration::from_millis(GTK_FPS_MAX),
-    clone!(
-      #[strong]
-      drawing_area,
-      move || {
-        drawing_area.queue_draw();
-        glib::ControlFlow::Continue
-      }
-    ),
-  );
-
-  Ok(fps)
-}
+// fn monitor_fps(fps_box: &gtk::Box) -> FunctionOutput<Arc<Mutex<f64>>> {
+//   let fps = Arc::new(Mutex::new(0.0));
+//   let last_frame_time = Arc::new(Mutex::new(std::time::Instant::now()));
+//   let frame_count = Arc::new(Mutex::new(0));
+//
+//   let fps_label = {
+//     let children = fps_box.observe_children();
+//     let mut label = None;
+//     for i in 0..children.n_items() {
+//       if let Some(child) = children.item(i) {
+//         if let Ok(found_label) = child.downcast::<gtk::Label>() {
+//           label = Some(found_label);
+//           break;
+//         }
+//       }
+//     }
+//     label.ok_or_else(|| AppError::Custom("FPS: No gtk::Label found in the box".to_string()))?
+//   };
+//
+//   let drawing_area = {
+//     let children = fps_box.observe_children();
+//     let mut area = None;
+//     for i in 0..children.n_items() {
+//       if let Some(child) = children.item(i) {
+//         if let Ok(found_area) = child.downcast::<gtk::DrawingArea>() {
+//           area = Some(found_area);
+//           break;
+//         }
+//       }
+//     }
+//     area.ok_or_else(|| AppError::Custom("FPS: No gtk::DrawingArea found in the box".to_string()))?
+//   };
+//
+//   drawing_area.display();
+//
+//   drawing_area.set_draw_func(clone!(
+//     #[strong]
+//     fps_label,
+//     #[strong]
+//     fps,
+//     #[strong]
+//     last_frame_time,
+//     #[strong]
+//     frame_count,
+//     move |_, _, _, _| {
+//       let mut last_time = last_frame_time.lock().unwrap();
+//       let mut count = frame_count.lock().unwrap();
+//       let now = std::time::Instant::now();
+//       *count += 1;
+//
+//       if now.duration_since(*last_time).as_secs_f64() >= 1.0 {
+//         let elapsed = now.duration_since(*last_time).as_secs_f64();
+//         let current_fps = *count as f64 / elapsed;
+//         *fps.lock().unwrap() = current_fps;
+//         fps_label.set_text(&format!("{:.1}", current_fps));
+//         *last_time = now;
+//         *count = 0;
+//       }
+//     }
+//   ));
+//
+//   drawing_area.queue_draw();
+//
+//   // // IMPROVE: Add process handler
+//   // glib::timeout_add_local(
+//   //   std::time::Duration::from_millis(GTK_FPS_MAX),
+//   //   clone!(
+//   //     #[strong]
+//   //     drawing_area,
+//   //     move || {
+//   //       drawing_area.queue_draw();
+//   //       glib::ControlFlow::Continue
+//   //     }
+//   //   ),
+//   // );
+//
+//   Ok(fps)
+// }
