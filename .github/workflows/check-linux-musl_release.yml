@@ -18,7 +18,7 @@ jobs:
   standard:
     runs-on: ubuntu-latest
     container:
-      image: rust:alpine
+      image: rust:alpine3.22
     strategy:
       matrix:
         target: [x86_64-unknown-linux-musl]
