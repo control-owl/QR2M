@@ -26,14 +26,20 @@ jobs:
       fail-fast: false
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Add edge/community repository
+        run: |
+          echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
+          echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+          apk update
 
       - name: Install system dependencies
         run: |
-          apk update
           apk add musl-dev gcc pkgconf git \
-          gtk4 libadwaita-dev glib-dev openssl-dev
+            gtk4.0-dev libadwaita-dev glib-dev openssl-dev
+          pkgconf --modversion glib-2.0 gtk4.0 libadwaita-1 || exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install Rust
         run: |
