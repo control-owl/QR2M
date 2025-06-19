@@ -12,10 +12,13 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   standard:
     runs-on: ubuntu-latest
+    container:
+      image: rust:alpine
     strategy:
       matrix:
         target: [x86_64-unknown-linux-musl]
@@ -28,29 +31,37 @@ jobs:
 
       - name: Install system dependencies
         run: |
-            sudo apt-get update
-            sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config libssl-dev musl-tools
+          apk update
+          apk add musl-dev gcc pkgconf git \
+          gtk4-dev libadwaita-dev glib-dev openssl-dev
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy rustfmt
-          targets: ${{ matrix.target }}
+        run: |
+          rustup component add clippy rustfmt
+          rustup target add ${{ matrix.target }}
 
       - name: Check formatting
         run: cargo fmt -- --check
 
       - name: Run Clippy
-        run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
+        run: |
+          export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig
+          cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
       - name: Run cargo check
-        run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
+        run: |
+          export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig
+          cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
+        run: |
+          export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig
+          cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Run tests
-        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
+        run: |
+          export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig
+          cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Prepare exec
         run: |
