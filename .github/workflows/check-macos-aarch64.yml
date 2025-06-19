@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         target: [aarch64-apple-darwin]
-        features: ["", "full"]
+        features: ["offline", "full", "dev"]
       fail-fast: false
 
     env:

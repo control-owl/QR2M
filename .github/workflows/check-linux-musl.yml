@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         target: [x86_64-unknown-linux-musl]
-        features: ["", "full"]
+        features: ["offline", "full", "dev"]
       fail-fast: false
 
     steps:
