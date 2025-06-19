@@ -30,13 +30,28 @@ jobs:
         run: |
           echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
           echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+          echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
           apk update
+
+      - name: d3bug packages
+        run: |
+          apk search gtk
+          apk search libadwaita
+          apk info -a gtk4-dev || echo "gtk4-dev not found"
+          apk info -a libadwaita-dev || echo "libadwaita-dev not found"
 
       - name: Install system dependencies
         run: |
           apk add musl-dev gcc pkgconf git \
-            gtk+4.0-dev libadwaita-dev glib-dev openssl-dev
-          pkgconf --modversion glib-2.0 gtk4.0 libadwaita-1 || exit 1
+            gtk4.0-dev libadwaita-dev glib-dev openssl-dev
+
+      - name: d3bug pkg-config
+        run: |
+          echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
+          find /usr/lib /usr/share /usr/local -name "*.pc" || true
+          pkgconf --modversion glib-2.0 || echo "glib-2.0 not found"
+          pkgconf --modversion gtk4.0 || echo "gtk4.0 not found"
+          pkgconf --modversion libadwaita-1 || echo "libadwaita-1 not found"
 
       - name: Checkout repository
         uses: actions/checkout@v4
