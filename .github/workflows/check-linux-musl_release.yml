@@ -33,7 +33,7 @@ jobs:
         run: |
           apk update
           apk add musl-dev gcc pkgconf git \
-          gtk4-dev libadwaita-dev glib-dev openssl-dev
+          gtk4 libadwaita-dev glib-dev openssl-dev
 
       - name: Install Rust
         run: |
