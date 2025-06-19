@@ -35,7 +35,7 @@ jobs:
       - name: Install system dependencies
         run: |
           apk add musl-dev gcc pkgconf git \
-            gtk4.0-dev libadwaita-dev glib-dev openssl-dev
+            gtk+4.0-dev libadwaita-dev glib-dev openssl-dev
           pkgconf --modversion glib-2.0 gtk4.0 libadwaita-1 || exit 1
 
       - name: Checkout repository
