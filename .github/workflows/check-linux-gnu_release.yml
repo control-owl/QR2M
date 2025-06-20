@@ -63,20 +63,20 @@ jobs:
         run: |
           strip target/${{ matrix.target }}/release/QR2M
           mkdir -p LAB7041
-          cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
           cp Changelog.md LAB7041/Changelog.md
           cp LICENSE.txt LAB7041/LICENSE.txt
           sync
 
       - name: Compress release
         run: |
-          tar -czf LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 QR2M-${VERSION_NUMBER}-${{ matrix.features }} Changelog.md LICENSE.txt
+          tar -czf LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }} Changelog.md LICENSE.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}
-          path: LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+          name: QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}
+          path: LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
           retention-days: 7
 
       - name: Upload to GitHub Releases
@@ -84,7 +84,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             Changelog.md
             LICENSE.txt
           draft: false
