@@ -70,7 +70,7 @@ jobs:
 
       - name: Compress release
         run: |
-          tar -czf LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 .
+          tar -czf LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 QR2M-${VERSION_NUMBER}-${{ matrix.features }} Changelog.md LICENSE.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
