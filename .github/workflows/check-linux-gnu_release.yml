@@ -66,6 +66,7 @@ jobs:
           cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}
           cp Changelog.md LAB7041/Changelog.md
           cp LICENSE.txt LAB7041/LICENSE.txt
+          sync
 
       - name: Compress release
         run: |
