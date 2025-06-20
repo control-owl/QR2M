@@ -52,14 +52,19 @@ jobs:
       - name: Run tests
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
+      # - name: Versioning
+      #   run: |
+      #     TAG=$(echo "${GITHUB_REF}" | cut -d '/' -f 3-)
+      #     if ! [[ $TAG =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      #       VERSION_NUMBER="prerelease"
+      #     else
+      #       VERSION_NUMBER="${TAG}"
+      #     fi
+      #     echo "VERSION_NUMBER=${VERSION_NUMBER}" >> $GITHUB_ENV
+
       - name: Versioning
         run: |
-          TAG=$(echo "${GITHUB_REF}" | cut -d '/' -f 3-)
-          if ! [[ $TAG =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            VERSION_NUMBER="prerelease"
-          else
-            VERSION_NUMBER="${TAG}"
-          fi
+          VERSION_NUMBER=$(grep -oP '# version: \K[0-9]+\.[0-9]+\.[0-9]+' Changelog.md)
           echo "VERSION_NUMBER=${VERSION_NUMBER}" >> $GITHUB_ENV
 
       - name: Prepare release files
@@ -90,6 +95,6 @@ jobs:
             Changelog.md
             LICENSE.txt
           draft: false
-          prerelease: ${{ VERSION_NUMBER == 'prerelease' }}
+          prerelease: ${{ env.VERSION_NUMBER == 'prerelease' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
