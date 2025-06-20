@@ -64,7 +64,8 @@ jobs:
 
       - name: Versioning
         run: |
-          VERSION_NUMBER=$(grep -oP '# version: \K[0-9]+\.[0-9]+\.[0-9]+' Changelog.md)
+          # VERSION_NUMBER=$(grep -oP '# version: \K[0-9]+\.[0-9]+\.[0-9]+' Changelog.md)
+          VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' ')
           echo "VERSION_NUMBER=${VERSION_NUMBER}" >> $GITHUB_ENV
 
       - name: Prepare release files
