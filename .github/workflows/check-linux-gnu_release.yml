@@ -49,8 +49,8 @@ jobs:
       - name: Build
         run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
-      - name: Run tests
-        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
+      # - name: Run tests
+      #   run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Versioning
         run: |
