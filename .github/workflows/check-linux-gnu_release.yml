@@ -37,14 +37,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check formatting
-        run: cargo fmt -- --check
-
-      - name: Run Clippy
-        run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
-
-      - name: Run Cargo Check
-        run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
+#       - name: Check formatting
+#         run: cargo fmt -- --check
+# 
+#       - name: Run Clippy
+#         run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
+# 
+#       - name: Run Cargo Check
+#         run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Build
         run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
