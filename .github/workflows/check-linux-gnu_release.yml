@@ -3,12 +3,12 @@ name: Linux x86_64 GNU Release
 on:
   push:
     branches: [ "testing" ]
-    tags: [ "v*.*.*" ]
+    # tags: [ "v*.*.*" ]
   # workflow_run:
   #   workflows: ["Verify GPG Signature"]
   #   types: 
   #     - completed
-  #   branches: [ "testing" ]
+  #   branches: [ "master" ]
 
 permissions:
   contents: write
@@ -52,16 +52,6 @@ jobs:
       - name: Run tests
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
-      # - name: Versioning
-      #   run: |
-      #     TAG=$(echo "${GITHUB_REF}" | cut -d '/' -f 3-)
-      #     if ! [[ $TAG =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-      #       VERSION_NUMBER="prerelease"
-      #     else
-      #       VERSION_NUMBER="${TAG}"
-      #     fi
-      #     echo "VERSION_NUMBER=${VERSION_NUMBER}" >> $GITHUB_ENV
-
       - name: Versioning
         run: |
           # VERSION_NUMBER=$(grep -oP '# version: \K[0-9]+\.[0-9]+\.[0-9]+' Changelog.md)
@@ -73,19 +63,19 @@ jobs:
         run: |
           strip target/${{ matrix.target }}/release/QR2M
           mkdir -p LAB7041
-          cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${env.VERSION_NUMBER}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}
           cp Changelog.md LAB7041/Changelog.md
           cp LICENSE.txt LAB7041/LICENSE.txt
 
       - name: Compress release
         run: |
-          tar -czf LAB7041/QR2M-${env.VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 .
+          tar -czf LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QR2M-${env.VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}
-          path: LAB7041/QR2M-${env.VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+          name: QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}
+          path: LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
           retention-days: 7
 
       - name: Upload to GitHub Releases
@@ -93,10 +83,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            LAB7041/QR2M-${env.VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            LAB7041/QR2M-${VERSION_NUMBER}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             Changelog.md
             LICENSE.txt
           draft: false
-          prerelease: ${{ env.VERSION_NUMBER == 'prerelease' }}
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
