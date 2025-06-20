@@ -1,0 +1,80 @@
+name: Linux x86_64 GNU Release
+
+on:
+  push:
+    branches: [ "testing" ]
+    tags: [ "v*.*.*" ]
+  # workflow_run:
+  #   workflows: ["Verify GPG Signature"]
+  #   types: 
+  #     - completed
+  #   branches: [ "testing" ]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  standard:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu]
+        features: ["offline", "full", "dev"]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config libssl-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy rustfmt
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
+
+      - name: Run cargo check
+        run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
+
+      - name: Run tests
+        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
+
+      - name: Prepare exec
+        run: |
+          strip target/${{ matrix.target }}/release/QR2M
+          mkdir -p LAB7041
+          cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${{ matrix.features }}
+
+      - name: Compress exec
+        run: |
+          tar -czf LAB7041/QR2M-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 QR2M-${{ matrix.features }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QR2M-${{ matrix.features }}-${{ matrix.target }}
+          path: LAB7041/QR2M-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+          retention-days: 5
+
+      - name: Upload to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: LAB7041/QR2M-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
