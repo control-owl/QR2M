@@ -126,6 +126,25 @@ jobs:
 #          path: LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
 #          retention-days: 7
 
+      - name: Create tag
+        if: github.event_name == 'push' && github.ref == 'refs/heads/testing' && !contains(github.event.head_commit.message, '[skip release]')
+        run: |
+          git config user.name "QR2M"
+          git config user.email "qr2m@r-o0-t.wtf"
+          git config user.signingkey "$(gpg --list-secret-keys --keyid-format LONG | grep sec | awk '{print $2}' | cut -d'/' -f2)"
+          git config commit.gpgsign true
+          echo "VERSION_NUMBER: ${{ env.VERSION_NUMBER }}"
+          if ! git rev-parse v${{ env.VERSION_NUMBER }} >/dev/null 2>&1; then
+            git tag -a v${{ env.VERSION_NUMBER }} -s -m "Release v${{ env.VERSION_NUMBER }}"
+            git push origin v${{ env.VERSION_NUMBER }} || echo "Tag push failed: $?"
+            git ls-remote --tags origin
+          else
+            echo "Tag v${{ env.VERSION_NUMBER }} already exists, skipping"
+          fi
+        env:
+          GPG_TTY: $(tty)
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
       - name: Upload to GitHub Releases
         # if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
