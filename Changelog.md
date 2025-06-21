@@ -1,5 +1,5 @@
 # version 0.86.0
-- GitHub release packages
+- GitHub Actions auto release CI/CD
 
 # version 0.85.3
 - address batch controller

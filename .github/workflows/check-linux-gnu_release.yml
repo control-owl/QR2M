@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+##Pause
 #       - name: Check formatting
 #         run: cargo fmt -- --check
 # 
@@ -50,14 +50,60 @@ jobs:
 
       - name: Build
         run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
-
+## Pause
       # - name: Run tests
       #   run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Versioning
         run: |
           VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' #version')
-          echo "VERSION_NUMBER=${VERSION_NUMBER}" >> $GITHUB_ENV
+          if [[ ! "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: VERSION_NUMBER is not in valid format: ${VERSION_NUMBER}"
+            exit 1
+          fi
+          echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
+
+      - name: Setup GPG
+        run: |
+          if [ -z "${{ secrets.ACTIONS_KEY }}" ]; then
+            echo "Error: QR2M key missing"
+            exit 1
+          fi
+          echo "${{ secrets.ACTIONS_KEY }}" | gpg --import --no-tty --batch --yes || {
+            echo "Error: Failed to import QR2M key"
+            exit 1
+          }
+          gpg --list-secret-keys --keyid-format LONG
+          echo "GPG key imported successfully"
+
+      - name: Create tag
+        run: |
+          git config user.name "QR2M"
+          git config user.email "${{ secrets.ACTIONS_EMAIL }}"
+          git config user.signingkey "$(gpg --list-secret-keys --keyid-format LONG | grep sec | awk '{print $2}' | cut -d'/' -f2)"
+          git config commit.gpgsign true
+          echo "VERSION_NUMBER: ${{ env.VERSION_NUMBER }}"
+          if ! git rev-parse v${{ env.VERSION_NUMBER }} >/dev/null 2>&1; then
+            git tag -a v${{ env.VERSION_NUMBER }} -s -m "Release v${{ env.VERSION_NUMBER }}"
+            git push origin v${{ env.VERSION_NUMBER }} || echo "Tag push failed: $?"
+            git ls-remote --tags origin
+          else
+            echo "Tag v${{ env.VERSION_NUMBER }} already exists, skipping"
+          fi
+        env:
+          GPG_TTY: $(tty)
+
+      - name: Signature
+        run: |
+          APP_PATH=./QR2M
+          APP_DIR=$(dirname "$APP_PATH")
+          SIG_FILE="$APP_DIR/QR2M-${{ matrix.features }}.sig"
+          "$APP_PATH" & PID=$!
+          sleep 5
+          [ -f "$SIG_FILE" ] && exit 0
+          kill $PID 2>/dev/null || true
+          echo "SIG file not found" >&2
+          exit 1
 
       - name: Prepare release files
         run: |
@@ -66,18 +112,19 @@ jobs:
           cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
           cp Changelog.md LAB7041/Changelog.md
           cp LICENSE.txt LAB7041/LICENSE.txt
+          cp QR2M-${{ matrix.features }}.sig LAB7041/QR2M-${{ matrix.features }}.sig
           sync
 
       - name: Compress release
         run: |
-          tar -czf LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }} Changelog.md LICENSE.txt
+          tar -czf LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041 QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }} QR2M-${{ matrix.features }}.sig Changelog.md LICENSE.txt
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}
-          path: LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
-          retention-days: 7
+#      - name: Upload artifact
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}
+#          path: LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+#          retention-days: 7
 
       - name: Upload to GitHub Releases
         # if: startsWith(github.ref, 'refs/tags/v')
