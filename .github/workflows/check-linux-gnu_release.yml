@@ -124,7 +124,6 @@ jobs:
           git config commit.gpgsign true
           git config tag.gpgSign true
           
-          echo "VERSION_NUMBER: VERSION_NUMBER"
           echo "Checking if tag v$VERSION_NUMBER exists..."
           if ! git rev-parse "v$VERSION_NUMBER" >/dev/null 2>&1; then
             echo "Tag v$VERSION_NUMBER does not exists."
