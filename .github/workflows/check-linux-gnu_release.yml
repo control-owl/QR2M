@@ -64,7 +64,6 @@ jobs:
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
       - name: Import GPG key
-        id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.ACTIONS_KEY }}
@@ -72,22 +71,6 @@ jobs:
           git_user_signingkey: true
           git_commit_gpgsign: false # only tags no commits
           git_tag_gpgsign: true
-
-      - name: d3bug GPG setup
-        env:
-          GPG_TTY: $(tty)
-        run: |
-          gpg --version
-          gpg --list-secret-keys --keyid-format LONG
-          echo "Testing GPG signing with imported key"
-          echo "test" > test.txt
-          if echo "${{ secrets.ACTIONS_PASS }}" | gpg --pinentry-mode loopback --passphrase-fd 0 --sign --local-user ${{ secrets.ACTIONS_KEY_ID }} --output test.sig test.txt; then
-            echo "GPG signing test successful"
-          else
-            echo "GPG signing test failed"
-            cat sign-test.log
-            exit 1
-          fi
 
       - name: Create tag
         env:
