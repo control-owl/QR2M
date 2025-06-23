@@ -74,11 +74,28 @@ jobs:
           git_commit_gpgsign: false # only tags no commits
           git_tag_gpgsign: true
 
+      - name: d3bug GPG setup
+        run: |
+          gpg --version
+          gpg --list-secret-keys --keyid-format LONG
+          echo "Testing GPG signing with imported key"
+          echo "test" > test.txt
+          if echo "${{ secrets.GPG_PASSPHRASE }}" | gpg --pinentry-mode loopback --passphrase-fd 0 --sign --local-user "${{ steps.import_gpg.outputs.keyid }}" --output test.sig test.txt; then
+            echo "GPG signing test successful"
+          else
+            echo "GPG signing test failed"
+            cat sign-test.log
+            exit 1
+          fi
+        env:
+          GPG_TTY: $(tty)
+
       - name: Create tag
         env:
           VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
           GPG_PRIVATE_KEY: ${{ secrets.ACTIONS_KEY }}
           GPG_KEY_ID: ${{ secrets.ACTIONS_KEY_ID }}
+          passphrase: ${{ secrets.ACTIONS_PASS }}
         run: |
           git config user.name "QR2M"
           git config user.email "${{ secrets.ACTIONS_EMAIL }}"
@@ -90,25 +107,31 @@ jobs:
           }
           
           echo "Verifying app GPG key..."
-          gpg --list-secret-keys --keyid-format LONG || {
-            echo "No GPG keys available"
+#          gpg --list-secret-keys --keyid-format LONG || {
+#            echo "No GPG keys available"
+#
+#            exit 1
+#          }
+          if gpg --list-secret-keys --keyid-format LONG | grep -q "$GPG_KEY_ID"; then
+            echo "GPG key verified found."
+          else
+            echo "GPG key not found."
             exit 1
-          }
-          
+          fi
+  
           echo "Configuring signing key..."
           git config user.signingkey "$GPG_KEY_ID"
           git config commit.gpgsign true
           git config tag.gpgSign true
           
           echo "VERSION_NUMBER: VERSION_NUMBER"
-          
           echo "Checking if tag v$VERSION_NUMBER exists..."
           if ! git rev-parse "v$VERSION_NUMBER" >/dev/null 2>&1; then
             echo "Tag v$VERSION_NUMBER does not exists."
             echo "Creating signed tag v$VERSION_NUMBER..."
             if ! git tag -a "v$VERSION_NUMBER" -s -m "Release v$VERSION_NUMBER"; then
-              echo "GPG signing failed, falling back to unsigned tag"
-              git tag -a "v$VERSION_NUMBER" -m "Release v$VERSION_NUMBER"
+              echo "GPG signing failed"
+              exit 1
             fi
               git push origin "v$VERSION_NUMBER" || {
                 echo "Tag push failed"
@@ -122,9 +145,8 @@ jobs:
 
       - name: Signature
         run: |
-          APP_PATH=./QR2M
-          APP_DIR=$(dirname "$APP_PATH")
-          SIG_FILE="$APP_DIR/QR2M-${{ matrix.features }}.sig"
+          APP_PATH=$HOME/QR2M/QR2M
+          SIG_FILE="APP_PATH/QR2M-${{ matrix.features }}.sig"
           "$APP_PATH" & PID=$!
           sleep 5
           [ -f "$SIG_FILE" ] && exit 0
