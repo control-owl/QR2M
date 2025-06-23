@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   standard:
+    name: ${{ matrix.features }}-${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -64,6 +65,7 @@ jobs:
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
       - name: Import GPG key
+        id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.ACTIONS_KEY }}
@@ -71,6 +73,22 @@ jobs:
           git_user_signingkey: true
           git_commit_gpgsign: false # only tags no commits
           git_tag_gpgsign: true
+
+      - name: d3bug GPG setup
+        env:
+          GPG_TTY: $(tty)
+        run: |
+          gpg --version
+          gpg --list-secret-keys --keyid-format LONG
+          echo "Testing GPG signing with imported key"
+          echo "test" > test.txt
+          if echo "${{ secrets.ACTIONS_PASS }}" | gpg --pinentry-mode loopback --passphrase-fd 0 --sign --local-user ${{ secrets.ACTIONS_KEY_ID }} --output test.sig test.txt; then
+            echo "GPG signing test successful"
+          else
+            echo "GPG signing test failed"
+            cat sign-test.log
+            exit 1
+          fi
 
       - name: Create tag
         env:
@@ -121,14 +139,26 @@ jobs:
 
       - name: Signature
         run: |
-          APP_PATH=$HOME/QR2M/QR2M
-          SIG_FILE="APP_PATH/QR2M-${{ matrix.features }}.sig"
+          APP_PATH="target/${{ matrix.target }}/release/QR2M"
+          SIG_FILE="QR2M-${{ matrix.features }}.sig"
+          echo "APP_PATH: $APP_PATH"
+          echo "SIG_FILE: $SIG_FILE"
+          
+          if [ ! -f "$APP_PATH" ]; then
+            echo "Error: Binary not found at $APP_PATH"
+            exit 1
+          fi
+          
           "$APP_PATH" & PID=$!
           sleep 5
-          [ -f "$SIG_FILE" ] && exit 0
-          kill $PID 2>/dev/null || true
-          echo "SIG file not found" >&2
-          exit 1
+          
+          if [ -f "$SIG_FILE" ]; then
+            echo "Signature file created: $SIG_FILE"
+          else
+            echo "Error: SIG file not found at $SIG_FILE"
+            kill $PID 2>/dev/null || true
+            exit 1
+          fi
 
       - name: Prepare release files
         run: |
