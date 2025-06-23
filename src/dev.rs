@@ -184,13 +184,14 @@ pub fn derive_child_key_ed25519(
 
   clamp_ed25519_private_key(&mut child_private_key_bytes);
 
-  let secret_key = match SigningKey::try_from(child_private_key_bytes.as_ref()) {
-    Ok(sk) => sk,
-    Err(_) => {
-      eprintln!("Derived child private key is invalid");
-      return None;
-    }
-  };
+  let secret_key = SigningKey::from(child_private_key_bytes);
+  // {
+  //   Ok(sk) => sk,
+  //   Err(_) => {
+  //     eprintln!("Derived child private key is invalid");
+  //     return None;
+  //   }
+  // };
 
   let public_key = secret_key.verifying_key().to_bytes().to_vec();
 
@@ -250,8 +251,7 @@ pub fn generate_master_keys_ed25519(seed: &str) {
 
   clamp_ed25519_private_key(&mut private_key);
 
-  let signing_key =
-    SigningKey::try_from(private_key.as_ref()).expect("Invalid Ed25519 master private key");
+  let signing_key = SigningKey::from(private_key);
   let public_key = signing_key.verifying_key().to_bytes();
   // let public_key_vec = public_key.to_vec();
 

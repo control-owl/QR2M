@@ -1,5 +1,13 @@
 # version 0.86.0
 - GitHub Actions auto release CI/CD
+- Security window in production
+- crates updated:
+  - gtk4
+  - toml
+  - secp256k1
+  - ripemd
+  - glib
+  - reqwest
 
 # version 0.85.3
 - address batch controller

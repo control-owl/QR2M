@@ -35,7 +35,6 @@ mod coin_db;
 mod dev;
 mod keys;
 mod os;
-#[cfg(feature = "dev")]
 mod sec;
 mod test_vectors;
 
@@ -219,37 +218,32 @@ impl GuiState {
       }
     }
 
-    #[cfg(feature = "dev")]
-    {
-      let security_icon_path = std::path::Path::new("theme").join("color");
+    let security_icon_path = std::path::Path::new("theme").join("color");
+    let security = sec::SECURITY_STATUS.read().unwrap();
+    let security_texture = if security.app_key && security.author_key && !security.code_modified {
+      qr2m_lib::get_texture_from_resource(
+        security_icon_path
+          .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
+          .to_str()
+          .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
+      )
+    } else if security.app_key && security.author_key {
+      qr2m_lib::get_texture_from_resource(
+        security_icon_path
+          .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
+          .to_str()
+          .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
+      )
+    } else {
+      qr2m_lib::get_texture_from_resource(
+        security_icon_path
+          .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
+          .to_str()
+          .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
+      )
+    };
 
-      let security = sec::SECURITY_STATUS.read().unwrap();
-
-      let security_texture = if security.app_key && security.author_key && !security.code_modified {
-        qr2m_lib::get_texture_from_resource(
-          security_icon_path
-            .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
-            .to_str()
-            .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
-        )
-      } else if security.app_key && security.author_key {
-        qr2m_lib::get_texture_from_resource(
-          security_icon_path
-            .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
-            .to_str()
-            .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
-        )
-      } else {
-        qr2m_lib::get_texture_from_resource(
-          security_icon_path
-            .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
-            .to_str()
-            .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
-        )
-      };
-
-      icons.insert("security".to_string(), security_texture);
-    }
+    icons.insert("security".to_string(), security_texture);
 
     self.gui_button_images = Some(icons);
 
@@ -1714,7 +1708,7 @@ fn main() {
 
   let gui_state = Rc::new(RefCell::new(GuiState::default_config()));
 
-  #[cfg(feature = "dev")]
+  // #[cfg(feature = "dev")]
   match sec::check_security_level() {
     Ok(_) => {
       d3bug("<<< check_security_level", "debug");
@@ -1819,8 +1813,6 @@ fn setup_app_actions(
   let about = gio::SimpleAction::new("about", None);
   let settings = gio::SimpleAction::new("settings", None);
   let quit = gio::SimpleAction::new("quit", None);
-
-  #[cfg(feature = "dev")]
   let security = gio::SimpleAction::new("security", None);
 
   #[cfg(feature = "dev")]
@@ -1886,7 +1878,6 @@ fn setup_app_actions(
     }
   ));
 
-  #[cfg(feature = "dev")]
   security.connect_activate(move |_action, _parameter| {
     match sec::create_security_window() {
       Ok(window) => {
@@ -1951,8 +1942,6 @@ fn setup_app_actions(
   application.set_accels_for_action("app.quit", &["<Primary>Q"]);
   application.set_accels_for_action("app.about", &["F1"]);
   application.set_accels_for_action("app.settings", &["F5"]);
-
-  #[cfg(feature = "dev")]
   application.set_accels_for_action("app.security", &["F2"]);
 
   #[cfg(feature = "dev")]
@@ -1967,8 +1956,6 @@ fn setup_app_actions(
   application.add_action(&about);
   application.add_action(&settings);
   application.add_action(&quit);
-
-  #[cfg(feature = "dev")]
   application.add_action(&security);
 
   #[cfg(feature = "dev")]
@@ -2047,7 +2034,6 @@ fn create_main_window(
     "about",
     "settings",
     "random",
-    #[cfg(feature = "dev")]
     "security",
     #[cfg(feature = "dev")]
     "log",
@@ -2110,7 +2096,6 @@ fn create_main_window(
     ("about", "F1"),
     ("settings", "F5"),
     ("random", ""),
-    #[cfg(feature = "dev")]
     ("security", "F2"),
     #[cfg(feature = "dev")]
     ("log", "F11"),
@@ -2140,7 +2125,6 @@ fn create_main_window(
   header_bar.pack_end(&*buttons["about"]);
   #[cfg(feature = "dev")]
   header_bar.pack_end(&*buttons["log"]);
-  #[cfg(feature = "dev")]
   header_bar.pack_end(&*buttons["security"]);
 
   // JUMP: Action: Settings button action
@@ -2173,7 +2157,6 @@ fn create_main_window(
     }
   ));
 
-  #[cfg(feature = "dev")]
   buttons["security"].connect_clicked(move |_| {
     match sec::create_security_window() {
       Ok(window) => {

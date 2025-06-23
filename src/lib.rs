@@ -63,6 +63,7 @@ pub fn calculate_sha256_and_ripemd160_hash(input: &[u8]) -> Vec<u8> {
   hasher.update(input);
   let hash = hasher.finalize();
 
+  use ripemd::Digest;
   let mut ripemd = ripemd::Ripemd160::new();
   ripemd.update(hash);
 
@@ -364,10 +365,10 @@ pub fn read_config_from_file(local_config_file: &std::path::PathBuf) -> io::Resu
 
 pub fn get_active_app_feature() -> &'static str {
   if cfg!(feature = "dev") {
-    "Dev"
+    "dev"
   } else if cfg!(feature = "full") {
-    "Full"
+    "full"
   } else {
-    "Offline"
+    "offline"
   }
 }
