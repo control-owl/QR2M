@@ -106,11 +106,6 @@ jobs:
           }
           
           echo "Verifying app GPG key..."
-#          gpg --list-secret-keys --keyid-format LONG || {
-#            echo "No GPG keys available"
-#
-#            exit 1
-#          }
           if gpg --list-secret-keys --keyid-format LONG | grep -q "$GPG_KEY_ID"; then
             echo "GPG key verified found."
           else
