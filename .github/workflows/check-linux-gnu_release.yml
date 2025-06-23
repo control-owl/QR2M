@@ -63,40 +63,62 @@ jobs:
           fi
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
-      - name: Setup GPG
-        run: |
-          if [ -z "${{ secrets.ACTIONS_KEY }}" ]; then
-            echo "Error: QR2M key missing"
-            exit 1
-          fi
-          echo "${{ secrets.ACTIONS_KEY }}" | gpg --import --no-tty --batch --yes || {
-            echo "Error: Failed to import QR2M key"
-            exit 1
-          }
-          gpg --list-secret-keys --keyid-format LONG
-          echo "GPG key imported successfully"
+      - name: Import GPG key
+        #if: github.event_name == 'push' && github.ref == 'refs/heads/testing' && !contains(github.event.head_commit.message, '[skip release]')
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.ACTIONS_KEY }}
+          passphrase: ${{ secrets.ACTIONS_PASS }}
+          git_user_signingkey: true
+          git_commit_gpgsign: false # only tags no commits
+          git_tag_gpgsign: true
 
       - name: Create tag
+        env:
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+          GPG_PRIVATE_KEY: ${{ secrets.ACTIONS_KEY }}
+          GPG_KEY_ID: ${{ secrets.ACTIONS_KEY_ID }}
         run: |
           git config user.name "QR2M"
           git config user.email "${{ secrets.ACTIONS_EMAIL }}"
-           GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep sec | awk '{print $2}' | cut -d'/' -f2)
-          if [ -z "$GPG_KEY_ID" ]; then
-            echo "Error: No GPG key ID found"
+          
+          echo "Importing app GPG key..."
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import || {
+            echo "Failed to import GPG key"
             exit 1
-          fi
+          }
+          
+          echo "Verifying app GPG key..."
+          gpg --list-secret-keys --keyid-format LONG || {
+            echo "No GPG keys available"
+            exit 1
+          }
+          
+          echo "Configuring signing key..."
           git config user.signingkey "$GPG_KEY_ID"
           git config commit.gpgsign true
-          echo "VERSION_NUMBER: ${{ env.VERSION_NUMBER }}"
-          if ! git rev-parse v${{ env.VERSION_NUMBER }} >/dev/null 2>&1; then
-            git tag -a v${{ env.VERSION_NUMBER }} -s -m "Release v${{ env.VERSION_NUMBER }}"
-            git push origin v${{ env.VERSION_NUMBER }} || echo "Tag push failed: $?"
-            git ls-remote --tags origin
-          else
-            echo "Tag v${{ env.VERSION_NUMBER }} already exists, skipping"
+          git config tag.gpgSign true
+          
+          echo "VERSION_NUMBER: VERSION_NUMBER"
+          
+          echo "Checking if tag v$VERSION_NUMBER exists..."
+          if ! git rev-parse "v$VERSION_NUMBER" >/dev/null 2>&1; then
+            echo "Tag v$VERSION_NUMBER does not exists."
+            echo "Creating signed tag v$VERSION_NUMBER..."
+            if ! git tag -a "v$VERSION_NUMBER" -s -m "Release v$VERSION_NUMBER"; then
+              echo "GPG signing failed, falling back to unsigned tag"
+              git tag -a "v$VERSION_NUMBER" -m "Release v$VERSION_NUMBER"
+            fi
+              git push origin "v$VERSION_NUMBER" || {
+                echo "Tag push failed"
+                exit 1
+              }
+              echo "Tag v$VERSION_NUMBER created sucessfully."
+              git ls-remote --tags origin
+            else
+              echo "Tag v$VERSION_NUMBER already exists, skipping"
           fi
-        env:
-          GPG_TTY: $(tty)
 
       - name: Signature
         run: |
@@ -130,25 +152,6 @@ jobs:
 #          name: QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}
 #          path: LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
 #          retention-days: 7
-
-      - name: Create tag
-        if: github.event_name == 'push' && github.ref == 'refs/heads/testing' && !contains(github.event.head_commit.message, '[skip release]')
-        run: |
-          git config user.name "QR2M"
-          git config user.email "qr2m@r-o0-t.wtf"
-          git config user.signingkey "$(gpg --list-secret-keys --keyid-format LONG | grep sec | awk '{print $2}' | cut -d'/' -f2)"
-          git config commit.gpgsign true
-          echo "VERSION_NUMBER: ${{ env.VERSION_NUMBER }}"
-          if ! git rev-parse v${{ env.VERSION_NUMBER }} >/dev/null 2>&1; then
-            git tag -a v${{ env.VERSION_NUMBER }} -s -m "Release v${{ env.VERSION_NUMBER }}"
-            git push origin v${{ env.VERSION_NUMBER }} || echo "Tag push failed: $?"
-            git ls-remote --tags origin
-          else
-            echo "Tag v${{ env.VERSION_NUMBER }} already exists, skipping"
-          fi
-        env:
-          GPG_TTY: $(tty)
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Upload to GitHub Releases
         # if: startsWith(github.ref, 'refs/tags/v')
