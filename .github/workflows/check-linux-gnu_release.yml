@@ -151,7 +151,7 @@ jobs:
           cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
           cp Changelog.md LAB7041/Changelog.md
           cp LICENSE.txt LAB7041/LICENSE.txt
-          cp QR2M-${{ matrix.features }}.sig LAB7041/QR2M-${{ matrix.features }}.sig
+          cp target/${{ matrix.target }}/release/QR2M-${{ matrix.features }}.sig LAB7041/QR2M-${{ matrix.features }}.sig
           sync
 
       - name: Compress release
