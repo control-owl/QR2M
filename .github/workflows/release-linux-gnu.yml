@@ -1,9 +1,9 @@
-name: macOS aarch64 Darwin
+name: Release Linux x86_64 GNU
 
 on:
   push:
     branches: [ "master" ]
-  #    tags: [ "v*.*.*" ]
+#    tags: [ "v*.*.*" ]
   workflow_run:
     workflows: ["Verify GPG Signature"]
     types:
@@ -17,25 +17,18 @@ permissions:
 jobs:
   standard:
     name: ${{ matrix.features }}-${{ matrix.target }}
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [aarch64-apple-darwin]
+        target: [x86_64-unknown-linux-gnu]
         features: ["offline", "full", "dev"]
       fail-fast: false
-
-    env:
-      PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
-      LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
-      CPPFLAGS: "-I/opt/homebrew/opt/openssl@3.0/include -I/opt/homebrew/include"
 
     steps:
       - name: Install system dependencies
         run: |
-          brew update
-          brew install gtk4 libadwaita pkg-config openssl@3.0 glib
-          pkg-config --modversion glib-2.0
-          pkg-config --modversion openssl
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config libssl-dev
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -52,16 +45,25 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Run Clippy
-        run: cargo clippy --no-deps --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}" -- -D warnings
+        run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
-      - name: Run cargo check
-        run: cargo check --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      - name: Run Cargo Check
+        run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+        run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Run tests
-        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
+        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
+
+      - name: Versioning
+        run: |
+          VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' #version')
+          if [[ ! "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: VERSION_NUMBER is not in valid format: ${VERSION_NUMBER}"
+            exit 1
+          fi
+          echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
       - name: Import GPG key
         id: import_gpg
@@ -79,18 +81,16 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.ACTIONS_KEY }}
           GPG_KEY_ID: ${{ secrets.ACTIONS_KEY_ID }}
           passphrase: ${{ secrets.ACTIONS_PASS }}
-          email: ${{ secrets.ACTIONS_EMAIL }}
         run: |
-          #!/bin/bash
           git config user.name "QR2M"
-          git config user.email "$email"
-
+          git config user.email "${{ secrets.ACTIONS_EMAIL }}"
+          
           echo "Importing app GPG key..."
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>&1 || {
             echo "Failed to import GPG key"
             exit 1
           }
-
+          
           echo "Verifying app GPG key..."
           if gpg --list-secret-keys --keyid-format LONG | grep -q "$GPG_KEY_ID"; then
             echo "GPG key verified found."
@@ -98,12 +98,12 @@ jobs:
             echo "GPG key not found."
             exit 1
           fi
-
+          
           echo "Configuring signing key..."
           git config user.signingkey "$GPG_KEY_ID"
           git config commit.gpgsign true
           git config tag.gpgSign true
-
+          
           echo "Checking if tag v$VERSION_NUMBER exists..."
           if ! git rev-parse "v$VERSION_NUMBER" >/dev/null 2>&1; then
             echo "Tag v$VERSION_NUMBER does not exists."
@@ -128,15 +128,15 @@ jobs:
           SIG_FILE="$APP_PATH-${{ matrix.features }}.sig"
           echo "APP_PATH: $APP_PATH"
           echo "SIG_FILE: $SIG_FILE"
-
+          
           if [ ! -f "$APP_PATH" ]; then
             echo "Error: Binary not found at $APP_PATH"
             exit 1
           fi
-
+          
           "$APP_PATH" & PID=$!
           sleep 5
-
+          
           if [ -f "$SIG_FILE" ]; then
             echo "Signature file created: $SIG_FILE"
           else
