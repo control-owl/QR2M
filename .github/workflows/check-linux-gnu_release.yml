@@ -124,7 +124,7 @@ jobs:
       - name: Signature
         run: |
           APP_PATH="target/${{ matrix.target }}/release/QR2M"
-          SIG_FILE="QR2M-${{ matrix.features }}.sig"
+          SIG_FILE="$APP_PATH/QR2M-${{ matrix.features }}.sig"
           echo "APP_PATH: $APP_PATH"
           echo "SIG_FILE: $SIG_FILE"
           
@@ -139,7 +139,7 @@ jobs:
           if [ -f "$SIG_FILE" ]; then
             echo "Signature file created: $SIG_FILE"
           else
-            echo "Error: SIG file not found at $SIG_FILE"
+            echo "Error: SIG file not found at: $SIG_FILE"
             kill $PID 2>/dev/null || true
             exit 1
           fi
