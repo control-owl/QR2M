@@ -131,11 +131,13 @@ jobs:
           fi
           
           "$APP_PATH" & PID=$!
-          sleep 5
           
-          if [ -f "$SIG_FILE" ]; then
-            echo "Signature file created: $SIG_FILE"
-          else
+          for i in {1..60}; do
+            [ -f "$SIG_FILE" ] && { echo "Signature file created: $SIG_FILE"; break; }
+            sleep 1
+          done
+
+          if [ ! -f "$SIG_FILE" ]; then
             echo "Error: SIG file not found at: $SIG_FILE"
             kill $PID 2>/dev/null || true
             exit 1
