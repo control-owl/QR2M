@@ -140,7 +140,7 @@ jobs:
           fi
 
           "$APP_PATH" & PID=$!
-          sleep 5
+          sleep 10
 
           if [ -f "$SIG_FILE" ]; then
             echo "Signature file created: $SIG_FILE"

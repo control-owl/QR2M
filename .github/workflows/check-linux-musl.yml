@@ -1,4 +1,4 @@
-name: Linux x86_64 MUSL
+name: Check Linux x86_64 MUSL
 
 on:
   workflow_run:

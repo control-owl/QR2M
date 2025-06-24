@@ -1,4 +1,5 @@
 name: Verify GPG Signature
+
 on:
   push:
     branches:  [ "master" ]
