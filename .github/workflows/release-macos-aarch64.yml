@@ -1,9 +1,6 @@
-name: macOS aarch64 Darwin
+name: Release macOS aarch64 Darwin
 
 on:
-  push:
-    branches: [ "master" ]
-  #    tags: [ "v*.*.*" ]
   workflow_run:
     workflows: ["Verify GPG Signature"]
     types:
@@ -63,8 +60,16 @@ jobs:
       - name: Run tests
         run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
+      - name: Versioning
+        run: |
+          VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' #version')
+          if [[ ! "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: VERSION_NUMBER is not in valid format: ${VERSION_NUMBER}"
+            exit 1
+          fi
+          echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
+
       - name: Import GPG key
-        id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.ACTIONS_KEY }}

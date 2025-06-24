@@ -1,9 +1,6 @@
 name: Release Linux x86_64 GNU
 
 on:
-  push:
-    branches: [ "master" ]
-#    tags: [ "v*.*.*" ]
   workflow_run:
     workflows: ["Verify GPG Signature"]
     types:
@@ -66,7 +63,6 @@ jobs:
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
       - name: Import GPG key
-        id: import_gpg
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.ACTIONS_KEY }}
