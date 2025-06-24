@@ -42,10 +42,10 @@ jobs:
 ##Pause
 #       - name: Check formatting
 #         run: cargo fmt -- --check
-# 
+#
 #       - name: Run Clippy
 #         run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
-# 
+#
 #       - name: Run Cargo Check
 #         run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
@@ -124,7 +124,7 @@ jobs:
       - name: Signature
         run: |
           APP_PATH="target/${{ matrix.target }}/release/QR2M"
-          SIG_FILE="$APP_PATH/QR2M-${{ matrix.features }}.sig"
+          SIG_FILE="$APP_PATH-${{ matrix.features }}.sig"
           echo "APP_PATH: $APP_PATH"
           echo "SIG_FILE: $SIG_FILE"
           
