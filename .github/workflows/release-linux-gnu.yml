@@ -80,7 +80,7 @@ jobs:
           GPG_PASS: ${{ secrets.ACTIONS_PASS }}
           GPG_MAIL: ${{ secrets.ACTIONS_EMAIL }}
         run: |
-          git config user.name "$APP_NAME"
+          git config user.name "${{ env.APP_NAME }}"
           git config user.email "$GPG_MAIL"
                    
           echo "Checking if tag v${{ env.VERSION_NUMBER }} exists..."
@@ -103,34 +103,34 @@ jobs:
 
       - name: Signature
         run: |
-          if [ ! -f "$APP_PATH/$APP_NAME" ]; then
-            echo "Error: Binary not found at $APP_PATH/$APP_NAME"
+          if [ ! -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}" ]; then
+            echo "Error: Binary not found at ${{ env.APP_PATH }}/${{ env.APP_NAME }}"
             exit 1
           fi
           
-          "$APP_PATH/$APP_NAME" & PID=$!
+          "${{ env.APP_PATH }}/${{ env.APP_NAME }}" & PID=$!
           
           for i in {1..30}; do
-            [ -f "$APP_NAME-$SIG_FILE" ] && { echo "Signature file created: $APP_NAME-$SIG_FILE"; break; }
+            [ -f "${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ] && { echo "Signature file created: ${{ env.APP_NAME }}-${{ env.SIG_FILE }}"; break; }
             sleep 1
           done
 
-          if [ ! -f "$APP_NAME-$SIG_FILE" ]; then
-            echo "Error: SIG file not found at: $APP_NAME-$SIG_FILE"
+          if [ ! -f "${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ]; then
+            echo "Error: SIG file not found at: ${{ env.APP_NAME }}-${{ env.SIG_FILE }}"
             kill $PID 2>/dev/null || true
             exit 1
           fi
 
       - name: Prepare release files
         run: |
-          strip target/${{ matrix.target }}/release/$APP_NAME
-          mkdir -p $OUTPUT_DIR
-          cp target/${{ matrix.target }}/release/$APP_NAME $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/$APP_NAME-${{ matrix.features }}.sig $OUTPUT_DIR/$APP_NAME-${{ matrix.features }}.sig
-          tar -czf $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
-            -C $OUTPUT_DIR \
-              $APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
-              $APP_NAME-${{ matrix.features }}.sig \
+          strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
+          mkdir -p ${{ env.OUTPUT_DIR }}
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
+          tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
+            -C ${{ env.OUTPUT_DIR }} \
+              ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
+              ${{ env.APP_NAME }}-${{ matrix.features }}.sig \
               Changelog.md \
               LICENSE.txt
 
@@ -138,7 +138,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             Changelog.md
             LICENSE.txt
           draft: false
