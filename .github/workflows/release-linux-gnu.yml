@@ -21,6 +21,13 @@ jobs:
         features: ["offline", "full", "dev"]
       fail-fast: false
 
+    env:
+      VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+      GPG_KEY: ${{ secrets.ACTIONS_KEY }}
+      GPG_PASS: ${{ secrets.ACTIONS_PASS }}
+      GPG_ID: ${{ secrets.ACTIONS_KEY_ID }}
+      GPG_EMAIL: ${{ secrets.ACTIONS_EMAIL }}
+
     steps:
       - name: Install system dependencies
         run: |
@@ -36,7 +43,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}-${{ matrix.target }}-${{ matrix.features }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}-
 
       - name: Check formatting
         run: cargo fmt -- --check
@@ -44,8 +62,8 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
-      - name: Run Cargo Check
-        run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
+#      - name: Run Cargo Check
+#        run: cargo check --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Build
         run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
@@ -65,41 +83,17 @@ jobs:
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
         with:
-          gpg_private_key: ${{ secrets.ACTIONS_KEY }}
-          passphrase: ${{ secrets.ACTIONS_PASS }}
+          gpg_private_key: $GPG_KEY
+          passphrase: $GPG_PASS
           git_user_signingkey: true
           git_commit_gpgsign: false
           git_tag_gpgsign: true
 
       - name: Create tag
-        env:
-          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
-          GPG_PRIVATE_KEY: ${{ secrets.ACTIONS_KEY }}
-          GPG_KEY_ID: ${{ secrets.ACTIONS_KEY_ID }}
-          passphrase: ${{ secrets.ACTIONS_PASS }}
         run: |
           git config user.name "QR2M"
-          git config user.email "${{ secrets.ACTIONS_EMAIL }}"
-          
-          echo "Importing app GPG key..."
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>&1 || {
-            echo "Failed to import GPG key"
-            exit 1
-          }
-          
-          echo "Verifying app GPG key..."
-          if gpg --list-secret-keys --keyid-format LONG | grep -q "$GPG_KEY_ID"; then
-            echo "GPG key verified found."
-          else
-            echo "GPG key not found."
-            exit 1
-          fi
-          
-          echo "Configuring signing key..."
-          git config user.signingkey "$GPG_KEY_ID"
-          git config commit.gpgsign true
-          git config tag.gpgSign true
-          
+          git config user.email "$GPG_EMAIL"
+
           echo "Checking if tag v$VERSION_NUMBER exists..."
           if ! git rev-parse "v$VERSION_NUMBER" >/dev/null 2>&1; then
             echo "Tag v$VERSION_NUMBER does not exists."
@@ -143,34 +137,27 @@ jobs:
             exit 1
           fi
 
-      - name: Prepare release files
+      - name: Prepare and compress release
         run: |
           strip target/${{ matrix.target }}/release/QR2M
           mkdir -p LAB7041/linux-gnu
-          cp target/${{ matrix.target }}/release/QR2M LAB7041/linux-gnu/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/QR2M LAB7041/linux-gnu/QR2M-$VERSION_NUMBER-${{ matrix.features }}
           cp target/${{ matrix.target }}/release/QR2M-${{ matrix.features }}.sig LAB7041/linux-gnu/QR2M-${{ matrix.features }}.sig
-          cp Changelog.md LAB7041/linux-gnu/Changelog.md
-          cp LICENSE.txt LAB7041/linux-gnu/LICENSE.txt
-          sync
-
-      - name: Compress release
-        run: |
-          tar -czf LAB7041/linux-gnu/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C \
-          LAB7041/linux-gnu \
-          QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
-          QR2M-${{ matrix.features }}.sig \
-          Changelog.md \
-          LICENSE.txt
+          tar -czf LAB7041/linux-gnu/QR2M-$VERSION_NUMBER-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C LAB7041/linux-gnu \
+            QR2M-$VERSION_NUMBER-${{ matrix.features }} \
+            QR2M-${{ matrix.features }}.sig \
+            Changelog.md \
+            LICENSE.txt
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            LAB7041/linux-gnu/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            LAB7041/linux-gnu/QR2M-$VERSION_NUMBER-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             Changelog.md
             LICENSE.txt
           draft: false
           prerelease: true
-          tag_name: v${{ env.VERSION_NUMBER }}
+          tag_name: v$VERSION_NUMBER
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
