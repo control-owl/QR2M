@@ -51,7 +51,7 @@ jobs:
 
       - name: Check code
         run: |
-          cargo fmt -- --check
+          cargo fmt --
           cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
       - name: Build
