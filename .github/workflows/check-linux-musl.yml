@@ -52,10 +52,9 @@ jobs:
       - name: Configure cross-compilation
         run: |
           echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-#         echo "PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
           echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
-#          echo "PKG_CONFIG_SYSROOT_DIR=/" >> $GITHUB_ENV
+
 ##Pause
 #      - name: Check code
 #        run: |
@@ -64,6 +63,7 @@ jobs:
 
       - name: Build
         run: cargo build --release --features "${{ matrix.features }}"
+
 ##Pause
 #      - name: Run tests
 #        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
