@@ -30,7 +30,7 @@ jobs:
             libadwaita-1-dev \
             pkg-config \
             libssl-dev \
-            build-essential
+            build-essential \
             musl-tools \
             gcc \
             g++ \
