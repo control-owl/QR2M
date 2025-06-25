@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   standard:
+    name: ${{ matrix.features }}-${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
       matrix:

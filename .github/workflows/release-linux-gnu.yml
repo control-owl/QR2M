@@ -106,12 +106,12 @@ jobs:
           "${{ env.APP_PATH }}/${{ env.APP_NAME }}" & PID=$!
           
           for i in {1..30}; do
-            [ -f "${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ] && { echo "Signature file created: ${{ env.APP_NAME }}-${{ env.SIG_FILE }}"; break; }
+            [ -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ] && { echo "Signature file created: ${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}"; break; }
             sleep 1
           done
 
-          if [ ! -f "${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ]; then
-            echo "Error: SIG file not found at: ${{ env.APP_NAME }}-${{ env.SIG_FILE }}"
+          if [ ! -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ]; then
+            echo "Error: SIG file not found at: ${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}"
             kill $PID 2>/dev/null || true
             exit 1
           fi
