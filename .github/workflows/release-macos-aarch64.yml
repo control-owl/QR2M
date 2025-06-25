@@ -22,6 +22,10 @@ jobs:
       fail-fast: false
 
     env:
+      APP_NAME: "QR2M"
+      APP_BINARY: "target/${{ matrix.target }}/release/$APP_NAME"
+      SIG_FILE: "APP_BINARY-${{ matrix.features }}.sig"
+      OUTPUT_DIR: "LAB7041/macos"
       PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
       LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
       CPPFLAGS: "-I/opt/homebrew/opt/openssl@3.0/include -I/opt/homebrew/include"
@@ -43,16 +47,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Check formatting
-        run: cargo fmt -- --check
-
-      - name: Run Clippy
-        run: cargo clippy --no-deps --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}" -- -D warnings
-
-      - name: Run cargo check
-        run: cargo check --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      - name: Check code
+        run: |
+          cargo fmt -- --check
+          cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
       - name: Build
         run: cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
@@ -83,31 +83,12 @@ jobs:
           VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
           GPG_PRIVATE_KEY: ${{ secrets.ACTIONS_KEY }}
           GPG_KEY_ID: ${{ secrets.ACTIONS_KEY_ID }}
-          passphrase: ${{ secrets.ACTIONS_PASS }}
-          email: ${{ secrets.ACTIONS_EMAIL }}
+          GPG_PASS: ${{ secrets.ACTIONS_PASS }}
+          GPG_MAIL: ${{ secrets.ACTIONS_EMAIL }}
         run: |
           #!/bin/bash
-          git config user.name "QR2M"
-          git config user.email "$email"
-
-          echo "Importing app GPG key..."
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import 2>&1 || {
-            echo "Failed to import GPG key"
-            exit 1
-          }
-
-          echo "Verifying app GPG key..."
-          if gpg --list-secret-keys --keyid-format LONG | grep -q "$GPG_KEY_ID"; then
-            echo "GPG key verified found."
-          else
-            echo "GPG key not found."
-            exit 1
-          fi
-
-          echo "Configuring signing key..."
-          git config user.signingkey "$GPG_KEY_ID"
-          git config commit.gpgsign true
-          git config tag.gpgSign true
+          git config user.name "$APP_NAME"
+          git config user.email "$GPG_MAIL"
 
           echo "Checking if tag v$VERSION_NUMBER exists..."
           if ! git rev-parse "v$VERSION_NUMBER" >/dev/null 2>&1; then
@@ -129,19 +110,14 @@ jobs:
 
       - name: Signature
         run: |
-          APP_PATH="target/${{ matrix.target }}/release/QR2M"
-          SIG_FILE="$APP_PATH-${{ matrix.features }}.sig"
-          echo "APP_PATH: $APP_PATH"
-          echo "SIG_FILE: $SIG_FILE"
-
-          if [ ! -f "$APP_PATH" ]; then
-            echo "Error: Binary not found at $APP_PATH"
+          if [ ! -f "$APP_BINARY" ]; then
+            echo "Error: Binary not found at $APP_BINARY"
             exit 1
           fi
 
-          "$APP_PATH" & PID=$!
+          "$APP_BINARY" & PID=$!
           
-          for i in {1..60}; do
+          for i in {1..30}; do
             [ -f "$SIG_FILE" ] && { echo "Signature file created: $SIG_FILE"; break; }
             sleep 1
           done
@@ -154,28 +130,21 @@ jobs:
 
       - name: Prepare release files
         run: |
-          strip target/${{ matrix.target }}/release/QR2M
-          mkdir -p LAB7041/macos
-          cp target/${{ matrix.target }}/release/QR2M LAB7041/macos/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/QR2M-${{ matrix.features }}.sig LAB7041/macos/QR2M-${{ matrix.features }}.sig
-          cp Changelog.md LAB7041/macos/Changelog.md
-          cp LICENSE.txt LAB7041/macos/LICENSE.txt
-          sync
-
-      - name: Compress release
-        run: |
-          tar -czf LAB7041/macos/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C \
-          LAB7041/macos \
-          QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
-          QR2M-${{ matrix.features }}.sig \
-          Changelog.md \
-          LICENSE.txt
+          strip target/${{ matrix.target }}/release/$APP_NAME
+          mkdir -p $OUTPUT_DIR
+          cp target/${{ matrix.target }}/release/$APP_NAME $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/$APP_NAME-${{ matrix.features }}.sig $OUTPUT_DIR/$APP_NAME-${{ matrix.features }}.sig
+          tar -czf $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C $OUTPUT_DIR \
+            $APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
+            $APP_NAME-${{ matrix.features }}.sig \
+            Changelog.md \
+            LICENSE.txt
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            LAB7041/macos/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             Changelog.md
             LICENSE.txt
           draft: false
