@@ -15,7 +15,7 @@ jobs:
     name: ${{ matrix.features }}-${{ matrix.target }}
     runs-on: ubuntu-latest
     container:
-      image: ekidd/rust-musl-builder:latest
+      image: rust:alpine
     strategy:
       matrix:
         target: [ x86_64-unknown-linux-musl ]
@@ -25,14 +25,19 @@ jobs:
     steps:
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libglib2.0-dev \
-            libgtk-4-dev \
-            libadwaita-1-dev \
-            pkg-config \
-            libssl-dev \
-            build-essential
+          apk update
+          apk add --no-cache \
+            musl-dev \
+            pkgconf \
+            glib-dev \
+            gtk4-dev \
+            libadwaita-dev \
+            openssl-dev \
+            git \
+            gcc \
+            g++ \
+            make \
+            cmake
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,11 +54,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-${{ matrix.target }}-
 
+      - name: Install Rust
+        run: |
+          rustup target add ${{ matrix.target }}
+          rustup component add clippy rustfmt
+
       - name: Configure cross-compilation
         run: |
           echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-          echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_SYSROOT_DIR=/" >> $GITHUB_ENV
 
 ##Pause
 #      - name: Check code
