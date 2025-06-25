@@ -139,6 +139,7 @@ jobs:
         with:
           files: |
             $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            
             Changelog.md
             LICENSE.txt
           draft: false
