@@ -25,19 +25,9 @@ jobs:
     steps:
       - name: Install system dependencies
         run: |
-          apk update
-          apk add --no-cache \
-            musl-dev \
-            pkgconf \
-            glib-dev \
-            gtk4-dev \
-            libadwaita-dev \
-            openssl-dev \
-            git \
-            gcc \
-            g++ \
-            make \
-            cmake
+          apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main \
+          apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community \
+            musl-dev pkgconf glib-dev gtk4-dev libadwaita-dev openssl-dev git gcc g++ make cmake
 
       - name: Checkout repository
         uses: actions/checkout@v4
