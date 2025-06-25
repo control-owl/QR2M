@@ -31,7 +31,7 @@ jobs:
             pkg-config \
             libssl-dev \
             build-essential \
-            musl-tools \
+            musl-dev \
             gcc \
             g++ \
             make \
@@ -73,4 +73,4 @@ jobs:
 
       - name: Verify static linking
         run: |
-          ldd target/x86_64-unknown-linux-musl/release/<your_binary_name> || echo "Static binary confirmed"
+          ldd target/x86_64-unknown-linux-musl/release/QR2M || echo "Static binary confirmed"
