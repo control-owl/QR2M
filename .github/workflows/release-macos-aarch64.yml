@@ -135,6 +135,7 @@ jobs:
             -C ${{ env.OUTPUT_DIR }} \
               ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
               ${{ env.APP_NAME }}-${{ matrix.features }}.sig \
+            -C ../../ \
               Changelog.md \
               LICENSE.txt
 
