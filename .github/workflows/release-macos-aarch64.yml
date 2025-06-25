@@ -25,11 +25,10 @@ jobs:
       PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
       LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
       CPPFLAGS: "-I/opt/homebrew/opt/openssl@3.0/include -I/opt/homebrew/include"
-#      VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
-#      GPG_KEY: ${{ secrets.ACTIONS_KEY }}
-#      GPG_PASS: ${{ secrets.ACTIONS_PASS }}
-#      GPG_ID: ${{ secrets.ACTIONS_KEY_ID }}
-#      GPG_EMAIL: ${{ secrets.ACTIONS_EMAIL }}
+      GPG_KEY: ${{ secrets.ACTIONS_KEY }}
+      GPG_PASS: ${{ secrets.ACTIONS_PASS }}
+      GPG_ID: ${{ secrets.ACTIONS_KEY_ID }}
+      GPG_EMAIL: ${{ secrets.ACTIONS_EMAIL }}
 
     steps:
       - name: Install system dependencies
@@ -95,6 +94,8 @@ jobs:
           git_tag_gpgsign: true
 
       - name: Create tag
+        env:
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
         run: |
           #!/bin/bash
           git config user.name "QR2M"
@@ -144,6 +145,8 @@ jobs:
           fi
 
       - name: Prepare and compress release
+        env:
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
         run: |
           strip target/${{ matrix.target }}/release/QR2M
           mkdir -p LAB7041/macos
@@ -157,6 +160,10 @@ jobs:
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
+        env:
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+          GITHUB_TOKEN:
+            ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             LAB7041/macos/QR2M-$VERSION_NUMBER-${{ matrix.features }}-${{ matrix.target }}.tar.gz
@@ -165,5 +172,3 @@ jobs:
           draft: false
           prerelease: true
           tag_name: v$VERSION_NUMBER
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

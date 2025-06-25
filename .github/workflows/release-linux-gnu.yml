@@ -139,6 +139,8 @@ jobs:
           fi
 
       - name: Prepare and compress release
+        env:
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
         run: |
           strip target/${{ matrix.target }}/release/QR2M
           mkdir -p LAB7041/linux-gnu
@@ -152,6 +154,9 @@ jobs:
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
+        env:
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             LAB7041/linux-gnu/QR2M-$VERSION_NUMBER-${{ matrix.features }}-${{ matrix.target }}.tar.gz
@@ -160,5 +165,3 @@ jobs:
           draft: false
           prerelease: true
           tag_name: v$VERSION_NUMBER
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
