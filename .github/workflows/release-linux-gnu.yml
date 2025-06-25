@@ -74,15 +74,10 @@ jobs:
           git_tag_gpgsign: true
 
       - name: Create tag
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.ACTIONS_KEY }}
-          GPG_KEY_ID: ${{ secrets.ACTIONS_KEY_ID }}
-          GPG_PASS: ${{ secrets.ACTIONS_PASS }}
-          GPG_MAIL: ${{ secrets.ACTIONS_EMAIL }}
         run: |
           git config user.name "${{ env.APP_NAME }}"
-          git config user.email "$GPG_MAIL"
-                   
+          git config user.email "${{ secrets.ACTIONS_EMAIL }}"
+          
           echo "Checking if tag v${{ env.VERSION_NUMBER }} exists..."
           if ! git rev-parse "v${{ env.VERSION_NUMBER }}" >/dev/null 2>&1; then
             echo "Tag v${{ env.VERSION_NUMBER }} does not exists."
@@ -125,8 +120,12 @@ jobs:
         run: |
           strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
           mkdir -p ${{ env.OUTPUT_DIR }}
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
+          
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
+          
           tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
             -C ${{ env.OUTPUT_DIR }} \
               ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \

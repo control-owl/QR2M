@@ -23,8 +23,8 @@ jobs:
 
     env:
       APP_NAME: "QR2M"
-      APP_BINARY: "target/${{ matrix.target }}/release/$APP_NAME"
-      SIG_FILE: "APP_BINARY-${{ matrix.features }}.sig"
+      APP_PATH: "target/${{ matrix.target }}/release/"
+      SIG_FILE: "${{ matrix.features }}.sig"
       OUTPUT_DIR: "LAB7041/macos"
       PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
       LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
@@ -79,72 +79,70 @@ jobs:
           git_tag_gpgsign: true
 
       - name: Create tag
-        env:
-          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
-          GPG_PRIVATE_KEY: ${{ secrets.ACTIONS_KEY }}
-          GPG_KEY_ID: ${{ secrets.ACTIONS_KEY_ID }}
-          GPG_PASS: ${{ secrets.ACTIONS_PASS }}
-          GPG_MAIL: ${{ secrets.ACTIONS_EMAIL }}
         run: |
-          #!/bin/bash
-          git config user.name "$APP_NAME"
-          git config user.email "$GPG_MAIL"
+          git config user.name "${{ env.APP_NAME }}"
+          git config user.email "${{ secrets.ACTIONS_EMAIL }}"
 
-          echo "Checking if tag v$VERSION_NUMBER exists..."
-          if ! git rev-parse "v$VERSION_NUMBER" >/dev/null 2>&1; then
-            echo "Tag v$VERSION_NUMBER does not exists."
-            echo "Creating signed tag v$VERSION_NUMBER..."
-            if ! git tag -a "v$VERSION_NUMBER" -s -m "Release v$VERSION_NUMBER"; then
+          echo "Checking if tag v${{ env.VERSION_NUMBER }} exists..."
+          if ! git rev-parse "v${{ env.VERSION_NUMBER }}" >/dev/null 2>&1; then
+            echo "Tag v${{ env.VERSION_NUMBER }} does not exists."
+            echo "Creating signed tag v${{ env.VERSION_NUMBER }}..."
+            if ! git tag -a "v${{ env.VERSION_NUMBER }}" -s -m "Release v${{ env.VERSION_NUMBER }}"; then
               echo "GPG signing failed"
               exit 1
             fi
-              git push origin "v$VERSION_NUMBER" || {
+              git push origin "v${{ env.VERSION_NUMBER }}" || {
                 echo "Tag push failed"
                 exit 1
               }
-              echo "Tag v$VERSION_NUMBER created sucessfully."
+              echo "Tag v${{ env.VERSION_NUMBER }} created sucessfully."
               git ls-remote --tags origin
             else
-              echo "Tag v$VERSION_NUMBER already exists, skipping"
+              echo "Tag v${{ env.VERSION_NUMBER }} already exists, skipping"
           fi
 
       - name: Signature
         run: |
-          if [ ! -f "$APP_BINARY" ]; then
-            echo "Error: Binary not found at $APP_BINARY"
+          if [ ! -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}" ]; then
+            echo "Error: Binary not found at ${{ env.APP_PATH }}/${{ env.APP_NAME }}"
             exit 1
           fi
-
-          "$APP_BINARY" & PID=$!
+          
+          "${{ env.APP_PATH }}/${{ env.APP_NAME }}" & PID=$!
           
           for i in {1..30}; do
-            [ -f "$SIG_FILE" ] && { echo "Signature file created: $SIG_FILE"; break; }
+            [ -f "${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ] && { echo "Signature file created: ${{ env.APP_NAME }}-${{ env.SIG_FILE }}"; break; }
             sleep 1
           done
-
-          if [ ! -f "$SIG_FILE" ]; then
-            echo "Error: SIG file not found at: $SIG_FILE"
+          
+          if [ ! -f "${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ]; then
+            echo "Error: SIG file not found at: ${{ env.APP_NAME }}-${{ env.SIG_FILE }}"
             kill $PID 2>/dev/null || true
             exit 1
           fi
 
       - name: Prepare release files
         run: |
-          strip target/${{ matrix.target }}/release/$APP_NAME
-          mkdir -p $OUTPUT_DIR
-          cp target/${{ matrix.target }}/release/$APP_NAME $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/$APP_NAME-${{ matrix.features }}.sig $OUTPUT_DIR/$APP_NAME-${{ matrix.features }}.sig
-          tar -czf $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C $OUTPUT_DIR \
-            $APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
-            $APP_NAME-${{ matrix.features }}.sig \
-            Changelog.md \
-            LICENSE.txt
+          strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
+          mkdir -p ${{ env.OUTPUT_DIR }}
+          
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
+          
+          tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
+            -C ${{ env.OUTPUT_DIR }} \
+              ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
+              ${{ env.APP_NAME }}-${{ matrix.features }}.sig \
+              Changelog.md \
+              LICENSE.txt
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            $OUTPUT_DIR/$APP_NAME-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             Changelog.md
             LICENSE.txt
           draft: false
