@@ -146,17 +146,17 @@ jobs:
       - name: Prepare release files
         run: |
           strip target/${{ matrix.target }}/release/QR2M
-          mkdir -p LAB7041
-          cp target/${{ matrix.target }}/release/QR2M LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/QR2M-${{ matrix.features }}.sig LAB7041/QR2M-${{ matrix.features }}.sig
-          cp Changelog.md LAB7041/Changelog.md
-          cp LICENSE.txt LAB7041/LICENSE.txt
+          mkdir -p LAB7041/linux-gnu
+          cp target/${{ matrix.target }}/release/QR2M LAB7041/linux-gnu/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/QR2M-${{ matrix.features }}.sig LAB7041/linux-gnu/QR2M-${{ matrix.features }}.sig
+          cp Changelog.md LAB7041/linux-gnu/Changelog.md
+          cp LICENSE.txt LAB7041/linux-gnu/LICENSE.txt
           sync
 
       - name: Compress release
         run: |
-          tar -czf LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C \
-          LAB7041 \
+          tar -czf LAB7041/linux-gnu/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz -C \
+          LAB7041/linux-gnu \
           QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
           QR2M-${{ matrix.features }}.sig \
           Changelog.md \
@@ -166,7 +166,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            LAB7041/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
+            LAB7041/linux-gnu/QR2M-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             Changelog.md
             LICENSE.txt
           draft: false
