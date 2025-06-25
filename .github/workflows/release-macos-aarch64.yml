@@ -5,7 +5,7 @@ on:
     workflows: ["Verify GPG Signature"]
     types:
       - completed
-    branches: [ "master-pause" ]
+    branches: [ "master" ]
 
 permissions:
   contents: write
