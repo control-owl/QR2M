@@ -23,7 +23,7 @@ jobs:
 
     env:
       APP_NAME: "QR2M"
-      APP_PATH: "target/${{ matrix.target }}/release/"
+      APP_PATH: "target/${{ matrix.target }}/release"
       SIG_FILE: "${{ matrix.features }}.sig"
       OUTPUT_DIR: "LAB7041/linux-gnu"
 
