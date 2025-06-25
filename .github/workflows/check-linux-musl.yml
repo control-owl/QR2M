@@ -32,7 +32,7 @@ jobs:
             pkg-config \
             libssl-dev \
             build-essential
-            musl-dev \
+            musl \
             gcc \
             g++ \
             make \
@@ -52,11 +52,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ matrix.target }}-
-
-      - name: Install Rust
-        run: |
-          rustup target add ${{ matrix.target }}
-          rustup component add clippy rustfmt
 
       - name: Configure cross-compilation
         run: |
