@@ -22,7 +22,6 @@ jobs:
       fail-fast: false
 
     env:
-      VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
       GPG_KEY: ${{ secrets.ACTIONS_KEY }}
       GPG_PASS: ${{ secrets.ACTIONS_PASS }}
       GPG_ID: ${{ secrets.ACTIONS_KEY_ID }}
@@ -90,6 +89,8 @@ jobs:
           git_tag_gpgsign: true
 
       - name: Create tag
+        env:
+          VERSION_NUMBER: ${{ env.VERSION_NUMBER }}
         run: |
           git config user.name "QR2M"
           git config user.email "$GPG_EMAIL"
