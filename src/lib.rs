@@ -364,10 +364,10 @@ pub fn read_config_from_file(local_config_file: &std::path::PathBuf) -> io::Resu
 
 pub fn get_active_app_feature() -> &'static str {
   if cfg!(feature = "dev") {
-    "Dev"
+    "dev"
   } else if cfg!(feature = "full") {
-    "Full"
+    "full"
   } else {
-    "Offline"
+    "offline"
   }
 }
