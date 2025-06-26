@@ -1,5 +1,7 @@
 # version 0.86.0
 - GitHub Actions auto release CI/CD
+  - Linux GNU
+  - macOS
 - Security window in production
 
 # version 0.85.3

@@ -23,14 +23,14 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 
 | **Security Status**                                                                                                                                                                                       |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [![Verify GPG Signature](https://github.com/control-owl/QR2M/actions/workflows/verify.yml/badge.svg)](https://github.com/control-owl/QR2M/actions/workflows/verify.yml)                                   |
+| [![Verify GPG Signature](https://github.com/control-owl/QR2M/actions/workflows/verify-gpg-signature.yml/badge.svg)](https://github.com/control-owl/QR2M/actions/workflows/verify-gpg-signature.yml)                     |
 | [![CodeQL](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/github-code-scanning/codeql) |
 
-| **Build Status**                                                                                                                                                                                                |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-gnu.yml)             |
-| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml)          |
-| [![macOS aarch64 Darwin](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-macos-aarch64.yml) |
+| **Build Status**                                                                                                                                                                                                  |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/release-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/release-linux-gnu.yml)           |
+| [![macOS aarch64 Darwin](https://github.com/control-owl/QR2M/actions/workflows/release-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/release-macos-aarch64.yml) |
+| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml)            |
 
 
 ## Table of Contents
@@ -120,7 +120,7 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 
 To ensure the authenticity and integrity of this application, I've implemented GPG signature verification for both the source code and the final compiled application. Both public keys can be always find in project directory: `res/keys`
 
-### How It Works (still developing)
+### How It Works
 
 - Code Signature: Control Owl [2524C8FEB60EFCB0](https://keys.openpgp.org/search?q=2524C8FEB60EFCB0) – Ensures that the source code in this repository is legitimate and has not been altered.
 - Build Signature: QR2M [99204764AC6B6A44](https://keys.openpgp.org/search?q=99204764AC6B6A44) – Ensures that the final compiled application has not been modified after building. This prevents tampering before distribution.

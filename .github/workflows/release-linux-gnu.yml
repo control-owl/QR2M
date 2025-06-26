@@ -1,14 +1,15 @@
-name: Check Linux x86_64 MUSL
+name: Release Linux x86_64 GNU
 
 on:
   workflow_run:
     workflows: ["Verify GPG Signature"]
-    types: 
+    types:
       - completed
     branches: [ "master" ]
 
 permissions:
-  contents: read
+  contents: write
+  packages: write
 
 jobs:
   standard:
@@ -16,53 +17,32 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [ x86_64-unknown-linux-musl ]
-        features: [ "offline", "full", "dev" ]
+        target: [x86_64-unknown-linux-gnu]
+        features: ["offline", "full", "dev"]
       fail-fast: false
 
     env:
       APP_NAME: "QR2M"
       APP_PATH: "target/${{ matrix.target }}/release"
       SIG_FILE: "${{ matrix.features }}.sig"
-      OUTPUT_DIR: "LAB7041/linux-musl"
+      OUTPUT_DIR: "LAB7041/linux-gnu"
 
     steps:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libglib2.0-dev \
-            libgtk-4-dev \
-            libadwaita-1-dev \
-            pkg-config \
-            libssl-dev \
-            build-essential \
-            musl-dev \
-            gcc \
-            g++ \
-            make \
-            cmake
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config libssl-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy rustfmt
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo
-            target
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
-
-      - name: Configure cross-compilation
-        run: |
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-          echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
 
       - name: Check code
         run: |
@@ -70,14 +50,10 @@ jobs:
           cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
       - name: Build
-        run: cargo build --release --features "${{ matrix.features }}"
+        run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Run tests
-        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
-
-      - name: Verify static linking
-        run: |
-          ldd ${{ env.APP_PATH }}/${{ env.APP_NAME }} || echo "Static binary confirmed"
+        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
 
       - name: Versioning
         run: |
@@ -101,7 +77,7 @@ jobs:
         run: |
           git config user.name "${{ env.APP_NAME }}"
           git config user.email "${{ secrets.ACTIONS_EMAIL }}"
-
+          
           echo "Checking if tag v${{ env.VERSION_NUMBER }} exists..."
           if ! git rev-parse "v${{ env.VERSION_NUMBER }}" >/dev/null 2>&1; then
             echo "Tag v${{ env.VERSION_NUMBER }} does not exists."
@@ -126,9 +102,9 @@ jobs:
             echo "Error: Binary not found at ${{ env.APP_PATH }}/${{ env.APP_NAME }}"
             exit 1
           fi
-
+          
           "${{ env.APP_PATH }}/${{ env.APP_NAME }}" & PID=$!
-
+          
           for i in {1..30}; do
             [ -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ] && { echo "Signature file created: ${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}"; break; }
             sleep 1
@@ -144,12 +120,12 @@ jobs:
         run: |
           strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
           mkdir -p ${{ env.OUTPUT_DIR }}
-
+          
           cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
             ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
           cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
             ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
-
+          
           tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
             -C ${{ env.OUTPUT_DIR }} \
               ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \

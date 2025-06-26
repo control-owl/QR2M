@@ -219,7 +219,9 @@ impl GuiState {
     }
 
     let security_icon_path = std::path::Path::new("theme").join("color");
+
     let security = sec::SECURITY_STATUS.read().unwrap();
+
     let security_texture = if security.app_key && security.author_key && !security.code_modified {
       qr2m_lib::get_texture_from_resource(
         security_icon_path
@@ -1708,7 +1710,6 @@ fn main() {
 
   let gui_state = Rc::new(RefCell::new(GuiState::default_config()));
 
-  // #[cfg(feature = "dev")]
   match sec::check_security_level() {
     Ok(_) => {
       d3bug("<<< check_security_level", "debug");
@@ -1720,37 +1721,6 @@ fn main() {
     #[strong]
     gui_state,
     move |app| {
-      //       #[cfg(not(feature = "dev"))]
-      //       match create_main_window(app, gui_state.clone()) {
-      //         Ok(window) => {
-      //           window.present();
-      //           d3bug("<<< create_main_window", "debug");
-      //         }
-      //         Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
-      //       };
-      //
-      //       #[cfg(feature = "dev")]
-      //       {
-      //         let local_settings = os::LOCAL_SETTINGS.lock().unwrap();
-      //         if local_settings.first_run {
-      //           match create_welcome_window(app, gui_state.clone(), None) {
-      //             Ok(window) => {
-      //               window.present();
-      //               d3bug("<<< create_welcome_window", "debug");
-      //             }
-      //             Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
-      //           };
-      //         } else {
-      //           match create_main_window(app, gui_state.clone(), None, Some(start_time)) {
-      //             Ok(window) => {
-      //               window.present();
-      //               d3bug("<<< create_main_window", "debug");
-      //             }
-      //             Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
-      //           };
-      //         }
-      //       }
-
       match create_welcome_window(app, gui_state.clone()) {
         Ok(window) => {
           window.present();
@@ -1814,15 +1784,13 @@ fn setup_app_actions(
   let settings = gio::SimpleAction::new("settings", None);
   let quit = gio::SimpleAction::new("quit", None);
   let security = gio::SimpleAction::new("security", None);
+  let welcome = gio::SimpleAction::new("welcome", None);
 
   #[cfg(feature = "dev")]
   let log = gio::SimpleAction::new("log", None);
 
   #[cfg(feature = "dev")]
   let test = gio::SimpleAction::new("test", None);
-
-  #[cfg(feature = "dev")]
-  let welcome = gio::SimpleAction::new("welcome", None);
 
   new.connect_activate(clone!(
     #[strong]
@@ -1919,7 +1887,6 @@ fn setup_app_actions(
     }
   ));
 
-  #[cfg(feature = "dev")]
   welcome.connect_activate(clone!(
     #[strong]
     application,
@@ -1943,12 +1910,10 @@ fn setup_app_actions(
   application.set_accels_for_action("app.about", &["F1"]);
   application.set_accels_for_action("app.settings", &["F5"]);
   application.set_accels_for_action("app.security", &["F2"]);
+  // application.set_accels_for_action("app.welcome", &["<Primary>W"]);
 
   #[cfg(feature = "dev")]
   application.set_accels_for_action("app.test", &["<Primary>T"]);
-
-  #[cfg(feature = "dev")]
-  application.set_accels_for_action("app.welcome", &["<Primary>W"]);
 
   application.add_action(&new);
   application.add_action(&open);
@@ -1957,12 +1922,10 @@ fn setup_app_actions(
   application.add_action(&settings);
   application.add_action(&quit);
   application.add_action(&security);
+  application.add_action(&welcome);
 
   #[cfg(feature = "dev")]
   application.add_action(&test);
-
-  #[cfg(feature = "dev")]
-  application.add_action(&welcome);
 
   Ok(())
 }
@@ -2123,9 +2086,9 @@ fn create_main_window(
   header_bar.pack_start(&*buttons["save"]);
   header_bar.pack_end(&*buttons["settings"]);
   header_bar.pack_end(&*buttons["about"]);
+  header_bar.pack_end(&*buttons["security"]);
   #[cfg(feature = "dev")]
   header_bar.pack_end(&*buttons["log"]);
-  header_bar.pack_end(&*buttons["security"]);
 
   // JUMP: Action: Settings button action
   buttons["settings"].connect_clicked(clone!(
