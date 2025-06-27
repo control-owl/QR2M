@@ -31,9 +31,9 @@ fn set_environment() {
       lines[2]
     };
 
-    println!("cargo:rustc-env=COMMIT_HASH={}", commit_hash);
-    println!("cargo:rustc-env=COMMIT_DATE={}", commit_date);
-    println!("cargo:rustc-env=COMMIT_KEY={}", key_id);
+    println!("cargo:rustc-env=COMMIT_HASH={commit_hash}");
+    println!("cargo:rustc-env=COMMIT_DATE={commit_date}");
+    println!("cargo:rustc-env=COMMIT_KEY={key_id}");
   } else {
     println!("cargo:rustc-env=COMMIT_HASH=Unknown");
     println!("cargo:rustc-env=COMMIT_DATE=Unknown");
@@ -41,5 +41,5 @@ fn set_environment() {
   }
 
   let target = std::env::var("TARGET").unwrap_or("Unknown".to_string());
-  println!("cargo:rustc-env=BUILD_TARGET={}", target);
+  println!("cargo:rustc-env=BUILD_TARGET={target}");
 }
