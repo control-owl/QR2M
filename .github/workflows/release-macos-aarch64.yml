@@ -133,7 +133,7 @@ jobs:
           set -e
           strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
           mkdir -p ${{ env.OUTPUT_DIR }}
-          
+
           cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
             ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
           cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
@@ -156,21 +156,26 @@ jobs:
           echo "Getting existing release..."
           response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }})
           echo "Response: $response"
+
           if [ $? -ne 0 ]; then
             echo "Error getting existing release: $?"
             exit 1
           fi
+
           release_id=$(echo "$response" | jq -r '.id')
           echo "Release ID: $release_id"
+
           assets_response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/$release_id/assets)
           echo "Assets Response: $assets_response"
+
           if [ $? -ne 0 ]; then
             echo "Error getting existing assets: $?"
             exit 1
           fi
-          assets=$(echo "$assets_response" | jq '.[] | .name')
-          echo "Assets: $assets"
-          echo "assets=$assets" >> $GITHUB_OUTPUT
+          
+          assets=($(echo "$assets_response" | jq -r '.[] | .name'))
+          echo "Assets: ${assets[@]}"
+          echo "assets=${assets[@]}" >> $GITHUB_OUTPUT
 
       - name: Check if file already exists
         id: file-exists
