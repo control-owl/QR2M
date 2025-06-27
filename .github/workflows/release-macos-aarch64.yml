@@ -173,7 +173,7 @@ jobs:
         run: |
           if [ "${{ steps.file-exists.outputs.file_exists }}" == "true" ]; then
             asset_id=${{ steps.file-exists.outputs.asset_id }}
-            hash=$(gh api /repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id --json | jq -r '.updated_at')
+            hash=$(gh api /repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id | jq -r '.updated_at')
             echo "existing_file_hash=$hash" >> $GITHUB_OUTPUT
           else
             echo "existing_file_hash=" >> $GITHUB_OUTPUT
