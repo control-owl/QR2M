@@ -20,16 +20,14 @@ pub fn derive_from_path_ed25519(
   // _seed: &str,
 ) -> FunctionOutput<crate::keys::DerivationResult> {
   d3bug(">>> derive_from_path_ed25519", "debug");
-  d3bug(&format!("master_key {:?}", master_key), "debug");
-  d3bug(
-    &format!("master_chain_code {:?}", master_chain_code),
-    "debug",
-  );
-  d3bug(&format!("path {:?}", path), "debug");
+  d3bug(&format!("master_key {master_key:?}"), "debug");
+  d3bug(&format!("master_chain_code {master_chain_code:?}"), "debug");
+  d3bug(&format!("path {path:?}"), "debug");
 
   if master_key.len() != 32 {
     return Err(AppError::Custom(format!(
-      "Master key must be 32 bytes, got {master_key.len()}"
+      "Master key must be 32 bytes, got {}",
+      master_key.len()
     )));
   } else {
     d3bug(&format!("master_key len {:?}", master_key.len()), "debug");
@@ -37,11 +35,12 @@ pub fn derive_from_path_ed25519(
 
   if master_chain_code.len() != 32 {
     return Err(AppError::Custom(format!(
-      "Master chain key must be 32 bytes, got {master_chain_code.len()}"
+      "Master chain key must be 32 bytes, got {}",
+      master_chain_code.len()
     )));
   } else {
     d3bug(
-      &format!("master_chain_code len {master_chain_code.len():?}"),
+      &format!("master_chain_code len {:?}", master_chain_code.len()),
       "debug",
     );
   }
@@ -229,7 +228,7 @@ pub fn generate_master_keys_ed25519(seed: &str) {
       "[+] {}",
       &t!("log.generate_master_keys_ed25519").to_string()
     );
-    println!("\t- Seed: {:?}", seed);
+    println!("\t- Seed: {seed:?}");
   }
 
   let message = "ed25519 seed";
@@ -257,11 +256,11 @@ pub fn generate_master_keys_ed25519(seed: &str) {
 
   #[cfg(debug_assertions)]
   {
-    println!("\t- Master private key (base58): {:?}", master_xprv);
-    println!("\t- Master public key (base58): {:?}", master_xpub);
-    println!("\t- Master private key bytes: {:?}", private_key);
-    println!("\t- Master chain code bytes: {:?}", chain_code);
-    println!("\t- Master public key bytes: {:?}", public_key);
+    println!("\t- Master private key (base58): {master_xprv:?}");
+    println!("\t- Master public key (base58): {master_xpub:?}");
+    println!("\t- Master private key bytes: {private_key:?}");
+    println!("\t- Master chain code bytes: {chain_code:?}");
+    println!("\t- Master public key bytes: {public_key:?}");
   }
 
   let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
@@ -727,13 +726,13 @@ fn fetch_anu_qrng_data(
                       match serde_json::from_str::<AnuResponse>(&json_buffer) {
                         Ok(anu_response) => {
                           if anu_response.success {
-                            println!("Parsed JSON: {:?}", anu_response);
+                            println!("Parsed JSON: {anu_response:?}");
                             if sender.send(format!("FINAL:{json_buffer}")).await.is_err() {
                               println!("Failed to send final response");
                             }
                             break;
                           } else {
-                            println!("API returned success: false: {:?}", anu_response);
+                            println!("API returned success: false: {anu_response:?}");
                             break;
                           }
                         }

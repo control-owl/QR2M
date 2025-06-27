@@ -31,11 +31,11 @@ pub fn get_entropy_from_anu(
   log: bool,
 ) -> FunctionOutput<String> {
   d3bug(">>> get_entropy_from_anu", "debug");
-  d3bug(&format!("entropy_length: {:?}", entropy_length), "debug");
-  d3bug(&format!("data_format: {:?}", data_format), "debug");
-  d3bug(&format!("array_length: {:?}", array_length), "debug");
-  d3bug(&format!("hex_block_size: {:?}", hex_block_size), "debug");
-  d3bug(&format!("log: {:?}", log), "debug");
+  d3bug(&format!("entropy_length: {entropy_length:?}"), "debug");
+  d3bug(&format!("data_format: {data_format:?}"), "debug");
+  d3bug(&format!("array_length: {array_length:?}"), "debug");
+  d3bug(&format!("hex_block_size: {hex_block_size:?}"), "debug");
+  d3bug(&format!("log: {log:?}"), "debug");
 
   let start_time = SystemTime::now();
   let (sender, receiver) = std::sync::mpsc::channel();
@@ -44,12 +44,12 @@ pub fn get_entropy_from_anu(
     Ok(_) => {
       d3bug("<<< fetch_anu_qrng_data", "debug");
     }
-    Err(err) => d3bug(&format!("fetch_anu_qrng_data: \n{:?}", err), "error"),
+    Err(err) => d3bug(&format!("fetch_anu_qrng_data: \n{err:?}"), "error"),
   };
 
   let anu_data = receiver
     .recv()
-    .map_err(|e| AppError::Custom(format!("anu_data not set {:?}", e)))?;
+    .map_err(|err| AppError::Custom(format!("anu_data not set {err:?}")))?;
 
   if let Some(anu_data) = anu_data.as_ref() {
     if !anu_data.is_empty() {
@@ -58,14 +58,14 @@ pub fn get_entropy_from_anu(
           Ok(_) => {
             d3bug("<<< create_anu_timestamp", "debug");
           }
-          Err(err) => d3bug(&format!("create_anu_timestamp: \n{:?}", err), "error"),
+          Err(err) => d3bug(&format!("create_anu_timestamp: \n{err:?}"), "error"),
         };
 
         match write_api_response_to_log(&Some(anu_data.to_string())) {
           Ok(_) => {
             d3bug("<<< write_api_response_to_log", "debug");
           }
-          Err(err) => d3bug(&format!("write_api_response_to_log: \n{:?}", err), "error"),
+          Err(err) => d3bug(&format!("write_api_response_to_log: \n{err:?}"), "error"),
         };
       }
     } else {
@@ -132,14 +132,14 @@ fn fetch_anu_qrng_data(
   sender: std::sync::mpsc::Sender<Option<String>>,
 ) -> FunctionOutput<()> {
   d3bug(">>> fetch_anu_qrng_data", "debug");
-  d3bug(&format!("fetch_anu_qrng_data: {:?}", data_format), "debug");
-  d3bug(&format!("array_length: {:?}", array_length), "debug");
-  d3bug(&format!("block_size: {:?}", block_size), "debug");
+  d3bug(&format!("fetch_anu_qrng_data: {data_format:?}"), "debug");
+  d3bug(&format!("array_length: {array_length:?}"), "debug");
+  d3bug(&format!("block_size: {block_size:?}"), "debug");
 
   let data_format_owned = data_format.to_string();
   let current_time = SystemTime::now();
   let last_request_time = load_last_anu_request()
-    .map_err(|e| AppError::Custom(format!("Can not load system time: {:?}", e)))?;
+    .map_err(|err| AppError::Custom(format!("Can not load system time: {err:?}")))?;
 
   let elapsed = current_time
     .duration_since(last_request_time)
@@ -152,7 +152,7 @@ fn fetch_anu_qrng_data(
 
     sender
       .send(Some(String::new()))
-      .map_err(|e| AppError::Custom(format!("Can not send data: {:?}", e)))?;
+      .map_err(|err| AppError::Custom(format!("Can not send data: {err:?}")))?;
 
     return Err(AppError::Custom(
       t!("error.anu.timeout", value = remaining_seconds).to_string(),
@@ -251,7 +251,7 @@ fn create_anu_timestamp(time: SystemTime) -> FunctionOutput<()> {
   let local_anu_timestamp_file = Path::new(&local_temp_dir).join(ANU_TIMESTAMP_FILE);
 
   d3bug(
-    &format!("local_anu_timestamp_file: {:?}", local_anu_timestamp_file),
+    &format!("local_anu_timestamp_file: {local_anu_timestamp_file:?}"),
     "log",
   );
 
@@ -290,7 +290,7 @@ fn write_api_response_to_log(response: &Option<String>) -> FunctionOutput<()> {
 
   let local_anu_response_file = Path::new(&local_temp_dir).join(ANU_RESPONSE_FILE);
   d3bug(
-    &format!("local_anu_response_file: {:?}", local_anu_response_file),
+    &format!("local_anu_response_file: {local_anu_response_file:?}"),
     "log",
   );
 
@@ -383,8 +383,7 @@ fn extract_uint8_data(api_response: &Option<String>) -> FunctionOutput<Vec<u8>> 
       }
     } else {
       return Err(AppError::Custom(format!(
-        "Invalid byte value: {:?}",
-        data_item
+        "Invalid byte value: {data_item:?}"
       )));
     }
   }
@@ -397,7 +396,7 @@ fn process_uint8_data(data: &[u8]) -> FunctionOutput<String> {
 
   let binary_string = data
     .iter()
-    .flat_map(|byte| format!("{:08b}", byte).chars().collect::<Vec<_>>())
+    .flat_map(|byte| format!("{byte:08b}").chars().collect::<Vec<_>>())
     .collect::<String>();
 
   Ok(binary_string)

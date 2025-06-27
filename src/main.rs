@@ -5329,7 +5329,7 @@ fn create_main_window(
     if let Some(value) = start_time {
       let elapsed = value.elapsed();
 
-      let message = format!("Application startup time: {:.2?}", elapsed);
+      let message = format!("Application startup time: {elapsed:.2?}");
       // println!("{}", message);
 
       let lock_app_messages = app_messages_state.borrow();
