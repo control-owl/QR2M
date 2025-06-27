@@ -148,6 +148,8 @@ jobs:
               LICENSE.txt
       
       - name: Get existing release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: existing-assets
         run: |
           set -e
