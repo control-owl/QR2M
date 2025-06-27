@@ -192,7 +192,7 @@ impl GuiState {
     let extension = GUI_IMAGE_EXTENSION;
 
     let icon_files = [
-      ("new", format!("new.{extension}" )),
+      ("new", format!("new.{extension}")),
       ("open", format!("open.{extension}")),
       ("save", format!("save.{extension}")),
       ("about", format!("about.{extension}")),
@@ -225,23 +225,23 @@ impl GuiState {
     let security_texture = if security.app_key && security.author_key && !security.code_modified {
       qr2m_lib::get_texture_from_resource(
         security_icon_path
-          .join(format!("sec-good.{GUI_IMAGE_EXTENSION}" ))
+          .join(format!("sec-good.{GUI_IMAGE_EXTENSION}"))
           .to_str()
-          .unwrap_or(&format!("theme/color/sec-good.{GUI_IMAGE_EXTENSION}" )),
+          .unwrap_or(&format!("theme/color/sec-good.{GUI_IMAGE_EXTENSION}")),
       )
     } else if security.app_key && security.author_key {
       qr2m_lib::get_texture_from_resource(
         security_icon_path
-          .join(format!("sec-warn.{GUI_IMAGE_EXTENSION}" ))
+          .join(format!("sec-warn.{GUI_IMAGE_EXTENSION}"))
           .to_str()
-          .unwrap_or(&format!("theme/color/sec-warn.{GUI_IMAGE_EXTENSION}" )),
+          .unwrap_or(&format!("theme/color/sec-warn.{GUI_IMAGE_EXTENSION}")),
       )
     } else {
       qr2m_lib::get_texture_from_resource(
         security_icon_path
-          .join(format!("sec-error.{GUI_IMAGE_EXTENSION}" ))
+          .join(format!("sec-error.{GUI_IMAGE_EXTENSION}"))
           .to_str()
-          .unwrap_or(&format!("theme/color/sec-error.{GUI_IMAGE_EXTENSION}" )),
+          .unwrap_or(&format!("theme/color/sec-error.{GUI_IMAGE_EXTENSION}")),
       )
     };
 
@@ -1452,7 +1452,7 @@ impl AppLog {
     let is_active = status.lock().unwrap();
 
     #[cfg(debug_assertions)]
-    println!("\t- AppLog status: {is_active}" );
+    println!("\t- AppLog status: {is_active}");
 
     let new_icon = match *is_active {
       true => "notif",
@@ -1752,7 +1752,7 @@ fn print_program_info() -> FunctionOutput<()> {
     ),
     "info",
   );
-  d3bug(&format!("Start time (UNIX): {timestamp}" ), "debug");
+  d3bug(&format!("Start time (UNIX): {timestamp}"), "debug");
 
   d3bug(
     "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.",
@@ -2545,7 +2545,7 @@ fn create_main_window(
 
           if qr2m_lib::is_valid_entropy(&text) {
             #[cfg(debug_assertions)]
-            println!("Imported entropy: {text}" );
+            println!("Imported entropy: {text}");
 
             entropy_text.buffer().set_text(&text);
 
@@ -2614,7 +2614,7 @@ fn create_main_window(
 
             seed_text.buffer().set_text(&seed);
           } else {
-            eprintln!("\t Imported entropy invalid: {text}" );
+            eprintln!("\t Imported entropy invalid: {text}");
 
             let lock_app_messages = app_messages_state.borrow();
             match lock_app_messages.queue_message(
@@ -2845,10 +2845,10 @@ fn create_main_window(
 
           if qr2m_lib::is_valid_seed(&text) {
             #[cfg(debug_assertions)]
-            println!("Imported seed: {text}" );
+            println!("Imported seed: {text}");
             seed_text.buffer().set_text(&text);
           } else {
-            eprintln!("\t Imported seed invalid: {text}" );
+            eprintln!("\t Imported seed invalid: {text}");
 
             let lock_app_messages = app_messages_state.borrow();
             match lock_app_messages.queue_message(
@@ -3375,10 +3375,10 @@ fn create_main_window(
 
   let default_bip_label = if wallet_bip == "32" {
     main_purpose_frame.set_visible(false);
-    format!("m/{wallet_bip}'/0'/0'" )
+    format!("m/{wallet_bip}'/0'/0'")
   } else {
     main_purpose_frame.set_visible(true);
-    format!("m/{wallet_bip}'/0'/0'/0" )
+    format!("m/{wallet_bip}'/0'/0'/0")
   };
 
   let derivation_label_text = gtk::TextView::new();
@@ -5013,7 +5013,6 @@ fn create_main_window(
                         d3bug(
                           &format!(
                             "Problem with generating address with index {current_index:?}"
-                            
                           ),
                           "error",
                         );
@@ -6867,7 +6866,7 @@ fn reset_user_settings() -> FunctionOutput<()> {
       }
       Err(_err) => {
         #[cfg(debug_assertions)]
-        eprintln!("\t- Local config file NOT deleted \n Error: {_err}" );
+        eprintln!("\t- Local config file NOT deleted \n Error: {_err}");
       }
     };
   }
@@ -6897,7 +6896,7 @@ fn create_about_window() {
   let their_license = std::path::Path::new("licenses").join("GTK.license");
   let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_string_lossy());
 
-  let licenses = format!("{app_license}\n\n---\n\n{lgpl_license}" );
+  let licenses = format!("{app_license}\n\n---\n\n{lgpl_license}");
 
   let gtk_license = t!("UI.dialog.gtk").to_string();
 
@@ -7058,11 +7057,8 @@ fn save_wallet_to_file(app_messages_state: &Rc<RefCell<AppMessages>>) {
     .build();
 
   let filter = gtk::FileFilter::new();
-  filter.add_pattern(&format!("*.{WALLET_DEFAULT_EXTENSION}" ));
-  filter.set_name(Some(&format!(
-    "Wallet file (*.{WALLET_DEFAULT_EXTENSION})"
-    
-  )));
+  filter.add_pattern(&format!("*.{WALLET_DEFAULT_EXTENSION}"));
+  filter.set_name(Some(&format!("Wallet file (*.{WALLET_DEFAULT_EXTENSION})")));
   save_dialog.set_default_filter(Some(&filter));
 
   let app_messages_state_clone = app_messages_state.clone();
@@ -7570,7 +7566,7 @@ fn derivation_path_to_integer(path: &str) -> FunctionOutput<String> {
 
 fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) -> FunctionOutput<()> {
   d3bug(">>> remove_active_handler", "test");
-  d3bug(&format!("handler {handler:?}" ), "test");
+  d3bug(&format!("handler {handler:?}"), "test");
 
   let mut lock = handler
     .lock()
