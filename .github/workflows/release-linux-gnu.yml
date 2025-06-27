@@ -200,6 +200,8 @@ jobs:
       
       - name: Get hash of existing file
         id: existing-file-hash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           echo "Getting hash of existing file..."
