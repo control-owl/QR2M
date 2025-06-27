@@ -29,7 +29,7 @@ jobs:
       APP_NAME: "QR2M"
       APP_PATH: "target/${{ matrix.target }}/release"
       SIG_FILE: "${{ matrix.features }}.sig"
-      OUTPUT_DIR: "LAB7041/macos"
+      OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
       PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
       LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
       CPPFLAGS: "-I/opt/homebrew/opt/openssl@3.0/include -I/opt/homebrew/include"
@@ -151,18 +151,24 @@ jobs:
         id: existing-assets
         run: |
           set -e
-          echo "Getting existing release assets..."
-          response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }}/assets)
+          echo "Getting existing release..."
+          response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }})
           echo "Response: $response"
           if [ $? -ne 0 ]; then
-            echo "Error getting existing release assets: $?"
+            echo "Error getting existing release: $?"
             exit 1
           fi
-          assets=$(echo "$response" | jq '.[] | .name')
+          release_id=$(echo "$response" | jq -r '.id')
+          echo "Release ID: $release_id"
+          assets_response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/$release_id/assets)
+          echo "Assets Response: $assets_response"
+          if [ $? -ne 0 ]; then
+            echo "Error getting existing assets: $?"
+            exit 1
+          fi
+          assets=$(echo "$assets_response" | jq '.[] | .name')
           echo "Assets: $assets"
           echo "assets=$assets" >> $GITHUB_OUTPUT
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check if file already exists
         id: file-exists

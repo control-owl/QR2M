@@ -25,7 +25,7 @@ jobs:
       APP_NAME: "QR2M"
       APP_PATH: "target/${{ matrix.target }}/release"
       SIG_FILE: "${{ matrix.features }}.sig"
-      OUTPUT_DIR: "LAB7041/linux-gnu"
+      OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
 
     steps:
       - name: Install system dependencies
