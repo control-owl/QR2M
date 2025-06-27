@@ -214,7 +214,7 @@ pub fn create_coin_store() -> FunctionOutput<gtk::gio::ListStore> {
     .to_str()
     .ok_or_else(|| crate::AppError::Custom("Failed to find COINLIST_FILE".to_string()))?;
 
-  d3bug(&format!("Coin store path: {:?}", coin_store_path), "debug");
+  d3bug(&format!("Coin store path: {coin_store_path:?}"), "debug");
 
   let csv_content = qr2m_lib::get_text_from_resources(coin_store_path);
 
@@ -350,8 +350,8 @@ pub fn create_sorter() -> FunctionOutput<gtk::CustomSorter> {
         coin
           .property::<String>("cmc-top")
           .parse::<usize>()
-          .map_err(|e| {
-            crate::AppError::Custom(format!("Failed to parse cmc-top as usize: {:?}", e))
+          .map_err(|err| {
+            crate::AppError::Custom(format!("Failed to parse cmc-top as usize: {err:?}"))
           })
       })
       .ok_or_else(|| crate::AppError::Custom("local_config_file not set".to_string()))?
