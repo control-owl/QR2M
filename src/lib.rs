@@ -243,10 +243,7 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
       if loader.write(&image_bytes).is_ok() {
         match loader.close() {
           Ok(_) => {}
-          Err(error) => eprintln!(
-            " - [!] ERROR problem with loading SVG icons:\n\t{:?}",
-            error
-          ),
+          Err(err) => eprintln!(" - [!] ERROR problem with loading SVG icons:\n\t{err:?}"),
         };
 
         if let Some(pixbuf) = loader.pixbuf() {

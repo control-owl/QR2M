@@ -233,7 +233,7 @@ pub fn create_coin_store() -> FunctionOutput<gtk::gio::ListStore> {
 
   for result in store_reader.records() {
     let record =
-      result.map_err(|e| crate::AppError::Custom(format!("Error reading CSV record: {}", e)))?;
+      result.map_err(|err| crate::AppError::Custom(format!("Error reading CSV record: {err}")))?;
     let number_status = record[0].to_string();
     let status = match number_status.as_str() {
       "0" => VALID_COIN_STATUS_NAME[0],
@@ -246,7 +246,7 @@ pub fn create_coin_store() -> FunctionOutput<gtk::gio::ListStore> {
 
     let coin_index: u32 = record[1]
       .parse()
-      .map_err(|e| crate::AppError::Custom(format!("Error parsing coin_index: {}", e)))?;
+      .map_err(|err| crate::AppError::Custom(format!("Error parsing coin_index: {err}")))?;
 
     let coin_symbol = record[2].to_string();
     let coin_name = record[3].to_string();
@@ -363,16 +363,16 @@ pub fn create_sorter() -> FunctionOutput<gtk::CustomSorter> {
 
     match (cmc_top1, cmc_top2) {
       (Ok(value1), Ok(value2)) => value1.cmp(&value2).into(),
-      (Err(e), _) => {
+      (Err(err), _) => {
         d3bug(
-          &format!("Failed to extract cmc-top for item1: {}", e),
+          &format!("Failed to extract cmc-top for item1: {err}"),
           "error",
         );
         gtk::Ordering::Larger
       }
-      (_, Err(e)) => {
+      (_, Err(err)) => {
         d3bug(
-          &format!("Failed to extract cmc-top for item2: {}", e),
+          &format!("Failed to extract cmc-top for item2: {err}"),
           "error",
         );
         gtk::Ordering::Smaller
