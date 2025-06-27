@@ -169,7 +169,7 @@ jobs:
 
           assets=($(echo "$assets_response" | jq -r '.[] | .name'))
           echo "Assets: ${assets[@]}"
-          echo "::set-output name=assets;${assets[@]}"
+          echo "assets=$(IFS=,; echo "${assets[*]}")" >> $GITHUB_OUTPUT
 
       - name: Check if file already exists
         id: file-exists
@@ -178,7 +178,8 @@ jobs:
           echo "Checking if file already exists..."
           file_name=${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
 
-          if [[ ${{ steps.existing-assets.outputs.assets }} =~ $file_name ]]; then
+          IFS=, read -r -a assets_array <<< "${{ steps.existing-assets.outputs.assets }}"
+          if [[ " ${assets_array[@]} " =~ " $file_name " ]]; then
             echo "File already exists."
             echo "file_exists=true" >> $GITHUB_OUTPUT
           else
