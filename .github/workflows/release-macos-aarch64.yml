@@ -161,6 +161,8 @@ jobs:
           assets=$(echo "$response" | jq '.[] | .name')
           echo "Assets: $assets"
           echo "assets=$assets" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check if file already exists
         id: file-exists
