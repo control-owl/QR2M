@@ -208,11 +208,12 @@ jobs:
           if [ "${{ steps.file-exists.outputs.file_exists }}" == "true" ]; then
             file_name=${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }}/assets | jq '.[] | select(.name == "'"$file_name"'") | .id')
-            
+
             asset_id=$(echo "$response" | tr -d '"')
             echo "Asset ID: $asset_id"
             
-            existing_hash=$(gh api /repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id)
+            existing_asset=$(gh api /repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id)
+            existing_hash=$(echo "$existing_asset" | jq -r '.updated_at')
             echo "Existing file hash: $existing_hash"
             echo "existing_file_hash=$existing_hash" >> $GITHUB_OUTPUT
           else
