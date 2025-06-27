@@ -148,9 +148,9 @@ jobs:
               LICENSE.txt
       
       - name: Get existing release assets
+        id: existing-assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        id: existing-assets
         run: |
           set -e
           echo "Getting existing release..."
@@ -172,10 +172,10 @@ jobs:
             echo "Error getting existing assets: $?"
             exit 1
           fi
-          
+
           assets=($(echo "$assets_response" | jq -r '.[] | .name'))
           echo "Assets: ${assets[@]}"
-          echo "assets=${assets[@]}" >> $GITHUB_OUTPUT
+          echo "::set-output name=assets;${assets[@]}"
 
       - name: Check if file already exists
         id: file-exists
@@ -183,9 +183,8 @@ jobs:
           set -e
           echo "Checking if file already exists..."
           file_name=${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
-          assets=$(cat $GITHUB_OUTPUT | grep assets | cut -d'=' -f2-)
-          echo "Assets: $assets"
-          if [[ $assets =~ $file_name ]]; then
+
+          if [[ ${{ steps.existing-assets.outputs.assets }} =~ $file_name ]]; then
             echo "File already exists."
             echo "file_exists=true" >> $GITHUB_OUTPUT
           else
@@ -200,6 +199,7 @@ jobs:
           echo "Calculating hash of new file..."
           file_path=${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
           hash=$(sha256sum "$file_path" | cut -d' ' -f1)
+
           echo "New file hash: $hash"
           echo "new_file_hash=$hash" >> $GITHUB_OUTPUT
       
@@ -211,8 +211,10 @@ jobs:
           if [ "${{ steps.file-exists.outputs.file_exists }}" == "true" ]; then
             file_name=${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
             response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }}/assets | jq '.[] | select(.name == "'"$file_name"'") | .id')
+            
             asset_id=$(echo "$response" | tr -d '"')
             echo "Asset ID: $asset_id"
+            
             existing_hash=$(gh api /repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id)
             echo "Existing file hash: $existing_hash"
             echo "existing_file_hash=$existing_hash" >> $GITHUB_OUTPUT
@@ -222,6 +224,11 @@ jobs:
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: |
+          [ "${{ steps.file-exists.outputs.file_exists }}" == "false" ] ||
+          [ "${{ steps.new-file-hash.outputs.new_file_hash }}" != "${{ steps.existing-file-hash.outputs.existing_file_hash }}" ]
         with:
           files: |
             ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
@@ -230,22 +237,3 @@ jobs:
           draft: false
           prerelease: true
           tag_name: v${{ env.VERSION_NUMBER }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: |
-          [ "${{ steps.file-exists.outputs.file_exists }}" == "false" ] ||
-          [ "${{ steps.new-file-hash.outputs.new_file_hash }}" != "${{ steps.existing-file-hash.outputs.existing_file_hash }}" ]
-
-          
-      # - name: Upload to GitHub Releases
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: |
-      #       ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
-      #       Changelog.md
-      #       LICENSE.txt
-      #     draft: false
-      #     prerelease: true
-      #     tag_name: v${{ env.VERSION_NUMBER }}
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
