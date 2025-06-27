@@ -146,7 +146,7 @@ jobs:
       - name: Get existing release assets
         id: existing-assets
         run: |
-          assets=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }} assets)
+          assets=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }}/assets | jq '.[] | .name')
           echo "assets=$assets" >> $GITHUB_OUTPUT
 
       - name: Check if file already exists
