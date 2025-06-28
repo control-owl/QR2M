@@ -28,7 +28,6 @@ jobs:
     env:
       APP_NAME: "QR2M"
       APP_PATH: "target/${{ matrix.target }}/release"
-      SIG_FILE: "${{ matrix.features }}.sig"
       OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
       PKG_CONFIG_PATH: "/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3.0/lib/pkgconfig:/usr/local/lib/pkgconfig"
       LDFLAGS: "-L/opt/homebrew/opt/openssl@3.0/lib -L/opt/homebrew/lib"
@@ -78,7 +77,6 @@ jobs:
         run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
       - name: "Extract version"
-        id: version
         run: |
           VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' #version')
           
@@ -88,8 +86,8 @@ jobs:
             exit 1
           fi
           
-          echo "VERSION=$VERSION_NUMBER"
-          echo "version=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "VERSION_NUMBER=$VERSION_NUMBER"
+          echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
       - name: "Import GPG key"
         uses: crazy-max/ghaction-import-gpg@v6
@@ -104,7 +102,7 @@ jobs:
         run: |
           git config user.name "${{ env.APP_NAME }}"
           git config user.email "${{ secrets.ACTIONS_EMAIL }}"
-          VERSION="v${{ steps.version.outputs.version }}"
+          VERSION="v${{ env.VERSION_NUMBER }}"
           
           echo "Checking if tag $VERSION exists..."
           if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
