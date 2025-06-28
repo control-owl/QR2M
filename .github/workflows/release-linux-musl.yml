@@ -54,18 +54,34 @@ jobs:
 
       - name: "Build statically with Docker"
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app -w /app debian:bookworm bash -c '
+          docker run --rm -v ${{ github.workspace }}:/app -w /app alpine:3.20 bash -c '
             apt update &&
-            DEBIAN_FRONTEND=noninteractive apt install -y \
-              build-essential curl pkg-config cmake git \
-              musl-tools gcc-multilib libc6-dev \
-              libgtk-4-dev libadwaita-1-dev libglib2.0-dev libssl-dev ca-certificates &&
+            DEBIAN_FRONTEND=noninteractive apk add --no-cache \
+              build-base \
+              musl-dev \
+              pkgconfig \
+              git \
+              cmake \
+              meson \
+              ninja \
+              glib-dev \
+              gtk4-dev \
+              libadwaita-dev \
+              cairo-dev \
+              pango-dev \
+              gdk-pixbuf-dev \
+              curl \
+              rustup \
+              openssl-dev &&
             curl https://sh.rustup.rs -sSf | bash -s -- -y &&
             . "$HOME/.cargo/env" &&
             rustup target add x86_64-unknown-linux-musl &&
-            export OPENSSL_STATIC=1 &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
+            export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig &&
             export PKG_CONFIG_SYSROOT_DIR=/ &&
+            export OPENSSL_STATIC=1
+            export OPENSSL_LIB_DIR=/usr/lib
+            export OPENSSL_INCLUDE_DIR=/usr/include
             cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose
           '
 
