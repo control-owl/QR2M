@@ -52,14 +52,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "Build statically with Docker"
+      - name: "Cache cargo dependencies"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: "Build with Docker"
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app -w /app alpine:3.20 bash -c '
-            apt update &&
-            DEBIAN_FRONTEND=noninteractive apk add --no-cache \
-              build-base \
+          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c '
+            apk add --no-cache \
               musl-dev \
-              pkgconfig \
+              pkgconf \
               git \
               cmake \
               meson \
@@ -70,18 +78,15 @@ jobs:
               cairo-dev \
               pango-dev \
               gdk-pixbuf-dev \
-              curl \
-              rustup \
-              openssl-dev &&
-            curl https://sh.rustup.rs -sSf | bash -s -- -y &&
-            . "$HOME/.cargo/env" &&
+              openssl-dev \
+              curl &&
             rustup target add x86_64-unknown-linux-musl &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
             export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig &&
-            export PKG_CONFIG_SYSROOT_DIR=/ &&
-            export OPENSSL_STATIC=1
-            export OPENSSL_LIB_DIR=/usr/lib
-            export OPENSSL_INCLUDE_DIR=/usr/include
+            export OPENSSL_DIR=/usr &&
+            export OPENSSL_STATIC=1 &&
+            export OPENSSL_LIB_DIR=/usr/lib &&
+            export OPENSSL_INCLUDE_DIR=/usr/include &&
             cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose
           '
 
