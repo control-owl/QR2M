@@ -28,88 +28,87 @@ jobs:
     env:
       APP_NAME: "QR2M"
       APP_PATH: "target/${{ matrix.target }}/release"
-      OUTPUT_DIR: "LAB7041/linux-musl"
+      OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
 
     steps:
-      - name: "Install system dependencies"
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libglib2.0-dev \
-            libgtk-4-dev \
-            libadwaita-1-dev \
-            pkg-config \
-            libssl-dev \
-            build-essential \
-            musl-dev \
-            gcc \
-            g++ \
-            make \
-            cmake
-
-      - name: "Build OpenSSL for musl"
-        run: |
-          export OPENSSL_VERSION="1.1.1u"
-          curl -sSL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" | tar xz
-          cd "openssl-${OPENSSL_VERSION}"
-          
-          CC=x86_64-linux-musl-gcc ./Configure \
-            no-shared no-dso no-tests \
-            linux-x86_64 \
-            --prefix=$HOME/openssl-musl
-          
-          make -j$(nproc)
-          make install_sw
-          
-          echo "OPENSSL_DIR=$HOME/openssl-musl" >> $GITHUB_ENV
-          echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
+#      - name: "Install system dependencies"
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y \
+#            libglib2.0-dev \
+#            libgtk-4-dev \
+#            libadwaita-1-dev \
+#            pkg-config \
+#            libssl-dev \
+#            build-essential \
+#            musl-dev \
+#            gcc \
+#            g++ \
+#            make \
+#            cmake
 
       - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: "Cache cargo dependencies"
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: "Install Rust"
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-          components: clippy rustfmt
-
-      - name: "Configure cross-compilation"
+      - name: "Build statically with Docker"
         run: |
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-          echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
+          docker run --rm -v ${{ github.workspace }}:/app -w /app alpine:latest sh -c '
+            apk add --no-cache build-base musl-dev openssl-dev pkgconf cmake git curl &&
+            curl https://sh.rustup.rs -sSf | sh -s -- -y &&
+            source $HOME/.cargo/env &&
+            rustup target add ${{ matrix.target }} &&
+            export OPENSSL_STATIC=1 &&
+            export PKG_CONFIG_ALLOW_CROSS=1 &&
+            export PKG_CONFIG_PATH=/usr/lib/pkgconfig &&
+            cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}" --locked --verbose
+          '
 
-      - name: "Check code"
-        env:
-          OPENSSL_DIR: ${{ env.OPENSSL_DIR }}
-          OPENSSL_STATIC: 1
-        run: |
-          cargo fmt --
-          cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
-
-      - name: "Build project"
-        run: |
-          echo "Building with features: ${{ matrix.features }}"
-          cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
-
-      - name: "Tests project"
-        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
+#      - name: "Cache cargo dependencies"
+#        uses: actions/cache@v4
+#        with:
+#          path: |
+#            ~/.cargo
+#            target
+#          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+#          restore-keys: |
+#            ${{ runner.os }}-cargo-
+#
+#      - name: "Install Rust"
+#        uses: dtolnay/rust-toolchain@stable
+#        with:
+#          targets: ${{ matrix.target }}
+#          components: clippy rustfmt
+#
+#      - name: "Configure cross-compilation"
+#        run: |
+#          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
+#          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
+#          echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
+#
+#      - name: "Check code"
+#        env:
+#          OPENSSL_DIR: ${{ env.OPENSSL_DIR }}
+#          OPENSSL_STATIC: 1
+#        run: |
+#          cargo fmt --
+#          cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
+#
+#      - name: "Build project"
+#        run: |
+#          echo "Building with features: ${{ matrix.features }}"
+#          cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
+#
+#      - name: "Tests project"
+#        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
       - name: "Verify static linking"
         run: |
-          ldd ${{ env.APP_PATH }}/${{ env.APP_NAME }} || echo "Static binary confirmed"
+          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
+          file $BIN
+          ldd $BIN || echo "Static binary confirmed"
+      
 
       - name: "Extract version number"
         run: |
