@@ -109,8 +109,8 @@ pub enum AppError {
 impl std::fmt::Display for AppError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
-      AppError::Io(e) => write!(f, "IO error: {}", e),
-      AppError::Custom(msg) => write!(f, "{}", msg),
+      AppError::Io(err) => write!(f, "IO error: {err}"),
+      AppError::Custom(msg) => write!(f, "{msg}"),
     }
   }
 }
@@ -192,14 +192,14 @@ impl GuiState {
     let extension = GUI_IMAGE_EXTENSION;
 
     let icon_files = [
-      ("new", format!("new.{}", extension)),
-      ("open", format!("open.{}", extension)),
-      ("save", format!("save.{}", extension)),
-      ("about", format!("about.{}", extension)),
-      ("settings", format!("settings.{}", extension)),
-      ("log", format!("log.{}", extension)),
-      ("notif", format!("notif.{}", extension)),
-      ("random", format!("random.{}", extension)),
+      ("new", format!("new.{extension}")),
+      ("open", format!("open.{extension}")),
+      ("save", format!("save.{extension}")),
+      ("about", format!("about.{extension}")),
+      ("settings", format!("settings.{extension}")),
+      ("log", format!("log.{extension}")),
+      ("notif", format!("notif.{extension}")),
+      ("random", format!("random.{extension}")),
     ];
 
     let mut icons = std::collections::HashMap::new();
@@ -207,14 +207,14 @@ impl GuiState {
       let icon_path = theme_base_path.join(file);
 
       #[cfg(debug_assertions)]
-      println!("\t- Icon: {:?}", icon_path);
+      println!("\t- Icon: {icon_path:?}");
 
       if let Some(icon_str) = icon_path.to_str() {
         let texture = qr2m_lib::get_texture_from_resource(icon_str);
         icons.insert(name.to_string(), texture);
       } else {
         #[cfg(debug_assertions)]
-        eprintln!("Warning: Invalid UTF-8 in path {:?}", icon_path);
+        eprintln!("Warning: Invalid UTF-8 in path {icon_path:?}");
       }
     }
 
@@ -225,23 +225,23 @@ impl GuiState {
     let security_texture = if security.app_key && security.author_key && !security.code_modified {
       qr2m_lib::get_texture_from_resource(
         security_icon_path
-          .join(format!("sec-good.{}", GUI_IMAGE_EXTENSION))
+          .join(format!("sec-good.{GUI_IMAGE_EXTENSION}"))
           .to_str()
-          .unwrap_or(&format!("theme/color/sec-good.{}", GUI_IMAGE_EXTENSION)),
+          .unwrap_or(&format!("theme/color/sec-good.{GUI_IMAGE_EXTENSION}")),
       )
     } else if security.app_key && security.author_key {
       qr2m_lib::get_texture_from_resource(
         security_icon_path
-          .join(format!("sec-warn.{}", GUI_IMAGE_EXTENSION))
+          .join(format!("sec-warn.{GUI_IMAGE_EXTENSION}"))
           .to_str()
-          .unwrap_or(&format!("theme/color/sec-warn.{}", GUI_IMAGE_EXTENSION)),
+          .unwrap_or(&format!("theme/color/sec-warn.{GUI_IMAGE_EXTENSION}")),
       )
     } else {
       qr2m_lib::get_texture_from_resource(
         security_icon_path
-          .join(format!("sec-error.{}", GUI_IMAGE_EXTENSION))
+          .join(format!("sec-error.{GUI_IMAGE_EXTENSION}"))
           .to_str()
-          .unwrap_or(&format!("theme/color/sec-error.{}", GUI_IMAGE_EXTENSION)),
+          .unwrap_or(&format!("theme/color/sec-error.{GUI_IMAGE_EXTENSION}")),
       )
     };
 
@@ -276,7 +276,7 @@ impl GuiState {
       adw::StyleManager::default().set_color_scheme(preferred_theme);
 
       #[cfg(debug_assertions)]
-      println!("\t- GUI theme: {:?}", preferred_theme);
+      println!("\t- GUI theme: {preferred_theme:?}");
     } else {
       adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
 
@@ -293,7 +293,7 @@ impl GuiState {
     button_map.entry(name.to_string()).or_default().push(button);
 
     #[cfg(debug_assertions)]
-    println!("\t- Button: {:?}", name)
+    println!("\t- Button: {name:?}")
   }
 }
 
@@ -394,31 +394,25 @@ impl AppSettings {
     let local_config_file = local_settings.local_config_file.clone().unwrap();
 
     #[cfg(debug_assertions)]
-    println!("\t- Settings file: {:?}", local_config_file);
+    println!("\t- Settings file: {local_config_file:?}");
 
-    let config_str = match fs::read_to_string(&local_config_file) {
-      Ok(contents) => contents,
-      Err(err) => {
-        if err.kind() == io::ErrorKind::NotFound {
-          #[cfg(debug_assertions)]
-          println!("\t- Config file not found, using default settings.");
+    let config_str = fs::read_to_string(&local_config_file).unwrap_or_else(|err| {
+      if err.kind() == io::ErrorKind::NotFound {
+        #[cfg(debug_assertions)]
+        println!("\t- Config file not found, using default settings.");
 
-          match os::check_local_config() {
-            Ok(_) => {
-              d3bug("<<< check_local_config", "debug");
-            }
-            Err(err) => d3bug(&format!("check_local_config: {:?}", err), "error"),
-          };
-        } else {
-          #[cfg(debug_assertions)]
-          eprintln!(
-            "\t- Failed to read local config file: {:?} \n Error: {:?}",
-            local_config_file, err
-          );
-        }
-        String::new()
+        match os::check_local_config() {
+          Ok(_) => {
+            d3bug("<<< check_local_config", "debug");
+          }
+          Err(err) => d3bug(&format!("check_local_config: {err:?}"), "error"),
+        };
+      } else {
+        #[cfg(debug_assertions)]
+        eprintln!("\t- Failed to read local config file: {local_config_file:?} \n Error: {err:?}");
       }
-    };
+      String::new()
+    });
 
     let config: toml::Value = config_str.parse().unwrap_or_else(|_err| {
       #[cfg(debug_assertions)]
@@ -482,18 +476,18 @@ impl AppSettings {
 
     #[cfg(debug_assertions)]
     {
-      println!("\t- Save last window size: {:?}", gui_save_size);
-      println!("\t- GUI width: {:?}", gui_last_width);
-      println!("\t- GUI height: {:?}", gui_last_height);
-      println!("\t- Maximized: {:?}", gui_maximized);
-      println!("\t- Theme: {:?}", gui_theme);
-      println!("\t- Icons: {:?}", gui_icons);
-      println!("\t- Language: {:?}", gui_language);
-      println!("\t- Search: {:?}", gui_search);
-      println!("\t- Notification enabled: {:?}", gui_notifications);
-      println!("\t- Notification timeout: {:?}", gui_notification_timeout);
-      println!("\t- Log enabled: {:?}", gui_log);
-      println!("\t- Log level: {:?}", gui_log_level);
+      println!("\t- Save last window size: {gui_save_size:?}");
+      println!("\t- GUI width: {gui_last_width:?}");
+      println!("\t- GUI height: {gui_last_height:?}");
+      println!("\t- Maximized: {gui_maximized:?}");
+      println!("\t- Theme: {gui_theme:?}");
+      println!("\t- Icons: {gui_icons:?}");
+      println!("\t- Language: {gui_language:?}");
+      println!("\t- Search: {gui_search:?}");
+      println!("\t- Notification enabled: {gui_notifications:?}");
+      println!("\t- Notification timeout: {gui_notification_timeout:?}");
+      println!("\t- Log enabled: {gui_log:?}");
+      println!("\t- Log level: {gui_log_level:?}");
     }
 
     let wallet_entropy_source = get_str(
@@ -529,16 +523,13 @@ impl AppSettings {
     );
     #[cfg(debug_assertions)]
     {
-      println!("\t- Entropy source: {:?}", wallet_entropy_source);
-      println!("\t- Entropy length: {:?}", wallet_entropy_length);
-      println!(
-        "\t- Mnemonic passphrase length: {:?}",
-        wallet_mnemonic_length
-      );
-      println!("\t- BIP: {:?}", wallet_bip);
-      println!("\t- Address count: {:?}", wallet_address_count);
-      println!("\t- Hard address: {:?}", wallet_hardened_address);
-      println!("\t- Mnemonic dictionary: {:?}", wallet_mnemonic_dictionary);
+      println!("\t- Entropy source: {wallet_entropy_source:?}");
+      println!("\t- Entropy length: {wallet_entropy_length:?}");
+      println!("\t- Mnemonic passphrase length: {wallet_mnemonic_length:?}");
+      println!("\t- BIP: {wallet_bip:?}");
+      println!("\t- Address count: {wallet_address_count:?}");
+      println!("\t- Hard address: {wallet_hardened_address:?}");
+      println!("\t- Mnemonic dictionary: {wallet_mnemonic_dictionary:?}");
     }
 
     let anu_enabled = get_bool(&anu_section, "enabled", settings.anu_enabled);
@@ -550,12 +541,12 @@ impl AppSettings {
 
     #[cfg(debug_assertions)]
     {
-      println!("\t- Use ANU: {:?}", anu_enabled);
-      println!("\t- ANU data format: {:?}", anu_data_format);
-      println!("\t- ANU array length: {:?}", anu_array_length);
-      println!("\t- ANU hex block size: {:?}", anu_hex_block_size);
-      println!("\t- ANU log: {:?}", anu_log);
-      println!("\t- ANU timeout: {:?}", anu_timeout);
+      println!("\t- Use ANU: {anu_enabled:?}");
+      println!("\t- ANU data format: {anu_data_format:?}");
+      println!("\t- ANU array length: {anu_array_length:?}");
+      println!("\t- ANU hex block size: {anu_hex_block_size:?}");
+      println!("\t- ANU log: {anu_log:?}");
+      println!("\t- ANU timeout: {anu_timeout:?}");
     }
 
     let proxy_status = get_bool(&proxy_section, "status", settings.proxy_status);
@@ -601,21 +592,18 @@ impl AppSettings {
 
     #[cfg(debug_assertions)]
     {
-      println!("\t- Use proxy: {:?}", proxy_status);
-      println!("\t- Proxy server address: {:?}", proxy_server_address);
-      println!("\t- Proxy server port: {:?}", proxy_server_port);
-      println!("\t- Use proxy PAC: {:?}", proxy_use_pac);
-      println!("\t- Proxy script address: {:?}", proxy_script_address);
-      println!(
-        "\t- Use proxy login credentials: {:?}",
-        proxy_login_credentials
-      );
-      println!("\t- Proxy username: {:?}", proxy_login_username);
-      println!("\t- Proxy password: {:?}", proxy_login_password);
-      println!("\t- Use proxy SSL: {:?}", proxy_use_ssl);
-      println!("\t- Proxy SSL certificate: {:?}", proxy_ssl_certificate);
-      println!("\t- Proxy retry attempts: {:?}", proxy_retry_attempts);
-      println!("\t- Proxy timeout: {:?}", proxy_timeout);
+      println!("\t- Use proxy: {proxy_status:?}");
+      println!("\t- Proxy server address: {proxy_server_address:?}");
+      println!("\t- Proxy server port: {proxy_server_port:?}");
+      println!("\t- Use proxy PAC: {proxy_use_pac:?}");
+      println!("\t- Proxy script address: {proxy_script_address:?}");
+      println!("\t- Use proxy login credentials: {proxy_login_credentials:?}");
+      println!("\t- Proxy username: {proxy_login_username:?}");
+      println!("\t- Proxy password: {proxy_login_password:?}");
+      println!("\t- Use proxy SSL: {proxy_use_ssl:?}");
+      println!("\t- Proxy SSL certificate: {proxy_ssl_certificate:?}");
+      println!("\t- Proxy retry attempts: {proxy_retry_attempts:?}");
+      println!("\t- Proxy timeout: {proxy_timeout:?}");
     }
 
     let mut application_settings = APP_SETTINGS.write().unwrap();
@@ -678,7 +666,7 @@ impl AppSettings {
             self.wallet_entropy_source = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -689,7 +677,7 @@ impl AppSettings {
             self.wallet_entropy_length = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -700,7 +688,7 @@ impl AppSettings {
             self.wallet_mnemonic_length = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -711,7 +699,7 @@ impl AppSettings {
             self.wallet_bip = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -722,7 +710,7 @@ impl AppSettings {
             self.wallet_address_count = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -732,7 +720,7 @@ impl AppSettings {
             self.wallet_hardened_address = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -742,7 +730,7 @@ impl AppSettings {
             self.wallet_mnemonic_dictionary = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -752,7 +740,7 @@ impl AppSettings {
             self.gui_save_size = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -763,7 +751,7 @@ impl AppSettings {
             self.gui_last_width = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -774,7 +762,7 @@ impl AppSettings {
             self.gui_last_height = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -784,7 +772,7 @@ impl AppSettings {
             self.gui_maximized = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -794,7 +782,7 @@ impl AppSettings {
             self.gui_theme = Some(new_theme.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
 
             let preferred_theme = match new_theme {
               "Light" => adw::ColorScheme::ForceLight,
@@ -814,7 +802,7 @@ impl AppSettings {
           }
         } else {
           #[cfg(debug_assertions)]
-          eprintln!("Received invalid value for gui_theme: {:?}", new_value);
+          eprintln!("Received invalid value for gui_theme: {new_value:?}");
         }
       }
       "gui_icons" => {
@@ -823,7 +811,7 @@ impl AppSettings {
             self.gui_icons = Some(new_icons.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
 
             if let Some(state) = gui_state {
               let mut state = state.borrow_mut();
@@ -836,7 +824,7 @@ impl AppSettings {
           }
         } else {
           #[cfg(debug_assertions)]
-          eprintln!("Received invalid value for gui_icons: {:?}", new_value);
+          eprintln!("Received invalid value for gui_icons: {new_value:?}");
         }
       }
       "gui_language" => {
@@ -845,7 +833,7 @@ impl AppSettings {
             self.gui_language = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -855,7 +843,7 @@ impl AppSettings {
             self.gui_search = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -865,7 +853,7 @@ impl AppSettings {
             self.gui_notifications = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -876,7 +864,7 @@ impl AppSettings {
             self.gui_notification_timeout = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -894,7 +882,7 @@ impl AppSettings {
             }
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -904,7 +892,7 @@ impl AppSettings {
             self.gui_log_level = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -914,7 +902,7 @@ impl AppSettings {
             self.anu_enabled = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -924,7 +912,7 @@ impl AppSettings {
             self.anu_data_format = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -935,7 +923,7 @@ impl AppSettings {
             self.anu_array_length = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -946,7 +934,7 @@ impl AppSettings {
             self.anu_hex_block_size = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -956,7 +944,7 @@ impl AppSettings {
             self.anu_log = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -967,7 +955,7 @@ impl AppSettings {
             self.anu_timeout = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -977,7 +965,7 @@ impl AppSettings {
             self.proxy_status = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -987,7 +975,7 @@ impl AppSettings {
             self.proxy_server_address = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -998,7 +986,7 @@ impl AppSettings {
             self.proxy_server_port = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1008,7 +996,7 @@ impl AppSettings {
             self.proxy_use_pac = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1018,7 +1006,7 @@ impl AppSettings {
             self.proxy_script_address = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1028,7 +1016,7 @@ impl AppSettings {
             self.proxy_login_credentials = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1038,7 +1026,7 @@ impl AppSettings {
             self.proxy_login_username = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1048,7 +1036,7 @@ impl AppSettings {
             self.proxy_login_password = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1058,7 +1046,7 @@ impl AppSettings {
             self.proxy_use_ssl = Some(value);
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1068,7 +1056,7 @@ impl AppSettings {
             self.proxy_ssl_certificate = Some(value.to_string());
 
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {:?} = {:?}", key, new_value);
+            println!("\t- Updating key  {key:?} = {new_value:?}");
           }
         }
       }
@@ -1092,7 +1080,7 @@ impl AppSettings {
 
     let mut doc = config_str
       .parse::<toml_edit::DocumentMut>()
-      .map_err(|e| io::Error::other(format!("\t- Failed to parse config string: {}", e)))
+      .map_err(|err| io::Error::other(format!("\t- Failed to parse config string: {err}")))
       .unwrap_or(toml_edit::DocumentMut::new());
 
     {
@@ -1168,7 +1156,7 @@ impl AppSettings {
 
     if let Err(_err) = qr2m_lib::save_config_to_file(&local_config_file, &toml_str) {
       #[cfg(debug_assertions)]
-      eprintln!("\t- Error saving config file: {}", _err);
+      eprintln!("\t- Error saving config file: {_err}");
     };
   }
 }
@@ -1253,8 +1241,8 @@ impl AppMessages {
     message_type: gtk::MessageType,
   ) -> FunctionOutput<()> {
     d3bug(">>> queue_message", "debug");
-    d3bug(&format!("new_message: {:?}", new_message), "debug");
-    d3bug(&format!("message_type: {:?}", message_type), "debug");
+    d3bug(&format!("new_message: {new_message:?}"), "debug");
+    d3bug(&format!("message_type: {message_type:?}"), "debug");
 
     let mut queue = self.message_queue.lock().unwrap();
     let last_message_in_queue = queue.get(queue.len().wrapping_sub(1));
@@ -1263,7 +1251,7 @@ impl AppMessages {
     let last_message = &some_message.0;
 
     if &new_message != last_message {
-      d3bug(&format!("New notification: {:?}", new_message), "info");
+      d3bug(&format!("New notification: {new_message:?}"), "info");
       queue.push_back((new_message, message_type));
 
       if !*self.processing.lock().unwrap() {
@@ -1459,7 +1447,7 @@ impl AppLog {
     let is_active = status.lock().unwrap();
 
     #[cfg(debug_assertions)]
-    println!("\t- AppLog status: {}", is_active);
+    println!("\t- AppLog status: {is_active}");
 
     let new_icon = match *is_active {
       true => "notif",
@@ -1680,28 +1668,28 @@ fn main() {
     Ok(_) => {
       d3bug("<<< print_program_info", "debug");
     }
-    Err(err) => d3bug(&format!("print_program_info: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("print_program_info: {err:?}"), "error"),
   };
 
   match os::detect_os_and_user_dir() {
     Ok(_) => {
       d3bug("<<< detect_os_and_user_dir", "debug");
     }
-    Err(err) => d3bug(&format!("detect_os_and_user_dir: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("detect_os_and_user_dir: {err:?}"), "error"),
   };
 
   match os::check_local_config() {
     Ok(_) => {
       d3bug("<<< check_local_config", "debug");
     }
-    Err(err) => d3bug(&format!("check_local_config: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("check_local_config: {err:?}"), "error"),
   };
 
   match AppSettings::load_settings() {
     Ok(_) => {
       d3bug("<<< load_settings", "debug");
     }
-    Err(err) => d3bug(&format!("load_settings: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("load_settings: {err:?}"), "error"),
   };
 
   let application = adw::Application::builder()
@@ -1714,7 +1702,7 @@ fn main() {
     Ok(_) => {
       d3bug("<<< check_security_level", "debug");
     }
-    Err(err) => d3bug(&format!("check_security_level: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("check_security_level: {err:?}"), "error"),
   };
 
   application.connect_activate(clone!(
@@ -1726,7 +1714,7 @@ fn main() {
           window.present();
           d3bug("<<< create_welcome_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_welcome_window: {err:?}"), "error"),
       };
     }
   ));
@@ -1759,7 +1747,7 @@ fn print_program_info() -> FunctionOutput<()> {
     ),
     "info",
   );
-  d3bug(&format!("Start time (UNIX): {}", timestamp), "debug");
+  d3bug(&format!("Start time (UNIX): {timestamp}"), "debug");
 
   d3bug(
     "-.-. --- .--. -.-- .-. .. --. .... - --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.",
@@ -1809,7 +1797,7 @@ fn setup_app_actions(
           window.present();
           d3bug("<<< create_main_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_main_window: {err:?}"), "error"),
       };
     }
   ));
@@ -1841,7 +1829,7 @@ fn setup_app_actions(
     move |_action, _parameter| {
       match create_log_window(gui_state.clone()) {
         Ok(window) => window.present(),
-        Err(err) => eprintln!("Error with log window: {:?}", err),
+        Err(err) => eprintln!("Error with log window: {err:?}"),
       };
     }
   ));
@@ -1852,7 +1840,7 @@ fn setup_app_actions(
         window.present();
         d3bug("<<< create_security_window", "debug");
       }
-      Err(err) => d3bug(&format!("create_security_window: \n{:?}", err), "error"),
+      Err(err) => d3bug(&format!("create_security_window: \n{err:?}"), "error"),
     };
   });
 
@@ -1864,7 +1852,7 @@ fn setup_app_actions(
     move |_action, _parameter| {
       match create_settings_window(gui_state.clone(), app_messages_state) {
         Ok(window) => window.present(),
-        Err(err) => eprintln!("Error with settings window: {:?}", err),
+        Err(err) => eprintln!("Error with settings window: {err:?}"),
       };
     }
   ));
@@ -1898,7 +1886,7 @@ fn setup_app_actions(
           d3bug("<<< create_welcome_window", "debug");
           window.present();
         }
-        Err(err) => d3bug(&format!("create_welcome_window: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_welcome_window: {err:?}"), "error"),
       };
     }
   ));
@@ -1978,7 +1966,7 @@ fn create_main_window(
     Ok(_) => {
       d3bug("<<< switch_locale", "debug");
     }
-    Err(err) => d3bug(&format!("switch_locale: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("switch_locale: {err:?}"), "error"),
   };
 
   qr2m_lib::setup_css();
@@ -2078,7 +2066,7 @@ fn create_main_window(
       #[cfg(debug_assertions)]
       println!("setup_app_actions done");
     }
-    Err(err) => eprintln!("\t- Error in function setup_app_actions : {:?}", err),
+    Err(err) => eprintln!("\t- Error in function setup_app_actions : {err:?}"),
   };
 
   header_bar.pack_start(&*buttons["new"]);
@@ -2099,7 +2087,7 @@ fn create_main_window(
     move |_| {
       match create_settings_window(gui_state.clone(), app_messages_state.clone()) {
         Ok(window) => window.present(),
-        Err(err) => eprintln!("Error with settings window: {:?}", err),
+        Err(err) => eprintln!("Error with settings window: {err:?}"),
       };
     }
   ));
@@ -2115,7 +2103,7 @@ fn create_main_window(
     move |_| {
       match create_log_window(gui_state.clone()) {
         Ok(window) => window.present(),
-        Err(err) => eprintln!("Error with log window: {:?}", err),
+        Err(err) => eprintln!("Error with log window: {err:?}"),
       };
     }
   ));
@@ -2126,7 +2114,7 @@ fn create_main_window(
         window.present();
         d3bug("<<< create_security_window", "debug");
       }
-      Err(err) => d3bug(&format!("create_security_window: \n{:?}", err), "error"),
+      Err(err) => d3bug(&format!("create_security_window: \n{err:?}"), "error"),
     };
   });
 
@@ -2147,7 +2135,7 @@ fn create_main_window(
           window.present();
           d3bug("<<< create_main_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_main_window: {err:?}"), "error"),
       };
     }
   ));
@@ -2552,7 +2540,7 @@ fn create_main_window(
 
           if qr2m_lib::is_valid_entropy(&text) {
             #[cfg(debug_assertions)]
-            println!("Imported entropy: {}", text);
+            println!("Imported entropy: {text}");
 
             entropy_text.buffer().set_text(&text);
 
@@ -2587,8 +2575,8 @@ fn create_main_window(
                   d3bug("<<< generate_mnemonic_words", "debug");
                   mnemonic
                 }
-                Err(e) => {
-                  d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+                Err(err) => {
+                  d3bug(&format!("generate_mnemonic_words: {err:?}"), "error");
                   return;
                 }
               };
@@ -2602,8 +2590,8 @@ fn create_main_window(
                 d3bug("<<< generate_seed_from_mnemonic", "debug");
                 seed
               }
-              Err(e) => {
-                d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+              Err(err) => {
+                d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
                 return;
               }
             };
@@ -2613,15 +2601,15 @@ fn create_main_window(
                 d3bug("<<< convert_seed_to_mnemonic", "debug");
                 seed
               }
-              Err(e) => {
-                d3bug(&format!("convert_seed_to_mnemonic: {:?}", e), "error");
+              Err(err) => {
+                d3bug(&format!("convert_seed_to_mnemonic: {err:?}"), "error");
                 return;
               }
             };
 
             seed_text.buffer().set_text(&seed);
           } else {
-            eprintln!("\t Imported entropy invalid: {}", text);
+            eprintln!("\t Imported entropy invalid: {text}");
 
             let lock_app_messages = app_messages_state.borrow();
             match lock_app_messages.queue_message(
@@ -2629,7 +2617,7 @@ fn create_main_window(
               gtk::MessageType::Error,
             ) {
               Ok(_) => {}
-              Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+              Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
             };
           };
 
@@ -2720,7 +2708,7 @@ fn create_main_window(
           // TODO: check if imported mnemonic is valid
           // if qr2m_lib::is_valid_mnemonic(&text) {
           #[cfg(debug_assertions)]
-          println!("Imported mnemonic: {}", text);
+          println!("Imported mnemonic: {text}");
           mnemonic_words_text.buffer().set_text(&text);
 
           let mnemonic_dictionary = {
@@ -2756,8 +2744,8 @@ fn create_main_window(
               d3bug("<<< generate_seed_from_mnemonic", "debug");
               seed
             }
-            Err(e) => {
-              d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+            Err(err) => {
+              d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
               return;
             }
           };
@@ -2767,8 +2755,8 @@ fn create_main_window(
               d3bug("<<< convert_seed_to_mnemonic", "debug");
               seed
             }
-            Err(e) => {
-              d3bug(&format!("convert_seed_to_mnemonic: {:?}", e), "error");
+            Err(err) => {
+              d3bug(&format!("convert_seed_to_mnemonic: {err:?}"), "error");
               return;
             }
           };
@@ -2852,10 +2840,10 @@ fn create_main_window(
 
           if qr2m_lib::is_valid_seed(&text) {
             #[cfg(debug_assertions)]
-            println!("Imported seed: {}", text);
+            println!("Imported seed: {text}");
             seed_text.buffer().set_text(&text);
           } else {
-            eprintln!("\t Imported seed invalid: {}", text);
+            eprintln!("\t Imported seed invalid: {text}");
 
             let lock_app_messages = app_messages_state.borrow();
             match lock_app_messages.queue_message(
@@ -2863,7 +2851,7 @@ fn create_main_window(
               gtk::MessageType::Error,
             ) {
               Ok(_) => {}
-              Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+              Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
             };
           };
 
@@ -3060,7 +3048,7 @@ fn create_main_window(
     Ok(_) => {
       d3bug("<<< create_coin_completion_model", "debug");
     }
-    Err(err) => d3bug(&format!("create_coin_completion_model: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("create_coin_completion_model: {err:?}"), "error"),
   };
 
   let coin_store = coin_db::create_coin_store()?;
@@ -3382,10 +3370,10 @@ fn create_main_window(
 
   let default_bip_label = if wallet_bip == "32" {
     main_purpose_frame.set_visible(false);
-    format!("m/{}'/0'/0'", wallet_bip)
+    format!("m/{wallet_bip}'/0'/0'")
   } else {
     main_purpose_frame.set_visible(true);
-    format!("m/{}'/0'/0'/0", wallet_bip)
+    format!("m/{wallet_bip}'/0'/0'/0")
   };
 
   let derivation_label_text = gtk::TextView::new();
@@ -3703,14 +3691,14 @@ fn create_main_window(
 
       if !entropy.is_empty() {
         #[cfg(debug_assertions)]
-        println!("\t-Wallet entropy: {:?}", entropy);
+        println!("\t-Wallet entropy: {entropy:?}");
 
         entropy_text.buffer().set_text(&entropy);
 
         match passphrase {
           Some(pass) => {
             #[cfg(debug_assertions)]
-            println!("\t- Mnemonic passphrase: {:?}", pass);
+            println!("\t- Mnemonic passphrase: {pass:?}");
 
             mnemonic_passphrase_text.buffer().set_text(&pass);
           }
@@ -3740,8 +3728,8 @@ fn create_main_window(
                 d3bug("<<< generate_mnemonic_words", "debug");
                 mnemonic
               }
-              Err(e) => {
-                d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+              Err(err) => {
+                d3bug(&format!("generate_mnemonic_words: {err:?}"), "error");
                 return;
               }
             };
@@ -3756,8 +3744,8 @@ fn create_main_window(
               d3bug("<<< generate_seed_from_mnemonic", "debug");
               seed
             }
-            Err(e) => {
-              d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+            Err(err) => {
+              d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
               return;
             }
           };
@@ -3766,7 +3754,7 @@ fn create_main_window(
           seed_text.buffer().set_text(&seed_hex.to_string());
 
           #[cfg(debug_assertions)]
-          println!("\t- Seed (hex): {:?}", seed_hex);
+          println!("\t- Seed (hex): {seed_hex:?}");
         }
       }
     }
@@ -3815,7 +3803,7 @@ fn create_main_window(
 
       let pre_entropy =
         keys::generate_entropy(&source, *entropy_length as u64).unwrap_or_else(|err| {
-          d3bug(&format!("generate_entropy: {:?}", err), "error");
+          d3bug(&format!("generate_entropy: {err:?}"), "error");
           String::new()
         });
 
@@ -3839,8 +3827,8 @@ fn create_main_window(
               d3bug("<<< generate_mnemonic_words", "debug");
               mnemonic
             }
-            Err(e) => {
-              d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+            Err(err) => {
+              d3bug(&format!("generate_mnemonic_words: {err:?}"), "error");
               return;
             }
           };
@@ -3850,8 +3838,8 @@ fn create_main_window(
             d3bug("<<< generate_seed_from_mnemonic", "debug");
             seed
           }
-          Err(e) => {
-            d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+          Err(err) => {
+            d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
             return;
           }
         };
@@ -3863,9 +3851,9 @@ fn create_main_window(
 
         #[cfg(debug_assertions)]
         {
-          println!("\t- Entropy checksum: {:?}", checksum);
-          println!("\t- Final entropy: {:?}", full_entropy);
-          println!("\t- Seed (hex): {:?}", seed_hex);
+          println!("\t- Entropy checksum: {checksum:?}");
+          println!("\t- Final entropy: {full_entropy:?}");
+          println!("\t- Seed (hex): {seed_hex:?}");
         }
 
         {
@@ -3889,7 +3877,7 @@ fn create_main_window(
           gtk::MessageType::Warning,
         ) {
           Ok(_) => {}
-          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+          Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
         };
       }
     }
@@ -3934,7 +3922,7 @@ fn create_main_window(
         .collect();
 
       #[cfg(debug_assertions)]
-      println!("\t- RNG Mnemonic Passphrase: {:?}", mnemonic_rng_string);
+      println!("\t- RNG Mnemonic Passphrase: {mnemonic_rng_string:?}");
 
       mnemonic_passphrase_text.set_text(&mnemonic_rng_string);
     }
@@ -4004,20 +3992,20 @@ fn create_main_window(
           #[cfg(debug_assertions)]
           {
             println!("\n#### Coin info ####");
-            println!("\t- status: {}", _status);
-            println!("\t- index: {}", coin_index);
-            println!("\t- coin_symbol: {}", _coin_symbol);
-            println!("\t- coin_name: {}", coin_name);
-            println!("\t- key_derivation: {}", key_derivation);
-            println!("\t- hash: {}", hash);
-            println!("\t- private_header: {}", private_header);
-            println!("\t- public_header: {}", public_header);
-            println!("\t- public_key_hash: {}", public_key_hash);
-            println!("\t- script_hash: {}", _script_hash);
-            println!("\t- wallet_import_format: {}", wallet_import_format);
-            println!("\t- EVM: {}", _evm);
-            println!("\t- UCID: {}", _ucid);
-            println!("\t- cmc_top: {}", _cmc_top);
+            println!("\t- status: {_status}");
+            println!("\t- index: {coin_index}");
+            println!("\t- coin_symbol: {_coin_symbol}");
+            println!("\t- coin_name: {coin_name}");
+            println!("\t- key_derivation: {key_derivation}");
+            println!("\t- hash: {hash}");
+            println!("\t- private_header: {private_header}");
+            println!("\t- public_header: {public_header}");
+            println!("\t- public_key_hash: {public_key_hash}");
+            println!("\t- script_hash: {_script_hash}");
+            println!("\t- wallet_import_format: {wallet_import_format}");
+            println!("\t- EVM: {_evm}");
+            println!("\t- UCID: {_ucid}");
+            println!("\t- cmc_top: {_cmc_top}");
           }
 
           let buffer = seed_text.buffer();
@@ -4035,7 +4023,7 @@ fn create_main_window(
                 d3bug("<<< generate_master_keys_secp256k1", "debug");
               }
               Err(err) => d3bug(
-                &format!("generate_master_keys_secp256k1: \n{:?}", err),
+                &format!("generate_master_keys_secp256k1: \n{err:?}"),
                 "error",
               ),
             };
@@ -4077,7 +4065,7 @@ fn create_main_window(
           gtk::MessageType::Warning,
         ) {
           Ok(_) => {}
-          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+          Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
         };
       }
     }
@@ -4134,8 +4122,8 @@ fn create_main_window(
               d3bug("<<< generate_mnemonic_words", "debug");
               mnemonic
             }
-            Err(e) => {
-              d3bug(&format!("generate_mnemonic_words: {:?}", e), "error");
+            Err(err) => {
+              d3bug(&format!("generate_mnemonic_words: {err:?}"), "error");
               return;
             }
           };
@@ -4149,8 +4137,8 @@ fn create_main_window(
             d3bug("<<< generate_seed_from_mnemonic", "debug");
             seed
           }
-          Err(e) => {
-            d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+          Err(err) => {
+            d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
             return;
           }
         };
@@ -4220,8 +4208,8 @@ fn create_main_window(
             d3bug("<<< generate_seed_from_mnemonic", "debug");
             seed
           }
-          Err(e) => {
-            d3bug(&format!("generate_seed_from_mnemonic: {:?}", e), "error");
+          Err(err) => {
+            d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
             return;
           }
         };
@@ -4595,12 +4583,12 @@ fn create_main_window(
           gtk::MessageType::Warning,
         ) {
           Ok(_) => {}
-          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+          Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
         };
         return;
       } else {
         d3bug(
-          &format!("master_private_key_string: {:?}", master_private_key_string),
+          &format!("master_private_key_string: {master_private_key_string:?}"),
           "debug",
         );
       }
@@ -4628,7 +4616,7 @@ fn create_main_window(
           gtk::MessageType::Error,
         ) {
           Ok(_) => {}
-          Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+          Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
         };
         return;
       }
@@ -4640,21 +4628,21 @@ fn create_main_window(
         buffer.text(&start_iter, &end_iter, false)
       };
 
-      d3bug(&format!("derivation_path: {:?}", derivation_path), "debug");
+      d3bug(&format!("derivation_path: {derivation_path:?}"), "debug");
 
       let hardened_address = address_options_hardened_address_checkbox.is_active();
 
       let address_start_point = address_start_spinbutton.text();
       let address_start_point_int = address_start_point.parse::<usize>().unwrap_or(0);
       d3bug(
-        &format!("address_start_point_int: {:?}", address_start_point_int),
+        &format!("address_start_point_int: {address_start_point_int:?}"),
         "debug",
       );
 
       let address_count = address_count_spinbutton.text();
       let addresses_to_create = address_count.parse::<usize>().unwrap_or(1);
       d3bug(
-        &format!("addresses_to_create: {:?}", addresses_to_create),
+        &format!("addresses_to_create: {addresses_to_create:?}"),
         "debug",
       );
 
@@ -4677,7 +4665,7 @@ fn create_main_window(
         cpu_threads
       };
       d3bug(
-        &format!("generating_threads: {:?}", generating_threads),
+        &format!("generating_threads: {generating_threads:?}"),
         "debug",
       );
 
@@ -4726,9 +4714,9 @@ fn create_main_window(
             if *cancel_flag.lock().unwrap() {
               match remove_active_handler(&fps_handler) {
                 Ok(_) => {
-                  d3bug("<<< remove_active_handler: fps_handler", "test");
+                  d3bug("<<< remove_active_handler: fps_handler", "log");
                 }
-                Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
+                Err(err) => d3bug(&format!("remove_active_handler: \n{err:?}"), "error"),
               };
               return glib::ControlFlow::Break;
             }
@@ -4754,7 +4742,7 @@ fn create_main_window(
                   let elapsed = now.duration_since(*last_time).as_secs_f64();
                   let current_fps = *count as f64 / elapsed;
                   *fps.lock().unwrap() = current_fps;
-                  fps_monitor_label.set_text(&format!("{:.1}", current_fps));
+                  fps_monitor_label.set_text(&format!("{current_fps:.1}" ));
                   *last_time = now;
                   *count = 0;
                 }
@@ -4815,9 +4803,9 @@ fn create_main_window(
 
               match remove_active_handler(&speed_handler) {
                 Ok(_) => {
-                  d3bug("<<< remove_active_handler: speed_handler", "test");
+                  d3bug("<<< remove_active_handler: speed_handler", "log");
                 }
-                Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
+                Err(err) => d3bug(&format!("remove_active_handler: \n{err:?}"), "error"),
               };
               return glib::ControlFlow::Break;
             }
@@ -4843,8 +4831,7 @@ fn create_main_window(
 
             // address_generation_speed_frame.set_visible(true);
             address_generation_speed_label.set_text(&format!(
-              "{}/sec (max: {}/sec)",
-              ema_avg_speed,
+              "{ema_avg_speed}/sec (max: {}/sec)",
               *max_speed.borrow()
             ));
 
@@ -4859,10 +4846,9 @@ fn create_main_window(
       d3bug(
         &format!(
           "Start generating addresses: \n\
-          Address count: {}\n\
-          Thread count: {}\n\
-          Addresses per thread: {}",
-          addresses_to_create, generating_threads, addresses_per_thread
+          Address count: {addresses_to_create}\n\
+          Thread count: {generating_threads}\n\
+          Addresses per thread: {addresses_per_thread}"
         ),
         "info",
       );
@@ -4874,7 +4860,7 @@ fn create_main_window(
         Ok(pool) => pool,
         Err(err) => {
           d3bug(
-            &format!("Failed to build Rayon thread pool: {:?}", err),
+            &format!("Failed to build Rayon thread pool: {err:?}"),
             "error",
           );
           return;
@@ -4912,8 +4898,7 @@ fn create_main_window(
 
                 d3bug(
                   &format!(
-                    "Thread {} generating {} addresses starting from index {}",
-                    thread_id, num_addresses, current_index
+                    "Thread {thread_id} generating {num_addresses} addresses starting from index {current_index}"
                   ),
                   "debug",
                 );
@@ -4923,7 +4908,7 @@ fn create_main_window(
                 while generated_count < num_addresses {
                   if *cancel_flag.lock().unwrap() {
                     d3bug(
-                      &format!("Address generation aborted (thread {})", thread_id),
+                      &format!("Address generation aborted (thread {thread_id})"),
                       "warning",
                     );
 
@@ -4934,8 +4919,7 @@ fn create_main_window(
                   if current_index > WALLET_MAX_ADDRESSES as usize {
                     d3bug(
                       &format!(
-                        "Address index {:?} above maximum limit {}",
-                        current_index, WALLET_MAX_ADDRESSES
+                        "Address index {current_index:?} above maximum limit {WALLET_MAX_ADDRESSES}"
                       ),
                       "error",
                     );
@@ -4943,9 +4927,9 @@ fn create_main_window(
                   }
 
                   let derivation_path = if hardened_address {
-                    format!("{}/{}'", derivation_path, current_index)
+                    format!("{derivation_path}/{current_index}'")
                   } else {
-                    format!("{}/{}", derivation_path, current_index)
+                    format!("{derivation_path}/{current_index}" )
                   };
 
                   let coin_path_id = match derivation_path_to_integer(&derivation_path) {
@@ -4953,8 +4937,7 @@ fn create_main_window(
                     Err(err) => {
                       d3bug(
                         &format!(
-                          "Error parsing derivation path {}: {:?}",
-                          derivation_path, err
+                          "Error parsing derivation path {derivation_path}: {err:?}"
                         ),
                         "error",
                       );
@@ -5024,8 +5007,7 @@ fn create_main_window(
                       } else {
                         d3bug(
                           &format!(
-                            "Problem with generating address with index {:?}",
-                            current_index
+                            "Problem with generating address with index {current_index:?}"
                           ),
                           "error",
                         );
@@ -5045,8 +5027,7 @@ fn create_main_window(
 
                 d3bug(
                   &format!(
-                    "Thread {} finished with generating addresses: {} - {} in {:.2?}",
-                    thread_id, start_index, current_index, duration
+                    "Thread {thread_id} finished with generating addresses: {start_index} - {current_index} in {duration:.2?}"
                   ),
                   "info",
                 );
@@ -5110,9 +5091,9 @@ fn create_main_window(
             if *cancel_flag.lock().unwrap() {
               match remove_active_handler(&progress_handler) {
                 Ok(_) => {
-                  d3bug("<<< remove_active_handler: progress_handler", "test");
+                  d3bug("<<< remove_active_handler: progress_handler", "log");
                 }
-                Err(err) => d3bug(&format!("remove_active_handler: \n{:?}", err), "error"),
+                Err(err) => d3bug(&format!("remove_active_handler: \n{err:?}"), "error"),
               };
               return glib::ControlFlow::Break;
             }
@@ -5160,9 +5141,8 @@ fn create_main_window(
 
               d3bug(
                 &format!(
-                  "Processed batch of {} keys in {:.2?}, new batch size: {}, FPS: {:.2}",
+                  "Processed batch of {} keys in {duration:.2?}, new batch size: {}, FPS: {:.2}",
                   batch.len(),
-                  duration,
                   brain_batch.lock().unwrap().current_batch_size,
                   *fps.lock().unwrap()
                 ),
@@ -5171,14 +5151,14 @@ fn create_main_window(
 
               if added >= addresses_to_create {
                 let duration = start_time.elapsed();
-                let message = format!("Address generation done in {:.2?}", duration);
+                let message = format!("Address generation done in {duration:.2?}" );
                 let lock_app_messages = app_messages_state.borrow();
 
                 match lock_app_messages
                   .queue_message(message.to_string(), gtk::MessageType::Warning)
                 {
                   Ok(_) => d3bug(&message, "debug"),
-                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                 };
 
                 stop_addresses_button_box.set_visible(false);
@@ -5301,7 +5281,7 @@ fn create_main_window(
       let lock_app_messages = app_messages_state.borrow();
       match lock_app_messages.queue_message(message.to_string(), gtk::MessageType::Warning) {
         Ok(_) => d3bug("Address generation aborted", "info"),
-        Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
       };
 
       delete_addresses_button_box.set_visible(true);
@@ -5333,7 +5313,7 @@ fn create_main_window(
     let lock_app_messages = app_messages_state.borrow();
     match lock_app_messages.queue_message(t!("hello").to_string(), gtk::MessageType::Info) {
       Ok(_) => {}
-      Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+      Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
     };
   }
 
@@ -5344,13 +5324,13 @@ fn create_main_window(
     if let Some(value) = start_time {
       let elapsed = value.elapsed();
 
-      let message = format!("Application startup time: {:.2?}", elapsed);
+      let message = format!("Application startup time: {elapsed:.2?}");
       // println!("{}", message);
 
       let lock_app_messages = app_messages_state.borrow();
       match lock_app_messages.queue_message(message, gtk::MessageType::Info) {
         Ok(_) => {}
-        Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
       };
     };
   }
@@ -6746,7 +6726,7 @@ fn create_settings_window(
             gtk::MessageType::Info,
           ) {
             Ok(_) => {}
-            Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+            Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
           };
         }
       }
@@ -6797,7 +6777,7 @@ fn create_settings_window(
                   Ok(_) => {
                     d3bug("<<< load_settings", "debug");
                   }
-                  Err(err) => d3bug(&format!("load_settings: {:?}", err), "error"),
+                  Err(err) => d3bug(&format!("load_settings: {err:?}"), "error"),
                 };
 
                 adw::StyleManager::default().set_color_scheme(adw::ColorScheme::PreferLight);
@@ -6817,7 +6797,7 @@ fn create_settings_window(
                   gtk::MessageType::Info,
                 ) {
                   Ok(_) => {}
-                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                 };
               }
               Err(_) => {
@@ -6826,7 +6806,7 @@ fn create_settings_window(
                   gtk::MessageType::Error,
                 ) {
                   Ok(_) => {}
-                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                 };
               }
             }
@@ -6872,7 +6852,7 @@ fn reset_user_settings() -> FunctionOutput<()> {
     let local_config_file = local_settings.local_config_file.clone().unwrap();
 
     #[cfg(debug_assertions)]
-    println!("\t- Local config file: {:?}", local_config_file);
+    println!("\t- Local config file: {local_config_file:?}");
 
     match fs::remove_file(local_config_file) {
       Ok(_) => {
@@ -6881,7 +6861,7 @@ fn reset_user_settings() -> FunctionOutput<()> {
       }
       Err(_err) => {
         #[cfg(debug_assertions)]
-        eprintln!("\t- Local config file NOT deleted \n Error: {}", _err);
+        eprintln!("\t- Local config file NOT deleted \n Error: {_err}");
       }
     };
   }
@@ -6890,7 +6870,7 @@ fn reset_user_settings() -> FunctionOutput<()> {
     Ok(_) => {
       d3bug("<<< check_local_config", "debug");
     }
-    Err(err) => d3bug(&format!("check_local_config: {:?}", err), "error"),
+    Err(err) => d3bug(&format!("check_local_config: {err:?}"), "error"),
   };
 
   Ok(())
@@ -6901,7 +6881,7 @@ fn create_about_window() {
   println!("[+] {}", &t!("log.create_about_window").to_string());
 
   let pixy: gtk4::gdk::Texture =
-    qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}", GUI_IMAGE_EXTENSION));
+    qr2m_lib::get_texture_from_resource(&format!("logo/logo.{GUI_IMAGE_EXTENSION}"));
   let logo_picture = gtk::Picture::new();
   logo_picture.set_paintable(Some(&pixy));
 
@@ -6911,7 +6891,7 @@ fn create_about_window() {
   let their_license = std::path::Path::new("licenses").join("GTK.license");
   let lgpl_license = qr2m_lib::get_text_from_resources(&their_license.to_string_lossy());
 
-  let licenses = format!("{}\n\n---\n\n{}", app_license, lgpl_license);
+  let licenses = format!("{app_license}\n\n---\n\n{lgpl_license}");
 
   let gtk_license = t!("UI.dialog.gtk").to_string();
 
@@ -6983,7 +6963,7 @@ fn open_wallet_from_file(
             let file_path = path.to_string_lossy().to_string();
 
             #[cfg(debug_assertions)]
-            println!("\t- Wallet file chosen: {:?}", file_path);
+            println!("\t- Wallet file chosen: {file_path:?}");
 
             match process_wallet_file_from_path(&file_path) {
               Ok((_version, entropy, password)) => {
@@ -6995,7 +6975,7 @@ fn open_wallet_from_file(
                     gtk::MessageType::Error,
                   ) {
                     Ok(_) => {}
-                    Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                    Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                   };
                 } else {
                   match lock_app_messages.queue_message(
@@ -7003,7 +6983,7 @@ fn open_wallet_from_file(
                     gtk::MessageType::Info,
                   ) {
                     Ok(_) => {}
-                    Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                    Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                   };
                 }
               }
@@ -7014,7 +6994,7 @@ fn open_wallet_from_file(
                   gtk::MessageType::Error,
                 ) {
                   Ok(_) => {}
-                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                 };
                 let _ = tx.send(None);
               }
@@ -7043,7 +7023,7 @@ fn open_wallet_from_file(
         gtk::MessageType::Error,
       ) {
         Ok(_) => {}
-        Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
       };
       (String::new(), None)
     }
@@ -7072,11 +7052,8 @@ fn save_wallet_to_file(app_messages_state: &Rc<RefCell<AppMessages>>) {
     .build();
 
   let filter = gtk::FileFilter::new();
-  filter.add_pattern(&format!("*.{}", WALLET_DEFAULT_EXTENSION));
-  filter.set_name(Some(&format!(
-    "Wallet file (*.{})",
-    WALLET_DEFAULT_EXTENSION
-  )));
+  filter.add_pattern(&format!("*.{WALLET_DEFAULT_EXTENSION}"));
+  filter.set_name(Some(&format!("Wallet file (*.{WALLET_DEFAULT_EXTENSION})")));
   save_dialog.set_default_filter(Some(&filter));
 
   let app_messages_state_clone = app_messages_state.clone();
@@ -7101,8 +7078,7 @@ fn save_wallet_to_file(app_messages_state: &Rc<RefCell<AppMessages>>) {
             };
 
             let wallet_data = format!(
-              "version = {}\n{}\n{}",
-              WALLET_CURRENT_VERSION, entropy_string, mnemonic_passphrase
+              "version = {WALLET_CURRENT_VERSION}\n{entropy_string}\n{mnemonic_passphrase}"
             );
 
             match fs::write(&path_with_extension, &wallet_data) {
@@ -7113,7 +7089,7 @@ fn save_wallet_to_file(app_messages_state: &Rc<RefCell<AppMessages>>) {
                   gtk::MessageType::Info,
                 ) {
                   Ok(_) => {}
-                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                 };
               }
               Err(err) => {
@@ -7123,7 +7099,7 @@ fn save_wallet_to_file(app_messages_state: &Rc<RefCell<AppMessages>>) {
                   gtk::MessageType::Error,
                 ) {
                   Ok(_) => {}
-                  Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+                  Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
                 };
               }
             }
@@ -7136,7 +7112,7 @@ fn save_wallet_to_file(app_messages_state: &Rc<RefCell<AppMessages>>) {
             gtk::MessageType::Error,
           ) {
             Ok(_) => {}
-            Err(err) => d3bug(&format!("queue_message: {:?}", err), "error"),
+            Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
           };
         }
       }
@@ -7174,7 +7150,7 @@ fn update_derivation_label(dp: DerivationPath, label: gtk::TextView) {
   }
 
   #[cfg(debug_assertions)]
-  println!("\t- Derivation path: {:?}", &path);
+  println!("\t- Derivation path: {path:?}");
 
   label.buffer().set_text(&path);
 }
@@ -7217,7 +7193,7 @@ fn process_wallet_file_from_path(file_path: &str) -> Result<(u8, String, Option<
 
       Ok((version, entropy, passphrase))
     }
-    _ => Err(format!("Unsupported wallet version '{}'", version)),
+    _ => Err(format!("Unsupported wallet version '{version}'")),
   }
 }
 
@@ -7250,11 +7226,11 @@ fn d3bug(message: &str, msg_type: &str) {
 
   #[cfg(debug_assertions)]
   if msg_type == "debug" {
-    println!("{}{}{}{}", color_code, prefix, message, reset);
+    println!("{color_code}{prefix}{message}{reset}");
   }
 
   if msg_type != "debug" {
-    println!("{}{}{}{}", color_code, prefix, message, reset);
+    println!("{color_code}{prefix}{message}{reset}");
   }
 }
 
@@ -7280,7 +7256,7 @@ fn create_welcome_window(
 
   let logo_box = gtk::Box::new(gtk::Orientation::Horizontal, 0);
   let pixy: gtk4::gdk::Texture =
-    qr2m_lib::get_texture_from_resource(&format!("logo/logo.{}", GUI_IMAGE_EXTENSION));
+    qr2m_lib::get_texture_from_resource(&format!("logo/logo.{GUI_IMAGE_EXTENSION}"));
 
   let logo_picture = gtk::Image::from_paintable(Some(&pixy));
   logo_picture.set_size_request(256, 256);
@@ -7318,7 +7294,7 @@ fn create_welcome_window(
           window.present();
           d3bug("<<< create_new_wallet_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_new_wallet_window: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_new_wallet_window: {err:?}"), "error"),
       };
 
       welcome_window.set_cursor(None);
@@ -7355,7 +7331,7 @@ fn create_welcome_window(
           window.present();
           d3bug("<<< create_main_window", "debug");
         }
-        Err(err) => d3bug(&format!("create_main_window: {:?}", err), "error"),
+        Err(err) => d3bug(&format!("create_main_window: {err:?}"), "error"),
       };
 
       welcome_window.set_cursor(None);
@@ -7574,7 +7550,7 @@ fn derivation_path_to_integer(path: &str) -> FunctionOutput<String> {
 
     let index: u32 = number_part
       .parse()
-      .map_err(|e| AppError::Custom(format!("Invalid number in path: {:?}", e)))?;
+      .map_err(|err| AppError::Custom(format!("Invalid number in path: {err:?}")))?;
     let value = if hardened { index + 0x80000000 } else { index };
 
     result += value as u128;
@@ -7584,12 +7560,12 @@ fn derivation_path_to_integer(path: &str) -> FunctionOutput<String> {
 }
 
 fn remove_active_handler(handler: &Arc<Mutex<Option<SourceId>>>) -> FunctionOutput<()> {
-  d3bug(">>> remove_active_handler", "test");
-  d3bug(&format!("handler {:?}", handler), "test");
+  d3bug(">>> remove_active_handler", "log");
+  d3bug(&format!("handler {handler:?}"), "log");
 
   let mut lock = handler
     .lock()
-    .map_err(|e| AppError::Custom(format!("No active handler: {:?}", e)))?;
+    .map_err(|err| AppError::Custom(format!("No active handler: {err:?}")))?;
 
   if let Some(id) = lock.take() {
     SourceId::remove(id);

@@ -89,7 +89,7 @@ pub fn check_security_level() -> FunctionOutput<()> {
       security.code_modified = value;
     }
     Err(err) => {
-      d3bug(&format!("check_if_code_modified: \n{:?}", err), "error");
+      d3bug(&format!("check_if_code_modified: \n{err:?}"), "error");
       security.code_modified = true;
     }
   };
@@ -98,14 +98,14 @@ pub fn check_security_level() -> FunctionOutput<()> {
   let sig_name = format!("{}-{}.sig", crate::APP_NAME.unwrap(), feature);
 
   let app_executable = std::env::current_exe()
-    .map_err(|e| AppError::Custom(format!("Failed to get current executable path: {:?}", e)))?;
+    .map_err(|err| AppError::Custom(format!("Failed to get current executable path: {err:?}")))?;
 
   let executable_dir = app_executable.parent().ok_or(AppError::Custom(
     "Failed to extract executable directory".to_string(),
   ))?;
 
   let sig_full_path = format!("{}/{}", &executable_dir.to_string_lossy(), sig_name);
-  d3bug(&format!("sig_full_path {:?}", sig_full_path), "debug");
+  d3bug(&format!("sig_full_path {sig_full_path:?}"), "debug");
 
   if std::path::Path::new(&sig_full_path).exists() {
     let output = Command::new("gpg")
@@ -115,7 +115,7 @@ pub fn check_security_level() -> FunctionOutput<()> {
         &app_executable.to_string_lossy(),
       ])
       .output()
-      .map_err(|e| AppError::Custom(format!("Failed to execute GPG verification: {:?}", e)))?;
+      .map_err(|err| AppError::Custom(format!("Failed to execute GPG verification: {err:?}")))?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -127,9 +127,8 @@ pub fn check_security_level() -> FunctionOutput<()> {
       d3bug(
         &format!(
           "App signature verification failed! \n\
-          Stdout: {}\n\
-          Stderr: {}",
-          stdout, stderr
+          Stdout: {stdout}\n\
+          Stderr: {stderr}"
         ),
         "warning",
       );
@@ -180,17 +179,14 @@ fn generate_new_app_signature(
 
   if let Err(_err) = key_check {
     d3bug(
-      &format!("Failed to check GPG key {}: {}", QR2M_KEY_ID, _err),
+      &format!("Failed to check GPG key {QR2M_KEY_ID}: {_err}"),
       "error",
     );
     return Ok(false);
   }
 
   if !key_check.unwrap().status.success() {
-    d3bug(
-      &format!("GPG secret key {} not found", QR2M_KEY_ID),
-      "error",
-    );
+    d3bug(&format!("GPG secret key {QR2M_KEY_ID} not found"), "error");
     return Ok(false);
   }
 
@@ -213,10 +209,7 @@ fn generate_new_app_signature(
 
       if !output.status.success() {
         d3bug(
-          &format!(
-            "GPG signing failed. \n\tStdout: {}\n\tStderr: {}",
-            _stdout, _stderr
-          ),
+          &format!("GPG signing failed. \n\tStdout: {_stdout}\n\tStderr: {_stderr}"),
           "error",
         );
 
@@ -225,23 +218,20 @@ fn generate_new_app_signature(
 
       if !std::path::Path::new(&sig_full_path).exists() {
         d3bug(
-          &format!(
-            "Signature file {} was not created despite successful GPG command",
-            sig_full_path
-          ),
+          &format!("Signature file {sig_full_path} was not created despite successful GPG command"),
           "error",
         );
         return Ok(false);
       }
 
       d3bug(
-        &format!("Signature created successfully at: {}", sig_full_path),
+        &format!("Signature created successfully at: {sig_full_path}"),
         "info",
       );
       Ok(true)
     }
     Err(_err) => {
-      d3bug(&format!("Failed to execute GPG signing: {}", _err), "error");
+      d3bug(&format!("Failed to execute GPG signing: {_err}"), "error");
       Ok(false)
     }
   }
@@ -414,7 +404,7 @@ pub fn create_security_window() -> FunctionOutput<gtk::ApplicationWindow> {
   let control_owl_name = gtk::Label::new(Some("Control Owl"));
   control_box.append(&control_owl_name);
 
-  let control_online_checker = format!("https://keys.openpgp.org/search?q={}", CONTROL_OWL_KEY_ID);
+  let control_online_checker = format!("https://keys.openpgp.org/search?q={CONTROL_OWL_KEY_ID}");
 
   let control_link = gtk::LinkButton::builder()
     .uri(control_online_checker)
@@ -431,7 +421,7 @@ pub fn create_security_window() -> FunctionOutput<gtk::ApplicationWindow> {
   qr2m_label.set_margin_top(10);
   qr2m_box.append(&qr2m_label);
 
-  let qr2m_online_checker = format!("https://keys.openpgp.org/search?q={}", QR2M_KEY_ID);
+  let qr2m_online_checker = format!("https://keys.openpgp.org/search?q={QR2M_KEY_ID}");
 
   let qr2m_link = gtk::LinkButton::builder()
     .uri(qr2m_online_checker)

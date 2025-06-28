@@ -39,14 +39,14 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
     _ => "unknown",
   };
 
-  d3bug(&format!("OS: {:?}", os), "info");
+  d3bug(&format!("OS: {os:?}"), "info");
 
   let app_name = APP_NAME.ok_or_else(|| crate::AppError::Custom("APP_NAME not set".to_string()))?;
   let local_temp = env::temp_dir();
   let local_temp_dir = local_temp.join(app_name);
 
   let local_temp_file = local_temp_dir.join(APP_LOCAL_TEMP_FILE);
-  d3bug(&format!("Temp file: {:?}", local_temp_file), "info");
+  d3bug(&format!("Temp file: {local_temp_file:?}"), "info");
 
   let local_config_dir = match os {
     "windows" => {
@@ -72,7 +72,7 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
   };
 
   let local_config_file = local_config_dir.join(APP_LOCAL_CONFIG_FILE);
-  d3bug(&format!("Config file: {:?}", local_config_file), "info");
+  d3bug(&format!("Config file: {local_config_file:?}"), "info");
 
   let (config_dir, config_file) = if local_config_dir.is_symlink() {
     match fs::read_link(&local_config_dir) {
@@ -81,12 +81,11 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
           let metadata = fs::metadata(&target).map_err(crate::AppError::Io)?;
           if metadata.permissions().readonly() {
             return Err(crate::AppError::Custom(format!(
-              "Symlink target is not writable: {:?}",
-              target
+              "Symlink target is not writable: {target:?}"
             )));
           } else {
             d3bug(
-              &format!("Using writable symlink target: {:?}", target),
+              &format!("Using writable symlink target: {target:?}"),
               "debug",
             );
 
@@ -94,8 +93,7 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
           }
         } else {
           return Err(crate::AppError::Custom(format!(
-            "Symlink does not point to a directory: {:?}",
-            target
+            "Symlink does not point to a directory: {target:?}"
           )));
         }
       }
@@ -109,7 +107,7 @@ pub fn detect_os_and_user_dir() -> FunctionOutput<()> {
 
   let mut local_settings = LOCAL_SETTINGS
     .lock()
-    .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
+    .map_err(|err| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {err}")))?;
 
   local_settings.os = Some(os.to_string());
   local_settings.local_config_dir = Some(config_dir.clone());
@@ -130,7 +128,7 @@ pub fn switch_locale(lang: &str) -> FunctionOutput<()> {
   }
 
   #[cfg(debug_assertions)]
-  println!(" - Language: {:?}", lang);
+  println!(" - Language: {lang:?}");
 
   Ok(())
 }
@@ -140,7 +138,7 @@ pub fn check_local_config() -> FunctionOutput<()> {
 
   let mut local_settings = LOCAL_SETTINGS
     .lock()
-    .map_err(|e| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {}", e)))?;
+    .map_err(|err| crate::AppError::Custom(format!("Failed to lock LOCAL_SETTINGS: {err}")))?;
 
   let local_config_file = local_settings
     .local_config_file
@@ -172,7 +170,7 @@ pub fn check_local_config() -> FunctionOutput<()> {
     local_settings.first_run = true;
     let default_settings = crate::AppSettings::default();
     let serialized = toml::to_string(&default_settings)
-      .map_err(|e| crate::AppError::Custom(format!("Failed to serialize settings: {}", e)))?;
+      .map_err(|err| crate::AppError::Custom(format!("Failed to serialize settings: {err}")))?;
 
     let mut config_map: std::collections::BTreeMap<
       String,
@@ -191,9 +189,9 @@ pub fn check_local_config() -> FunctionOutput<()> {
     }
 
     for (section, entries) in config_map {
-      toml_string.push_str(&format!("[{}]\n", section));
+      toml_string.push_str(&format!("[{section}]\n"));
       for (key, value) in entries {
-        toml_string.push_str(&format!("{} = {}\n", key, value));
+        toml_string.push_str(&format!("{key} = {value}\n"));
       }
       toml_string.push('\n');
     }
@@ -211,7 +209,7 @@ pub fn check_local_config() -> FunctionOutput<()> {
 
 fn is_directory_writable(dir: &Path) -> FunctionOutput<bool> {
   d3bug(">>> is_directory_writable", "debug");
-  d3bug(&format!("Directory: {:?}", dir), "debug");
+  d3bug(&format!("Directory: {dir:?}"), "debug");
 
   let mut temp_file_path = dir.to_path_buf();
   temp_file_path.push(".tmp");
@@ -222,7 +220,7 @@ fn is_directory_writable(dir: &Path) -> FunctionOutput<bool> {
         // eprintln!("Failed to delete temporary file: {}", err);
         return Err(crate::AppError::Io(err));
       }
-      d3bug(&format!("Directory is writable: {:?}", dir), "info");
+      d3bug(&format!("Directory is writable: {dir:?}"), "info");
       Ok(true)
     }
     Err(e) => Err(crate::AppError::Io(e)),

@@ -63,6 +63,7 @@ pub fn calculate_sha256_and_ripemd160_hash(input: &[u8]) -> Vec<u8> {
   hasher.update(input);
   let hash = hasher.finalize();
 
+  use ripemd::Digest;
   let mut ripemd = ripemd::Ripemd160::new();
   ripemd.update(hash);
 
@@ -186,12 +187,12 @@ pub fn get_text_from_resources(file_name: &str) -> String {
         text.to_string()
       }
       Err(err) => {
-        eprintln!("Failed to read {} as UTF-8: {}", file_name, err);
+        eprintln!("Failed to read {file_name} as UTF-8: {err}");
         String::new()
       }
     },
     None => {
-      eprintln!("Failed to get {} from embedded resources", file_name);
+      eprintln!("Failed to get {file_name} from embedded resources");
       String::new()
     }
   }
@@ -207,11 +208,11 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
       if loader.write(&image_bytes).is_ok() {
         match loader.close() {
           Ok(_) => {}
-          Err(error) => eprintln!("\t- ERROR problem with loader:\n\t{:?}", error),
+          Err(error) => eprintln!("\t- ERROR problem with loader:\n\t{error}"),
         };
 
         let texture = gtk::gdk::Texture::from_bytes(&image_bytes)
-          .map_err(|err| format!("Failed to create texture: {}", err))
+          .map_err(|err| format!("Failed to create texture: {err}"))
           .unwrap();
 
         let picture = gtk::Picture::for_paintable(&texture);
@@ -226,7 +227,7 @@ pub fn get_picture_from_resources(image_name: &str) -> gtk::Picture {
       generate_empty_picture()
     }
     None => {
-      eprintln!("Failed to get {} from embedded resources", image_name);
+      eprintln!("Failed to get {image_name} from embedded resources");
       generate_empty_picture()
     }
   }
@@ -242,10 +243,7 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
       if loader.write(&image_bytes).is_ok() {
         match loader.close() {
           Ok(_) => {}
-          Err(error) => eprintln!(
-            " - [!] ERROR problem with loading SVG icons:\n\t{:?}",
-            error
-          ),
+          Err(err) => eprintln!(" - [!] ERROR problem with loading SVG icons:\n\t{err:?}"),
         };
 
         if let Some(pixbuf) = loader.pixbuf() {
@@ -255,7 +253,7 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
       generate_empty_texture()
     }
     None => {
-      eprintln!("Failed to get {} from embedded resources", image_name);
+      eprintln!("Failed to get {image_name} from embedded resources");
       generate_empty_texture()
     }
   }
@@ -264,7 +262,7 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
 pub fn get_file_from_resources(file_name: &str) -> Result<&'static include_dir::File, String> {
   RES_DIR
     .get_file(file_name)
-    .ok_or_else(|| format!("File '{}' not found in resources", file_name))
+    .ok_or_else(|| format!("File '{file_name}' not found in resources"))
 }
 
 pub fn generate_empty_picture() -> gtk::Picture {
@@ -333,22 +331,19 @@ pub fn save_config_to_file(
 ) -> io::Result<()> {
   let mut file = std::fs::File::create(local_config_file).map_err(|_err| {
     #[cfg(debug_assertions)]
-    eprintln!("\t- Failed to create config file: {}", _err);
+    eprintln!("\t- Failed to create config file: {_err}");
     io::Error::other("Failed to create config file")
   })?;
 
   file.write_all(toml_str.as_bytes()).map_err(|_err| {
     #[cfg(debug_assertions)]
-    eprintln!("\t- Failed to write to config file: {}", _err);
+    eprintln!("\t- Failed to write to config file: {_err}");
 
     io::Error::other("Failed to write to config file")
   })?;
 
   #[cfg(debug_assertions)]
-  println!(
-    "\t- Config file written successfully: {:?}",
-    local_config_file
-  );
+  println!("\t- Config file written successfully: {local_config_file:?}");
 
   Ok(())
 }
@@ -356,7 +351,7 @@ pub fn save_config_to_file(
 pub fn read_config_from_file(local_config_file: &std::path::PathBuf) -> io::Result<String> {
   std::fs::read_to_string(local_config_file).map_err(|_err| {
     #[cfg(debug_assertions)]
-    eprintln!("\t- Failed to read config file: {}", _err);
+    eprintln!("\t- Failed to read config file: {_err}");
 
     io::Error::new(io::ErrorKind::NotFound, "Failed to read config file")
   })

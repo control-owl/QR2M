@@ -175,7 +175,7 @@ mod tests {
           crate::d3bug("<<< generate_master_keys_secp256k1", "debug");
         }
         Err(err) => crate::d3bug(
-          &format!("generate_master_keys_secp256k1: \n{:?}", err),
+          &format!("generate_master_keys_secp256k1: \n{err:?}"),
           "error",
         ),
       };

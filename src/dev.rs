@@ -20,12 +20,9 @@ pub fn derive_from_path_ed25519(
   // _seed: &str,
 ) -> FunctionOutput<crate::keys::DerivationResult> {
   d3bug(">>> derive_from_path_ed25519", "debug");
-  d3bug(&format!("master_key {:?}", master_key), "debug");
-  d3bug(
-    &format!("master_chain_code {:?}", master_chain_code),
-    "debug",
-  );
-  d3bug(&format!("path {:?}", path), "debug");
+  d3bug(&format!("master_key {master_key:?}"), "debug");
+  d3bug(&format!("master_chain_code {master_chain_code:?}"), "debug");
+  d3bug(&format!("path {path:?}"), "debug");
 
   if master_key.len() != 32 {
     return Err(AppError::Custom(format!(
@@ -67,7 +64,7 @@ pub fn derive_from_path_ed25519(
     let hardened = part.ends_with("'");
     let index: u32 = match part.trim_end_matches("'").parse() {
       Ok(index) => index,
-      Err(_) => return Err(AppError::Custom(format!("Invalid path index: {}", part))),
+      Err(_) => return Err(AppError::Custom(format!("Invalid path index: {part}"))),
     };
 
     let effective_index = if hardened { index + 0x80000000 } else { index };
@@ -78,8 +75,7 @@ pub fn derive_from_path_ed25519(
       Some(derived) => derived,
       None => {
         return Err(AppError::Custom(format!(
-          "Failed to derive child key for index: {}",
-          part
+          "Failed to derive child key for index: {part}"
         )));
       }
     };
@@ -107,12 +103,12 @@ pub fn derive_from_path_ed25519(
 
   let chain_code_array: [u8; 32] = chain_code
     .try_into()
-    .map_err(|e| AppError::Custom(format!("Chain code length invalid: {:?}", e)))?;
+    .map_err(|err| AppError::Custom(format!("Chain code length invalid: {err:?}")))?;
 
   Ok(Some((
-    private_key
-      .try_into()
-      .map_err(|e| AppError::Custom(format!("private_key expected a Vec of length 32: {:?}", e)))?,
+    private_key.try_into().map_err(|err| {
+      AppError::Custom(format!("private_key expected a Vec of length 32: {err:?}"))
+    })?,
     chain_code_array,
     public_key,
   )))
@@ -126,9 +122,9 @@ pub fn derive_child_key_ed25519(
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.derive_child_key_ed25519").to_string());
-    println!("\t- parent_key: {:?}", &parent_key);
-    println!("\t- parent_chain_code: {:?}", &parent_chain_code);
-    println!("\t- index: {:?}", &index);
+    println!("\t- parent_key: {parent_key:?}");
+    println!("\t- parent_chain_code: {parent_chain_code:?}");
+    println!("\t- index: {index:?}");
   }
 
   if parent_key.len() != 32 || parent_chain_code.len() != 32 {
@@ -184,13 +180,14 @@ pub fn derive_child_key_ed25519(
 
   clamp_ed25519_private_key(&mut child_private_key_bytes);
 
-  let secret_key = match SigningKey::try_from(child_private_key_bytes.as_ref()) {
-    Ok(sk) => sk,
-    Err(_) => {
-      eprintln!("Derived child private key is invalid");
-      return None;
-    }
-  };
+  let secret_key = SigningKey::from(child_private_key_bytes);
+  // {
+  //   Ok(sk) => sk,
+  //   Err(_) => {
+  //     eprintln!("Derived child private key is invalid");
+  //     return None;
+  //   }
+  // };
 
   let public_key = secret_key.verifying_key().to_bytes().to_vec();
 
@@ -231,7 +228,7 @@ pub fn generate_master_keys_ed25519(seed: &str) {
       "[+] {}",
       &t!("log.generate_master_keys_ed25519").to_string()
     );
-    println!("\t- Seed: {:?}", seed);
+    println!("\t- Seed: {seed:?}");
   }
 
   let message = "ed25519 seed";
@@ -250,8 +247,7 @@ pub fn generate_master_keys_ed25519(seed: &str) {
 
   clamp_ed25519_private_key(&mut private_key);
 
-  let signing_key =
-    SigningKey::try_from(private_key.as_ref()).expect("Invalid Ed25519 master private key");
+  let signing_key = SigningKey::from(private_key);
   let public_key = signing_key.verifying_key().to_bytes();
   // let public_key_vec = public_key.to_vec();
 
@@ -260,11 +256,11 @@ pub fn generate_master_keys_ed25519(seed: &str) {
 
   #[cfg(debug_assertions)]
   {
-    println!("\t- Master private key (base58): {:?}", master_xprv);
-    println!("\t- Master public key (base58): {:?}", master_xpub);
-    println!("\t- Master private key bytes: {:?}", private_key);
-    println!("\t- Master chain code bytes: {:?}", chain_code);
-    println!("\t- Master public key bytes: {:?}", public_key);
+    println!("\t- Master private key (base58): {master_xprv:?}");
+    println!("\t- Master public key (base58): {master_xpub:?}");
+    println!("\t- Master private key bytes: {private_key:?}");
+    println!("\t- Master chain code bytes: {chain_code:?}");
+    println!("\t- Master public key bytes: {public_key:?}");
   }
 
   let mut wallet_settings = crate::WALLET_SETTINGS.lock().unwrap();
@@ -555,8 +551,8 @@ pub fn anu_window() -> gtk::ApplicationWindow {
                   break;
                 }
               }
-              Err(e) => {
-                anu_status_entry_clone.set_text(&format!("Parsing error: {}", e));
+              Err(err) => {
+                anu_status_entry_clone.set_text(&format!("Parsing error: {err}"));
                 break;
               }
             }
@@ -667,8 +663,7 @@ fn fetch_anu_qrng_data(
   let data_format_owned = data_format.to_string();
 
   println!(
-    "Starting fetch_anu_qrng_data: format={}, length={}, size={}",
-    data_format, array_length, block_size
+    "Starting fetch_anu_qrng_data: format={data_format}, length={array_length}, size={block_size}"
   );
 
   tokio::spawn(async move {
@@ -683,8 +678,7 @@ fn fetch_anu_qrng_data(
         {
           Ok(mut stream) => {
             let anu_request = format!(
-              "GET /API/jsonI.php?type={}&length={}&size={} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n",
-              data_format_owned, array_length, block_size
+              "GET /API/jsonI.php?type={data_format_owned}&length={array_length}&size={block_size} HTTP/1.1\r\nHost: qrng.anu.edu.au\r\nConnection: close\r\n\r\n"
             ).into_bytes();
 
             println!(
@@ -703,7 +697,7 @@ fn fetch_anu_qrng_data(
                   Ok(bytes_read) if bytes_read > 0 => {
                     let chunk = String::from_utf8_lossy(&buffer[..bytes_read]);
                     response.extend_from_slice(&buffer[..bytes_read]);
-                    println!("Received chunk: {}", chunk);
+                    println!("Received chunk: {chunk}");
 
                     if !headers_done {
                       if chunk.contains("\r\n\r\n") {
@@ -728,22 +722,22 @@ fn fetch_anu_qrng_data(
                     }
 
                     if headers_done && json_buffer.contains('}') {
-                      println!("Full JSON assembled: {}", json_buffer);
+                      println!("Full JSON assembled: {json_buffer}");
                       match serde_json::from_str::<AnuResponse>(&json_buffer) {
                         Ok(anu_response) => {
                           if anu_response.success {
-                            println!("Parsed JSON: {:?}", anu_response);
-                            if sender.send(format!("FINAL:{}", json_buffer)).await.is_err() {
+                            println!("Parsed JSON: {anu_response:?}");
+                            if sender.send(format!("FINAL:{json_buffer}")).await.is_err() {
                               println!("Failed to send final response");
                             }
                             break;
                           } else {
-                            println!("API returned success: false: {:?}", anu_response);
+                            println!("API returned success: false: {anu_response:?}");
                             break;
                           }
                         }
-                        Err(e) => {
-                          println!("JSON parsing failed: {}. Buffer: {}", e, json_buffer);
+                        Err(err) => {
+                          println!("JSON parsing failed: {err}. Buffer: {json_buffer}");
                         }
                       }
                     }
@@ -751,8 +745,7 @@ fn fetch_anu_qrng_data(
                   Ok(0) => {
                     if sender
                       .send(format!(
-                        "ERROR: Stream closed by server. \nLast chunk: {}",
-                        json_buffer
+                        "ERROR: Stream closed by server. \nLast chunk: {json_buffer}"
                       ))
                       .await
                       .is_err()
@@ -765,8 +758,8 @@ fn fetch_anu_qrng_data(
                     eprintln!("Stream ?????");
                     break;
                   }
-                  Err(e) => {
-                    eprintln!("Read error: {}", e);
+                  Err(err) => {
+                    eprintln!("Read error: {err}");
                     break;
                   }
                 }
@@ -775,10 +768,10 @@ fn fetch_anu_qrng_data(
               eprintln!("Failed to write request or flush stream");
             }
           }
-          Err(e) => eprintln!("TLS connection error: {}", e),
+          Err(err) => eprintln!("TLS connection error: {err}"),
         }
       }
-      Err(e) => println!("TCP connection error: {}", e),
+      Err(err) => println!("TCP connection error: {err}"),
     }
 
     println!("fetch_anu_qrng_data completed");

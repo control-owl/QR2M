@@ -3,6 +3,7 @@
   - Linux GNU
   - macOS
 - Security window in production
+- refactoring println! and format! according to new Rust version
 
 # version 0.85.3
 - address batch controller
