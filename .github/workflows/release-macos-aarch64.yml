@@ -77,8 +77,8 @@ jobs:
             exit 1
           fi
           
-          echo "VERSION=$VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "VERSION=VERSION_NUMBER"
+          echo "version=VERSION_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: "Import GPG key"
         uses: crazy-max/ghaction-import-gpg@v6
