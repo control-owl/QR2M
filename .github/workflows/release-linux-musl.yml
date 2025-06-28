@@ -65,6 +65,9 @@ jobs:
       - name: "Build with Docker"
         run: |
           docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c '
+            echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories &&
+            echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories &&
+            apk update &&
             apk add --no-cache \
               musl-dev \
               pkgconf \
@@ -73,7 +76,7 @@ jobs:
               meson \
               ninja \
               glib-dev \
-              gtk4-dev \
+              gtk4.0-dev \
               libadwaita-dev \
               cairo-dev \
               pango-dev \
