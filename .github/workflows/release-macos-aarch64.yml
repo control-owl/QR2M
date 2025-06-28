@@ -42,16 +42,27 @@ jobs:
           echo "GLib version: $(pkg-config --modversion glib-2.0)"
           echo "OpenSSL version: $(pkg-config --modversion openssl)"
 
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Cache cargo dependencies"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: "Install Rust"
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
           components: clippy rustfmt
-
-      - name: "Checkout repository"
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: "Check code"
         run: |
@@ -73,12 +84,12 @@ jobs:
           
           if [[ ! "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Error: VERSION_NUMBER is not in valid format: ${VERSION_NUMBER}"
-            echo "Expected format: X.Y.Z"
+            echo "Expected format: 1.2.3"
             exit 1
           fi
           
-          echo "VERSION=VERSION_NUMBER"
-          echo "version=VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION_NUMBER"
+          echo "version=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: "Import GPG key"
         uses: crazy-max/ghaction-import-gpg@v6
@@ -95,21 +106,21 @@ jobs:
           git config user.email "${{ secrets.ACTIONS_EMAIL }}"
           VERSION="v${{ steps.version.outputs.version }}"
           
-          echo "Checking if tag v$VERSION exists..."
-          if ! git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "Tag v$VERSION does not exists. Creating new signed tag"
-            if ! git tag -a "v$VERSION" -s -m "Release v$VERSION"; then
+          echo "Checking if tag $VERSION exists..."
+          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION does not exists. Creating new signed tag"
+            if ! git tag -a "$VERSION" -s -m "Release $VERSION"; then
               echo "GPG signing failed"
               exit 1
             fi
-              git push origin "v$VERSION" || {
+              git push origin "$VERSION" || {
                 echo "Tag push failed"
                 exit 1
               }
-              echo "Tag v$VERSION created sucessfully."
+              echo "Tag $VERSION created sucessfully."
               git ls-remote --tags origin
             else
-              echo "Tag v$VERSION already exists, skipping"
+              echo "Tag $VERSION already exists, skipping"
           fi
 
       - name: "Generate signature file"
