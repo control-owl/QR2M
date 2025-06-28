@@ -55,7 +55,9 @@ jobs:
       - name: "Build statically with Docker"
         run: |
           docker run --rm -v ${{ github.workspace }}:/app -w /app alpine:latest sh -c '
-            apk add --no-cache build-base gtk4-dev musl-dev pango-dev gdk-pixbuf-dev cairo-dev glib-dev openssl-dev pkgconf cmake git curl &&
+            apk add --no-cache \
+              build-base musl-dev openssl-dev pkgconf cmake curl git \
+              gtk4-dev gdk-pixbuf-dev glib-dev libadwaita-dev cairo-dev pango-dev
             curl https://sh.rustup.rs -sSf | sh -s -- -y &&
             source $HOME/.cargo/env &&
             rustup target add ${{ matrix.target }} &&
