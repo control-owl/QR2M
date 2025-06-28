@@ -54,17 +54,19 @@ jobs:
 
       - name: "Build statically with Docker"
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app -w /app alpine:latest sh -c '
-            apk add --no-cache \
-              build-base musl-dev openssl-dev pkgconf cmake curl git \
-              gtk4-dev gdk-pixbuf-dev glib-dev libadwaita-dev cairo-dev pango-dev
-            curl https://sh.rustup.rs -sSf | sh -s -- -y &&
-            source $HOME/.cargo/env &&
-            rustup target add ${{ matrix.target }} &&
+          docker run --rm -v ${{ github.workspace }}:/app -w /app debian:bookworm bash -c '
+            apt update &&
+            DEBIAN_FRONTEND=noninteractive apt install -y \
+              build-essential curl pkg-config cmake git \
+              musl-tools gcc-multilib libc6-dev \
+              libgtk-4-dev libadwaita-1-dev libglib2.0-dev libssl-dev ca-certificates &&
+            curl https://sh.rustup.rs -sSf | bash -s -- -y &&
+            . "$HOME/.cargo/env" &&
+            rustup target add x86_64-unknown-linux-musl &&
             export OPENSSL_STATIC=1 &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
-            export PKG_CONFIG_PATH=/usr/lib/pkgconfig &&
-            cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}" --locked --verbose
+            export PKG_CONFIG_SYSROOT_DIR=/ &&
+            cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose
           '
 
 #      - name: "Cache cargo dependencies"
