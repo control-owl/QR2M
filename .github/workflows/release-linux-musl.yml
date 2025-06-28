@@ -79,10 +79,9 @@ jobs:
               SIG=$BIN-${{ matrix.features }}.sig &&
               file $BIN &&
               ldd $BIN &&
-              $BIN & PID=$! &&
+              $BIN &&
               sleep 10 &&
-              [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; cat sig_error.log; exit 1; } &&
-              echo "Signature generated at: $SIG"
+              [ ! -f "$SIG" ] && exit 1
             '
 
       - name: "Extract version number"
