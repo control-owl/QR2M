@@ -47,6 +47,23 @@ jobs:
             make \
             cmake
 
+      - name: "Build OpenSSL for musl"
+        run: |
+          export OPENSSL_VERSION="1.1.1u"
+          curl -sSL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" | tar xz
+          cd "openssl-${OPENSSL_VERSION}"
+          
+          CC=x86_64-linux-musl-gcc ./Configure \
+            no-shared no-dso no-tests \
+            linux-x86_64 \
+            --prefix=$HOME/openssl-musl
+          
+          make -j$(nproc)
+          make install_sw
+          
+          echo "OPENSSL_DIR=$HOME/openssl-musl" >> $GITHUB_ENV
+          echo "OPENSSL_STATIC=1" >> $GITHUB_ENV
+
       - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
@@ -75,6 +92,9 @@ jobs:
           echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
 
       - name: "Check code"
+        env:
+          OPENSSL_DIR: ${{ env.OPENSSL_DIR }}
+          OPENSSL_STATIC: 1
         run: |
           cargo fmt --
           cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
