@@ -3,7 +3,7 @@ name: Check Linux x86_64 MUSL
 on:
   workflow_run:
     workflows: ["Verify GPG Signature"]
-    types: 
+    types:
       - completed
     branches: [ "master" ]
 
@@ -23,7 +23,6 @@ jobs:
     env:
       APP_NAME: "QR2M"
       APP_PATH: "target/${{ matrix.target }}/release"
-      SIG_FILE: "${{ matrix.features }}.sig"
       OUTPUT_DIR: "LAB7041/linux-musl"
 
     steps:
@@ -79,16 +78,18 @@ jobs:
         run: |
           ldd ${{ env.APP_PATH }}/${{ env.APP_NAME }} || echo "Static binary confirmed"
 
-      - name: Versioning
+      - name: "Extract version number"
         run: |
           VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' #version')
+
           if [[ ! "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Error: VERSION_NUMBER is not in valid format: ${VERSION_NUMBER}"
+            echo "Expected format: 1.2.3"
             exit 1
           fi
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
-      - name: Import GPG key
+      - name: "Import GPG key"
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.ACTIONS_KEY }}
@@ -97,69 +98,79 @@ jobs:
           git_commit_gpgsign: false
           git_tag_gpgsign: true
 
-      - name: Create tag
+      - name: "Create tag"
         run: |
           git config user.name "${{ env.APP_NAME }}"
           git config user.email "${{ secrets.ACTIONS_EMAIL }}"
+          VERSION="v${{ env.VERSION_NUMBER }}"
 
-          echo "Checking if tag v${{ env.VERSION_NUMBER }} exists..."
-          if ! git rev-parse "v${{ env.VERSION_NUMBER }}" >/dev/null 2>&1; then
-            echo "Tag v${{ env.VERSION_NUMBER }} does not exists."
-            echo "Creating signed tag v${{ env.VERSION_NUMBER }}..."
-            if ! git tag -a "v${{ env.VERSION_NUMBER }}" -s -m "Release v${{ env.VERSION_NUMBER }}"; then
+          echo "Checking if tag $VERSION exists..."
+          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION does not exists. Creating new signed tag"
+            if ! git tag -a "$VERSION" -s -m "Release $VERSION"; then
               echo "GPG signing failed"
               exit 1
             fi
-              git push origin "v${{ env.VERSION_NUMBER }}" || {
+              git push origin "$VERSION" || {
                 echo "Tag push failed"
                 exit 1
               }
-              echo "Tag v${{ env.VERSION_NUMBER }} created sucessfully."
+              echo "Tag $VERSION created sucessfully."
               git ls-remote --tags origin
             else
-              echo "Tag v${{ env.VERSION_NUMBER }} already exists, skipping"
+              echo "Tag $VERSION already exists, skipping"
           fi
 
-      - name: Signature
+      - name: "Generate signature file"
         run: |
-          if [ ! -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}" ]; then
-            echo "Error: Binary not found at ${{ env.APP_PATH }}/${{ env.APP_NAME }}"
+          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
+          SIG="${BIN}-${{ matrix.features }}.sig"
+
+          if [ ! -f "$BIN" ]; then
+            echo "Error: Binary not found at $BIN"
             exit 1
           fi
 
-          "${{ env.APP_PATH }}/${{ env.APP_NAME }}" & PID=$!
-
+          $BIN & PID=$!
           for i in {1..30}; do
-            [ -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ] && { echo "Signature file created: ${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}"; break; }
+            [ -f "$SIG" ] && break
             sleep 1
           done
+          kill $PID || true
 
-          if [ ! -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ]; then
-            echo "Error: SIG file not found at: ${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}"
-            kill $PID 2>/dev/null || true
+          if [ ! -f "$SIG" ]; then
+            echo "Error: SIG file not found at $SIG"
             exit 1
           fi
+          echo "Signature file generated sucessfully at: $SIG"
 
       - name: Prepare release files
         run: |
-          strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
-          mkdir -p ${{ env.OUTPUT_DIR }}
+          BIN_DIR="target/${{ matrix.target }}/release"
+          APP_NAME="${{ env.APP_NAME }}"
+          FEATURES="${{ matrix.features }}"
+          VERSION="${{ env.VERSION_NUMBER }}"
+          OUTPUT_DIR="${{ env.OUTPUT_DIR }}"
+          TARGET="${{ matrix.target }}"
+          BIN_FILE="${APP_NAME}"
+          SIG_FILE="${APP_NAME}-${FEATURES}.sig"
+          OUTPUT_BIN="${APP_NAME}-${VERSION}-${FEATURES}"
+          TAR_FILE="${OUTPUT_BIN}-${TARGET}.tar.gz"
 
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
-            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
-            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
+          strip "${BIN_DIR}/${BIN_FILE}"
+          mkdir -p "${OUTPUT_DIR}"
+          cp "${BIN_DIR}/${BIN_FILE}" "${OUTPUT_DIR}/${OUTPUT_BIN}"
+          cp "${BIN_DIR}/${SIG_FILE}" "${OUTPUT_DIR}/${SIG_FILE}"
 
-          tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
-            -C ${{ env.OUTPUT_DIR }} \
-              ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
-              ${{ env.APP_NAME }}-${{ matrix.features }}.sig \
-            -C ../../ \
-              Changelog.md \
-              LICENSE.txt
+          tar -czf "${OUTPUT_DIR}/${TAR_FILE}" \
+            -C "${OUTPUT_DIR}" "${OUTPUT_BIN}" "${SIG_FILE}" \
+            -C ../../ Changelog.md LICENSE.txt \
+          && echo "Release files prepared"
 
-      - name: Upload to GitHub Releases
+      - name: "Upload to GitHub Releases"
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
@@ -168,5 +179,3 @@ jobs:
           draft: false
           prerelease: true
           tag_name: v${{ env.VERSION_NUMBER }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
