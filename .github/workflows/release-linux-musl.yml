@@ -88,6 +88,8 @@ jobs:
             export SIG="$BIN-${{ matrix.features }}.sig" &&
             file "$BIN" &&
             ldd "$BIN" &&
+            $BIN & PID=$! &&
+            sleep 10
           '
 
       - name: "Extract version number"
