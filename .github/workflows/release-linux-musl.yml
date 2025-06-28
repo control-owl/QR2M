@@ -88,8 +88,15 @@ jobs:
             cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings &&
             cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}" --locked --verbose &&
             cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
-            file ${{ env.APP_PATH }}/${{ env.APP_NAME }} &&
-            ldd ${{ env.APP_PATH }}/${{ env.APP_NAME }}
+            BIN=${{ env.APP_PATH }}/${{ env.APP_NAME }} && 
+            SIG=$BIN-${{ matrix.features }}.sig &&
+            file $BIN &&
+            ldd $BIN &&
+            $BIN & PID=$! &&
+            for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
+            kill $PID 2>/dev/null || true
+            [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
+            echo "Signature generated at: $SIG"
           '
 
       - name: "Extract version number"
@@ -135,19 +142,19 @@ jobs:
               echo "Tag $VERSION already exists, skipping"
           fi
 
-      - name: "Generate signature file"
-        run: |
-          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
-          SIG="${BIN}-${{ matrix.features }}.sig"
-          
-          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c "
-            [ -f '$BIN' ] || { echo 'Error: Binary not found at $BIN'; exit 1; }
-            \$BIN & PID=\$!
-            for i in {1..30}; do [ -f '$SIG' ] && break; sleep 1; done
-            kill \$PID 2>/dev/null || true
-            [ -f '$SIG' ] || { echo 'Error: SIG file not found at $SIG'; exit 1; }
-            echo 'Signature generated at: $SIG'
-          "
+#      - name: "Generate signature file"
+#        run: |
+#          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
+#          SIG="${BIN}-${{ matrix.features }}.sig"
+#
+#          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c "
+#            [ -f '$BIN' ] || { echo 'Error: Binary not found at $BIN'; exit 1; }
+#            \$BIN & PID=\$!
+#            for i in {1..30}; do [ -f '$SIG' ] && break; sleep 1; done
+#            kill \$PID 2>/dev/null || true
+#            [ -f '$SIG' ] || { echo 'Error: SIG file not found at $SIG'; exit 1; }
+#            echo 'Signature generated at: $SIG'
+#          "
 
       - name: Prepare release files
         run: |
