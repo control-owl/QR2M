@@ -27,7 +27,7 @@ jobs:
       OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
 
     steps:
-      - name: Install system dependencies
+      - name: "Install system dependencies"
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -45,8 +45,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            ~/.cargo
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |

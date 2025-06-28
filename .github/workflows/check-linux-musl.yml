@@ -8,7 +8,8 @@ on:
     branches: [ "master" ]
 
 permissions:
-  contents: read
+  contents: write
+  packages: write
 
 jobs:
   standard:
@@ -26,7 +27,7 @@ jobs:
       OUTPUT_DIR: "LAB7041/linux-musl"
 
     steps:
-      - name: Install system dependencies
+      - name: "Install system dependencies"
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -42,39 +43,45 @@ jobs:
             make \
             cmake
 
-      - name: Checkout repository
+      - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Cache Rust dependencies
+      - name: "Cache cargo dependencies"
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo
             target
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
+            ${{ runner.os }}-cargo-
 
-      - name: Configure cross-compilation
+      - name: "Install Rust"
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy rustfmt
+
+      - name: "Configure cross-compilation"
         run: |
           echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
           echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
 
-      - name: Check code
+      - name: "Check code"
         run: |
           cargo fmt --
           cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
-      - name: Build
+      - name: "Build project"
         run: cargo build --release --features "${{ matrix.features }}"
 
-      - name: Run tests
+      - name: "Tests project"
         run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
 
-      - name: Verify static linking
+      - name: "Verify static linking"
         run: |
           ldd ${{ env.APP_PATH }}/${{ env.APP_NAME }} || echo "Static binary confirmed"
 
