@@ -72,7 +72,8 @@ jobs:
               fontconfig-dev \
               freetype-dev \
               openssl-dev \
-              curl &&
+              curl \
+              file &&
             apk info gtk4-dev libadwaita-dev &&
             find /usr -name "gtk-4.0.pc" -o -name "libadwaita-1.0.pc" &&
             pkg-config --modversion gtk-4.0 libadwaita-1.0 || echo "pkg-config failed" &&
