@@ -31,22 +31,6 @@ jobs:
       OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
 
     steps:
-#      - name: "Install system dependencies"
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install -y \
-#            libglib2.0-dev \
-#            libgtk-4-dev \
-#            libadwaita-1-dev \
-#            pkg-config \
-#            libssl-dev \
-#            build-essential \
-#            musl-dev \
-#            gcc \
-#            g++ \
-#            make \
-#            cmake
-
       - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
@@ -64,6 +48,7 @@ jobs:
 
       - name: "Build with Docker"
         run: |
+          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
           docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c '
             echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories &&
             echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories &&
@@ -91,59 +76,19 @@ jobs:
             apk info gtk4-dev libadwaita-dev &&
             find /usr -name "gtk-4.0.pc" -o -name "libadwaita-1.0.pc" &&
             pkg-config --modversion gtk-4.0 libadwaita-1.0 || echo "pkg-config failed" &&
-            rustup target add x86_64-unknown-linux-musl &&
+            rustup target add ${{ matrix.target }} &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
             export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig" &&
             export CFLAGS="-I/usr/include" &&
             export LDFLAGS="-L/usr/lib" &&
             export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib" &&
-            cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose
+            cargo fmt -- &&
+            cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings &&
+            cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}" --locked --verbose &&
+            cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
+            file ${{ env.APP_PATH }}/${{ env.APP_NAME }} &&
+            ldd ${{ env.APP_PATH }}/${{ env.APP_NAME }}
           '
-
-#      - name: "Cache cargo dependencies"
-#        uses: actions/cache@v4
-#        with:
-#          path: |
-#            ~/.cargo
-#            target
-#          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-#          restore-keys: |
-#            ${{ runner.os }}-cargo-
-#
-#      - name: "Install Rust"
-#        uses: dtolnay/rust-toolchain@stable
-#        with:
-#          targets: ${{ matrix.target }}
-#          components: clippy rustfmt
-#
-#      - name: "Configure cross-compilation"
-#        run: |
-#          echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
-#          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-musl/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-#          echo "PKG_CONFIG_SYSROOT_DIR=/usr/x86_64-linux-musl" >> $GITHUB_ENV
-#
-#      - name: "Check code"
-#        env:
-#          OPENSSL_DIR: ${{ env.OPENSSL_DIR }}
-#          OPENSSL_STATIC: 1
-#        run: |
-#          cargo fmt --
-#          cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
-#
-#      - name: "Build project"
-#        run: |
-#          echo "Building with features: ${{ matrix.features }}"
-#          cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
-#
-#      - name: "Tests project"
-#        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
-
-      - name: "Verify static linking"
-        run: |
-          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
-          file $BIN
-          ldd $BIN || echo "Static binary confirmed"
-      
 
       - name: "Extract version number"
         run: |
@@ -192,47 +137,39 @@ jobs:
         run: |
           BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
           SIG="${BIN}-${{ matrix.features }}.sig"
-
-          if [ ! -f "$BIN" ]; then
-            echo "Error: Binary not found at $BIN"
-            exit 1
-          fi
-
-          $BIN & PID=$!
-          for i in {1..30}; do
-            [ -f "$SIG" ] && break
-            sleep 1
-          done
-          kill $PID || true
-
-          if [ ! -f "$SIG" ]; then
-            echo "Error: SIG file not found at $SIG"
-            exit 1
-          fi
-          echo "Signature file generated sucessfully at: $SIG"
+          
+          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c "
+            [ -f '$BIN' ] || { echo 'Error: Binary not found at $BIN'; exit 1; }
+            \$BIN & PID=\$!
+            for i in {1..30}; do [ -f '$SIG' ] && break; sleep 1; done
+            kill \$PID 2>/dev/null || true
+            [ -f '$SIG' ] || { echo 'Error: SIG file not found at $SIG'; exit 1; }
+            echo 'Signature generated at: $SIG'
+          "
 
       - name: Prepare release files
         run: |
-          BIN_DIR="target/${{ matrix.target }}/release"
-          APP_NAME="${{ env.APP_NAME }}"
-          FEATURES="${{ matrix.features }}"
-          VERSION="${{ env.VERSION_NUMBER }}"
-          OUTPUT_DIR="${{ env.OUTPUT_DIR }}"
-          TARGET="${{ matrix.target }}"
-          BIN_FILE="${APP_NAME}"
-          SIG_FILE="${APP_NAME}-${FEATURES}.sig"
-          OUTPUT_BIN="${APP_NAME}-${VERSION}-${FEATURES}"
-          TAR_FILE="${OUTPUT_BIN}-${TARGET}.tar.gz"
-
-          strip "${BIN_DIR}/${BIN_FILE}"
-          mkdir -p "${OUTPUT_DIR}"
-          cp "${BIN_DIR}/${BIN_FILE}" "${OUTPUT_DIR}/${OUTPUT_BIN}"
-          cp "${BIN_DIR}/${SIG_FILE}" "${OUTPUT_DIR}/${SIG_FILE}"
-
-          tar -czf "${OUTPUT_DIR}/${TAR_FILE}" \
-            -C "${OUTPUT_DIR}" "${OUTPUT_BIN}" "${SIG_FILE}" \
-            -C ../../ Changelog.md LICENSE.txt \
-          && echo "Release files prepared"
+          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c '
+            BIN_DIR=target/${{ matrix.target }}/release
+            OUTPUT_BIN=${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+            SIG_FILE=${{ env.APP_NAME }}-${{ matrix.features }}.sig
+            TAR_FILE=$OUTPUT_BIN-${{ matrix.target }}.tar.gz
+            
+            strip $BIN_DIR/${{ env.APP_NAME }} &&
+            mkdir -p ${{ env.OUTPUT_DIR }} &&
+          
+            cp $BIN_DIR/${{ env.APP_NAME }} ${{ env.OUTPUT_DIR }}/$OUTPUT_BIN &&
+            cp $BIN_DIR/$SIG_FILE ${{ env.OUTPUT_DIR }} &&
+            LIBS=$(ldd $BIN_DIR/${{ env.APP_NAME }} | grep -o "/[^ ]*" || true)
+            [ -n "$LIBS" ] && {
+              mkdir -p ${{ env.OUTPUT_DIR }}/lib
+              for LIB in $LIBS; do cp "$LIB" ${{ env.OUTPUT_DIR }}/lib/ || echo "Warning: Could not copy $LIB"; done
+            }
+            tar -czf ${{ env.OUTPUT_DIR }}/$TAR_FILE \
+              -C ${{ env.OUTPUT_DIR }} $OUTPUT_BIN $SIG_FILE \
+              -C ../.. Changelog.md LICENSE.txt \
+              -C ${{ env.OUTPUT_DIR }} lib
+          '
 
       - name: "Upload to GitHub Releases"
         uses: softprops/action-gh-release@v2
