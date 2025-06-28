@@ -146,22 +146,23 @@ jobs:
           fi
           echo "SIG file generated sucessfully at: $SIG"
 
-      - name: "Prepare release files"
+      - name: Prepare release files
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-          mkdir -p "${{ env.OUTPUT_DIR }}"
+          strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
+          mkdir -p ${{ env.OUTPUT_DIR }}
 
-          BIN_FILE="${{ env.APP_NAME }}-${VERSION}-${{ matrix.features }}"
-          SIG_FILE="${{ env.APP_NAME }}-${{ matrix.features }}.sig"
-          ARCHIVE="${OUTDIR}/${BIN_FILE}-${{ matrix.target }}.tar.gz"
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
+          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
+            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
 
-          strip "${{ env.APP_PATH }}/${{ env.APP_NAME }}"
-          cp "${{ env.APP_PATH }}/${{ env.APP_NAME }}" "${OUTDIR}/${BIN_FILE}"
-          cp "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig" "${OUTDIR}/${SIG_FILE}"
-
-          tar -czf "$ARCHIVE" \
-            -C "$OUTDIR" "$BIN_FILE" "$SIG_FILE" \
-            -C ../../ Changelog.md LICENSE.txt
+          tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
+            -C ${{ env.OUTPUT_DIR }} \
+              ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
+              ${{ env.APP_NAME }}-${{ matrix.features }}.sig \
+            -C ../../ \
+              Changelog.md \
+              LICENSE.txt
 
       - name: "Upload to GitHub Releases"
         uses: softprops/action-gh-release@v2
