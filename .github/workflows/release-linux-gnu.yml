@@ -28,47 +28,65 @@ jobs:
     env:
       APP_NAME: "QR2M"
       APP_PATH: "target/${{ matrix.target }}/release"
-      SIG_FILE: "${{ matrix.features }}.sig"
       OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
 
     steps:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev pkg-config libssl-dev
+          sudo apt-get install -y \
+            libgtk-4-dev \
+            libadwaita-1-dev \
+            pkg-config \
+            libssl-dev
 
-      - name: Install Rust
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Cache cargo dependencies"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: "Install Rust"
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
           components: clippy rustfmt
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check code
+      - name: "Check code"
         run: |
           cargo fmt --
           cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
-      - name: Build
-        run: cargo build --release --features "${{ matrix.features }}" --target ${{ matrix.target }}
+      - name: "Build project"
+        run: |
+          echo "Building with features: ${{ matrix.features }}"
+          cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
-      - name: Run tests
-        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}" --target ${{ matrix.target }}
+      - name: "Tests project"
+        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
-      - name: Versioning
+      - name: "Extract version number"
         run: |
           VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' #version')
+
           if [[ ! "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Error: VERSION_NUMBER is not in valid format: ${VERSION_NUMBER}"
+            echo "Expected format: 1.2.3"
             exit 1
           fi
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
-      - name: Import GPG key
+      - name: "Import GPG key"
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.ACTIONS_KEY }}
@@ -77,163 +95,79 @@ jobs:
           git_commit_gpgsign: false
           git_tag_gpgsign: true
 
-      - name: Create tag
+      - name: "Create tag"
         run: |
-          set -e
           git config user.name "${{ env.APP_NAME }}"
           git config user.email "${{ secrets.ACTIONS_EMAIL }}"
+          VERSION="v${{ env.VERSION_NUMBER }}"
 
-          echo "Checking if tag v${{ env.VERSION_NUMBER }} exists..."
-          if ! git rev-parse "v${{ env.VERSION_NUMBER }}" >/dev/null 2>&1; then
-            echo "Tag v${{ env.VERSION_NUMBER }} does not exists."
-            echo "Creating signed tag v${{ env.VERSION_NUMBER }}..."
-            if ! git tag -a "v${{ env.VERSION_NUMBER }}" -s -m "Release v${{ env.VERSION_NUMBER }}"; then
+          echo "Checking if tag $VERSION exists..."
+          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION does not exists. Creating new signed tag"
+            if ! git tag -a "$VERSION" -s -m "Release $VERSION"; then
               echo "GPG signing failed"
               exit 1
             fi
-              git push origin "v${{ env.VERSION_NUMBER }}" || {
+              git push origin "$VERSION" || {
                 echo "Tag push failed"
                 exit 1
               }
-              echo "Tag v${{ env.VERSION_NUMBER }} created sucessfully."
+              echo "Tag $VERSION created sucessfully."
               git ls-remote --tags origin
             else
-              echo "Tag v${{ env.VERSION_NUMBER }} already exists, skipping"
+              echo "Tag $VERSION already exists, skipping"
           fi
 
-      - name: Signature
+      - name: "Generate signature file"
         run: |
-          set -e
-          if [ ! -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}" ]; then
-            echo "Error: Binary not found at ${{ env.APP_PATH }}/${{ env.APP_NAME }}"
+          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
+          SIG="${BIN}-${{ matrix.features }}.sig"
+
+          if [ ! -f "$BIN" ]; then
+            echo "Error: Binary not found at $BIN"
             exit 1
           fi
-          
-          "${{ env.APP_PATH }}/${{ env.APP_NAME }}" & PID=$!
-          
+
+          $BIN & PID=$!
           for i in {1..30}; do
-            [ -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ] && { echo "Signature file created: ${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}"; break; }
+            [ -f "$SIG" ] && break
             sleep 1
           done
-          
-          if [ ! -f "${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}" ]; then
-            echo "Error: SIG file not found at: ${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ env.SIG_FILE }}"
-            kill $PID 2>/dev/null || true
+          kill $PID || true
+
+          if [ ! -f "$SIG" ]; then
+            echo "Error: SIG file not found at $SIG"
             exit 1
           fi
+          echo "Signature file generated sucessfully at: $SIG"
 
       - name: Prepare release files
         run: |
-          set -e
-          strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
-          mkdir -p ${{ env.OUTPUT_DIR }}
+          BIN_DIR="target/${{ matrix.target }}/release"
+          APP_NAME="${{ env.APP_NAME }}"
+          FEATURES="${{ matrix.features }}"
+          VERSION="${{ env.VERSION_NUMBER }}"
+          OUTPUT_DIR="${{ env.OUTPUT_DIR }}"
+          TARGET="${{ matrix.target }}"
+          BIN_FILE="${APP_NAME}"
+          SIG_FILE="${APP_NAME}-${FEATURES}.sig"
+          OUTPUT_BIN="${APP_NAME}-${VERSION}-${FEATURES}"
+          TAR_FILE="${OUTPUT_BIN}-${TARGET}.tar.gz"
 
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
-            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
-            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
-          
-          tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
-            -C ${{ env.OUTPUT_DIR }} \
-              ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
-              ${{ env.APP_NAME }}-${{ matrix.features }}.sig \
-            -C ../../ \
-              Changelog.md \
-              LICENSE.txt
+          strip "${BIN_DIR}/${BIN_FILE}"
+          mkdir -p "${OUTPUT_DIR}"
+          cp "${BIN_DIR}/${BIN_FILE}" "${OUTPUT_DIR}/${OUTPUT_BIN}"
+          cp "${BIN_DIR}/${SIG_FILE}" "${OUTPUT_DIR}/${SIG_FILE}"
 
-      - name: Get existing release assets
-        id: existing-assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          echo "Getting existing release..."
-          response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }})
-          echo "Response: $response"
+          tar -czf "${OUTPUT_DIR}/${TAR_FILE}" \
+            -C "${OUTPUT_DIR}" "${OUTPUT_BIN}" "${SIG_FILE}" \
+            -C ../../ Changelog.md LICENSE.txt \
+          && echo "Release files prepared"
 
-          if [ $? -ne 0 ]; then
-            echo "Error getting existing release: $?"
-            exit 1
-          fi
-
-          release_id=$(echo "$response" | jq -r '.id')
-          echo "Release ID: $release_id"
-
-          assets_response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/$release_id/assets)
-          echo "Assets Response: $assets_response"
-
-          if [ $? -ne 0 ]; then
-            echo "Error getting existing assets: $?"
-            exit 1
-          fi
-
-          assets=($(echo "$assets_response" | jq -r '.[] | .name'))
-          echo "Assets: ${assets[@]}"
-          echo "assets=$(IFS=,; echo "${assets[*]}")" >> $GITHUB_OUTPUT
-
-      - name: Check if file already exists
-        id: file-exists
-        run: |
-          set -e
-          echo "Getting hash of existing file..."
-          if [ "${{ steps.file-exists.outputs.file_exists }}" == "true" ]; then
-            file_name=${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
-            assets_response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }}/assets)
-            asset_id=$(echo "$assets_response" | jq -r '.[] | select(.name == "'"$file_name"'") | .id')
-            if [ -n "$asset_id" ]; then
-              existing_asset=$(gh api /repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id)
-              existing_hash=$(echo "$existing_asset" | jq -r '.updated_at')
-              echo "Existing file hash: $existing_hash"
-              echo "existing_file_hash=$existing_hash" >> $GITHUB_OUTPUT
-            else
-              echo "existing_file_hash=" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "existing_file_hash=" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Calculate hash of new file
-        id: new-file-hash
-        run: |
-          set -e
-          echo "Calculating hash of new file..."
-          file_path=${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
-          hash=$(sha256sum "$file_path" | cut -d' ' -f1)
-
-          echo "New file hash: $hash"
-          echo "new_file_hash=$hash" >> $GITHUB_OUTPUT
-      
-      - name: Get hash of existing file
-        id: existing-file-hash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          echo "Getting hash of existing file..."
-          if [ "${{ steps.file-exists.outputs.file_exists }}" == "true" ]; then
-            file_name=${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz
-            assets_response=$(gh api /repos/${GITHUB_REPOSITORY}/releases/tags/v${{ env.VERSION_NUMBER }}/assets)
-            asset_id=$(echo "$assets_response" | jq -r '.[] | select(.name == "'"$file_name"'") | .id')
-            
-            if [ -n "$asset_id" ]; then
-              existing_asset=$(gh api /repos/${GITHUB_REPOSITORY}/releases/assets/$asset_id)
-              existing_hash=$(echo "$existing_asset" | jq -r '.updated_at')
-              echo "Existing file hash: $existing_hash"
-              echo "existing_file_hash=$existing_hash" >> $GITHUB_OUTPUT
-            else
-              echo "existing_file_hash=" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "existing_file_hash=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload to GitHub Releases
+      - name: "Upload to GitHub Releases"
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: |
-          [ "${{ steps.file-exists.outputs.file_exists }}" == "false" ] ||
-          [ "${{ steps.new-file-hash.outputs.new_file_hash }}" != "${{ steps.existing-file-hash.outputs.existing_file_hash }}" ]
         with:
           files: |
             ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz

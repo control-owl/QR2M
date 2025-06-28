@@ -37,7 +37,13 @@ jobs:
       - name: "Install system dependencies"
         run: |
           brew update
-          brew install gtk4 libadwaita pkg-config openssl@3.0 glib
+          brew install \
+            gtk4 \
+            libadwaita \
+            pkg-config \
+            openssl@3.0 \
+            glib
+          
           echo "GLib version: $(pkg-config --modversion glib-2.0)"
           echo "OpenSSL version: $(pkg-config --modversion openssl)"
 
@@ -76,7 +82,7 @@ jobs:
       - name: "Tests project"
         run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
-      - name: "Extract version"
+      - name: "Extract version number"
         run: |
           VERSION_NUMBER=$(head -n 1 Changelog.md | cut -d ':' -f 2- | tr -d ' #version')
           
@@ -85,8 +91,6 @@ jobs:
             echo "Expected format: 1.2.3"
             exit 1
           fi
-          
-          echo "VERSION_NUMBER=$VERSION_NUMBER"
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
 
       - name: "Import GPG key"
@@ -142,25 +146,30 @@ jobs:
             echo "Error: SIG file not found at $SIG"
             exit 1
           fi
-          echo "SIG file generated sucessfully at: $SIG"
+          echo "Signature file generated sucessfully at: $SIG"
 
       - name: Prepare release files
         run: |
-          strip target/${{ matrix.target }}/release/${{ env.APP_NAME }}
-          mkdir -p ${{ env.OUTPUT_DIR }}
+          BIN_DIR="target/${{ matrix.target }}/release"
+          APP_NAME="${{ env.APP_NAME }}"
+          FEATURES="${{ matrix.features }}"
+          VERSION="${{ env.VERSION_NUMBER }}"
+          OUTPUT_DIR="${{ env.OUTPUT_DIR }}"
+          TARGET="${{ matrix.target }}"
+          BIN_FILE="${APP_NAME}"
+          SIG_FILE="${APP_NAME}-${FEATURES}.sig"
+          OUTPUT_BIN="${APP_NAME}-${VERSION}-${FEATURES}"
+          TAR_FILE="${OUTPUT_BIN}-${TARGET}.tar.gz"
 
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }} \
-            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}
-          cp target/${{ matrix.target }}/release/${{ env.APP_NAME }}-${{ matrix.features }}.sig \
-            ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig
-
-          tar -czf ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz \
-            -C ${{ env.OUTPUT_DIR }} \
-              ${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }} \
-              ${{ env.APP_NAME }}-${{ matrix.features }}.sig \
-            -C ../../ \
-              Changelog.md \
-              LICENSE.txt
+          strip "${BIN_DIR}/${BIN_FILE}"
+          mkdir -p "${OUTPUT_DIR}"
+          cp "${BIN_DIR}/${BIN_FILE}" "${OUTPUT_DIR}/${OUTPUT_BIN}"
+          cp "${BIN_DIR}/${SIG_FILE}" "${OUTPUT_DIR}/${SIG_FILE}"
+          
+          tar -czf "${OUTPUT_DIR}/${TAR_FILE}" \
+            -C "${OUTPUT_DIR}" "${OUTPUT_BIN}" "${SIG_FILE}" \
+            -C ../../ Changelog.md LICENSE.txt \
+          && echo "Release files prepared"
 
       - name: "Upload to GitHub Releases"
         uses: softprops/action-gh-release@v2
