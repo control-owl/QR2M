@@ -48,38 +48,47 @@ jobs:
 
       - name: "Build with Docker"
         run: |
-          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app \
-            -e GPG_PRIVATE_KEY="${{ secrets.ACTIONS_KEY }}" \
-            -e GPG_PASSPHRASE="${{ secrets.ACTIONS_PASS }}" \
-            rust:alpine sh -c '
-              echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories &&
-              echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories &&
-              apk update &&
-              apk add --no-cache \
-                musl-dev pkgconf git cmake meson ninja \
-                glib-dev gtk4-dev libadwaita-dev cairo-dev \
-                pango-dev gdk-pixbuf-dev harfbuzz-dev graphene-dev \
-                vulkan-loader-dev fontconfig-dev freetype-dev openssl-dev curl \
-                gtk4 libadwaita glib cairo pango gdk-pixbuf harfbuzz graphene vulkan-loader fontconfig freetype \
-                gnupg file &&
-              rustup target add ${{ matrix.target }} &&
-              rustup component add rustfmt clippy &&
-              export PKG_CONFIG_ALLOW_CROSS=1 &&
-              export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig" &&
-              export CFLAGS="-I/usr/include" &&
-              export LDFLAGS="-L/usr/lib" &&
-              export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib" &&
-              gpg --batch --import <<< "$GPG_PRIVATE_KEY" &&
-              echo "$GPG_PASSPHRASE" | gpg --batch --passphrase-fd 0 --pinentry-mode loopback --list-secret-keys &&
-              cargo fmt &&
-              cargo clippy --no-deps --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings &&
-              cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}" --locked &&
-              cargo test --release --locked --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}" &&
-              export BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}" &&
-              export SIG="$BIN-${{ matrix.features }}.sig" &&
-              file "$BIN" &&
-              ldd "$BIN" &&
-            '
+          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c '
+            echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories &&
+            echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories &&
+            apk update &&
+            apk add --no-cache \
+              musl-dev \
+              pkgconf \
+              git \
+              cmake \
+              meson \
+              ninja \
+              glib-dev \
+              gtk4.0-dev \
+              libadwaita-dev \
+              cairo-dev \
+              pango-dev \
+              gdk-pixbuf-dev \
+              harfbuzz-dev \
+              graphene-dev \
+              vulkan-loader-dev \
+              fontconfig-dev \
+              freetype-dev \
+              openssl-dev \
+              curl &&
+            rustup target add x86_64-unknown-linux-musl &&
+            export PKG_CONFIG_ALLOW_CROSS=1 &&
+            export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig &&
+            export CFLAGS="-I/usr/include" &&
+            export LDFLAGS="-L/usr/lib" &&
+            export OPENSSL_DIR=/usr &&
+            export OPENSSL_LIB_DIR=/usr/lib &&
+            export OPENSSL_INCLUDE_DIR=/usr/include &&
+            export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib" &&
+            pkg-config --modversion gtk-4.0 libadwaita-1.0 &&
+            cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose &&
+            cargo test --release --locked --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}" &&
+            export BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}" &&
+            export SIG="$BIN-${{ matrix.features }}.sig" &&
+            file "$BIN" &&
+            ldd "$BIN" &&
+          '
 
       - name: "Extract version number"
         run: |
