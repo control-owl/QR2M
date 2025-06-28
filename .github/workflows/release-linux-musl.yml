@@ -48,8 +48,10 @@ jobs:
 
       - name: "Build with Docker"
         run: |
-          BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}"
-          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c '
+          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app \
+            -e GPG_PRIVATE_KEY="${{ secrets.ACTIONS_KEY }}" \
+            -e GPG_PASSPHRASE="${{ secrets.ACTIONS_PASS }}" \
+            rust:alpine sh -c '
             echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories &&
             echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories &&
             apk update &&
@@ -84,7 +86,9 @@ jobs:
             export CFLAGS="-I/usr/include" &&
             export LDFLAGS="-L/usr/lib" &&
             export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib" &&
-            cargo fmt -- &&
+            gpg --batch --import <<< "$GPG_PRIVATE_KEY" &&
+            echo "$GPG_PASSPHRASE" | gpg --batch --passphrase-fd 0 --pinentry-mode loopback --list-secret-keys &&
+            cargo fmt &&
             cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings &&
             cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}" --locked --verbose &&
             cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
@@ -109,15 +113,6 @@ jobs:
             exit 1
           fi
           echo "VERSION_NUMBER=${VERSION_NUMBER}" | tee -a $GITHUB_ENV
-
-      - name: "Import GPG key"
-        uses: crazy-max/ghaction-import-gpg@v6
-        with:
-          gpg_private_key: ${{ secrets.ACTIONS_KEY }}
-          passphrase: ${{ secrets.ACTIONS_PASS }}
-          git_user_signingkey: true
-          git_commit_gpgsign: false
-          git_tag_gpgsign: true
 
       - name: "Create tag"
         run: |
