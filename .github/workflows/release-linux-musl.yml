@@ -75,8 +75,8 @@ jobs:
               cargo clippy --no-deps --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings &&
               cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}" --locked &&
               cargo test --release --locked --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}" &&
-              BIN=${{ env.APP_PATH }}/${{ env.APP_NAME }} &&
-              SIG=$BIN-${{ matrix.features }}.sig &&
+              export BIN=${{ env.APP_PATH }}/${{ env.APP_NAME }} &&
+              export SIG=$BIN-${{ matrix.features }}.sig &&
               file $BIN &&
               ldd $BIN &&
               $BIN &&
