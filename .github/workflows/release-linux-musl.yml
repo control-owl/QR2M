@@ -80,7 +80,7 @@ jobs:
               file $BIN &&
               ldd $BIN &&
               $BIN & PID=$! &&
-              for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done &&
+              sleep 10 &&
               kill $PID || true &&
               [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; cat sig_error.log; exit 1; } &&
               echo "Signature generated at: $SIG"
