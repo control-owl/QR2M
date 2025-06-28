@@ -1,11 +1,15 @@
-name: Check Linux x86_64 MUSL
+name: Release Linux x86_64 MUSL
 
 on:
-  workflow_run:
-    workflows: ["Verify GPG Signature"]
-    types:
-      - completed
-    branches: [ "master" ]
+  push:
+    branches: [ "musl" ]
+  pull_request:
+    branches: [ "musl" ]
+#  workflow_run:
+#    workflows: ["Verify GPG Signature"]
+#    types:
+#      - completed
+#    branches: [ "master" ]
 
 permissions:
   contents: write
@@ -76,10 +80,12 @@ jobs:
           cargo clippy --no-deps --verbose --locked --features "${{ matrix.features }}" --target ${{ matrix.target }} -- -D warnings
 
       - name: "Build project"
-        run: cargo build --release --features "${{ matrix.features }}"
+        run: |
+          echo "Building with features: ${{ matrix.features }}"
+          cargo build --release --verbose --locked --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
       - name: "Tests project"
-        run: cargo test --release --locked --verbose --no-fail-fast --features "${{ matrix.features }}"
+        run: cargo test --release --locked --verbose --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
       - name: "Verify static linking"
         run: |
