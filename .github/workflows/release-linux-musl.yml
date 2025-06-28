@@ -81,7 +81,6 @@ jobs:
               ldd $BIN &&
               $BIN & PID=$! &&
               sleep 10 &&
-              kill $PID || true &&
               [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; cat sig_error.log; exit 1; } &&
               echo "Signature generated at: $SIG"
             '
