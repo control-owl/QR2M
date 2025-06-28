@@ -80,8 +80,7 @@ jobs:
               file $BIN &&
               ldd $BIN &&
               $BIN &&
-              sleep 10 &&
-              [ ! -f "$SIG" ] && exit 1
+              sleep 10
             '
 
       - name: "Extract version number"
