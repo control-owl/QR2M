@@ -115,15 +115,13 @@ jobs:
               SIG="${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig" &&
               $BIN & PID=$! &&
               for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done &&
-              { kill $PID 2>/dev/null || true } &&
+              { kill $PID 2>/dev/null || true; } &&
               { [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; } } &&
               echo "Signature generated at: $SIG" &&
             # Copy files
               mkdir -p "${{ env.OUTPUT_DIR }}" &&
-              { cp "$BIN" "${{ env.OUTPUT_DIR }}" ||
-                { echo "Error: Failed to copy BIN to ${{ env.OUTPUT_DIR }}"; exit 1; } } &&
-              { cp "SIG" "${{ env.OUTPUT_DIR }}" ||
-                { echo "Error: Failed to copy SIG to ${{ env.OUTPUT_DIR }}"; exit 1; } }
+              { cp "$BIN" "${OUTPUT_DIR}" || { echo "Error: Failed to copy BIN to ${OUTPUT_DIR}"; exit 1; } } &&
+              { cp "$SIG" "${OUTPUT_DIR}" || { echo "Error: Failed to copy SIG to ${OUTPUT_DIR}"; exit 1; } }
           '
 
       - name: "Extract version number"
