@@ -119,7 +119,7 @@ ldd "$BIN"
 
 echo "Copying files to $OUTPUT_DIR..."
 mkdir -p "$OUTPUT_DIR"
-cp "$BIN" "$OUTPUT_DIR/$APP_NAME-$FEATURES" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR/$APP_NAME-$FEATURES"; exit 1; }
+cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
 #cp "$SIG" "$OUTPUT_DIR/$APP_NAME-$FEATURES.sig" || { echo "Error: Failed to copy $SIG to $OUTPUT_DIR/$APP_NAME-$FEATURES.sig"; exit 1; }
 
 echo "Listing output directory in container:"
