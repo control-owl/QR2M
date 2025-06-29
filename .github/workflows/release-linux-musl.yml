@@ -49,81 +49,14 @@ jobs:
 
       - name: "Build with Docker"
         run: |
-          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app rust:alpine sh -c '
-            echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories &&
-            echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories &&
-            apk update &&
-            apk add --no-cache \
-              musl-dev \
-              pkgconf \
-              git \
-              cmake \
-              meson \
-              ninja \
-              glib-dev \
-              gtk4.0-dev \
-              libadwaita-dev \
-              cairo-dev \
-              pango-dev \
-              gdk-pixbuf-dev \
-              harfbuzz-dev \
-              graphene-dev \
-              vulkan-loader-dev \
-              fontconfig-dev \
-              freetype-dev \
-              openssl-dev \
-              curl \
-              file &&
-            # List installed packages
-              echo "Installed packages:" &&
-              apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf" &&
-            # Find .pc files
-              echo "Listing .pc files for gtk4 and libadwaita:" &&
-              GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' || echo "") &&
-              ADWAITA=$(apk info -L libadwaita-dev | grep -E '/libadwaita-1\.pc$' || echo "") &&
-              echo "GTK4=$GTK4" &&
-              echo "ADWAITA=$ADWAITA" &&
-              [ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; } &&
-              [ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; } &&
-              export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig" &&
-              GTK_PC_PATH=$(dirname "$GTK4") &&
-              LIBADWAITA_PC_PATH=$(dirname "$ADWAITA") &&
-              export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:$PKG_CONFIG_PATH" &&
-              echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" &&
-              pkg-config --modversion gtk4 || { echo "Error: gtk-4.0 not found"; exit 1; } &&
-              pkg-config --modversion libadwaita-1 || { echo "Error: libadwaita-1.0 not found"; exit 1; } &&
-            rustup target add x86_64-unknown-linux-musl &&
-            export PKG_CONFIG_ALLOW_CROSS=1 &&
-            export CFLAGS="-I/usr/include" &&
-            export LDFLAGS="-L/usr/lib" &&
-            export OPENSSL_DIR=/usr &&
-            export OPENSSL_LIB_DIR=/usr/lib &&
-            export OPENSSL_INCLUDE_DIR=/usr/include &&
-            export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib" &&
-            cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose &&
-            # cargo test --release --locked --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}" &&
-            export BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}" &&
-            # List target directory
-              echo "Listing target directory:" &&
-              ls -l "${{ env.APP_PATH }}" &&
-            # Verify binary
-              [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; } &&
-              file "$BIN" &&
-              ldd "$BIN" &&
-              chmod +x "$BIN" &&
-            # Create signature file
-              export SIG="${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig" &&
-              "$BIN" || { echo "Error: Binary execution failed with code $?"; exit 1; } &
-              PID=$! &&
-              { for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done } &&
-              kill $PID 2>/dev/null || true &&
-              [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; } &&
-              echo "Signature generated at: $SIG" &&
-            # Copy files
-              mkdir -p "${{ env.OUTPUT_DIR }}" &&
-              cp "$BIN" "${OUTPUT_DIR}" || { echo "Error: Failed to copy BIN to ${OUTPUT_DIR}"; exit 1; } &&
-              cp "$SIG" "${OUTPUT_DIR}" || { echo "Error: Failed to copy SIG to ${OUTPUT_DIR}"; exit 1; }
-          '
+          mkdir -p ${{ env.OUTPUT_DIR }}
+          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app \
+            -e APP_NAME="${{ env.APP_NAME }}" \
+            -e APP_PATH="${{ env.APP_PATH }}" \
+            -e OUTPUT_DIR="${{ env.OUTPUT_DIR }}" \
+            -e FEATURES="${{ matrix.features }}" \
+            -e TARGET="${{ matrix.target }}" \
+            rust:1.82-alpine3.22 /bin/sh /usr/src/app/docker.sh
           echo "Listing output directory on host:"
           ls -l ${{ env.OUTPUT_DIR }}
 
