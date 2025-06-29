@@ -73,6 +73,11 @@ jobs:
               openssl-dev \
               curl &&
             rustup target add x86_64-unknown-linux-musl &&
+            apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf" &&
+            find /usr -name "gtk-4.0.pc" -o -name "libadwaita-1.0.pc" &&
+            GTK_PC_PATH=$(find /usr -name "gtk-4.0.pc" -exec dirname {} \;) &&
+            LIBADWAITA_PC_PATH=$(find /usr -name "libadwaita-1.0.pc" -exec dirname {} \;) &&
+            export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:/usr/lib/pkgconfig:/usr/share/pkgconfig" &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
             export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig &&
             export CFLAGS="-I/usr/include" &&
