@@ -56,7 +56,7 @@ jobs:
             -e OUTPUT_DIR="${{ env.OUTPUT_DIR }}" \
             -e FEATURES="${{ matrix.features }}" \
             -e TARGET="${{ matrix.target }}" \
-            rust:alpine /bin/sh /usr/src/app/docker.sh
+            rust:alpine /bin/sh ${{ github.workspace }}/docker.sh
           echo "Listing output directory on host:"
           ls -l ${{ env.OUTPUT_DIR }}
 
