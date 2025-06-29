@@ -112,9 +112,14 @@ jobs:
           ls -l ${{ env.OUTPUT_DIR }}
           [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
           
-          $BIN & PID=$!
+          chmod +x "$BIN"
+          "$BIN" || { echo "Error: Binary execution failed with code $?"; exit 1; } &
+          PID=$!
           
-          for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
+          for i in {1..30}; do
+            [ -f "$SIG" ] && break
+            sleep 1
+          done
           kill $PID 2>/dev/null || true
           
           ls -l ${{ env.OUTPUT_DIR }}

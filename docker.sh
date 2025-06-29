@@ -8,7 +8,6 @@ echo "Checking environment variables..."
 [ -z "$OUTPUT_DIR" ] && { echo "Error: Environment variable OUTPUT_DIR is not set"; exit 1; }
 [ -z "$FEATURES" ] && { echo "Error: Environment variable FEATURES is not set"; exit 1; }
 [ -z "$TARGET" ] && { echo "Error: Environment variable TARGET is not set"; exit 1; }
-#[ -z "$OUTPUT" ] && { echo "Error: Environment variable OUTPUT is not set"; exit 1; }
 
 
 echo "Environment variables:"
@@ -119,6 +118,7 @@ if [ "$OUTPUT" = "true" ]; then
   echo "Copying files to $OUTPUT_DIR..."
   mkdir -p "$OUTPUT_DIR"
   cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
+  chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME-$FEATURES"; exit 1; }
 
   echo "Listing output directory:"
   ls -l "$OUTPUT_DIR"
