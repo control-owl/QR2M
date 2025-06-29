@@ -22,7 +22,8 @@ jobs:
     strategy:
       matrix:
         target: [ x86_64-unknown-linux-musl ]
-        features: [ "offline", "full", "dev" ]
+#        features: [ "offline", "full", "dev" ]
+        features: [ "dev" ]
       fail-fast: false
 
     env:
@@ -73,17 +74,24 @@ jobs:
               openssl-dev \
               curl &&
             rustup target add x86_64-unknown-linux-musl &&
-            apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf" &&
-            find / -name "gtk-4.0.pc" -o -name "libadwaita-1.0.pc" &&
-            export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig" &&
-            GTK_PC_PATH=$(find / -name "gtk-4.0.pc" -exec dirname {} \; 2>/dev/null || echo "") &&
-            LIBADWAITA_PC_PATH=$(find / -name "libadwaita-1.0.pc" -exec dirname {} \; 2>/dev/null || echo "") &&
-            [ -n "$GTK_PC_PATH" ] && export PKG_CONFIG_PATH="$GTK_PC_PATH:$PKG_CONFIG_PATH" &&
-            [ -n "$LIBADWAITA_PC_PATH" ] && export PKG_CONFIG_PATH="$LIBADWAITA_PC_PATH:$PKG_CONFIG_PATH" &&
-            echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" &&
+            echo "Installed packages:" &&
+              apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf" &&
+            echo "Searching for .pc files..." &&
+              find / -name "gtk-4.0.pc" -o -name "libadwaita-1.0.pc" &&
+            # Set PKG_CONFIG_PATH with common Alpine paths
+              export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig" &&
+            # Dynamically add .pc file directories if found
+              GTK_PC_PATH=$(find / -name "gtk-4.0.pc" -exec dirname {} \; 2>/dev/null || echo "") &&
+              LIBADWAITA_PC_PATH=$(find / -name "libadwaita-1.0.pc" -exec dirname {} \; 2>/dev/null || echo "") &&
+              [ -n "$GTK_PC_PATH" ] && export PKG_CONFIG_PATH="$GTK_PC_PATH:$PKG_CONFIG_PATH" &&
+              [ -n "$LIBADWAITA_PC_PATH" ] && export PKG_CONFIG_PATH="$LIBADWAITA_PC_PATH:$PKG_CONFIG_PATH" &&
+              echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" &&
+            # Debug: Verify pkg-config
+              echo "Checking pkg-config versions..." &&
+              pkg-config --modversion gtk-4.0 || { echo "Error: gtk-4.0 not found"; exit 1; } &&
+              pkg-config --modversion libadwaita-1.0 || { echo "Error: libadwaita-1.0 not found"; exit 1; } &&
             echo "Checking pkg-config versions..." &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
-            export PKG_CONFIG_PATH=/usr/lib/pkgconfig:/usr/share/pkgconfig &&
             export CFLAGS="-I/usr/include" &&
             export LDFLAGS="-L/usr/lib" &&
             export OPENSSL_DIR=/usr &&
