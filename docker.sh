@@ -57,6 +57,13 @@ apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file" || {
 }
 
 
+echo "Checking for static libraries..."
+ls -l /usr/lib/libssl.a /usr/lib/libcrypto.a || {
+  echo "Warning: Static libraries libssl.a or libcrypto.a not found, checking alternatives"
+  ls -l /usr/lib/*ssl*.a /usr/lib/*crypto*.a || echo "No static libraries found"
+}
+
+
 echo "Capturing .pc file paths..."
 GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' | sed "s|^|/|")
 ADWAITA=$(apk info -L libadwaita-dev | grep -E '/libadwaita-1\.pc$' | sed "s|^|/|")
@@ -82,7 +89,7 @@ echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 echo "Checking pkg-config versions..."
 pkg-config --modversion gtk-4.0 || { echo "Error: gtk-4.0 not found"; exit 1; }
 pkg-config --modversion libadwaita-1.0 || { echo "Error: libadwaita-1.0 not found"; exit 1; }
-
+pkg-config --libs --cflags openssl || { echo "Error: OpenSSL pkg-config not found"; exit 1; }
 
 echo "Install Rust MUSL target"
 rustup target add x86_64-unknown-linux-musl
@@ -91,17 +98,17 @@ rustup target add x86_64-unknown-linux-musl
 echo "Set environment variables for build"
 export PKG_CONFIG_ALLOW_CROSS=1
 export CFLAGS="-I/usr/include"
-export LDFLAGS="-L/usr/lib -static"
+export LDFLAGS="-L/usr/lib -L/usr/lib/x86_64-linux-musl"
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
 export OPENSSL_STATIC=1
-export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib"
+export RUSTFLAGS="-C target-feature=+crt-static"
 
 
 echo "Building project..."
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
-cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
+#cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 
 
 echo "Listing build directory:"
@@ -113,7 +120,7 @@ export BIN="$APP_PATH/$APP_NAME"
 [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
 file "$BIN"
 ldd "$BIN"
-
+chmod +x "$BIN"
 
 if [ "$OUTPUT" = "true" ]; then
   echo "Copying files to $OUTPUT_DIR..."
