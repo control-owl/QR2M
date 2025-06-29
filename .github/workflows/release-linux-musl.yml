@@ -72,7 +72,8 @@ jobs:
               fontconfig-dev \
               freetype-dev \
               openssl-dev \
-              curl &&
+              curl \
+              file &&
             # List installed packages
               echo "Installed packages:" &&
               apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf" &&
@@ -102,7 +103,6 @@ jobs:
             cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose &&
             cargo test --release --locked --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}" &&
             export BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}" &&
-            export SIG="$BIN-${{ matrix.features }}.sig" &&
             file "$BIN" &&
             ldd "$BIN" &&
             cp "$BIN" ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}
