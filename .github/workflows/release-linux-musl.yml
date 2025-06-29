@@ -111,6 +111,7 @@ jobs:
               file "$BIN" &&
               ldd "$BIN" &&
             # Copy binary to output directory
+              mkdir -p "${{ env.OUTPUT_DIR }}" &&
               cp "$BIN" "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" ||
                 { echo "Error: Failed to copy $BIN to ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"; exit 1; }
           '
@@ -165,17 +166,18 @@ jobs:
 
           [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
           ls -l ${{ env.OUTPUT_DIR }}
+          chmod +x "$BIN"
           $BIN & PID=$!
           for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
           kill $PID 2>/dev/null || true
           [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
           echo "Signature generated at: $SIG"
-          
 
       - name: Prepare release files
         run: |
-          OUTPUT_BIN="${{ env.APP_NAME }}-${{ matrix.features }}"
-          TAR_FILE="${{ env.OUTPUT_DIR }}/${OUTPUT_BIN}-${{ matrix.target }}.tar.gz"
+          COMPILED_BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"
+          RELEASE_BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-"
+          TAR_FILE="${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz"
           
           strip "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" || echo "Warning: strip failed"
           tar -czf "$TAR_FILE" \
