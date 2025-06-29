@@ -113,16 +113,9 @@ jobs:
           ls -l ${{ env.OUTPUT_DIR }}
           [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
           
-          file "$BIN"
-          ldd "$BIN"
-          
-          # chmod +x "$BIN"
-          # "$BIN" || { echo "Error: Binary execution failed with code $?"; exit 1; } &
-          # PID=$!
-          
-          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app \
-            -e BIN="$BIN" -e SIG="$SIG" \
-            rust:alpine /bin/sh -c "chmod +x \"$BIN\" && \"$BIN\" || { echo \"Error: Binary execution failed with code \$?\"; exit 1; }" &
+          chmod +x "$BIN" && echo "Executable permission set"
+          ls -l ${{ env.OUTPUT_DIR }}
+          "$BIN" || { echo "Error: Binary execution failed with code $?"; exit 1; } &
           PID=$!
           
           for i in {1..30}; do

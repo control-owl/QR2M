@@ -91,10 +91,11 @@ rustup target add x86_64-unknown-linux-musl
 echo "Set environment variables for build"
 export PKG_CONFIG_ALLOW_CROSS=1
 export CFLAGS="-I/usr/include"
-export LDFLAGS="-L/usr/lib"
+export LDFLAGS="-L/usr/lib -static"
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
+export OPENSSL_STATIC=1
 export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib"
 
 
