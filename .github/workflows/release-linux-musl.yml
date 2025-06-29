@@ -77,7 +77,7 @@ jobs:
             echo "Installed packages:" &&
               apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf" &&
             echo "Searching for .pc files..." &&
-              find / -name "gtk-4.0.pc" -o -name "libadwaita-1.0.pc" &&
+              find / -name "gtk*.pc" -o -name "libadwaita*.pc" &&
             # Set PKG_CONFIG_PATH with common Alpine paths
               export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig" &&
             # Dynamically add .pc file directories if found
