@@ -56,6 +56,7 @@ jobs:
             -e OUTPUT_DIR="${{ env.OUTPUT_DIR }}" \
             -e FEATURES="${{ matrix.features }}" \
             -e TARGET="${{ matrix.target }}" \
+            -e OUTPUT=true \
             rust:alpine /bin/sh /usr/src/app/docker.sh
           echo "Listing output directory on host:"
           ls -l ${{ env.OUTPUT_DIR }}
@@ -110,7 +111,7 @@ jobs:
 
           [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
           ls -l ${{ env.OUTPUT_DIR }}
-          sudo chmod +x "$BIN"
+          chmod +x "$BIN"
           $BIN & PID=$!
           for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
           kill $PID 2>/dev/null || true

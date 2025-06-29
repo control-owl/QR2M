@@ -8,6 +8,7 @@ echo "Checking environment variables..."
 [ -z "$OUTPUT_DIR" ] && { echo "Error: Environment variable OUTPUT_DIR is not set"; exit 1; }
 [ -z "$FEATURES" ] && { echo "Error: Environment variable FEATURES is not set"; exit 1; }
 [ -z "$TARGET" ] && { echo "Error: Environment variable TARGET is not set"; exit 1; }
+#[ -z "$OUTPUT" ] && { echo "Error: Environment variable OUTPUT is not set"; exit 1; }
 
 
 echo "Environment variables:"
@@ -93,34 +94,20 @@ echo "Building project..."
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
 cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 
-echo "Define binary and signature paths"
-BIN="$APP_PATH/$APP_NAME"
-SIG="$OUTPUT_DIR/$APP_NAME-$FEATURES.sig"
-
-echo "Listing target directory:"
+echo "Listing build directory:"
 ls -l "$APP_PATH"
+
+echo "Checking binary:"
+export BIN="$APP_PATH/$APP_NAME"
 [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
 file "$BIN"
 ldd "$BIN"
-#chmod +x "$BIN"
-#
-#echo "Generating signature at $SIG..."
-#"$BIN" || { echo "Error: Binary execution failed with code $?"; exit 1; } &
-#PID=$!
-#for i in $(seq 1 30); do
-#  if [ -f "$SIG" ]; then
-#    break
-#  fi
-#  sleep 1
-#done
-#kill $PID 2>/dev/null || true
-#[ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
-#echo "Signature generated at: $SIG"
 
-echo "Copying files to $OUTPUT_DIR..."
-mkdir -p "$OUTPUT_DIR"
-cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
-#cp "$SIG" "$OUTPUT_DIR/$APP_NAME-$FEATURES.sig" || { echo "Error: Failed to copy $SIG to $OUTPUT_DIR/$APP_NAME-$FEATURES.sig"; exit 1; }
+if [ "$OUTPUT" = "true" ]; then
+  echo "Copying files to $OUTPUT_DIR..."
+  mkdir -p "$OUTPUT_DIR"
+  cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
 
-echo "Listing output directory in container:"
-ls -l "$OUTPUT_DIR"
+  echo "Listing output directory:"
+  ls -l "$OUTPUT_DIR"
+fi
