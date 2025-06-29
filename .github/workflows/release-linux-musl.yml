@@ -103,10 +103,25 @@ jobs:
             cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose &&
             cargo test --release --locked --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}" &&
             export BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}" &&
-            file "$BIN" &&
-            ldd "$BIN" &&
-            mkdir -p "${{ env.OUTPUT_DIR }}" &&
-            cp "$BIN" ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}
+            # List target directory
+              echo "Listing target directory:" &&
+              ls -l "${{ env.APP_PATH }}" &&
+            # Verify binary
+              [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; } &&
+              file "$BIN" &&
+              ldd "$BIN" &&
+            # Copy binary to output directory
+              cp "$BIN" "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" ||
+                { echo "Error: Failed to copy $BIN to ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"; exit 1; } &&
+            # Generate signature file
+              export SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig" &&
+              chmod +x "$BIN" && # Ensure binary is executable
+              echo "Generating signature by running $BIN..." &&
+              "$BIN" & PID=$! &&
+              for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done &&
+              kill $PID 2>/dev/null || true &&
+              [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; } &&
+              echo "Signature generated at: $SIG"
           '
 
       - name: "Extract version number"
@@ -152,40 +167,28 @@ jobs:
               echo "Tag $VERSION already exists, skipping"
           fi
 
-      - name: "Generate signature file"
-        run: |
-          BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"
-          SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
-
-          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
-          $BIN & PID=$!
-          for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
-          kill $PID 2>/dev/null || true
-          [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
-          echo "Signature generated at: $SIG"
+#      - name: "Generate signature file"
+#        run: |
+#          BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"
+#          SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
+#
+#          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
+#          $BIN & PID=$!
+#          for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
+#          kill $PID 2>/dev/null || true
+#          [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
+#          echo "Signature generated at: $SIG"
           
 
       - name: Prepare release files
         run: |
-          BIN_DIR="target/${{ matrix.target }}/release"
           OUTPUT_BIN="${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}"
-          SIG_FILE="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
-          TAR_FILE="$OUTPUT_BIN-${{ matrix.target }}.tar.gz"
+          TAR_FILE="${{ env.OUTPUT_DIR }}/${OUTPUT_BIN}-${{ matrix.target }}.tar.gz"
           
-          strip "$BIN_DIR/${{ env.APP_NAME }}" &&
-          mkdir -p "${{ env.OUTPUT_DIR }}" &&
-        
-          cp "$BIN_DIR/${{ env.APP_NAME }}" "${{ env.OUTPUT_DIR }}/$OUTPUT_BIN" &&
-          cp "$BIN_DIR/$SIG_FILE" "${{ env.OUTPUT_DIR }}" &&
-          LIBS="$(ldd $BIN_DIR/${{ env.APP_NAME }}" | grep -o "/[^ ]*" || true)
-          [ -n "$LIBS" ] && {
-            mkdir -p "${{ env.OUTPUT_DIR }}/lib"
-            for LIB in "$LIBS"; do cp "$LIB" "${{ env.OUTPUT_DIR }}/lib/" || echo "Warning: Could not copy $LIB"; done
-          }
-          tar -czf "${{ env.OUTPUT_DIR }}/$TAR_FILE" \
-            -C "${{ env.OUTPUT_DIR }}" "$OUTPUT_BIN" "$SIG_FILE" \
-            -C ../.. Changelog.md LICENSE.txt \
-            -C "${{ env.OUTPUT_DIR }}" lib
+          strip "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" || echo "Warning: strip failed"
+          tar -czf "$TAR_FILE" \
+            -C "${{ env.OUTPUT_DIR }}" "${{ env.APP_NAME }}-${{ matrix.features }}" "${{ env.APP_NAME }}-${{ matrix.features }}.sig" \
+            -C "${{ github.workspace }}" Changelog.md LICENSE.txt
 
       - name: "Upload to GitHub Releases"
         uses: softprops/action-gh-release@v2
