@@ -56,7 +56,7 @@ jobs:
             -e OUTPUT_DIR="${{ env.OUTPUT_DIR }}" \
             -e FEATURES="${{ matrix.features }}" \
             -e TARGET="${{ matrix.target }}" \
-            -e OUTPUT=true \
+            -e OUTPUT="true" \
             rust:alpine /bin/sh /usr/src/app/docker.sh
           echo "Listing output directory on host:"
           ls -l ${{ env.OUTPUT_DIR }}
@@ -109,12 +109,15 @@ jobs:
           BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}"
           SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
 
-          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
           ls -l ${{ env.OUTPUT_DIR }}
-          chmod +x "$BIN"
+          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
+          
           $BIN & PID=$!
+          
           for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
           kill $PID 2>/dev/null || true
+          
+          ls -l ${{ env.OUTPUT_DIR }}
           [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
           echo "Signature generated at: $SIG"
 

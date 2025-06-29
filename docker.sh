@@ -50,11 +50,13 @@ apk add --no-cache \
   curl \
   file
 
+
 echo "Verifying installed packages..."
 apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file" || {
   echo "Error: Key packages not installed"
   exit 1
 }
+
 
 echo "Capturing .pc file paths..."
 GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' | sed "s|^|/|")
@@ -64,9 +66,11 @@ echo "ADWAITA=$ADWAITA"
 [ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; }
 [ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; }
 
+
 echo "Renaming .pc files..."
 cp "$GTK4" "$(dirname "$GTK4")/gtk-4.0.pc" || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
 cp "$ADWAITA" "$(dirname "$ADWAITA")/libadwaita-1.0.pc" || { echo "Error: Failed to rename libadwaita-1.pc"; exit 1; }
+
 
 echo "Set PKG_CONFIG_PATH"
 export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
@@ -75,11 +79,15 @@ LIBADWAITA_PC_PATH=$(dirname "$ADWAITA")
 export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:$PKG_CONFIG_PATH"
 echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
+
 echo "Checking pkg-config versions..."
 pkg-config --modversion gtk-4.0 || { echo "Error: gtk-4.0 not found"; exit 1; }
 pkg-config --modversion libadwaita-1.0 || { echo "Error: libadwaita-1.0 not found"; exit 1; }
 
+
+echo "Install Rust MUSL target"
 rustup target add x86_64-unknown-linux-musl
+
 
 echo "Set environment variables for build"
 export PKG_CONFIG_ALLOW_CROSS=1
@@ -90,18 +98,22 @@ export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
 export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib"
 
+
 echo "Building project..."
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
 cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 
+
 echo "Listing build directory:"
 ls -l "$APP_PATH"
+
 
 echo "Checking binary:"
 export BIN="$APP_PATH/$APP_NAME"
 [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
 file "$BIN"
 ldd "$BIN"
+
 
 if [ "$OUTPUT" = "true" ]; then
   echo "Copying files to $OUTPUT_DIR..."
