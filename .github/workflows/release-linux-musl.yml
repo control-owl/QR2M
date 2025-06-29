@@ -105,6 +105,7 @@ jobs:
             export BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}" &&
             file "$BIN" &&
             ldd "$BIN" &&
+            mkdir -p "${{ env.OUTPUT_DIR }}" &&
             cp "$BIN" ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}
           '
 
