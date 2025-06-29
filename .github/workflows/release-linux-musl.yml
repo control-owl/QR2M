@@ -84,10 +84,6 @@ jobs:
               echo "ADWAITA=$ADWAITA" &&
               [ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; } &&
               [ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; } &&
-                cp "$GTK4" "$(dirname "$GTK4")/gtk-4.0.pc" && echo "Renamed $GTK4 to gtk-4.0.pc" ||
-              { echo "Error: Failed to rename gtk4.pc"; exit 1; } &&
-              cp "$ADWAITA" "$(dirname "$ADWAITA")/libadwaita-1.0.pc" && echo "Renamed $ADWAITA to libadwaita-1.0.pc" ||
-              { echo "Error: Failed to rename libadwaita-1.pc"; exit 1; } &&
               export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig" &&
               GTK_PC_PATH=$(dirname "$GTK4") &&
               LIBADWAITA_PC_PATH=$(dirname "$ADWAITA") &&
