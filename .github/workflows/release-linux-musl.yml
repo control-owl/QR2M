@@ -103,19 +103,19 @@ jobs:
               echo "Tag $VERSION already exists, skipping"
           fi
 
-#      - name: "Generate signature file"
-#        run: |
-#          BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}"
-#          SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
-#
-#          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
-#          ls -l ${{ env.OUTPUT_DIR }}
-#          sudo chmod +x "$BIN"
-#          $BIN & PID=$!
-#          for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
-#          kill $PID 2>/dev/null || true
-#          [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
-#          echo "Signature generated at: $SIG"
+      - name: "Generate signature file"
+        run: |
+          BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}"
+          SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
+
+          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
+          ls -l ${{ env.OUTPUT_DIR }}
+          sudo chmod +x "$BIN"
+          $BIN & PID=$!
+          for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
+          kill $PID 2>/dev/null || true
+          [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
+          echo "Signature generated at: $SIG"
 
       - name: Prepare release files
         run: |
