@@ -4,12 +4,12 @@
 set -e
 
 # Check required environment variables
-for var in APP_NAME APP_PATH OUTPUT_DIR FEATURES TARGET; do
-  if [ -z "${!var}" ]; then
-    echo "Error: Environment variable $var is not set"
-    exit 1
-  fi
-done
+echo "Checking environment variables..."
+[ -z "$APP_NAME" ] && { echo "Error: Environment variable APP_NAME is not set"; exit 1; }
+[ -z "$APP_PATH" ] && { echo "Error: Environment variable APP_PATH is not set"; exit 1; }
+[ -z "$OUTPUT_DIR" ] && { echo "Error: Environment variable OUTPUT_DIR is not set"; exit 1; }
+[ -z "$FEATURES" ] && { echo "Error: Environment variable FEATURES is not set"; exit 1; }
+[ -z "$TARGET" ] && { echo "Error: Environment variable TARGET is not set"; exit 1; }
 
 # Log environment variables for debugging
 echo "Environment variables:"
@@ -18,6 +18,7 @@ echo "APP_PATH=$APP_PATH"
 echo "OUTPUT_DIR=$OUTPUT_DIR"
 echo "FEATURES=$FEATURES"
 echo "TARGET=$TARGET"
+echo "Running docker.sh from $(pwd)"
 
 # Set up Alpine repositories
 echo "Setting up Alpine repositories..."
