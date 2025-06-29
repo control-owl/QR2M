@@ -112,7 +112,7 @@ jobs:
               ldd "$BIN" &&
             # Copy binary to output directory
               cp "$BIN" "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" ||
-                { echo "Error: Failed to copy $BIN to ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"; exit 1; } &&
+                { echo "Error: Failed to copy $BIN to ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"; exit 1; }
           '
 
       - name: "Extract version number"
