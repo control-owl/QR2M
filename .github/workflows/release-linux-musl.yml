@@ -113,15 +113,6 @@ jobs:
             # Copy binary to output directory
               cp "$BIN" "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" ||
                 { echo "Error: Failed to copy $BIN to ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"; exit 1; } &&
-            # Generate signature file
-              export SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig" &&
-              chmod +x "$BIN" && # Ensure binary is executable
-              echo "Generating signature by running $BIN..." &&
-              "$BIN" & PID=$! &&
-              for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done &&
-              kill $PID 2>/dev/null || true &&
-              [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; } &&
-              echo "Signature generated at: $SIG"
           '
 
       - name: "Extract version number"
@@ -167,22 +158,22 @@ jobs:
               echo "Tag $VERSION already exists, skipping"
           fi
 
-#      - name: "Generate signature file"
-#        run: |
-#          BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"
-#          SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
-#
-#          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
-#          $BIN & PID=$!
-#          for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
-#          kill $PID 2>/dev/null || true
-#          [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
-#          echo "Signature generated at: $SIG"
+      - name: "Generate signature file"
+        run: |
+          BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"
+          SIG="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig"
+
+          [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
+          $BIN & PID=$!
+          for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done
+          kill $PID 2>/dev/null || true
+          [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; }
+          echo "Signature generated at: $SIG"
           
 
       - name: Prepare release files
         run: |
-          OUTPUT_BIN="${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}"
+          OUTPUT_BIN="${{ env.APP_NAME }}-${{ matrix.features }}"
           TAR_FILE="${{ env.OUTPUT_DIR }}/${OUTPUT_BIN}-${{ matrix.target }}.tar.gz"
           
           strip "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" || echo "Warning: strip failed"
