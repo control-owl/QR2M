@@ -73,24 +73,29 @@ jobs:
               freetype-dev \
               openssl-dev \
               curl &&
-            rustup target add x86_64-unknown-linux-musl &&
-            echo "Installed packages:" &&
+            # List installed packages
+              echo "Installed packages:" &&
               apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf" &&
-            echo "Searching for .pc files..." &&
-              find / -name "gtk4.pc" -o -name "libadwaita-1.pc" &&
-            # Set PKG_CONFIG_PATH with common Alpine paths
-              export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig" &&
-            # Dynamically add .pc file directories if found
-              GTK_PC_PATH=$(find / -name "gtk4.pc" -exec dirname {} \; 2>/dev/null || echo "") &&
-              LIBADWAITA_PC_PATH=$(find / -name "libadwaita-1.pc" -exec dirname {} \; 2>/dev/null || echo "") &&
-              [ -n "$GTK_PC_PATH" ] && export PKG_CONFIG_PATH="$GTK_PC_PATH:$PKG_CONFIG_PATH" &&
-              [ -n "$LIBADWAITA_PC_PATH" ] && export PKG_CONFIG_PATH="$LIBADWAITA_PC_PATH:$PKG_CONFIG_PATH" &&
+            # Find .pc files
+              echo "Listing .pc files for gtk4 and libadwaita:" &&
+              GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' || echo "") &&
+              ADWAITA=$(apk info -L libadwaita-dev | grep -E '/libadwaita-1\.pc$' || echo "") &&
+              echo "GTK4=$GTK4" &&
+              echo "ADWAITA=$ADWAITA" &&
+              [ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; } &&
+              [ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; } &&
+                cp "$GTK4" "$(dirname "$GTK4")/gtk-4.0.pc" && echo "Renamed $GTK4 to gtk-4.0.pc" ||
+              { echo "Error: Failed to rename gtk4.pc"; exit 1; } &&
+              cp "$ADWAITA" "$(dirname "$ADWAITA")/libadwaita-1.0.pc" && echo "Renamed $ADWAITA to libadwaita-1.0.pc" ||
+              { echo "Error: Failed to rename libadwaita-1.pc"; exit 1; } &&
+              export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig" &&
+              GTK_PC_PATH=$(dirname "$GTK4") &&
+              LIBADWAITA_PC_PATH=$(dirname "$ADWAITA") &&
+              export PKG_CONFIG_PATH="$GTK_PC_PATH:$LIBADWAITA_PC_PATH:$PKG_CONFIG_PATH" &&
               echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" &&
-            # Debug: Verify pkg-config
-              echo "Checking pkg-config versions..." &&
-              pkg-config --modversion gtk-4 || { echo "Error: gtk-4 not found"; exit 1; } &&
-              pkg-config --modversion libadwaita-1 || { echo "Error: libadwaita-1 not found"; exit 1; } &&
-            echo "Checking pkg-config versions..." &&
+              pkg-config --modversion gtk4 || { echo "Error: gtk-4.0 not found"; exit 1; } &&
+              pkg-config --modversion libadwaita-1 || { echo "Error: libadwaita-1.0 not found"; exit 1; } &&
+            rustup target add x86_64-unknown-linux-musl &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
             export CFLAGS="-I/usr/include" &&
             export LDFLAGS="-L/usr/lib" &&
@@ -98,7 +103,6 @@ jobs:
             export OPENSSL_LIB_DIR=/usr/lib &&
             export OPENSSL_INCLUDE_DIR=/usr/include &&
             export RUSTFLAGS="-C target-feature=-crt-static -C link-args=-Wl,-rpath,/usr/lib" &&
-            pkg-config --modversion gtk-4.0 libadwaita-1.0 &&
             cargo build --release --target x86_64-unknown-linux-musl --features "${{ matrix.features }}" --locked --verbose &&
             cargo test --release --locked --no-fail-fast --target ${{ matrix.target }} --features "${{ matrix.features }}" &&
             export BIN="${{ env.APP_PATH }}/${{ env.APP_NAME }}" &&
