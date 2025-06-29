@@ -88,8 +88,8 @@ jobs:
               echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" &&
             # Debug: Verify pkg-config
               echo "Checking pkg-config versions..." &&
-              pkg-config --modversion gtk-4.0 || { echo "Error: gtk-4.0 not found"; exit 1; } &&
-              pkg-config --modversion libadwaita-1.0 || { echo "Error: libadwaita-1.0 not found"; exit 1; } &&
+              pkg-config --modversion gtk-4 || { echo "Error: gtk-4 not found"; exit 1; } &&
+              pkg-config --modversion libadwaita-1 || { echo "Error: libadwaita-1 not found"; exit 1; } &&
             echo "Checking pkg-config versions..." &&
             export PKG_CONFIG_ALLOW_CROSS=1 &&
             export CFLAGS="-I/usr/include" &&
