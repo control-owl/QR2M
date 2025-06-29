@@ -113,8 +113,8 @@ jobs:
               chmod +x "$BIN" &&
             # Create signature file
               SIG="${{ env.APP_PATH }}/${{ env.APP_NAME }}-${{ matrix.features }}.sig" &&
-              $BIN & PID=$! &&
-              for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done &&
+              { $BIN & PID=$! } &&
+              { for i in {1..30}; do [ -f "$SIG" ] && break; sleep 1; done } &&
               { kill $PID 2>/dev/null || true; } &&
               { [ -f "$SIG" ] || { echo "Error: SIG file not found at $SIG"; exit 1; } } &&
               echo "Signature generated at: $SIG" &&
