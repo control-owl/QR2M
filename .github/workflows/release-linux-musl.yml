@@ -112,7 +112,7 @@ jobs:
               ldd "$BIN" &&
             # Copy binary to output directory
               mkdir -p "${{ env.OUTPUT_DIR }}" &&
-              cp "$BIN" "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" ||
+              cp "$BIN" "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}" ||
                 { echo "Error: Failed to copy $BIN to ${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"; exit 1; }
           '
 
@@ -175,13 +175,14 @@ jobs:
 
       - name: Prepare release files
         run: |
-          COMPILED_BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}"
-          RELEASE_BIN="${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-"
+          BIN="${{ env.APP_NAME }}"
+          SIG="${{ env.APP_NAME }}-${{ matrix.features }}.sig"
           TAR_FILE="${{ env.APP_NAME }}-${{ env.VERSION_NUMBER }}-${{ matrix.features }}-${{ matrix.target }}.tar.gz"
           
-          strip "${{ env.OUTPUT_DIR }}/${{ env.APP_NAME }}-${{ matrix.features }}" || echo "Warning: strip failed"
+          strip "${{ env.OUTPUT_DIR }}/$BIN" || echo "Warning: strip failed"
+          
           tar -czf "$TAR_FILE" \
-            -C "${{ env.OUTPUT_DIR }}" "${{ env.APP_NAME }}-${{ matrix.features }}" "${{ env.APP_NAME }}-${{ matrix.features }}.sig" \
+            -C "${{ env.OUTPUT_DIR }}" "$BIN" "$SIG" \
             -C "${{ github.workspace }}" Changelog.md LICENSE.txt
 
       - name: "Upload to GitHub Releases"
