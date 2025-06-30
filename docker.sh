@@ -53,7 +53,7 @@ mkdir -p /compile-circus && cd /compile-circus
 # Install glslc (shader compiler)
 git clone https://github.com/KhronosGroup/glslang.git --depth 1
 cd glslang
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_OPT=OFF
 cmake --build build -j"$(nproc)"
 cp build/StandAlone/glslc /usr/local/bin/
 
