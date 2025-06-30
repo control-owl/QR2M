@@ -33,16 +33,21 @@ apk add --no-cache \
   meson \
   ninja \
   glib-dev \
+  glib-static \
   gtk4.0-dev \
   libadwaita-dev \
   cairo-dev \
+  cairo-static \
   pango-dev \
   gdk-pixbuf-dev \
   harfbuzz-dev \
+  harfbuzz-static \
   graphene-dev \
   vulkan-loader-dev \
   fontconfig-dev \
   freetype-dev \
+  gettext-dev \
+  gettext-static \
   openssl-dev \
   openssl-libs-static \
   curl \
