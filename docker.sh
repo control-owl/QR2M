@@ -51,14 +51,14 @@ apk add --no-cache \
   openssl-libs-static \
   curl \
   file
-  
+
   #gtk4.0-dev \
-git clone https://gitlab.gnome.org/GNOME/gtk.git
+git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
 cd gtk
-mkdir build && cd build
-meson .. --buildtype=release -Dstatic=true -Dgtk_doc=false -Dtests=false
-ninja
-ninja install
+mkdir builddir
+meson setup builddir -Dbuild-tests=false -Dmedia-gstreamer=disabled
+meson install -C builddir
+
 
 echo "Verifying installed packages..."
 apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file" || {
