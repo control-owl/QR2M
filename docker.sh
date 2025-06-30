@@ -25,49 +25,42 @@ echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/reposit
 echo "Installing fucking dependencies"
 apk update
 apk add --no-cache \
-  bash curl build-base git cmake ninja meson \
-    pkgconf-dev musl-dev \
-    gettext-dev gettext-static \
-    openssl-dev openssl-libs-static \
-    glib-dev glib-static \
-    cairo-dev cairo-static \
-    pango-dev \
-    harfbuzz-dev harfbuzz-static \
-    fontconfig-dev \
-    gdk-pixbuf-dev \
-    libxml2-dev libxml2-static \
-    libx11-dev libxrandr-dev libxrender-dev libxext-dev \
-    libxfixes-dev libxcursor-dev libxi-dev \
-    libadwaita-dev \
-    librsvg-dev \
-    vulkan-loader-dev \
-    zlib-static \
-    xz-dev \
-    glslang glslang-dev glslang-static
+  musl-dev \
+  pkgconf-dev \
+  gtk4.0-dev \
+  libadwaita-dev \
+  glib-static \
+  cairo-static \
+  pango-static \
+  harfbuzz-static \
+  libxml2-static \
+  openssl-libs-static \
+  zlib-static \
+  glslang-static
 
 
-echo "START COMPILE CIRCUS"
-mkdir -p /compile-circus && cd /compile-circus
-
-
-# Install glslc (shader compiler)
-git clone https://github.com/KhronosGroup/glslang.git --depth 1
-cd glslang
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_OPT=OFF -DBUILD_GLSLC=ON
-cmake --build build -j"$(nproc)"
-ls -l build/StandAlone/
-cp build/StandAlone/glslc /usr/local/bin/
-glslc --version || { echo "ERROR: glslc build failed"; exit 1; }
-
-cd /compile-circus
-git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
-cd gtk
-mkdir builddir
-meson setup builddir
-meson install -C builddir
-
-
-echo "END COMPILE CIRCUS"
+#echo "START COMPILE CIRCUS"
+#mkdir -p /compile-circus && cd /compile-circus
+#
+#
+## Install glslc (shader compiler)
+#git clone https://github.com/KhronosGroup/glslang.git --depth 1
+#cd glslang
+#cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_OPT=OFF -DBUILD_GLSLC=ON
+#cmake --build build -j"$(nproc)"
+#ls -l build/StandAlone/
+#cp build/StandAlone/glslc /usr/local/bin/
+#glslc --version || { echo "ERROR: glslc build failed"; exit 1; }
+#
+#cd /compile-circus
+#git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
+#cd gtk
+#mkdir builddir
+#meson setup builddir
+#meson install -C builddir
+#
+#
+#echo "END COMPILE CIRCUS"
 
 
 echo "Verifying installed packages..."
