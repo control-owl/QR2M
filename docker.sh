@@ -42,7 +42,8 @@ apk add --no-cache \
     librsvg-dev \
     vulkan-loader-dev \
     zlib-static \
-    xz-dev
+    xz-dev \
+    glslang glslang-dev glslang-static
 
 
   #gtk4.0-dev \

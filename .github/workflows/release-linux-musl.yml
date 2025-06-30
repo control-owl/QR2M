@@ -57,7 +57,7 @@ jobs:
             -e FEATURES="${{ matrix.features }}" \
             -e TARGET="${{ matrix.target }}" \
             -e OUTPUT="true" \
-             clux/muslrust:stable /bin/sh /usr/src/app/docker.sh
+            rust:alpine /bin/sh /usr/src/app/docker.sh
           echo "Listing output directory on host:"
           ls -l ${{ env.OUTPUT_DIR }}
 
