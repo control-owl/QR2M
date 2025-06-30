@@ -2,20 +2,18 @@
 set -e
 
 
-echo "Checking environment variables..."
+echo "Environment variables:"
 [ -z "$APP_NAME" ] && { echo "Error: Environment variable APP_NAME is not set"; exit 1; }
 [ -z "$APP_PATH" ] && { echo "Error: Environment variable APP_PATH is not set"; exit 1; }
 [ -z "$OUTPUT_DIR" ] && { echo "Error: Environment variable OUTPUT_DIR is not set"; exit 1; }
 [ -z "$FEATURES" ] && { echo "Error: Environment variable FEATURES is not set"; exit 1; }
 [ -z "$TARGET" ] && { echo "Error: Environment variable TARGET is not set"; exit 1; }
-
-
-echo "Environment variables:"
 echo "APP_NAME=$APP_NAME"
 echo "APP_PATH=$APP_PATH"
 echo "OUTPUT_DIR=$OUTPUT_DIR"
 echo "FEATURES=$FEATURES"
 echo "TARGET=$TARGET"
+echo "OUTPUT=$OUTPUT"
 echo "Running docker.sh from $(pwd)"
 
 
@@ -46,6 +44,7 @@ apk add --no-cache \
   fontconfig-dev \
   freetype-dev \
   openssl-dev \
+  openssl-libs-static \
   curl \
   file
 
@@ -91,6 +90,7 @@ pkg-config --modversion gtk-4.0 || { echo "Error: gtk-4.0 not found"; exit 1; }
 pkg-config --modversion libadwaita-1.0 || { echo "Error: libadwaita-1.0 not found"; exit 1; }
 pkg-config --libs --cflags openssl || { echo "Error: OpenSSL pkg-config not found"; exit 1; }
 
+
 echo "Install Rust MUSL target"
 rustup target add x86_64-unknown-linux-musl
 
@@ -103,7 +103,7 @@ export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
 export OPENSSL_STATIC=1
-export RUSTFLAGS="-C target-feature=+crt-static"
+export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
 
 
 echo "Building project..."
@@ -122,11 +122,12 @@ file "$BIN"
 ldd "$BIN"
 chmod +x "$BIN"
 
+
 if [ "$OUTPUT" = "true" ]; then
   echo "Copying files to $OUTPUT_DIR..."
   mkdir -p "$OUTPUT_DIR"
   cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
-  chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME-$FEATURES"; exit 1; }
+  chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME"; exit 1; }
 
   echo "Listing output directory:"
   ls -l "$OUTPUT_DIR"
