@@ -22,42 +22,27 @@ echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories
 echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
 
 
-echo "Installing system dependencies"
+echo "Installing fucking dependencies"
 apk update
 apk add --no-cache \
-  musl-dev \
-  pkgconf \
-  pkgconf-dev \
-  git \
-  cmake \
-  meson \
-  ninja \
-  glib-dev \
-  glib-static \
-  libadwaita-dev \
-  cairo-dev \
-  cairo-static \
-  pango-dev \
-  gdk-pixbuf-dev \
-  harfbuzz-dev \
-  harfbuzz-static \
-  graphene-dev \
-  vulkan-loader-dev \
-  fontconfig-dev \
-  freetype-dev \
-  gettext-dev \
-  gettext-static \
-  openssl-dev \
-  openssl-libs-static \
-  curl \
-  file \
-  libxrandr-dev \
-  libxml2-static \
-  libxml2-dev \
-  librsvg-dev \
-  libxcursor-dev \
-  glslang-dev \
-  glslang-static
+  bash curl build-base git cmake ninja meson \
+    pkgconf-dev musl-dev \
+    gettext-dev gettext-static \
+    openssl-dev openssl-libs-static \
+    glib-dev glib-static \
+    cairo-dev cairo-static \
+    pango-dev \
+    harfbuzz-dev harfbuzz-static \
+    fontconfig-dev \
+    gdk-pixbuf-dev \
+    libxml2-dev libxml2-static \
+    libx11-dev libxrandr-dev libxrender-dev libxext-dev \
+    libxfixes-dev libxcursor-dev libxi-dev \
+    libadwaita-dev \
+    librsvg-dev \
+    vulkan-loader-dev \
+    zlib-static \
+    xz-dev
 
 
   #gtk4.0-dev \
@@ -116,17 +101,19 @@ rustup target add x86_64-unknown-linux-musl
 
 echo "Set environment variables for build"
 export PKG_CONFIG_ALLOW_CROSS=1
-export CFLAGS="-I/usr/include"
-export LDFLAGS="-L/usr/lib -L/usr/lib/x86_64-linux-musl"
+#export CFLAGS="-I/usr/include"
+#export LDFLAGS="-L/usr/lib -L/usr/lib/x86_64-linux-musl"
+export CFLAGS="-static -O2 -fPIC"
+export LDFLAGS="-static"
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
 export OPENSSL_STATIC=1
-export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
-
+#export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
+export RUSTFLAGS="-C target-feature=+crt-static -C linker=musl-gcc"
 
 echo "Building project..."
-cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
+cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv
 #cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 
 
