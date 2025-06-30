@@ -17,26 +17,20 @@ echo "OUTPUT=$OUTPUT"
 echo "Running docker.sh from $(pwd)"
 
 
-echo "Setting up Alpine repositories..."
-echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories
-echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
+#echo "Setting up Alpine repositories..."
+#echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories
+#echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
 
 
 echo "Installing fucking dependencies"
-apk update
-apk add --no-cache \
-  musl-dev \
-  pkgconf-dev \
-  gtk4.0-dev \
-  libadwaita-dev \
-  glib-static \
-  cairo-static \
-  pango-static \
-  harfbuzz-static \
-  libxml2-static \
-  openssl-libs-static \
-  zlib-static \
-  glslang-static
+apt-get update && apt-get install -y \
+    musl-tools \
+    pkg-config \
+    libgtk-4-dev \
+    libglib2.0-dev \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libgdk-pixbuf2.0-dev \
 
 
 #echo "START COMPILE CIRCUS"
