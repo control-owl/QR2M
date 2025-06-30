@@ -50,15 +50,16 @@ echo "START COMPILE CIRCUS"
 mkdir -p /compile-circus && cd /compile-circus
 
 
-# Install glslc (shader compiler) I have no idea WTF is a shader
-git clone --recursive https://github.com/google/shaderc.git
-cd shaderc
-git submodule update --init --recursive --depth 1
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSHADERC_SKIP_TESTS=ON
+# Install glslc (shader compiler)
+git clone https://github.com/KhronosGroup/glslang.git --depth 1
+cd glslang
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_OPT=OFF
 cmake --build build -j"$(nproc)"
-cp build/glslc/glslc /usr/local/bin/
-glslc --version || { echo "ERROR: glslc build failed"; exit 1; }
+ls -l build/
+ls -l build/StandAlone/
 
+cp build/StandAlone/glslc /usr/local/bin/
+glslc --version || { echo "ERROR: glslc build failed"; exit 1; }
 
 cd /compile-circus
 git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
