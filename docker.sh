@@ -55,7 +55,8 @@ apk add --no-cache \
   libxml2-static \
   libxml2-dev \
   librsvg-dev \
-  libxcursor-dev
+  libxcursor-dev \
+  glslang-dev
 
 
   #gtk4.0-dev \
