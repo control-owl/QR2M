@@ -45,17 +45,20 @@ apk add --no-cache \
     xz-dev \
     glslang glslang-dev glslang-static
 
-  #gtk4.0-dev \
 
-
+echo "START COMPILE CIRCUS"
 mkdir -p /compile-circus && cd /compile-circus
 
-# Install glslc (shader compiler)
-git clone https://github.com/KhronosGroup/glslang.git --depth 1
-cd glslang
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_OPT=OFF
+
+# Install glslc (shader compiler) I have no idea WTF is a shader
+git clone --depth 1 https://github.com/google/shaderc.git
+cd shaderc
+git submodule update --init --depth 1
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSHADERC_SKIP_TESTS=ON
 cmake --build build -j"$(nproc)"
-cp build/StandAlone/glslc /usr/local/bin/
+cp build/glslc/glslc /usr/local/bin/
+glslc --version || { echo "ERROR: glslc build failed"; exit 1; }
+
 
 cd /compile-circus
 git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
@@ -63,6 +66,9 @@ cd gtk
 mkdir builddir
 meson setup builddir
 meson install -C builddir
+
+
+echo "END COMPILE CIRCUS"
 
 
 echo "Verifying installed packages..."
