@@ -51,9 +51,9 @@ mkdir -p /compile-circus && cd /compile-circus
 
 
 # Install glslc (shader compiler) I have no idea WTF is a shader
-git clone --depth 1 https://github.com/google/shaderc.git
+git clone --recursive https://github.com/google/shaderc.git
 cd shaderc
-git submodule update --init --depth 1
+git submodule update --init --recursive --depth 1
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSHADERC_SKIP_TESTS=ON
 cmake --build build -j"$(nproc)"
 cp build/glslc/glslc /usr/local/bin/
