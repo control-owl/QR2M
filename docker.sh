@@ -45,12 +45,23 @@ apk add --no-cache \
     xz-dev \
     glslang glslang-dev glslang-static
 
-
   #gtk4.0-dev \
+
+
+mkdir -p /compile-circus && cd /compile-circus
+
+# Install glslc (shader compiler)
+git clone https://github.com/KhronosGroup/glslang.git --depth 1
+cd glslang
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+cp build/StandAlone/glslc /usr/local/bin/
+
+cd /compile-circus
 git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
 cd gtk
 mkdir builddir
-meson setup builddir -Dbuild-tests=false -Dmedia-gstreamer=disabled
+meson setup builddir
 meson install -C builddir
 
 
