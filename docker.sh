@@ -50,7 +50,12 @@ apk add --no-cache \
   openssl-dev \
   openssl-libs-static \
   curl \
-  file
+  file \
+  libxrandr-dev \
+  libxml2-static \
+  libxml2-dev \
+  librsvg-dev
+
 
   #gtk4.0-dev \
 git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
