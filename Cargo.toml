@@ -35,19 +35,24 @@ dashmap = "7.0.0-rc2"
 num_cpus = "1.17.0"
 rayon = "1.10.0"
 
-tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros", "sync"], optional = true }
+tokio = { version = "1.45.1", features = [
+    "rt-multi-thread",
+    "macros",
+    "sync",
+], optional = true }
 native-tls = { version = "0.2.14", optional = true }
 ed25519-dalek = { version = "2.1.1", optional = true }
 reqwest = { version = "0.12.18", features = [
     "json",
     "rustls-tls",
 ], optional = true, default-features = false }
+openssl = { version = "0.10.73", features = ["vendored"], optional = true }
 
 
 [features]
 default = []
 offline = []
-full = ["reqwest", "native-tls"]
+full = ["reqwest", "native-tls", "openssl"]
 dev = ["full", "ed25519-dalek", "tokio"]
 
 

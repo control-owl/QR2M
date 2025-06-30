@@ -34,7 +34,7 @@ apk add --no-cache \
   ninja \
   glib-dev \
   glib-static \
-  gtk4.0-dev \
+  #gtk4.0-dev \
   libadwaita-dev \
   cairo-dev \
   cairo-static \
@@ -53,6 +53,12 @@ apk add --no-cache \
   curl \
   file
 
+git clone https://gitlab.gnome.org/GNOME/gtk.git
+cd gtk
+mkdir build && cd build
+meson .. --buildtype=release -Dstatic=true -Dgtk_doc=false -Dtests=false
+ninja
+ninja install
 
 echo "Verifying installed packages..."
 apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file" || {
