@@ -34,7 +34,6 @@ apk add --no-cache \
   ninja \
   glib-dev \
   glib-static \
-  #gtk4.0-dev \
   libadwaita-dev \
   cairo-dev \
   cairo-static \
@@ -52,7 +51,8 @@ apk add --no-cache \
   openssl-libs-static \
   curl \
   file
-
+  
+  #gtk4.0-dev \
 git clone https://gitlab.gnome.org/GNOME/gtk.git
 cd gtk
 mkdir build && cd build
