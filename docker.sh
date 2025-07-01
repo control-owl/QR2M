@@ -45,9 +45,7 @@ apk add --no-cache \
     xz-dev \
     glslang glslang-dev glslang-static \
     shaderc-static shaderc-dev \
-    flex-dev flex-libscompile-circus-11
-
-
+    flex-dev flex-libs
 
 
 echo "START COMPILE CIRCUS"
