@@ -43,7 +43,8 @@ apk add --no-cache \
     vulkan-loader-dev vulkan-tools \
     zlib-static \
     xz-dev \
-    glslang glslang-dev glslang-static
+    glslang glslang-dev glslang-static \
+    shaderc-static shaderc-dev
 
 
 echo "START COMPILE CIRCUS"
