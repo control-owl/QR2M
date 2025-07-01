@@ -45,7 +45,8 @@ apk add --no-cache \
     xz-dev \
     glslang glslang-dev glslang-static \
     shaderc-static shaderc-dev \
-    flex-dev flex-libs
+    flex-dev flex-libs \
+    bison
 
 
 echo "START COMPILE CIRCUS"
@@ -157,3 +158,68 @@ if [ "$OUTPUT" = "true" ]; then
   echo "Listing output directory:"
   ls -l "$OUTPUT_DIR"
 fi
+
+
+# ALL GTK4 deps in Arch Linux
+# Dependencies (61)
+# adwaita-fonts
+# adwaita-icon-theme
+# at-spi2-core
+# bash
+# cairo
+# dconf
+# desktop-file-utils
+# fontconfig
+# fribidi
+# gcc-libs
+# gdk-pixbuf2
+# glib2
+# glibc
+# graphene
+# gst-plugins-bad-libs
+# gst-plugins-base-libs
+# gstreamer
+# gtk-update-icon-cache
+# harfbuzz
+# iso-codes
+# libcloudproviders
+# libcolord
+# libcups
+# libegl (libglvnd)
+# libepoxy
+# libgl (libglvnd)
+# libjpeg-turbo
+# libpng
+# librsvg
+# libtiff
+# libx11
+# libxcursor
+# libxdamage
+# libxext
+# libxfixes
+# libxi
+# libxinerama
+# libxkbcommon
+# libxrandr
+# libxrender
+# pango
+# shared-mime-info
+# tinysparql
+# vulkan-icd-loader
+# wayland
+# evince (optional) - Default print preview command
+# cantarell-fonts (make)
+# docbook-xsl (make)
+# gi-docgen (make)
+# git (make)
+# glib2-devel (make)
+# gobject-introspection (make)
+# hicolor-icon-theme (make)
+# libsysprof-capture (make)
+# meson (make)
+# python-docutils (make)
+# python-gobject (make)
+# sassc (make)
+# shaderc (make)
+# vulkan-headers (make)
+# wayland-protocols (make)
