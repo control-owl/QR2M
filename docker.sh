@@ -44,7 +44,10 @@ apk add --no-cache \
     zlib-static \
     xz-dev \
     glslang glslang-dev glslang-static \
-    shaderc-static shaderc-dev
+    shaderc-static shaderc-dev \
+    flex-dev flex-libscompile-circus-11
+
+
 
 
 echo "START COMPILE CIRCUS"
@@ -66,7 +69,7 @@ cd gtk
 mkdir builddir
 meson setup builddir
 meson install -C builddir
-
+cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt
 
 echo "END COMPILE CIRCUS"
 
