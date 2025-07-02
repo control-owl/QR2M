@@ -38,7 +38,6 @@ apk add --no-cache \
     pango-dev \
     fontconfig-dev \
     gdk-pixbuf-dev \
-    libadwaita-dev \
     librsvg-dev \
     vulkan-loader-dev vulkan-tools \
     zlib-static \
@@ -79,6 +78,17 @@ meson setup builddir \
   exit 1; }
 echo "Meson setup done"
 meson install -C builddir || { echo "meson install failed. Printing log:"; cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; exit 1; }
+
+
+cd /compile-circus
+git clone https://gitlab.gnome.org/GNOME/libadwaita.git
+cd libadwaita
+meson setup builddir \
+  -Dexamples=false
+  -Dtests=false
+ninja -C builddir
+ninja -C builddir install
+
 echo "END COMPILE CIRCUS"
 
 
@@ -147,7 +157,7 @@ echo "Building project..."
 cd /compile-circus
 git clone https://github.com/control-owl/QR2M
 cd QR2M
-cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv && echo "Cargo build done"
+cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv && echo "Cargo build done" || exit 1
 # cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "$FEATURES" && echo "Cargo test done"
 
 
