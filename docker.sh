@@ -5,11 +5,13 @@ set -e
 echo "Environment variables:"
 [ -z "$APP_NAME" ] && { echo "Error: Environment variable APP_NAME is not set"; exit 1; }
 [ -z "$APP_PATH" ] && { echo "Error: Environment variable APP_PATH is not set"; exit 1; }
+[ -z "$BUILD_PATH" ] && { echo "Error: Environment variable BUILD_PATH is not set"; exit 1; }
 [ -z "$OUTPUT_DIR" ] && { echo "Error: Environment variable OUTPUT_DIR is not set"; exit 1; }
 [ -z "$FEATURES" ] && { echo "Error: Environment variable FEATURES is not set"; exit 1; }
 [ -z "$TARGET" ] && { echo "Error: Environment variable TARGET is not set"; exit 1; }
 echo "APP_NAME=$APP_NAME"
 echo "APP_PATH=$APP_PATH"
+echo "BUILD_PATH=$BUILD_PATH"
 echo "OUTPUT_DIR=$OUTPUT_DIR"
 echo "FEATURES=$FEATURES"
 echo "TARGET=$TARGET"
@@ -51,17 +53,6 @@ apk add --no-cache \
 
 echo "START COMPILE CIRCUS"
 mkdir -p /compile-circus && cd /compile-circus
-
-
-# # Install glslc (shader compiler)
-# git clone https://github.com/KhronosGroup/glslang.git --depth 1
-# cd glslang
-# cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_OPT=OFF -DBUILD_GLSLC=ON
-# cmake --build build -j"$(nproc)"
-# # ls -l build/StandAlone/
-# # cp build/StandAlone/glslc /usr/local/bin/
-# # glslc --version || { echo "ERROR: glslc build failed"; exit 1; }
-
 cd /compile-circus
 git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
 cd gtk
@@ -90,11 +81,6 @@ meson setup builddir \
   exit 1; }
 echo "Meson setup done"
 meson install -C builddir || { echo "meson install failed. Printing log:"; cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; exit 1; }
-echo "Meson install done"
-
-# echo "GTK4 COMPILE OUTPUT:"
-# cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt
-
 echo "END COMPILE CIRCUS"
 
 
@@ -157,18 +143,19 @@ export OPENSSL_STATIC=1
 #export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
 export RUSTFLAGS="-C target-feature=+crt-static -C linker=musl-gcc"
 
+
 echo "Building project..."
 cd "$APP_PATH"
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
-#cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
+cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 
 
 echo "Listing build directory:"
-ls -l "$APP_PATH"
+ls -l "$BUILD_PATH"
 
 
 echo "Checking binary:"
-export BIN="$APP_PATH/$APP_NAME"
+export BIN="$BUILD_PATH/$APP_NAME"
 [ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
 file "$BIN"
 ldd "$BIN"

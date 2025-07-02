@@ -28,7 +28,7 @@ jobs:
 
     env:
       APP_NAME: "QR2M"
-      APP_PATH: "target/${{ matrix.target }}/release"
+      BUILD_PATH: "target/${{ matrix.target }}/release"
       OUTPUT_DIR: "LAB7041/${{ matrix.target }}"
 
     steps:
@@ -52,7 +52,8 @@ jobs:
           mkdir -p ${{ env.OUTPUT_DIR }}
           docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app \
             -e APP_NAME="${{ env.APP_NAME }}" \
-            -e APP_PATH="${{ env.APP_PATH }}" \
+            -e APP_PATH="${{ github.workspace }}" \
+            -e BUILD_PATH="${{ env.BUILD_PATH }}" \
             -e OUTPUT_DIR="${{ env.OUTPUT_DIR }}" \
             -e FEATURES="${{ matrix.features }}" \
             -e TARGET="${{ matrix.target }}" \
