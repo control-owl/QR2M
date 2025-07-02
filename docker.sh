@@ -2,19 +2,48 @@
 set -e
 
 
-echo "Environment variables:"
-[ -z "$APP_NAME" ] && { echo "Error: Environment variable APP_NAME is not set"; exit 1; }
-[ -z "$BUILD_PATH" ] && { echo "Error: Environment variable BUILD_PATH is not set"; exit 1; }
-[ -z "$OUTPUT_DIR" ] && { echo "Error: Environment variable OUTPUT_DIR is not set"; exit 1; }
-[ -z "$FEATURES" ] && { echo "Error: Environment variable FEATURES is not set"; exit 1; }
-[ -z "$TARGET" ] && { echo "Error: Environment variable TARGET is not set"; exit 1; }
-echo "APP_NAME=$APP_NAME"
-echo "BUILD_PATH=$BUILD_PATH"
-echo "OUTPUT_DIR=$OUTPUT_DIR"
-echo "FEATURES=$FEATURES"
-echo "TARGET=$TARGET"
-echo "OUTPUT=$OUTPUT"
-echo "Running docker.sh from $(pwd)"
+check_env_vars() {
+  echo "Checking environment variables..."
+  if [ -z "$APP_NAME" ]; then
+    echo "Error: Environment variable APP_NAME is not set"
+    exit 1
+  else
+    echo "APP_NAME=$APP_NAME"
+  fi
+
+  if [ -z "$BUILD_PATH" ]; then
+    echo "Error: Environment variable BUILD_PATH is not set"
+    exit 1
+  else
+    echo "BUILD_PATH=$BUILD_PATH"
+  fi
+
+  if [ -z "$OUTPUT_DIR" ]; then
+    echo "Error: Environment variable OUTPUT_DIR is not set"
+    exit 1
+  else
+    echo "OUTPUT_DIR=$OUTPUT_DIR"
+  fi
+
+  if [ -z "$FEATURES" ]; then
+    echo "Error: Environment variable FEATURES is not set"
+    exit 1
+  else
+    echo "FEATURES=$FEATURES"
+  fi
+
+  if [ -z "$TARGET" ]; then
+    echo "Error: Environment variable TARGET is not set"
+    exit 1
+  else
+    echo "TARGET=$TARGET"
+  fi
+
+  echo "OUTPUT=$OUTPUT"
+  echo "Running docker.sh from $(pwd)"
+}
+
+check_env_vars
 
 
 echo "Setting up Alpine repositories..."
@@ -25,29 +54,28 @@ echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/reposit
 echo "Installing fucking dependencies"
 apk update
 apk add --no-cache \
-  bash curl build-base git cmake ninja meson \
-    pkgconf-dev musl-dev \
-    gettext-dev gettext-static \
-    openssl-dev openssl-libs-static \
-    glib-dev glib-static \
-    cairo-dev cairo-static \
-    harfbuzz-dev harfbuzz-static \
-    libxml2-dev libxml2-static \
-    libx11-dev libxrandr-dev libxrender-dev libxext-dev \
-    libxfixes-dev libxcursor-dev libxi-dev \
-    pango-dev \
-    fontconfig-dev \
-    gdk-pixbuf-dev \
-    librsvg-dev \
-    vulkan-loader-dev vulkan-tools \
-    zlib-static \
-    xz-dev \
-    glslang glslang-dev glslang-static \
-    shaderc-static shaderc-dev \
-    flex-dev flex-libs \
-    libxkbcommon-dev libxkbcommon-static \
-    libxdamage-dev \
-    bison
+  bash curl build-base git cmake ninja meson bison \
+  pkgconf-dev musl-dev \
+  gettext-dev gettext-static \
+  openssl-dev openssl-libs-static \
+  glib-dev glib-static \
+  cairo-dev cairo-static \
+  harfbuzz-dev harfbuzz-static \
+  libxml2-dev libxml2-static \
+  libx11-dev libxrandr-dev libxrender-dev libxext-dev \
+  libxfixes-dev libxcursor-dev libxi-dev \
+  glslang glslang-dev glslang-static \
+  shaderc-dev shaderc-static \
+  libxkbcommon-dev libxkbcommon-static \
+  zlib-static \
+  pango-dev \
+  fontconfig-dev \
+  gdk-pixbuf-dev \
+  librsvg-dev \
+  vulkan-loader-dev vulkan-tools \
+  xz-dev \
+  flex-dev flex-libs \
+  libxdamage-dev
 
 
 echo "START COMPILE CIRCUS"
@@ -198,11 +226,12 @@ compile_adwaita() {
 echo "START Compiling librsvg..."
 compile_svg || { echo "FAIL: librsvg compilation failed"; exit 1; }
 
-echo "START Compiling libadwaita..."
-compile_adwaita || { echo "FAIL: libadwaita compilation failed"; exit 1; }
 
 echo "START Compiling GTK4..."
 compile_gtk4 || { echo "FAIL: GTK4 compilation failed"; exit 1; }
+
+echo "START Compiling libadwaita..."
+compile_adwaita || { echo "FAIL: libadwaita compilation failed"; exit 1; }
 
 echo "Verifying installed packages..."
 apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file" || {
