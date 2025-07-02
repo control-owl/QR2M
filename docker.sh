@@ -53,6 +53,22 @@ apk add --no-cache \
 echo "START COMPILE CIRCUS"
 mkdir -p /compile-circus
 
+echo "START CARGO-C INSTAL"
+if ! cargo install cargo-c; then
+  echo "FAIL install cargo-c"
+  exit 1
+else
+  echo "CARGO-C INSTAL SUCCESS"
+fi
+
+echo "VERIFY CARGO-C INSTAL"
+if ! cargo-cbuild --version;  then
+  echo "FAIL: cargo-cbuild not found or not executable"
+  exit 1
+else
+  echo "CARGO-C INSTAL VERIFIED"
+fi
+
 compile_gtk4() {
   cd /compile-circus
   git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
@@ -104,12 +120,6 @@ compile_gtk4() {
 
 compile_svg() {
   cd /compile-circus
-
-  echo "Installing cargo-c for Rust C ABI compatibility..."
-  cargo install cargo-c || { echo "Error: Failed to install cargo-c"; exit 1; }
-  echo "Verifying cargo-c installation..."
-  cargo-cbuild --version || { echo "Error: cargo-cbuild not found or not executable"; exit 1; }
-
   git clone https://gitlab.gnome.org/GNOME/librsvg.git
   cd librsvg
   if ! meson setup builddir \
@@ -121,6 +131,7 @@ compile_svg() {
       echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
       cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
       echo "END MESON SETUP SVG FAIL"
+      exit 1
   else
     echo "END MESON SETUP SVG: Success"
   fi
@@ -130,6 +141,8 @@ compile_svg() {
     echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
     cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
     echo "END MESON COMPILE SVG FAIL"
+    exit 1
+
   else
     echo "END MESON COMPILE SVG: Success"
   fi
@@ -139,6 +152,7 @@ compile_svg() {
     echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
     cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
     echo "END MESON INSTALL SVG FAIL"
+    exit 1
   else
     echo "END MESON INSTALL SVG: Success"
   fi
@@ -146,8 +160,6 @@ compile_svg() {
 
 compile_adwaita() {
   cd /compile-circus
-
-
   git clone https://gitlab.gnome.org/GNOME/libadwaita.git
   cd libadwaita
   if ! meson setup builddir \
@@ -157,6 +169,7 @@ compile_adwaita() {
     echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
     cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
     echo "END MESON SETUP ADWAITA FAIL"
+    exit 1
   else
     echo "END MESON SETUP ADWAITA: Success"
   fi
@@ -166,6 +179,7 @@ compile_adwaita() {
     echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
     cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
     echo "END NINJA COMPILE ADWAITA FAIL"
+    exit 1
   else
     echo "END NINJA COMPILE ADWAITA: Success"
   fi
@@ -175,6 +189,7 @@ compile_adwaita() {
     echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
     cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
     echo "END NINJA INSTALL ADWAITA FAIL"
+    exit 1
   else
     echo "END NINJA INSTALL ADWAITA: Success"
   fi
