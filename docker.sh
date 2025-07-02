@@ -159,7 +159,7 @@ export RUSTFLAGS="-C target-feature=+crt-static -C linker=musl-gcc"
 
 echo "Building project..."
 cd "$APP_PATH"
-cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv
+cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
 #cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 
 
