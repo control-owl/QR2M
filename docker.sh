@@ -45,6 +45,7 @@ apk add --no-cache \
     glslang glslang-dev glslang-static \
     shaderc-static shaderc-dev \
     flex-dev flex-libs \
+    libxkbcommon-dev libxkbcommon-static \
     bison
 
 
