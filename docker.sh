@@ -88,10 +88,12 @@ meson setup builddir \
   cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; \
   cat /compile-circus/gtk/subprojects/sysprof/meson.build; \
   exit 1; }
+echo "Meson setup done"
 meson install -C builddir || { echo "meson install failed. Printing log:"; cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; exit 1; }
+echo "Meson install done"
 
-echo "GTK4 COMPILE OUTPUT:"
-cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt
+# echo "GTK4 COMPILE OUTPUT:"
+# cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt
 
 echo "END COMPILE CIRCUS"
 
@@ -156,6 +158,7 @@ export OPENSSL_STATIC=1
 export RUSTFLAGS="-C target-feature=+crt-static -C linker=musl-gcc"
 
 echo "Building project..."
+cd "$APP_PATH"
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv
 #cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 
