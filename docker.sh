@@ -66,7 +66,15 @@ cd /compile-circus
 git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
 cd gtk
 mkdir builddir
-meson setup builddir || { echo "meson setup failed. Printing log:"; cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; exit 1; }
+meson setup builddir \
+  -Dgtk_doc=false \
+  -Dbuild-tests=false \
+  -Dbuild-examples=false \
+  -Dbuild-demos=false || \
+  { echo "meson setup failed. Printing log:"; \
+  cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; \
+  cat /compile-circus/gtk/subprojects/sysprof/meson.build; \
+  exit 1; }
 meson install -C builddir || { echo "meson install failed. Printing log:"; cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; exit 1; }
 
 echo "GTK4 COMPILE OUTPUT:"
