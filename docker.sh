@@ -67,9 +67,23 @@ git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
 cd gtk
 mkdir builddir
 meson setup builddir \
-  -Dbuild-tests=false \
+  -Dmedia-gstreamer=disabled \
+  -Dprint-cpdb=disabled \
+  -Dprint-cups=disabled \
+  -Dvulkan=disabled \
+  -Dcloudproviders=disabled \
+  -Dsysprof=disabled \
+  -Dtracker=disabled \
+  -Dcolord=disabled \
+  -Daccesskit=disabled \
+  -Dintrospection=disabled \
+  -Ddocumentation=false \
+  -Dscreenshots=false \
+  -Dman-pages=false \
+  -Dbuild-demos=false \
+  -Dbuild-testsuite=false \
   -Dbuild-examples=false \
-  -Dbuild-demos=false || \
+  -Dbuild-tests=false || \
   { echo "meson setup failed. Printing log:"; \
   cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; \
   cat /compile-circus/gtk/subprojects/sysprof/meson.build; \
