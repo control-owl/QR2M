@@ -138,8 +138,8 @@ export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
 export OPENSSL_STATIC=1
-#export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
-export RUSTFLAGS="-C target-feature=+crt-static -C linker=musl-gcc"
+export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
+# export RUSTFLAGS="-C target-feature=+crt-static -C linker=musl-gcc"
 
 
 echo "Building project..."
