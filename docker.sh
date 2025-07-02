@@ -4,13 +4,11 @@ set -e
 
 echo "Environment variables:"
 [ -z "$APP_NAME" ] && { echo "Error: Environment variable APP_NAME is not set"; exit 1; }
-[ -z "$APP_PATH" ] && { echo "Error: Environment variable APP_PATH is not set"; exit 1; }
 [ -z "$BUILD_PATH" ] && { echo "Error: Environment variable BUILD_PATH is not set"; exit 1; }
 [ -z "$OUTPUT_DIR" ] && { echo "Error: Environment variable OUTPUT_DIR is not set"; exit 1; }
 [ -z "$FEATURES" ] && { echo "Error: Environment variable FEATURES is not set"; exit 1; }
 [ -z "$TARGET" ] && { echo "Error: Environment variable TARGET is not set"; exit 1; }
 echo "APP_NAME=$APP_NAME"
-echo "APP_PATH=$APP_PATH"
 echo "BUILD_PATH=$BUILD_PATH"
 echo "OUTPUT_DIR=$OUTPUT_DIR"
 echo "FEATURES=$FEATURES"
@@ -145,7 +143,9 @@ export RUSTFLAGS="-C target-feature=+crt-static -C linker=musl-gcc"
 
 
 echo "Building project..."
-cd "$APP_PATH"
+cd /compile-circus
+git clone https://github.com/control-owl/QR2M
+cd QR2M
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
 cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
 

@@ -52,7 +52,6 @@ jobs:
           mkdir -p ${{ env.OUTPUT_DIR }}
           docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app \
             -e APP_NAME="${{ env.APP_NAME }}" \
-            -e APP_PATH="${{ github.workspace }}" \
             -e BUILD_PATH="${{ env.BUILD_PATH }}" \
             -e OUTPUT_DIR="${{ env.OUTPUT_DIR }}" \
             -e FEATURES="${{ matrix.features }}" \
