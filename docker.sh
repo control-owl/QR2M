@@ -104,6 +104,12 @@ compile_gtk4() {
 
 compile_svg() {
   cd /compile-circus
+
+  echo "Installing cargo-c for Rust C ABI compatibility..."
+  cargo install cargo-c || { echo "Error: Failed to install cargo-c"; exit 1; }
+  echo "Verifying cargo-c installation..."
+  cargo-cbuild --version || { echo "Error: cargo-cbuild not found or not executable"; exit 1; }
+
   git clone https://gitlab.gnome.org/GNOME/librsvg.git
   cd librsvg
   if ! meson setup builddir \
@@ -141,10 +147,6 @@ compile_svg() {
 compile_adwaita() {
   cd /compile-circus
 
-  echo "Installing cargo-c for Rust C ABI compatibility..."
-  cargo install cargo-c || { echo "Error: Failed to install cargo-c"; exit 1; }
-  echo "Verifying cargo-c installation..."
-  cargo-cbuild --version || { echo "Error: cargo-cbuild not found or not executable"; exit 1; }
 
   git clone https://gitlab.gnome.org/GNOME/libadwaita.git
   cd libadwaita
