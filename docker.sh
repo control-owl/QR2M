@@ -84,10 +84,21 @@ cd /compile-circus
 git clone https://gitlab.gnome.org/GNOME/libadwaita.git
 cd libadwaita
 meson setup builddir \
-  -Dexamples=false
-  -Dtests=false
+  -Dexamples=false \
+  -Dtests=false \
 ninja -C builddir
 ninja -C builddir install
+
+cd /compile-circus
+git clone https://gitlab.gnome.org/GNOME/librsvg.git
+cd librsvg
+meson setup builddir \
+  -Dtests=false \
+  -Ddocs=disabled \
+  -Dvala=disabled \
+  -Davif=disabled
+meson compile -C builddir
+meson install -C builddir
 
 echo "END COMPILE CIRCUS"
 
