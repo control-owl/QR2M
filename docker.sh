@@ -51,9 +51,9 @@ apk add --no-cache \
 
 
 echo "START COMPILE CIRCUS"
+mkdir -p /compile-circus
 
 compile_gtk4() {
-  mkdir -p /compile-circus && cd /compile-circus
   cd /compile-circus
   git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
   cd gtk
