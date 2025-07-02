@@ -46,64 +46,140 @@ apk add --no-cache \
     shaderc-static shaderc-dev \
     flex-dev flex-libs \
     libxkbcommon-dev libxkbcommon-static \
+    libxdamage-dev \
     bison
 
 
 echo "START COMPILE CIRCUS"
-mkdir -p /compile-circus && cd /compile-circus
-cd /compile-circus
-git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
-cd gtk
-mkdir builddir
-meson setup builddir \
-  -Dmedia-gstreamer=disabled \
-  -Dprint-cpdb=disabled \
-  -Dprint-cups=disabled \
-  -Dvulkan=disabled \
-  -Dcloudproviders=disabled \
-  -Dsysprof=disabled \
-  -Dtracker=disabled \
-  -Dcolord=disabled \
-  -Daccesskit=disabled \
-  -Dintrospection=disabled \
-  -Ddocumentation=false \
-  -Dscreenshots=false \
-  -Dman-pages=false \
-  -Dbuild-demos=false \
-  -Dbuild-testsuite=false \
-  -Dbuild-examples=false \
-  -Dbuild-tests=false || \
-  { echo "meson setup failed. Printing log:"; \
-  cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; \
-  cat /compile-circus/gtk/subprojects/sysprof/meson.build; \
-  exit 1; }
-echo "Meson setup done"
-meson install -C builddir || { echo "meson install failed. Printing log:"; cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; exit 1; }
 
+compile_gtk4() {
+  mkdir -p /compile-circus && cd /compile-circus
+  cd /compile-circus
+  git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
+  cd gtk
+  mkdir builddir
+  echo "START MESON SETUP GTK4"
+  if ! meson setup builddir \
+    -Dmedia-gstreamer=disabled \
+    -Dprint-cpdb=disabled \
+    -Dprint-cups=disabled \
+    -Dvulkan=disabled \
+    -Dcloudproviders=disabled \
+    -Dsysprof=disabled \
+    -Dtracker=disabled \
+    -Dcolord=disabled \
+    -Daccesskit=disabled \
+    -Dintrospection=disabled \
+    -Ddocumentation=false \
+    -Dscreenshots=false \
+    -Dman-pages=false \
+    -Dbuild-demos=false \
+    -Dbuild-testsuite=false \
+    -Dbuild-examples=false \
+    -Dbuild-tests=false; then
+      echo "START MESON SETUP GTK4 FAIL"
+      echo "LOG /compile-circus/gtk/builddir/meson-logs/meson-log.txt:"
+      cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt
+      echo "END MESON SETUP GTK4 FAIL"
 
+      echo "START MESON SETUP GTK4 subprojects FAIL"
+      echo "LOG /compile-circus/gtk/subprojects/sysprof/meson.build:"
+      cat /compile-circus/gtk/subprojects/sysprof/meson.build
+      echo "END MESON SETUP GTK4 subprojects FAIL"
+      exit 1
+  else
+    echo "END MESON SETUP GTK4: Success"
+  fi
 
-cd /compile-circus
-git clone https://gitlab.gnome.org/GNOME/librsvg.git
-cd librsvg
-meson setup builddir \
-  -Dtests=false \
-  -Ddocs=disabled \
-  -Dvala=disabled \
-  -Davif=disabled
-meson compile -C builddir
-meson install -C builddir
+  echo "START MESON INSTALL GTK4"
+  if meson install -C "builddir"; then
+    echo "END MESON INSTALL GTK4: Success"
+  else
+      echo "START MESON INSTALL GTK4 FAIL"
+      echo "LOG /compile-circus/gtk/builddir/meson-logs/meson-log.txt:"
+      cat "/compile-circus/gtk/builddir/meson-logs/meson-log.txt"
+      exit 1
+  fi
+}
 
+compile_svg() {
+  cd /compile-circus
+  git clone https://gitlab.gnome.org/GNOME/librsvg.git
+  cd librsvg
+  if ! meson setup builddir \
+    -Dtests=false \
+    -Ddocs=disabled \
+    -Dvala=disabled \
+    -Davif=disabled; then
+      echo "START MESON SETUP SVG FAIL"
+      echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
+      cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+      echo "END MESON SETUP SVG FAIL"
+  else
+    echo "END MESON SETUP SVG: Success"
+  fi
 
-cd /compile-circus
-git clone https://gitlab.gnome.org/GNOME/libadwaita.git
-cd libadwaita
-meson setup builddir \
-  -Dexamples=false \
-  -Dtests=false \
-ninja -C builddir
-ninja -C builddir install
-echo "END COMPILE CIRCUS"
+  if ! meson compile -C builddir; then
+    echo "START MESON COMPILE SVG FAIL"
+    echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
+    cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+    echo "END MESON COMPILE SVG FAIL"
+  else
+    echo "END MESON COMPILE SVG: Success"
+  fi
 
+  if ! meson install -C builddir; then
+    echo "START MESON INSTALL SVG FAIL"
+    echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
+    cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+    echo "END MESON INSTALL SVG FAIL"
+  else
+    echo "END MESON INSTALL SVG: Success"
+  fi
+}
+
+compile_adwaita() {
+  cd /compile-circus
+  git clone https://gitlab.gnome.org/GNOME/libadwaita.git
+  cd libadwaita
+  if ! meson setup builddir \
+    -Dexamples=false \
+    -Dtests=false; then
+    echo "START MESON SETUP ADWAITA FAIL"
+    echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
+    cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+    echo "END MESON SETUP ADWAITA FAIL"
+  else
+    echo "END MESON SETUP ADWAITA: Success"
+  fi
+
+  if ! ninja -C builddir; then
+    echo "START NINJA COMPILE ADWAITA FAIL"
+    echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
+    cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+    echo "END NINJA COMPILE ADWAITA FAIL"
+  else
+    echo "END NINJA COMPILE ADWAITA: Success"
+  fi
+
+  if ! ninja -C builddir install; then
+    echo "START NINJA INSTALL ADWAITA FAIL"
+    echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
+    cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+    echo "END NINJA INSTALL ADWAITA FAIL"
+  else
+    echo "END NINJA INSTALL ADWAITA: Success"
+  fi
+}
+
+echo "START Compiling librsvg..."
+compile_svg || { echo "FAIL: librsvg compilation failed"; exit 1; }
+
+echo "START Compiling libadwaita..."
+compile_adwaita || { echo "FAIL: libadwaita compilation failed"; exit 1; }
+
+echo "START Compiling GTK4..."
+compile_gtk4 || { echo "FAIL: GTK4 compilation failed"; exit 1; }
 
 echo "Verifying installed packages..."
 apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file" || {
