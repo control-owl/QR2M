@@ -81,14 +81,6 @@ echo "Meson setup done"
 meson install -C builddir || { echo "meson install failed. Printing log:"; cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt; exit 1; }
 
 
-cd /compile-circus
-git clone https://gitlab.gnome.org/GNOME/libadwaita.git
-cd libadwaita
-meson setup builddir \
-  -Dexamples=false \
-  -Dtests=false \
-ninja -C builddir
-ninja -C builddir install
 
 cd /compile-circus
 git clone https://gitlab.gnome.org/GNOME/librsvg.git
@@ -101,6 +93,15 @@ meson setup builddir \
 meson compile -C builddir
 meson install -C builddir
 
+
+cd /compile-circus
+git clone https://gitlab.gnome.org/GNOME/libadwaita.git
+cd libadwaita
+meson setup builddir \
+  -Dexamples=false \
+  -Dtests=false \
+ninja -C builddir
+ninja -C builddir install
 echo "END COMPILE CIRCUS"
 
 
