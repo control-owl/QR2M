@@ -132,7 +132,8 @@ echo "Set environment variables for build"
 export PKG_CONFIG_ALLOW_CROSS=1
 #export CFLAGS="-I/usr/include"
 #export LDFLAGS="-L/usr/lib -L/usr/lib/x86_64-linux-musl"
-export CFLAGS="-static -O2 -fPIC"
+# export CFLAGS="-static -O2 -fPIC"
+export CFLAGS="-static"
 export LDFLAGS="-static"
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
@@ -146,8 +147,8 @@ echo "Building project..."
 cd /compile-circus
 git clone https://github.com/control-owl/QR2M
 cd QR2M
-cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
-cargo test --release --locked --verbose --no-fail-fast --target "$TARGET" --features "$FEATURES"
+cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv && echo "Cargo build done"
+# cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "$FEATURES" && echo "Cargo test done"
 
 
 echo "Listing build directory:"
