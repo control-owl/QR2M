@@ -67,7 +67,6 @@ git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
 cd gtk
 mkdir builddir
 meson setup builddir \
-  -Dgtk_doc=false \
   -Dbuild-tests=false \
   -Dbuild-examples=false \
   -Dbuild-demos=false || \
