@@ -148,7 +148,7 @@ compile_gtk4() {
 
 compile_svg() {
   cd /compile-circus
-  git clone https://gitlab.gnome.org/GNOME/librsvg.git
+  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1
   cd librsvg
   if ! meson setup builddir \
     -Dtests=false \
@@ -188,7 +188,7 @@ compile_svg() {
 
 compile_adwaita() {
   cd /compile-circus
-  git clone https://gitlab.gnome.org/GNOME/libadwaita.git
+  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1
   cd libadwaita
   if ! meson setup builddir \
     -Dexamples=false \
