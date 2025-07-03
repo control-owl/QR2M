@@ -130,19 +130,16 @@ compile_gtk4() {
       echo "LOG /compile-circus/gtk/subprojects/sysprof/meson.build:"
       cat /compile-circus/gtk/subprojects/sysprof/meson.build
       echo "END MESON SETUP GTK4 subprojects FAIL"
-      exit 1
   else
     echo "END MESON SETUP GTK4: Success"
-  fi
-
-  echo "START MESON INSTALL GTK4"
-  if meson install -C "builddir"; then
-    echo "END MESON INSTALL GTK4: Success"
-  else
-      echo "START MESON INSTALL GTK4 FAIL"
-      echo "LOG /compile-circus/gtk/builddir/meson-logs/meson-log.txt:"
-      cat "/compile-circus/gtk/builddir/meson-logs/meson-log.txt"
-      exit 1
+    echo "START MESON INSTALL GTK4"
+    if meson install -C "builddir"; then
+      echo "END MESON INSTALL GTK4: Success"
+    else
+        echo "START MESON INSTALL GTK4 FAIL"
+        echo "LOG /compile-circus/gtk/builddir/meson-logs/meson-log.txt:"
+        cat "/compile-circus/gtk/builddir/meson-logs/meson-log.txt"
+    fi
   fi
 }
 
@@ -162,27 +159,22 @@ compile_svg() {
       exit 1
   else
     echo "END MESON SETUP SVG: Success"
-  fi
-
-  if ! meson compile -C builddir; then
-    echo "START MESON COMPILE SVG FAIL"
-    echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
-    cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
-    echo "END MESON COMPILE SVG FAIL"
-    exit 1
-
-  else
-    echo "END MESON COMPILE SVG: Success"
-  fi
-
-  if ! meson install -C builddir; then
-    echo "START MESON INSTALL SVG FAIL"
-    echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
-    cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
-    echo "END MESON INSTALL SVG FAIL"
-    exit 1
-  else
-    echo "END MESON INSTALL SVG: Success"
+    if ! meson compile -C builddir; then
+      echo "START MESON COMPILE SVG FAIL"
+      echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
+      cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+      echo "END MESON COMPILE SVG FAIL"
+    else
+      echo "END MESON COMPILE SVG: Success"
+      if ! meson install -C builddir; then
+        echo "START MESON INSTALL SVG FAIL"
+        echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
+        cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+        echo "END MESON INSTALL SVG FAIL"
+      else
+        echo "END MESON INSTALL SVG: Success"
+      fi
+    fi
   fi
 }
 
@@ -200,51 +192,55 @@ compile_adwaita() {
     exit 1
   else
     echo "END MESON SETUP ADWAITA: Success"
-  fi
-
-  if ! ninja -C builddir; then
-    echo "START NINJA COMPILE ADWAITA FAIL"
-    echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
-    cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
-    echo "END NINJA COMPILE ADWAITA FAIL"
-    exit 1
-  else
-    echo "END NINJA COMPILE ADWAITA: Success"
-  fi
-
-  if ! ninja -C builddir install; then
-    echo "START NINJA INSTALL ADWAITA FAIL"
-    echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
-    cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
-    echo "END NINJA INSTALL ADWAITA FAIL"
-    exit 1
-  else
-    echo "END NINJA INSTALL ADWAITA: Success"
+    if ! ninja -C builddir; then
+      echo "START NINJA COMPILE ADWAITA FAIL"
+      echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
+      cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+      echo "END NINJA COMPILE ADWAITA FAIL"
+    else
+      echo "END NINJA COMPILE ADWAITA: Success"
+      if ! ninja -C builddir install; then
+        echo "START NINJA INSTALL ADWAITA FAIL"
+        echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
+        cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+        echo "END NINJA INSTALL ADWAITA FAIL"
+      else
+        echo "END NINJA INSTALL ADWAITA: Success"
+      fi
+    fi
   fi
 }
 
 echo "START Compiling librsvg..."
-compile_svg || { echo "FAIL: librsvg compilation failed"; exit 1; }
-
+if ! compile_svg; then
+  echo "FAIL: librsvg compilation failed"
+  exit 1
+fi
 
 echo "START Compiling GTK4..."
-compile_gtk4 || { echo "FAIL: GTK4 compilation failed"; exit 1; }
+if compile_gtk4; then
+  echo "FAIL: GTK4 compilation failed"
+  exit 1
+fi
 
 echo "START Compiling libadwaita..."
-compile_adwaita || { echo "FAIL: libadwaita compilation failed"; exit 1; }
+if compile_adwaita; then
+  echo "FAIL: libadwaita compilation failed"
+  exit 1
+fi
 
 echo "Verifying installed packages..."
-apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file" || {
+if ! apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file"; then
   echo "Error: Key packages not installed"
   exit 1
-}
+fi
 
 
 echo "Checking for static libraries..."
-ls -l /usr/lib/libssl.a /usr/lib/libcrypto.a || {
+if ! ls -l /usr/lib/libssl.a /usr/lib/libcrypto.a; then
   echo "Warning: Static libraries libssl.a or libcrypto.a not found, checking alternatives"
   ls -l /usr/lib/*ssl*.a /usr/lib/*crypto*.a || echo "No static libraries found"
-}
+fi
 
 
 echo "Capturing .pc file paths..."
