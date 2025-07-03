@@ -45,41 +45,8 @@ check_env_vars() {
 
 check_env_vars
 
-
-echo "Setting up Alpine repositories..."
-echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories
-echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
-
-
-echo "Installing fucking dependencies"
-apk update
-apk add --no-cache \
-  bash curl build-base git cmake ninja meson bison \
-  pkgconf-dev musl-dev \
-  gettext-dev gettext-static \
-  openssl-dev openssl-libs-static \
-  glib-dev glib-static \
-  cairo-dev cairo-static \
-  harfbuzz-dev harfbuzz-static \
-  libxml2-dev libxml2-static \
-  libx11-dev libxrandr-dev libxrender-dev libxext-dev \
-  libxfixes-dev libxcursor-dev libxi-dev \
-  glslang glslang-dev glslang-static \
-  shaderc-dev shaderc-static \
-  libxkbcommon-dev libxkbcommon-static \
-  zlib-static \
-  pango-dev \
-  fontconfig-dev \
-  gdk-pixbuf-dev \
-  librsvg-dev \
-  vulkan-loader-dev vulkan-tools \
-  xz-dev \
-  flex-dev flex-libs \
-  libxdamage-dev
-
-
 echo "START COMPILE CIRCUS"
-mkdir -p /compile-circus
+mkdir -p /usr/src/app/compile-circus
 
 echo "START CARGO-C INSTAL"
 if ! cargo install cargo-c; then
@@ -98,7 +65,7 @@ else
 fi
 
 compile_gtk4() {
-  cd /compile-circus
+  cd /usr/src/app/compile-circus
   git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1
   cd gtk
   mkdir builddir
@@ -123,12 +90,12 @@ compile_gtk4() {
     -Dbuild-tests=false; then
       echo "START MESON SETUP GTK4 FAIL"
       echo "LOG /compile-circus/gtk/builddir/meson-logs/meson-log.txt:"
-      cat /compile-circus/gtk/builddir/meson-logs/meson-log.txt
+      cat /usr/src/app/compile-circus/gtk/builddir/meson-logs/meson-log.txt
       echo "END MESON SETUP GTK4 FAIL"
 
       echo "START MESON SETUP GTK4 subprojects FAIL"
       echo "LOG /compile-circus/gtk/subprojects/sysprof/meson.build:"
-      cat /compile-circus/gtk/subprojects/sysprof/meson.build
+      cat /usr/src/app/compile-circus/gtk/subprojects/sysprof/meson.build
       echo "END MESON SETUP GTK4 subprojects FAIL"
   else
     echo "END MESON SETUP GTK4: Success"
@@ -138,13 +105,13 @@ compile_gtk4() {
     else
         echo "START MESON INSTALL GTK4 FAIL"
         echo "LOG /compile-circus/gtk/builddir/meson-logs/meson-log.txt:"
-        cat "/compile-circus/gtk/builddir/meson-logs/meson-log.txt"
+        cat /usr/src/app/compile-circus/gtk/builddir/meson-logs/meson-log.txt
     fi
   fi
 }
 
 compile_svg() {
-  cd /compile-circus
+  cd /usr/src/app/compile-circus
   git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1
   cd librsvg
   if ! meson setup builddir \
@@ -154,7 +121,7 @@ compile_svg() {
     -Davif=disabled; then
       echo "START MESON SETUP SVG FAIL"
       echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
-      cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+      cat /usr/src/app/compile-circus/librsvg/builddir/meson-logs/meson-log.txt
       echo "END MESON SETUP SVG FAIL"
       exit 1
   else
@@ -162,14 +129,14 @@ compile_svg() {
     if ! meson compile -C builddir; then
       echo "START MESON COMPILE SVG FAIL"
       echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
-      cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+      cat /usr/src/app/compile-circus/librsvg/builddir/meson-logs/meson-log.txt
       echo "END MESON COMPILE SVG FAIL"
     else
       echo "END MESON COMPILE SVG: Success"
       if ! meson install -C builddir; then
         echo "START MESON INSTALL SVG FAIL"
         echo "LOG /compile-circus/librsvg/builddir/meson-logs/meson-log.txt:"
-        cat /compile-circus/librsvg/builddir/meson-logs/meson-log.txt
+        cat /usr/src/app/compile-circus/librsvg/builddir/meson-logs/meson-log.txt
         echo "END MESON INSTALL SVG FAIL"
       else
         echo "END MESON INSTALL SVG: Success"
@@ -179,7 +146,7 @@ compile_svg() {
 }
 
 compile_adwaita() {
-  cd /compile-circus
+  cd /usr/src/app/compile-circus
   git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1
   cd libadwaita
   if ! meson setup builddir \
@@ -187,7 +154,7 @@ compile_adwaita() {
     -Dtests=false; then
     echo "START MESON SETUP ADWAITA FAIL"
     echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
-    cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+    cat /usr/src/app/compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
     echo "END MESON SETUP ADWAITA FAIL"
     exit 1
   else
@@ -195,14 +162,14 @@ compile_adwaita() {
     if ! ninja -C builddir; then
       echo "START NINJA COMPILE ADWAITA FAIL"
       echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
-      cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+      cat /usr/src/app/compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
       echo "END NINJA COMPILE ADWAITA FAIL"
     else
       echo "END NINJA COMPILE ADWAITA: Success"
       if ! ninja -C builddir install; then
         echo "START NINJA INSTALL ADWAITA FAIL"
         echo "LOG /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt:"
-        cat /compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
+        cat /usr/src/app/compile-circus/libadwaita/builddir/meson-logs/meson-log.txt
         echo "END NINJA INSTALL ADWAITA FAIL"
       else
         echo "END NINJA INSTALL ADWAITA: Success"
@@ -291,7 +258,7 @@ export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-a
 
 
 echo "Building project..."
-cd /compile-circus
+cd /usr/src/app/compile-circus
 git clone https://github.com/control-owl/QR2M
 cd QR2M
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv && echo "Cargo build done" || exit 1
@@ -314,7 +281,7 @@ if [ "$OUTPUT" = "true" ]; then
   echo "Copying files to $OUTPUT_DIR..."
   mkdir -p "$OUTPUT_DIR"
   cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
-  chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME"; exit 1; }
+#  chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME"; exit 1; }
 
   echo "Listing output directory:"
   ls -l "$OUTPUT_DIR"

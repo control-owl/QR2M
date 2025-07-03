@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Docker MUSL" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
+    <deployment type="dockerfile">
+      <settings>
+        <option name="attachToContainerNeeded" value="true" />
+        <option name="command" value="" />
+        <option name="containerName" value="" />
+        <option name="contextFolderPath" value="." />
+        <option name="entrypoint" value="" />
+        <option name="commandLineOptions" value="" />
+        <option name="showCommandPreview" value="true" />
+        <option name="sourceFilePath" value="docker/Dockerfile" />
+      </settings>
+    </deployment>
+    <method v="2" />
+  </configuration>
+</component>
