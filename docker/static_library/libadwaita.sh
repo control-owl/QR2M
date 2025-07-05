@@ -2,27 +2,23 @@
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
-LOG_DIR="$CIRCUS/OUTPUT/"
+LOG_DIR="$CIRCUS/LOG"
+STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p $CIRCUS
 mkdir -p $LOG_DIR
+mkdir -p $STATIC_DIR
 
 cd $CIRCUS
 
-git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita 2>&1 | tee "$LOG_DIR/libadwaita_clone.log"
-STATUS=$?
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libadwaita_clone.log
-  echo "CLONE ADWAITA FAIL"
-  exit 1
-fi
-
+git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita
 cd libadwaita
 
 meson setup builddir \
+  --default-library static \
+  --prefix=$STATIC_DIR \
   -Dexamples=false \
-  -Dtests=false \
-  --default-library static 2>&1 | tee "$LOG_DIR/libadwaita_setup.log"
+  -Dtests=false  2>&1 | tee "$LOG_DIR/libadwaita_setup.log"
 STATUS=$?
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libadwaita_setup.log

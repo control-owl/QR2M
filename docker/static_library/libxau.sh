@@ -2,24 +2,22 @@
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
-LOG_DIR="$CIRCUS/OUTPUT/"
+LOG_DIR="$CIRCUS/LOG"
+STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p $CIRCUS
 mkdir -p $LOG_DIR
+mkdir -p $STATIC_DIR
 
 cd $CIRCUS
 
-git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git libxau 2>&1 | tee "$LOG_DIR/libxau_clone.log"
-STATUS=$?
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libxau_clone.log
-  echo "Failed to clone libXau repository"
-  exit 1
-fi
-
+git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git libxau
 cd libxau
 
-./autogen.sh --enable-static --disable-shared --prefix=/usr/local 2>&1 | tee "$LOG_DIR/libxau_autogen.log"
+./autogen.sh \
+  --enable-static \
+  --disable-shared \
+  --prefix=$STATIC_DIR \ 2>&1 | tee "$LOG_DIR/libxau_autogen.log"
 STATUS=$?
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxau_autogen.log

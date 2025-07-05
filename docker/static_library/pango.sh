@@ -2,24 +2,21 @@
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
-LOG_DIR="$CIRCUS/OUTPUT/"
+LOG_DIR="$CIRCUS/LOG"
+STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p $CIRCUS
 mkdir -p $LOG_DIR
+mkdir -p $STATIC_DIR
 
 cd $CIRCUS
 
-git clone https://github.com/GNOME/pango.git pango 2>&1 | tee "$LOG_DIR/pango_clone.log"
-STATUS=$?
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pango_clone.log
-  echo "Failed to clone pango repository"
-  exit 1
-fi
-
+git clone https://github.com/GNOME/pango.git pango
 cd pango
 
 meson setup builddir \
+  --default-library static \
+  --prefix=$STATIC_DIR \
   -Ddocumentation=false \
   -Dgtk_doc=false \
   -Dman-pages=false \
@@ -28,8 +25,7 @@ meson setup builddir \
   -Dbuild-examples=false \
   -Dsysprof=disabled \
   -Dlibthai=disabled \
-  -Dxft=disabled \
-  --default-library static 2>&1 | tee "$LOG_DIR/pango_setup.log"
+  -Dxft=disabled 2>&1 | tee "$LOG_DIR/pango_setup.log"
 STATUS=$?
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pango_setup.log

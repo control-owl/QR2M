@@ -2,24 +2,21 @@
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
-LOG_DIR="$CIRCUS/OUTPUT/"
+LOG_DIR="$CIRCUS/LOG"
+STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p $CIRCUS
 mkdir -p $LOG_DIR
+mkdir -p $STATIC_DIR
 
 cd $CIRCUS
 
-git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk 2>&1 | tee "$LOG_DIR/gtk_clone.log"
-STATUS=$?
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gtk_clone.log
-  echo "Failed to clone gtk repository"
-  exit 1
-fi
-
+git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk
 cd gtk
 
 meson setup builddir \
+  --default-library static \
+  --prefix=$STATIC_DIR \
   -Dmedia-gstreamer=disabled \
   -Dprint-cpdb=disabled \
   -Dprint-cups=disabled \
@@ -36,8 +33,7 @@ meson setup builddir \
   -Dbuild-demos=false \
   -Dbuild-testsuite=false \
   -Dbuild-examples=false \
-  -Dbuild-tests=false \
-  --default-library static 2>&1 | tee "$LOG_DIR/gtk_setup.log"
+  -Dbuild-tests=false  2>&1 | tee "$LOG_DIR/gtk_setup.log"
 STATUS=$?
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk_setup.log

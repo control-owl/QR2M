@@ -1,4 +1,4 @@
-FROM rust:alpine AS builder
+FROM rust:alpine
 
 LABEL maintainer="control-owl@r-o0-t.wtf"
 LABEL version="1.0"
@@ -58,7 +58,6 @@ RUN apk add --no-cache \
 RUN rustup target add x86_64-unknown-linux-musl
 
 WORKDIR $PROJECT_DIR
-COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
 COPY docker/static_library/graphene.sh $PROJECT_DIR/graphene.sh
 COPY docker/static_library/pango.sh $PROJECT_DIR/pango.sh
@@ -69,7 +68,6 @@ COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
-RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
 RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh
 RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
@@ -81,8 +79,3 @@ RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
 
 
-FROM alpine:latest AS runner
-RUN apk add --no-cache bash
-COPY --from=builder /home/QR2M /home/QR2M
-WORKDIR /home/QR2M
-CMD ["bash"]

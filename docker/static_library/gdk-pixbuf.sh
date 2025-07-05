@@ -2,25 +2,21 @@
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
-LOG_DIR="$CIRCUS/OUTPUT/"
+LOG_DIR="$CIRCUS/LOG"
+STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p $CIRCUS
 mkdir -p $LOG_DIR
+mkdir -p $STATIC_DIR
 
 cd $CIRCUS
 
-git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git pixbuf 2>&1 | tee "$LOG_DIR/pixbuf_clone.log"
-STATUS=$?
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pixbuf_clone.log
-  echo "Failed to clone pixbuf repository"
-  exit 1
-fi
-
+git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git pixbuf
 cd pixbuf
 
 meson setup builddir \
   --default-library=static \
+  --prefix=$STATIC_DIR \
   -Dpng=enabled \
   -Dtiff=disabled \
   -Djpeg=disabled \

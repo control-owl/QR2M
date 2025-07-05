@@ -2,26 +2,22 @@
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
-LOG_DIR="$CIRCUS/OUTPUT/"
+LOG_DIR="$CIRCUS/LOG"
+STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p $CIRCUS
 mkdir -p $LOG_DIR
+mkdir -p $STATIC_DIR
 
 cd $CIRCUS
 
-git clone https://gitlab.gnome.org/GNOME/librsvg.git librsvg 2>&1 | tee "$LOG_DIR/librsvg_clone.log"
-STATUS=$?
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/librsvg_clone.log
-  echo "Failed to clone librsvg repository"
-  exit 1
-fi
-
+git clone https://gitlab.gnome.org/GNOME/librsvg.git librsvg
 cd librsvg
 
 meson setup builddir \
   --prefix=/usr/local \
   --buildtype=release \
+  --prefix=$STATIC_DIR \
   -Ddefault_library=static \
   -Ddocs=false \
   -Dtests=false \
