@@ -19,7 +19,7 @@ fi
 
 cd graphene
 
-meson setup build \
+meson setup builddir \
     --default-library=static \
     -Dintrospection=disabled \
     -Dgtk_doc=false \

@@ -72,13 +72,13 @@ COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 #RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
 RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh
-RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
-RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh
-RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
-RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
-RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
-RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
-RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
+#RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
+#RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh
+#RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
+#RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
+#RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
+#RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
+#RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
 
 
 FROM alpine:latest AS runner
