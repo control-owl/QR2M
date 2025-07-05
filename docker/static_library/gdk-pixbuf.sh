@@ -20,7 +20,6 @@ fi
 cd pixbuf
 
 meson setup builddir \
-  --prefix=/usr/local \
   --default-library=static \
   -Dpng=enabled \
   -Dtiff=disabled \
@@ -29,8 +28,6 @@ meson setup builddir \
   -Dglycin=disabled \
   -Dandroid=disabled \
   -Dothers=disabled \
-  -Dbuiltin_loaders=png,gif \
-  -Dgtk_doc=false \
   -Ddocumentation=false \
   -Dintrospection=disabled \
   -Dman=false \

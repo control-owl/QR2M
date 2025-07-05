@@ -31,6 +31,20 @@ export OPENSSL_STATIC=1
 export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
 
 
+echo "Capturing .pc file paths..."
+GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' | sed "s|^|/|")
+ADWAITA=$(apk info -L libadwaita-dev | grep -E '/libadwaita-1\.pc$' | sed "s|^|/|")
+echo "GTK4=$GTK4"
+echo "ADWAITA=$ADWAITA"
+[ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; }
+[ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; }
+
+
+echo "Renaming .pc files..."
+cp "$GTK4" "$(dirname "$GTK4")/gtk-4.0.pc" || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
+cp "$ADWAITA" "$(dirname "$ADWAITA")/libadwaita-1.0.pc" || { echo "Error: Failed to rename libadwaita-1.pc"; exit 1; }
+
+
 echo "Cloning project..."
 git clone https://github.com/control-owl/QR2M 2>&1 | tee "$LOG_DIR/qr2m_clone.log"
 STATUS=$?
@@ -81,34 +95,6 @@ fi
 
 
 
-#echo "Verifying installed packages..."
-#if ! apk list -I | grep -E "gtk4.0-dev|libadwaita-dev|pkgconf|file"; then
-#  echo "Error: Key packages not installed"
-#  exit 1
-#fi
-#
-#
-#echo "Checking for static libraries..."
-#if ! ls -l /usr/lib/libssl.a /usr/lib/libcrypto.a; then
-#  echo "Warning: Static libraries libssl.a or libcrypto.a not found, checking alternatives"
-#  ls -l /usr/lib/*ssl*.a /usr/lib/*crypto*.a || echo "No static libraries found"
-#fi
-#
-#
-#echo "Capturing .pc file paths..."
-#GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' | sed "s|^|/|")
-#ADWAITA=$(apk info -L libadwaita-dev | grep -E '/libadwaita-1\.pc$' | sed "s|^|/|")
-#echo "GTK4=$GTK4"
-#echo "ADWAITA=$ADWAITA"
-#[ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; }
-#[ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; }
-#
-#
-#echo "Renaming .pc files..."
-#cp "$GTK4" "$(dirname "$GTK4")/gtk-4.0.pc" || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
-#cp "$ADWAITA" "$(dirname "$ADWAITA")/libadwaita-1.0.pc" || { echo "Error: Failed to rename libadwaita-1.pc"; exit 1; }
-#
-#
 #echo "Set PKG_CONFIG_PATH"
 #export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 #GTK_PC_PATH=$(dirname "$GTK4")
