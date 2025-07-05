@@ -2,9 +2,9 @@ name: Release Linux x86_64 MUSL
 
 on:
   push:
-    branches: [ "musl" ]
+    branches: [ "docker" ]
   pull_request:
-    branches: [ "musl" ]
+    branches: [ "docker" ]
 #  workflow_run:
 #    workflows: ["Verify GPG Signature"]
 #    types:

@@ -53,12 +53,13 @@ RUN apk add --no-cache \
       po4a \
       xcb-util-dev \
       graphene-dev \
-      gtk4.0-dev
+      gtk4.0-dev libadwaita-dev
 
 RUN rustup target add x86_64-unknown-linux-musl
 
 WORKDIR $PROJECT_DIR
-COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
+#COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
+COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
 COPY docker/static_library/pango.sh $PROJECT_DIR/pango.sh
 COPY docker/static_library/libxau.sh $PROJECT_DIR/libxau.sh
 COPY docker/static_library/xz.sh $PROJECT_DIR/xz.sh
@@ -67,7 +68,8 @@ COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
-RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh
+#RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh
+RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
 RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
 RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh
 RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh

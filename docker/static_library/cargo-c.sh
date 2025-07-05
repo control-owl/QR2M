@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
@@ -10,7 +10,8 @@ mkdir -p $LOG_DIR
 cd $CIRCUS
 
 cargo install cargo-c 2>&1 | tee "$LOG_DIR/cargo-c_install.log"
-if [ $? -ne 0 ]; then
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/cargo-c_install.log
   echo "CARGO INSTALL CARGO-C FAIL"
   exit 1

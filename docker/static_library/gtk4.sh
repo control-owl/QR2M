@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 CIRCUS="/home/QR2M/compile-circus"
@@ -9,8 +9,9 @@ mkdir -p $LOG_DIR
 
 cd $CIRCUS
 
-git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 2>&1 | tee "$LOG_DIR/gtk_clone.log"
-if [ $? -ne 0 ]; then
+git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk 2>&1 | tee "$LOG_DIR/gtk_clone.log"
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk_clone.log
   echo "Failed to clone gtk repository"
   exit 1
@@ -37,22 +38,24 @@ meson setup builddir \
   -Dbuild-examples=false \
   -Dbuild-tests=false \
   --default-library static 2>&1 | tee "$LOG_DIR/gtk_setup.log"
-
-if [ $? -ne 0 ]; then
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk_setup.log
   echo "MESON SETUP GTK FAIL"
   exit 1
 fi
 
 meson compile -C builddir 2>&1 | tee "$LOG_DIR/gtk_compile.log"
-if [ $? -ne 0 ]; then
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk_compile.log
   echo "MESON COMPILE GTK FAIL"
   exit 1
 fi
 
 meson install -C builddir 2>&1 | tee "$LOG_DIR/gtk_install.log"
-if [ $? -ne 0 ]; then
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk_install.log
   echo "MESON INSTALL PANGO FAIL"
   exit 1

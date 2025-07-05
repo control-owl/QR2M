@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 APP_NAME="QR2M"
@@ -32,8 +32,9 @@ export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-a
 
 
 echo "Cloning project..."
-COMMAND=$(git clone https://github.com/control-owl/QR2M 2>&1 | tee "$LOG_DIR/qr2m_clone.log")
-if [ "$COMMAND" -ne 0 ]; then
+git clone https://github.com/control-owl/QR2M 2>&1 | tee "$LOG_DIR/qr2m_clone.log"
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/qr2m_clone.log
   echo "CLONE QR2M FAIL"
   exit 1
@@ -42,14 +43,16 @@ fi
 cd QR2M
 
 cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv 2>&1 | tee "$LOG_DIR/qr2m_build.log"
-if [ $? -ne 0 ]; then
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/qr2m_build.log
   echo "CARGO BUILD QR2M FAIL"
   exit 1
 fi
 
 cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "$FEATURES" 2>&1 | tee "$LOG_DIR/qr2m_test.log"
-if [ $? -ne 0 ]; then
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/qr2m_test.log
   echo "CARGO TEST QR2M FAIL"
   exit 1
