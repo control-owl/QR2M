@@ -21,10 +21,26 @@ cd pixbuf
 
 meson setup builddir \
   --prefix=/usr/local \
-  --buildtype=release \
+  --default-library=static \
+  -Dpng=enabled \
+  -Dtiff=disabled \
+  -Djpeg=disabled \
+  -Dgif=enabled \
+  -Dglycin=disabled \
+  -Dandroid=disabled \
+  -Dothers=disabled \
+  -Dbuiltin_loaders=png,gif \
   -Dgtk_doc=false \
+  -Ddocumentation=false \
+  -Dintrospection=disabled \
   -Dman=false \
-  -default-library static 2>&1 | tee "$LOG_DIR/pixbuf_setup.log"
+  -Drelocatable=false \
+  -Dnative_windows_loaders=false \
+  -Dtests=false \
+  -Dinstalled_tests=false \
+  -Dgio_sniffing=false \
+  -Dthumbnailer=disabled 2>&1 | tee "$LOG_DIR/pixbuf_setup.log"
+
 STATUS=$?
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pixbuf_setup.log
