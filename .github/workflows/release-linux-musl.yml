@@ -50,14 +50,8 @@ jobs:
       - name: "Build with Docker"
         run: |
           mkdir -p ${{ env.OUTPUT_DIR }}
-          docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app \
-            -e APP_NAME="${{ env.APP_NAME }}" \
-            -e BUILD_PATH="${{ env.BUILD_PATH }}" \
-            -e OUTPUT_DIR="${{ env.OUTPUT_DIR }}" \
-            -e FEATURES="${{ matrix.features }}" \
-            -e TARGET="${{ matrix.target }}" \
-            -e OUTPUT="true" \
-            rust:alpine /bin/sh /usr/src/app/docker/docker.sh
+          docker build -t qr2m-musl-builder -f docker/Dockerfile .
+          #docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app qr2m-musl-builder
           echo "Listing output directory on host:"
           ls -l ${{ env.OUTPUT_DIR }}
 

@@ -1,52 +1,84 @@
-FROM rust:alpine
+FROM rust:alpine AS builder
 
-# Install sys deps
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
-    apk update && \
-    apk add --no-cache \
-      bash curl build-base git cmake ninja meson bison \
-      pkgconf-dev musl-dev \
+LABEL maintainer="control-owl@r-o0-t.wtf"
+LABEL version="1.0"
+LABEL description="Build QR2M project with MUSL"
+ENV PROJECT_DIR=/home/QR2M
+
+
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
+RUN apk update
+RUN apk add --no-cache \
+      bash curl build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
       gettext-dev gettext-static \
       openssl-dev openssl-libs-static \
       glib-dev glib-static \
       cairo-dev cairo-static \
       harfbuzz-dev harfbuzz-static \
       libxml2-dev libxml2-static \
-      libx11-dev libxrandr-dev libxrender-dev libxext-dev \
-      libxfixes-dev libxcursor-dev libxi-dev \
+      libx11-dev libx11-static \
+      libxext-dev libxext-static\
       glslang glslang-dev glslang-static \
       shaderc-dev shaderc-static \
       libxkbcommon-dev libxkbcommon-static \
+      expat-dev expat-static \
+      freetype-dev freetype-static \
+      fontconfig-dev fontconfig-static \
+      brotli-dev brotli-static \
+      libpng-dev libpng-static \
+      libjpeg-turbo-dev libjpeg-turbo-static \
+      zlib-dev zlib-static \
+      bzip2-dev bzip2-static \
+      pixman-dev pixman-static \
+      graphite2-dev graphite2-static \
       zlib-static \
+      libxrandr-dev \
+      libxrender-dev \
       pango-dev \
+      libxfixes-dev libxcursor-dev libxi-dev \
+      pcre2-dev pcre2-static \
+      fribidi-dev fribidi-static \
+      util-linux-dev util-linux-static \
+      libxcb-dev libxcb-static \
       fontconfig-dev \
       gdk-pixbuf-dev \
       librsvg-dev \
       vulkan-loader-dev vulkan-tools \
       xz-dev \
       flex-dev flex-libs \
-      libxdamage-dev
+      libxdamage-dev \
+      libunwind-dev \
+      libxau-dev \
+      po4a \
+      xcb-util-dev \
+      graphene-dev \
+      gtk4.0-dev
 
-ENV APP_NAME="QR2M"
-ENV BUILD_PATH="docker/target/x86_64-unknown-linux-musl"
-ENV OUTPUT_DIR="docker/target/x86_64-unknown-linux-musl/release"
-ENV FEATURES="dev"
-ENV TARGET="x86_64-unknown-linux-musl"
-ENV OUTPUT="true"
-
-# Install Rust MUSL target
 RUN rustup target add x86_64-unknown-linux-musl
 
-# Create non-root user
-RUN addgroup -S app && adduser -S app -G app
-USER app
+WORKDIR $PROJECT_DIR
+COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
+COPY docker/static_library/pango.sh $PROJECT_DIR/pango.sh
+COPY docker/static_library/libxau.sh $PROJECT_DIR/libxau.sh
+COPY docker/static_library/xz.sh $PROJECT_DIR/xz.sh
+COPY docker/static_library/librsvg.sh $PROJECT_DIR/librsvg.sh
+COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
+COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
+COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
-WORKDIR /usr/src/app
+RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh
+RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
+RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh
+RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
+RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
+RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
+RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
+RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
 
-# Copy and run build script
-COPY --chown=app:app docker/compile-circus.sh /usr/src/app/compile-circus.sh
-RUN chmod +x /usr/src/app/compile-circus.sh && /usr/src/app/compile-circus.sh
 
-# Default command for interactive sessions
+FROM alpine:latest AS runner
+RUN apk add --no-cache bash
+COPY --from=builder /home/QR2M /home/QR2M
+WORKDIR /home/QR2M
 CMD ["bash"]
