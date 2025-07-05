@@ -24,8 +24,8 @@ echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
 echo "Set environment variables for build"
 export PKG_CONFIG_ALLOW_CROSS=1
-export CFLAGS="-static"
-export LDFLAGS="-static"
+export CFLAGS="-I$STATIC_DIR/include -static"
+export LDFLAGS="-L$STATIC_DIR/lib -static"
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
@@ -40,10 +40,10 @@ echo "GTK4=$GTK4"
 #echo "ADWAITA=$ADWAITA"
 [ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; }
 #[ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; }
-#
+#RUN cp /home/QR2M/install/lib/pkgconfig/gtk4.pc $STATIC_DIR/lib/pkgconfig/gtk-4.pc && \
 #
 echo "Renaming .pc files..."
-cp "$GTK4" "$(dirname "$GTK4")/gtk-4.pc" || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
+cp "$GTK4" $STATIC_DIR/lib/pkgconfig/gtk-4.pc || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
 #cp "$ADWAITA" "$(dirname "$ADWAITA")/libadwaita-1.0.pc" || { echo "Error: Failed to rename libadwaita-1.pc"; exit 1; }
 
 
