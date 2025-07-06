@@ -53,10 +53,8 @@ meson install -C builddir 2>&1 | tee "$LOG_DIR/gtk_install.log"
 STATUS=$?
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk_install.log
-  echo "MESON INSTALL PANGO FAIL"
+  echo "MESON INSTALL GTK FAIL"
   exit 1
 fi
-
-cp $STATIC_DIR/lib/pkgconfig/gtk4.pc /usr/lib/pkgconfig/gtk-4.pc
 
 echo "gtk compiled and installed successfully"

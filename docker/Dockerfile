@@ -1,4 +1,4 @@
-FROM rust:alpine
+FROM rust:alpine AS base_system
 
 LABEL maintainer="control-owl@r-o0-t.wtf"
 LABEL version="1.0"
@@ -58,7 +58,8 @@ RUN apk add --no-cache \
   gtk4.0-dev libadwaita-dev \
   appstream-dev appstream-glib-dev \
   libcurl curl-dev curl-static \
-  yaml-dev yaml-static gperf itstool
+  yaml-dev yaml-static gperf itstool \
+  zstd-dev zstd-static
 
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
@@ -80,5 +81,19 @@ RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
 RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
 RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
 RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
-
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
+
+#FROM rust:alpine AS build_project
+#
+#ENV PROJECT_DIR=/home/QR2M
+#WORKDIR $PROJECT_DIR
+#
+#RUN apk update && apk add --no-cache rust cargo pkgconf git coreutils bash \
+#    libxml2-dev curl-dev zlib-dev glib-dev glib-static \
+#    openssl-dev pango-dev libadwaita-dev
+#
+#COPY --from=base_system $PROJECT_DIR/compile-circus/STATIC $PROJECT_DIR/compile-circus/STATIC
+#COPY --from=base_system $PROJECT_DIR/compile-circus/LOG $PROJECT_DIR/compile-circus/LOG
+#COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
+#
+#RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
