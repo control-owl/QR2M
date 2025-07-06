@@ -32,16 +32,40 @@ export OPENSSL_INCLUDE_DIR=/usr/include
 export OPENSSL_STATIC=1
 export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-L$STATIC_DIR -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
 
+fix_gtk_pc_file() {
+    echo "Detecting GTK 4 .pc file..."
+    local pc_dir
+    local gtk_pc_file
+    local target_pc="$STATIC_DIR/lib/pkgconfig/gtk-4.pc"
 
-echo "Capturing .pc file paths..."
-GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' | sed "s|^|/|")
-echo "GTK4=$GTK4"
-[ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; }
+    for pc_dir in $(echo "$PKG_CONFIG_PATH" | tr ':' '\n'); do
+        for file in "$pc_dir/gtk4.pc" "$pc_dir/gtk-4-0.pc" "$pc_dir/gtk4-0.pc"; do
+            if [ -f "$file" ]; then
+                gtk_pc_file="$file"
+                break
+            fi
+        done
+        [ -n "$gtk_pc_file" ] && break
+    done
 
+    if [ -z "$gtk_pc_file" ]; then
+        echo "Error: GTK 4 .pc file (gtk4.pc or gtk-4-0.pc or gtk4-0.pc) not found in PKG_CONFIG_PATH"
+        exit 1
+    fi
 
-echo "Renaming .pc files..."
-cp "$GTK4" $STATIC_DIR/lib/pkgconfig/gtk-4.pc || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
-cp "$GTK4" $STATIC_DIR/lib/pkgconfig/gtk-4-0.pc || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
+    echo "Found GTK 4 .pc file: $gtk_pc_file"
+    if [ ! -f "$target_pc" ]; then
+        echo "Creating symlink $gtk_pc_file -> $target_pc"
+        ln -sf "$gtk_pc_file" "$target_pc" || { echo "Error: Failed to create symlink for gtk-4.pc"; exit 1; }
+    else
+        echo "gtk-4.pc already exists at $target_pc"
+    fi
+
+    pkg-config --modversion gtk-4 || { echo "Error: pkg-config cannot find gtk-4"; exit 1; }
+}
+
+echo "Fixing GTK 4 .pc file naming..."
+fix_gtk_pc_file
 
 
 echo "Cloning project..."

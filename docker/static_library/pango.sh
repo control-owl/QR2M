@@ -48,3 +48,5 @@ if [ "$STATUS" -ne 0 ]; then
   echo "MESON INSTALL PANGO FAIL"
   exit 1
 fi
+
+echo "pango compiled and installed successfully"

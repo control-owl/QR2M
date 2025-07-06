@@ -33,6 +33,7 @@ RUN apk add --no-cache \
       bzip2-dev bzip2-static \
       pixman-dev pixman-static \
       graphite2-dev graphite2-static \
+      glib-dev glib-static \
       zlib-static \
       libxrandr-dev \
       libxrender-dev \
@@ -54,8 +55,12 @@ RUN apk add --no-cache \
       po4a \
       xcb-util-dev \
       graphene-dev \
-      gtk4.0-dev libadwaita-dev
+      gtk4.0-dev libadwaita-dev \
+      appstream-dev appstream-glib-dev \
+      libcurl curl-dev curl-static \
+      yaml-dev yaml-static gperf itstool
 
+COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
 COPY docker/static_library/graphene.sh $PROJECT_DIR/graphene.sh
 COPY docker/static_library/pango.sh $PROJECT_DIR/pango.sh
@@ -67,6 +72,7 @@ COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
 
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
+RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
 RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh
 RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
@@ -75,6 +81,5 @@ RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
 RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
 RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
 RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
-
 
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
