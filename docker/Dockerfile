@@ -82,19 +82,18 @@ RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
 RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
 RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
 RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
-RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
-
-#FROM rust:alpine AS build_project
-#
-#ENV PROJECT_DIR=/home/QR2M
-#WORKDIR $PROJECT_DIR
-#
-#RUN apk update && apk add --no-cache rust cargo pkgconf git coreutils bash \
-#    libxml2-dev curl-dev zlib-dev glib-dev glib-static \
-#    openssl-dev pango-dev libadwaita-dev
-#
-#COPY --from=base_system $PROJECT_DIR/compile-circus/STATIC $PROJECT_DIR/compile-circus/STATIC
-#COPY --from=base_system $PROJECT_DIR/compile-circus/LOG $PROJECT_DIR/compile-circus/LOG
-#COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
-#
 #RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
+
+FROM rust:alpine AS build_project
+
+ENV PROJECT_DIR=/home/QR2M
+WORKDIR $PROJECT_DIR
+
+RUN apk update && apk add --no-cache rust cargo pkgconf git coreutils bash \
+    libxml2-dev curl-dev zlib-dev glib-dev glib-static \
+    openssl-dev pango-dev libadwaita-dev
+
+COPY --from=base_system $PROJECT_DIR/compile-circus/STATIC $PROJECT_DIR/compile-circus/STATIC
+COPY --from=base_system $PROJECT_DIR/compile-circus/LOG $PROJECT_DIR/compile-circus/LOG
+
+RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh

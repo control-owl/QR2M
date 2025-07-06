@@ -15,13 +15,11 @@ git clone https://gitlab.gnome.org/GNOME/librsvg.git librsvg
 cd librsvg
 
 meson setup builddir \
-  --prefix=/usr/local \
-  --buildtype=release \
   --prefix=$STATIC_DIR \
   -Ddefault_library=static \
-  -Ddocs=false \
+  -Ddocs=disabled \
   -Dtests=false \
-  -Dvala=false 2>&1 | tee "$LOG_DIR/librsvg_setup.log"
+  -Dvala=disabled 2>&1 | tee "$LOG_DIR/librsvg_setup.log"
 STATUS=$?
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/librsvg_setup.log

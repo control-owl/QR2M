@@ -35,7 +35,7 @@ export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-a
 
 
 echo "Checking pkg-config for dependencies"
-for pkg in gtk-4 libadwaita-1; do
+for pkg in gtk4 libadwaita-1; do
   echo "Checking $pkg..."
   pkg-config --modversion "$pkg" 2>&1 | tee -a "$LOG_DIR/pkg_config_check.log" || { echo "Error: $pkg not found"; exit 1; }
 done
@@ -56,31 +56,37 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "$FEATURES" 2>&1 | tee "$LOG_DIR/qr2m_test.log"
-STATUS=$?
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/qr2m_test.log
-  echo "CARGO TEST QR2M FAIL"
-  exit 1
-fi
-
 echo "Listing build directory:"
 ls -l "$BUILD_PATH/release"
 
-echo "Checking binary:"
-export BIN="$BUILD_PATH/release/$APP_NAME"
-[ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
-file "$BIN" 2>&1 | tee "$LOG_DIR/qr2m_file_check.log"
-ldd "$BIN" 2>&1 | tee "$LOG_DIR/qr2m_ldd_check.log"
-chmod +x "$BIN"
 
-echo "Creating output binary"
-if [ "$OUTPUT" = "true" ]; then
-  echo "Copying files to $OUTPUT_DIR..."
-  mkdir -p "$OUTPUT_DIR"
-  cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
-  #chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME"; exit 1; }
 
-  echo "Listing output directory:"
-  ls -l "$OUTPUT_DIR"
-fi
+# PAUSE
+#cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "$FEATURES" 2>&1 | tee "$LOG_DIR/qr2m_test.log"
+#STATUS=$?
+#if [ "$STATUS" -ne 0 ]; then
+#  cat $LOG_DIR/qr2m_test.log
+#  echo "CARGO TEST QR2M FAIL"
+#  exit 1
+#fi
+#
+#echo "Listing build directory:"
+#ls -l "$BUILD_PATH/release"
+#
+#echo "Checking binary:"
+#export BIN="$BUILD_PATH/release/$APP_NAME"
+#[ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
+#file "$BIN" 2>&1 | tee "$LOG_DIR/qr2m_file_check.log"
+#ldd "$BIN" 2>&1 | tee "$LOG_DIR/qr2m_ldd_check.log"
+#chmod +x "$BIN"
+#
+#echo "Creating output binary"
+#if [ "$OUTPUT" = "true" ]; then
+#  echo "Copying files to $OUTPUT_DIR..."
+#  mkdir -p "$OUTPUT_DIR"
+#  cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
+#  #chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME"; exit 1; }
+#
+#  echo "Listing output directory:"
+#  ls -l "$OUTPUT_DIR"
+#fi

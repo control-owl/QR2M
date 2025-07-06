@@ -18,7 +18,6 @@ meson setup builddir \
   --default-library static \
   --prefix=$STATIC_DIR \
   -Ddocumentation=false \
-  -Dgtk_doc=false \
   -Dman-pages=false \
   -Dintrospection=disabled \
   -Dbuild-testsuite=false \
