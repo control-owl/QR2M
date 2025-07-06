@@ -11,7 +11,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
 RUN apk update
 RUN apk add --no-cache \
-  bash curl build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
+  bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
   gettext-dev gettext-static \
   openssl-dev openssl-libs-static \
   glib-dev glib-static \
@@ -57,9 +57,10 @@ RUN apk add --no-cache \
   graphene-dev \
   gtk4.0-dev libadwaita-dev \
   appstream-dev appstream-glib-dev \
-  libcurl curl-dev curl-static \
+  curl libcurl curl-dev curl-static \
   yaml-dev yaml-static gperf itstool \
-  zstd-dev zstd-static
+  zstd-dev zstd-static \
+  nghttp2-dev nghttp2-static
 
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
