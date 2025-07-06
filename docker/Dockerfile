@@ -3,8 +3,9 @@ FROM rust:alpine
 LABEL maintainer="control-owl@r-o0-t.wtf"
 LABEL version="1.0"
 LABEL description="Build QR2M project with MUSL"
-ENV PROJECT_DIR=/home/QR2M
 
+ENV PROJECT_DIR=/home/QR2M
+WORKDIR $PROJECT_DIR
 
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories
@@ -55,9 +56,6 @@ RUN apk add --no-cache \
       graphene-dev \
       gtk4.0-dev libadwaita-dev
 
-RUN rustup target add x86_64-unknown-linux-musl
-
-WORKDIR $PROJECT_DIR
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
 COPY docker/static_library/graphene.sh $PROJECT_DIR/graphene.sh
 COPY docker/static_library/pango.sh $PROJECT_DIR/pango.sh
@@ -66,6 +64,7 @@ COPY docker/static_library/xz.sh $PROJECT_DIR/xz.sh
 COPY docker/static_library/librsvg.sh $PROJECT_DIR/librsvg.sh
 COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
+
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
@@ -76,6 +75,6 @@ RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
 RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
 RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
 RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
+
+
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
-
-

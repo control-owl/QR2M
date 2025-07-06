@@ -12,8 +12,8 @@ CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
 STATIC_DIR="$CIRCUS/STATIC"
 
-mkdir -p $CIRCUS
-mkdir -p $LOG_DIR
+mkdir -p "$CIRCUS"
+mkdir -p "$LOG_DIR"
 
 cd /home/QR2M/compile-circus
 
@@ -35,16 +35,13 @@ export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-a
 
 echo "Capturing .pc file paths..."
 GTK4=$(apk info -L gtk4.0-dev | grep -E '/gtk4\.pc$' | sed "s|^|/|")
-#ADWAITA=$(apk info -L libadwaita-dev | grep -E '/libadwaita-1\.pc$' | sed "s|^|/|")
 echo "GTK4=$GTK4"
-#echo "ADWAITA=$ADWAITA"
 [ -n "$GTK4" ] || { echo "Error: gtk4.pc not found in gtk4.0-dev"; exit 1; }
-#[ -n "$ADWAITA" ] || { echo "Error: libadwaita-1.pc not found in libadwaita-dev"; exit 1; }
-#RUN cp /home/QR2M/install/lib/pkgconfig/gtk4.pc $STATIC_DIR/lib/pkgconfig/gtk-4.pc && \
-#
+
+
 echo "Renaming .pc files..."
 cp "$GTK4" $STATIC_DIR/lib/pkgconfig/gtk-4.pc || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
-#cp "$ADWAITA" "$(dirname "$ADWAITA")/libadwaita-1.0.pc" || { echo "Error: Failed to rename libadwaita-1.pc"; exit 1; }
+cp "$GTK4" $STATIC_DIR/lib/pkgconfig/gtk-4-0.pc || { echo "Error: Failed to rename gtk4.pc"; exit 1; }
 
 
 echo "Cloning project..."
