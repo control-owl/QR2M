@@ -57,6 +57,6 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cp $STATIC_DIR/lib/gtk4.pc /usr/lib/pkgconfig/gtk-4.pc
+cp $STATIC_DIR/lib/pkgconfig/gtk4.pc /usr/lib/pkgconfig/gtk-4.pc
 
 echo "gtk compiled and installed successfully"
