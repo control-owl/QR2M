@@ -78,7 +78,7 @@ COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
 
 RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh
-RUN cargo install cargo-c --features=vendored-openssl
+RUN cargo install cargo-c
 
 RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
