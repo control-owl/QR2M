@@ -60,7 +60,7 @@ RUN apk add --no-cache \
   curl libcurl curl-dev curl-static \
   yaml-dev yaml-static gperf itstool \
   zstd-dev zstd-static \
-  nghttp2-dev nghttp2-static
+  nghttp2-dev nghttp2-static nghttp2-libs
 
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh

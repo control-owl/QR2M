@@ -51,7 +51,7 @@ for pkg in gtk4 libadwaita-1; do
   STATUS=${PIPESTATUS[0]}
   if [ "$STATUS" -ne 0 ]; then
     cat "$LOG_DIR/qr2m-01-pkgconfig.log"
-    echo "ERROR - qr2m - 01/05 - pkgconfig"
+    echo "ERROR - qr2m - 01/06 - pkgconfig"
     exit 1
   fi
 done
@@ -69,7 +69,7 @@ echo "Cloning project..."
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/qr2m-02-clone.log"
-  echo "ERROR - qr2m - 02/05 - Clone"
+  echo "ERROR - qr2m - 02/06 - Clone"
   exit 1
 fi
 
@@ -84,7 +84,7 @@ cd QR2M
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/qr2m-03-build.log
-  echo "ERROR - qr2m - 03/05 - Build"
+  echo "ERROR - qr2m - 03/06 - Build"
   exit 1
 fi
 
@@ -100,20 +100,52 @@ ls -l "$BUILD_PATH/release"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/qr2m-04-test.log
-  echo "ERROR - qr2m - 04/05 - Test"
+  echo "ERROR - qr2m - 04/06 - Test"
  exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#
-#echo "Checking binary:"
-#export BIN="$BUILD_PATH/release/$APP_NAME"
-#[ -f "$BIN" ] || { echo "Error: Binary not found at $BIN"; exit 1; }
-#file "$BIN" 2>&1 | tee "$LOG_DIR/qr2m_file_check.log"
-#ldd "$BIN" 2>&1 | tee "$LOG_DIR/qr2m_ldd_check.log"
-#chmod +x "$BIN"
-#
+
+echo "Checking binary:"
+export BIN="$BUILD_PATH/release/$APP_NAME"
+echo "BIN=$BIN"
+
+if [ -f "$BIN" ]; then
+  {
+    file "$BIN"
+  } 2>&1 | tee "$LOG_DIR/qr2m-05-file_check.log"
+
+  STATUS=${PIPESTATUS[0]}
+  if [ "$STATUS" -ne 0 ]; then
+    cat $LOG_DIR/qr2m-05-file_check.log
+    echo "ERROR - qr2m - 05/06 - File check"
+  exit 1
+  fi
+
+  {
+    ldd "$BIN"
+  } 2>&1 | tee "$LOG_DIR/qr2m-06-ldd_check.log"
+
+  STATUS=${PIPESTATUS[0]}
+  if [ "$STATUS" -ne 0 ]; then
+    cat $LOG_DIR/qr2m-06-ldd_check.log
+    echo "ERROR - qr2m - 06/06 - Ldd check"
+  exit 1
+  fi
+
+  chmod +x "$BIN"
+else
+  echo "Error: Binary not found at $BIN"
+  exit 1
+fi
+
+
+
+
+
+
+
 #echo "Creating output binary"
 #if [ "$OUTPUT" = "true" ]; then
 #  echo "Copying files to $OUTPUT_DIR..."
