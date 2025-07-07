@@ -1,6 +1,8 @@
 fn main() {
   set_environment();
 
+  println!("cargo:rustc-link-lib");
+
   if std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "windows" {
     use winres;
     let mut res = winres::WindowsResource::new();
