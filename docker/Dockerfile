@@ -60,8 +60,8 @@ RUN apk add --no-cache \
   yaml-dev yaml-static gperf itstool \
   zstd-dev zstd-static \
   nghttp2-dev nghttp2-static nghttp2-libs \
-  c-ares-dev c-ares-utils ca-certificates
-  # curl libcurl curl-dev curl-static \
+  c-ares-dev c-ares-utils ca-certificates \
+  libcurl
 
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
@@ -77,7 +77,7 @@ COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
 
 RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh
-RUN cargo install cargo-c
+RUN cargo install cargo-c --features=vendored-openssl
 
 RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
