@@ -1,62 +1,95 @@
 #!/bin/bash
+# authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+# license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
+#
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 set -e
+set -x
+set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
 STATIC_DIR="$CIRCUS/STATIC"
 
-mkdir -p $CIRCUS
-mkdir -p $LOG_DIR
-mkdir -p $STATIC_DIR
+mkdir -p "$CIRCUS"
+mkdir -p "$LOG_DIR"
+mkdir -p "$STATIC_DIR"
 
-cd $CIRCUS
+cd "$CIRCUS"
 
-git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk
-cd gtk
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-meson setup builddir \
-  --default-library static \
-  --prefix=$STATIC_DIR \
-  -Dmedia-gstreamer=disabled \
-  -Dprint-cpdb=disabled \
-  -Dprint-cups=disabled \
-  -Dvulkan=disabled \
-  -Dcloudproviders=disabled \
-  -Dsysprof=disabled \
-  -Dtracker=disabled \
-  -Dcolord=disabled \
-  -Daccesskit=disabled \
-  -Dintrospection=disabled \
-  -Ddocumentation=false \
-  -Dscreenshots=false \
-  -Dman-pages=false \
-  -Dbuild-demos=false \
-  -Dbuild-testsuite=false \
-  -Dbuild-examples=false \
-  -Dbuild-tests=false  2>&1 | tee "$LOG_DIR/gtk_setup.log"
-STATUS=$?
+{
+  git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk4
+} 2>&1 | tee "$LOG_DIR/gtk4-01-clone.log"
+
+STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gtk_setup.log
-  echo "MESON SETUP GTK FAIL"
+  cat "$LOG_DIR/gtk4-01-clone.log"
+  echo "ERROR - gtk4 - 01/04 - Clone"
   exit 1
 fi
 
-meson compile -C builddir 2>&1 | tee "$LOG_DIR/gtk_compile.log"
-STATUS=$?
+cd gtk4
+
+{
+  meson setup builddir \
+    --default-library static \
+    --prefix=$STATIC_DIR \
+    -Dmedia-gstreamer=disabled \
+    -Dprint-cpdb=disabled \
+    -Dprint-cups=disabled \
+    -Dvulkan=disabled \
+    -Dcloudproviders=disabled \
+    -Dsysprof=disabled \
+    -Dtracker=disabled \
+    -Dcolord=disabled \
+    -Daccesskit=disabled \
+    -Dintrospection=disabled \
+    -Ddocumentation=false \
+    -Dscreenshots=false \
+    -Dman-pages=false \
+    -Dbuild-demos=false \
+    -Dbuild-testsuite=false \
+    -Dbuild-examples=false \
+  -Dbuild-tests=false
+}  2>&1 | tee "$LOG_DIR/gtk4-02-setup.log"
+
+STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gtk_compile.log
-  echo "MESON COMPILE GTK FAIL"
+  cat $LOG_DIR/gtk4-02-setup.log
+  echo "ERROR - gtk4 - 02/04 - Setup"
   exit 1
 fi
 
-meson install -C builddir 2>&1 | tee "$LOG_DIR/gtk_install.log"
-STATUS=$?
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  meson compile -C builddir
+} 2>&1 | tee "$LOG_DIR/gtk4-03-compile.log"
+
+STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gtk_install.log
-  echo "MESON INSTALL GTK FAIL"
+  cat $LOG_DIR/gtk4-03-compile.log
+  echo "ERROR - gtk4 - 03/04 - Compile"
   exit 1
 fi
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  meson install -C builddir
+} 2>&1 | tee "$LOG_DIR/gtk4-04-install.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/gtk4-04-install.log
+  echo "ERROR - gtk4 - 04/04 - Install"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 if [ ! -d "$STATIC_DIR/lib/pkgconfig" ]; then
   mkdir -p "$STATIC_DIR/lib/pkgconfig"
@@ -109,6 +142,8 @@ if [ ! -f "$STATIC_DIR/lib/libgtk-4.a" ]; then
   fi
   exit 1
 fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 echo "gtk compiled and installed successfully"
 
