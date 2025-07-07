@@ -61,7 +61,7 @@ RUN apk add --no-cache \
   zstd-dev zstd-static \
   nghttp2-dev nghttp2-static nghttp2-libs \
   c-ares-dev c-ares-utils ca-certificates \
-  libcurl
+  libcurl curl-dev curl-static
 
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
