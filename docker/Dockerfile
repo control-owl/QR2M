@@ -75,9 +75,10 @@ COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
-RUN cargo install cargo-c
 
 RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh
+RUN cargo install cargo-c
+
 RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
 RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh
