@@ -53,6 +53,7 @@ RUN apk add --no-cache \
   libunwind-dev \
   libxau-dev \
   po4a \
+  rust-bindgen \
   xcb-util-dev \
   graphene-dev \
   gtk4.0-dev libadwaita-dev \
