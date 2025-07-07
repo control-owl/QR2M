@@ -61,7 +61,7 @@ RUN apk add --no-cache \
   yaml-dev yaml-static gperf itstool \
   zstd-dev zstd-static \
   nghttp2-dev nghttp2-static nghttp2-libs \
-  c-ares-dev c-ares-utils
+  c-ares-dev c-ares-utils ca-certificates
 
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
