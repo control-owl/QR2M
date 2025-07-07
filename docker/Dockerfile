@@ -57,11 +57,11 @@ RUN apk add --no-cache \
   graphene-dev \
   gtk4.0-dev libadwaita-dev \
   appstream-dev appstream-glib-dev \
-  curl libcurl curl-dev curl-static \
   yaml-dev yaml-static gperf itstool \
   zstd-dev zstd-static \
   nghttp2-dev nghttp2-static nghttp2-libs \
   c-ares-dev c-ares-utils ca-certificates
+  # curl libcurl curl-dev curl-static \
 
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
