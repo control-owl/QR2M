@@ -62,7 +62,7 @@ RUN apk add --no-cache \
   zstd-dev zstd-static \
   nghttp2-dev nghttp2-static nghttp2-libs \
   c-ares-dev c-ares-utils ca-certificates \
-  libcurl curl-dev curl-static
+  curl openssl-dev
 
 COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
