@@ -43,7 +43,6 @@ RUN apk add --no-cache \
   fribidi-dev fribidi-static \
   util-linux-dev util-linux-static \
   libxcb-dev libxcb-static \
-  fontconfig-dev \
   gdk-pixbuf-dev \
   librsvg-dev \
   vulkan-loader-dev vulkan-tools \
@@ -81,17 +80,17 @@ RUN rustup target add x86_64-unknown-linux-musl
 RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh
 
 # RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh
-# RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
-# RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
-# RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh
-# RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
-# RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh
-# RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
-# RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
-# RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
-# RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
-# 
-# RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
+RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
+RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
+RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh
+RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
+RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh
+RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
+RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
+RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
+RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
+
+RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
 
 # FROM rust:alpine AS build_project
 # 
