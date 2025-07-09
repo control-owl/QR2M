@@ -40,6 +40,10 @@ cd libadwaita
     --default-library static \
     --prefix=$STATIC_DIR \
     -Dexamples=false \
+    -Dgtk_doc=false \
+    -Ddocumentation=false \
+    -Dintrospection=disabled \
+    -Dvapi=false \
     -Dtests=false
 }  2>&1 | tee "$LOG_DIR/libadwaita-02-setup.log"
 

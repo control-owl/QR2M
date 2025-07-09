@@ -28,7 +28,7 @@ cd /home/QR2M/compile-circus
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 echo "Set PKG_CONFIG_PATH"
-export PKG_CONFIG_PATH="$STATIC_DIR/lib:$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
 echo "Set environment variables for build"
@@ -94,18 +94,17 @@ ls -l "$BUILD_PATH/release"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "$FEATURES"
+  cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "offline" # "$FEATURES"
 } 2>&1 | tee "$LOG_DIR/qr2m-04-test.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/qr2m-04-test.log
   echo "ERROR - qr2m - 04/06 - Test"
- exit 1
+  exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
 
 echo "Checking binary:"
 export BIN="$BUILD_PATH/release/$APP_NAME"
@@ -140,19 +139,20 @@ else
   exit 1
 fi
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+echo "Creating output binary"
+if [ "$OUTPUT" = "true" ]; then
+  echo "Copying files to $OUTPUT_DIR..."
+  mkdir -p "$OUTPUT_DIR"
 
+  if ! cp "$BIN" "$OUTPUT_DIR"; then
+    echo "Error: Failed to copy $BIN to $OUTPUT_DIR"
+    exit 1
+  fi
 
+  #chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME"; exit 1; }
 
-
-
-#echo "Creating output binary"
-#if [ "$OUTPUT" = "true" ]; then
-#  echo "Copying files to $OUTPUT_DIR..."
-#  mkdir -p "$OUTPUT_DIR"
-#  cp "$BIN" "$OUTPUT_DIR" || { echo "Error: Failed to copy $BIN to $OUTPUT_DIR"; exit 1; }
-#  #chown 1001:1001 "$OUTPUT_DIR/$APP_NAME" || { echo "Error: Failed to change ownership of $OUTPUT_DIR/$APP_NAME"; exit 1; }
-#
-#  echo "Listing output directory:"
-#  ls -l "$OUTPUT_DIR"
-#fi
+  echo "Listing output directory:"
+  ls -l "$OUTPUT_DIR"
+fi

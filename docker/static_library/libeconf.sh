@@ -24,33 +24,28 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/librsvg.git librsvg
-} 2>&1 | tee "$LOG_DIR/librsvg-01-clone.log"
+  git clone https://github.com/openSUSE/libeconf.git libeconf
+} 2>&1 | tee "$LOG_DIR/libeconf-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/librsvg-01-clone.log"
-  echo "ERROR - librsvg - 01/04 - Clone"
+  cat "$LOG_DIR/libeconf-01-clone.log"
+  echo "ERROR - libeconf - 01/04 - Clone"
   exit 1
 fi
 
-cd librsvg
+cd libeconf
 
 {
   meson setup builddir \
     --prefix=$STATIC_DIR \
-    -Ddefault_library=static \
-    -Ddocs=disabled \
-    -Dtests=false \
-    -Davif=disabled \
-    -Dpixbuf-loader=disabled \
-    -Dvala=disabled
-} 2>&1 | tee "$LOG_DIR/librsvg-02-setup.log"
+    -Ddefault_library=static
+} 2>&1 | tee "$LOG_DIR/libeconf-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/librsvg-02-setup.log
-  echo "ERROR - librsvg - 02/04 - Setup"
+  cat $LOG_DIR/libeconf-02-setup.log
+  echo "ERROR - libeconf - 02/04 - Setup"
   exit 1
 fi
 
@@ -58,12 +53,12 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/librsvg-03-ninja.log"
+} 2>&1 | tee "$LOG_DIR/libeconf-03-ninja.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/librsvg-03-ninja.log
-  echo "ERROR - librsvg - 03/04 - Compile"
+  cat $LOG_DIR/libeconf-03-ninja.log
+  echo "ERROR - libeconf - 03/04 - Compile"
   exit 1
 fi
 
@@ -71,15 +66,15 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/librsvg-04-install.log"
+} 2>&1 | tee "$LOG_DIR/libeconf-04-install.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/librsvg-04-install.log
-  echo "ERROR - librsvg - 04/04 - Install"
+  cat $LOG_DIR/libeconf-04-install.log
+  echo "ERROR - libeconf - 04/04 - Install"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "librsvg compiled and installed successfully"
+echo "libeconf compiled and installed successfully"

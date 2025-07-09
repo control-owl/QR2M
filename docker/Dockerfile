@@ -61,7 +61,7 @@ RUN apk add --no-cache \
   zstd-dev zstd-static \
   nghttp2-dev nghttp2-static nghttp2-libs \
   c-ares-dev c-ares-utils ca-certificates \
-  curl openssl-dev
+  curl curl-dev curl-static libcurl openssl-dev libeconf-dev
 
 COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
@@ -71,26 +71,33 @@ COPY docker/static_library/graphene.sh $PROJECT_DIR/graphene.sh
 COPY docker/static_library/pango.sh $PROJECT_DIR/pango.sh
 COPY docker/static_library/libxau.sh $PROJECT_DIR/libxau.sh
 COPY docker/static_library/xz.sh $PROJECT_DIR/xz.sh
+COPY docker/static_library/libeconf.sh $PROJECT_DIR/libeconf.sh
 COPY docker/static_library/librsvg.sh $PROJECT_DIR/librsvg.sh
 COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
-RUN rustup target add x86_64-unknown-linux-musl
-RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh
+ENV PKG_CONFIG_PATH="$PROJECT_DIR/STATIC/lib:$PROJECT_DIR/STATIC/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 
-# RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh
-RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
-RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh
-RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh
-RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh
-RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh
-RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh
-RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh
-RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh
-RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh
 
+RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh         # Compiles
+RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh             # Compiles
+RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh           # Compiles
+RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh                   # Compiles
+RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh   # Compiles
+RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh       # Compiles
+RUN chmod +x $PROJECT_DIR/libeconf.sh && $PROJECT_DIR/libeconf.sh       # Compiles
+RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh               # Compiles
+RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh   # Compiles
+RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh     # Compiles
+
+#RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh         # FAIL
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
+
+
+#RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh
+#RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh
+
 
 # FROM rust:alpine AS build_project
 # 
