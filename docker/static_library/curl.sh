@@ -53,9 +53,8 @@ fi
   ./configure \
   --enable-static \
   --prefix=$STATIC_DIR \
-  --with-ares 
-  # \
-  # --without-ssl \
+  --with-ares \
+  --with-rustls
   # --without-libpsl
 } 2>&1 | tee "$LOG_DIR/curl-03-configure.log"
 
