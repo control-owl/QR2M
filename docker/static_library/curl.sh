@@ -55,6 +55,7 @@ fi
   --prefix=$STATIC_DIR \
   --with-ares \
   --with-nghttp3 \
+  --with-ngtcp2 \
   --with-openssl
   # --without-libpsl
 } 2>&1 | tee "$LOG_DIR/curl-03-configure.log"
