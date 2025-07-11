@@ -53,9 +53,10 @@ fi
   ./configure \
   --enable-static \
   --prefix=$STATIC_DIR \
-  --with-ares \
-  --without-ssl \
-  --without-libpsl
+  --with-ares 
+  # \
+  # --without-ssl \
+  # --without-libpsl
 } 2>&1 | tee "$LOG_DIR/curl-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
