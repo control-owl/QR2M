@@ -27,7 +27,7 @@ RUN apk add --no-cache \
   xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
   yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-static nghttp2-libs \
   c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf \
-  curl-dev
+  curl-dev rustc-dev
 
 COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
