@@ -25,7 +25,7 @@ RUN apk add --no-cache \
   libxcb-dev libxcb-static gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
   xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
   xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
-  yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-static nghttp2-libs \
+  yaml-dev yaml-static zstd-dev zstd-static nghttp3-dev nghttp3-static \
   c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf \
   curl-dev rustc-dev
 
