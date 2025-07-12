@@ -25,11 +25,12 @@ RUN apk add --no-cache \
   libxcb-dev libxcb-static gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
   xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
   xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
-  yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-static nghttp2-libs \
+  yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs \
   c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf \
   curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static
 
 COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
+COPY docker/static_library/nghttp2.sh $PROJECT_DIR/nghttp2.sh
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
@@ -43,8 +44,10 @@ COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
-RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh               # Compiles but ...
-RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh         # Compiles without curl
+
+RUN chmod +x $PROJECT_DIR/nghttp2.sh && $PROJECT_DIR/nghttp2.sh          # Compiles
+RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh                # Compiles
+RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh         # Compiles
 RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh             # Compiles
 RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh           # Compiles
 RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh                   # Compiles
@@ -53,7 +56,7 @@ RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh       # Compil
 RUN chmod +x $PROJECT_DIR/libeconf.sh && $PROJECT_DIR/libeconf.sh       # Compiles
 RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh     # Compiles
 
-RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh         # FAIL, curl problems
+RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh         # FAIL
 
 RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh               # Compiles
 RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh   # Compiles

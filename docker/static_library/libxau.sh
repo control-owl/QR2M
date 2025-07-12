@@ -46,7 +46,7 @@ cd libxau
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxau-02-autogen.log
-  echo "ERROR - libxau - 02/04 - Setup"
+  echo "ERROR - libxau - 02/04 - autogen"
   exit 1
 fi
 
@@ -59,7 +59,7 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxau-03-make.log
-  echo "ERROR - libxau - 03/04 - Compile"
+  echo "ERROR - libxau - 03/04 - make"
   exit 1
 fi
 

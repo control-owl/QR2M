@@ -51,15 +51,15 @@ fi
 
 {
   ./configure \
-  --enable-static \
-  --disable-shared \
-  --prefix=$STATIC_DIR
+    --enable-static \
+    --disable-shared \
+    --prefix=$STATIC_DIR
 } 2>&1 | tee "$LOG_DIR/xz-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/xz-03-configure.log
-  echo "ERROR - xz - 03/05 - Clone"
+  echo "ERROR - xz - 03/05 - Configure"
   exit 1
 fi
 
@@ -72,7 +72,7 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/xz-04-make.log
-  echo "ERROR - xz - 04/05 - Clone"
+  echo "ERROR - xz - 04/05 - Compile"
   exit 1
 fi
 
@@ -84,7 +84,7 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/xz-05-install.log
-  echo "ERROR - xz - 05/05 - Clone"
+  echo "ERROR - xz - 05/05 - Install"
   exit 1
 fi
 

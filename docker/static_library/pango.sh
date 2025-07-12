@@ -79,7 +79,7 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pango-04-install.log
-  echo "ERROR - pango - 04/04 - Clone"
+  echo "ERROR - pango - 04/04 - Install"
   exit 1
 fi
 
