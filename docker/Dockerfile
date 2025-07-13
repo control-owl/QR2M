@@ -53,7 +53,7 @@ RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh           # Compil
 RUN chmod +x $PROJECT_DIR/cairo.sh && $PROJECT_DIR/cairo.sh             # Compiles
 RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh             # Compiles
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh   # Compiles
-RUN chmod +x $PROJECT_DIR/glib.sh && $PROJECT_DIR/glib.sh               #
+RUN chmod +x $PROJECT_DIR/glib.sh && $PROJECT_DIR/glib.sh               # Compiles
 
 # Needed for curl
 RUN chmod +x $PROJECT_DIR/nghttp2.sh && $PROJECT_DIR/nghttp2.sh         # Compiles
@@ -68,7 +68,7 @@ RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh       # Compil
 
 # Needed for QR2M
 RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh         # Compiles
-RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh         # FAIL
+RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh         # Compiles
 RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh     # Compiles
 RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh               # Compiles
 RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh   # Compiles
