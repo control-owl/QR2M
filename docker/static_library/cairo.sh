@@ -22,38 +22,48 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/GNOME/pango.git pango
-} 2>&1 | tee "$LOG_DIR/pango-01-clone.log"
+  git clone https://gitlab.freedesktop.org/cairo/cairo.git cairo
+} 2>&1 | tee "$LOG_DIR/cairo-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/pango-01-clone.log"
-  echo "ERROR - pango - 01/04 - Clone"
+  cat "$LOG_DIR/cairo-01-clone.log"
+  echo "ERROR - cairo - 01/04 - Clone"
   exit 1
 fi
 
-cd pango
+cd cairo
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    --default-library static \
-    --prefix=$STATIC_DIR \
-    -Ddocumentation=false \
-    -Dman-pages=false \
-    -Dintrospection=disabled \
-    -Dbuild-testsuite=false \
-    -Dbuild-examples=false \
-    -Dsysprof=disabled \
-    -Dlibthai=disabled \
-    -Dxft=disabled
-} 2>&1 | tee "$LOG_DIR/pango-02-setup.log"
+    -Dprefix="$STATIC_DIR" \
+    -Ddefault_library=static \
+    -Dfontconfig=enabled \
+    -Dfreetype=enabled \
+    -Dpng=enabled \
+    -Dxcb=enabled \
+    -Dxlib=enabled \
+    -Dzlib=enabled \
+    -Dglib=enabled \
+    -Ddwrite=disabled \
+    -Dquartz=disabled \
+    -Dtee=disabled \
+    -Dxlib-xcb=disabled \
+    -Dtests=disabled \
+    -Dlzo=disabled \
+    -Dgtk2-utils=disabled \
+    -Dspectre=disabled \
+    -Dsymbol-lookup=disabled \
+    -Dgtk_doc=false \
+    --buildtype=release
+} 2>&1 | tee "$LOG_DIR/cairo-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pango-02-setup.log
-  echo "ERROR - pango - 02/04 - Setup"
+  cat $LOG_DIR/cairo-02-setup.log
+  echo "ERROR - cairo - 02/04 - Setup"
   exit 1
 fi
 
@@ -61,12 +71,12 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/pango-03-compile.log"
+} 2>&1 | tee "$LOG_DIR/cairo-03-compile.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pango-03-compile.log
-  echo "ERROR - pango - 03/04 - Compile"
+  cat $LOG_DIR/cairo-03-compile.log
+  echo "ERROR - cairo - 03/04 - Compile"
   exit 1
 fi
 
@@ -74,15 +84,15 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/pango-04-install.log"
+} 2>&1 | tee "$LOG_DIR/cairo-04-install.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pango-04-install.log
-  echo "ERROR - pango - 04/04 - Install"
+  cat $LOG_DIR/cairo-04-install.log
+  echo "ERROR - cairo - 04/04 - Install"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "pango compiled and installed successfully"
+echo "cairo compiled and installed successfully"

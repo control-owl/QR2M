@@ -14,7 +14,7 @@ RUN apk update
 RUN apk add --no-cache \
   bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
   gettext-dev gettext-static openssl-dev openssl-libs-static glib-dev glib-static \
-  cairo-dev cairo-static harfbuzz-dev harfbuzz-static libxml2-dev libxml2-static \
+  cairo-dev harfbuzz-dev harfbuzz-static libxml2-dev libxml2-static \
   libx11-dev libx11-static libxext-dev libxext-static glslang glslang-dev glslang-static \
   shaderc-dev shaderc-static libxkbcommon-dev libxkbcommon-static expat-dev expat-static \
   freetype-dev freetype-static fontconfig-dev fontconfig-static brotli-dev brotli-static \
@@ -31,6 +31,7 @@ RUN apk add --no-cache \
 
 COPY docker/static_library/cargo-c.sh $PROJECT_DIR/cargo-c.sh
 COPY docker/static_library/nghttp2.sh $PROJECT_DIR/nghttp2.sh
+COPY docker/static_library/cairo.sh $PROJECT_DIR/cairo.sh
 COPY docker/static_library/curl.sh $PROJECT_DIR/curl.sh
 COPY docker/static_library/appstream.sh $PROJECT_DIR/appstream.sh
 COPY docker/static_library/gdk-pixbuf.sh $PROJECT_DIR/gdk-pixbuf.sh
@@ -42,25 +43,37 @@ COPY docker/static_library/libeconf.sh $PROJECT_DIR/libeconf.sh
 COPY docker/static_library/librsvg.sh $PROJECT_DIR/librsvg.sh
 COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
+COPY docker/static_library/glib.sh $PROJECT_DIR/glib.sh
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
-
-RUN chmod +x $PROJECT_DIR/nghttp2.sh && $PROJECT_DIR/nghttp2.sh          # Compiles
-RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh                # Compiles
-RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh         # Compiles
-RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh             # Compiles
+# Needed for cairo
 RUN chmod +x $PROJECT_DIR/libxau.sh && $PROJECT_DIR/libxau.sh           # Compiles
-RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh                   # Compiles
+
+# Needed for librsvg
+RUN chmod +x $PROJECT_DIR/cairo.sh && $PROJECT_DIR/cairo.sh             # Compiles
+RUN chmod +x $PROJECT_DIR/pango.sh && $PROJECT_DIR/pango.sh             # Compiles
 RUN chmod +x $PROJECT_DIR/gdk-pixbuf.sh && $PROJECT_DIR/gdk-pixbuf.sh   # Compiles
-RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh       # Compiles
+RUN chmod +x $PROJECT_DIR/glib.sh && $PROJECT_DIR/glib.sh               #
+
+# Needed for curl
+RUN chmod +x $PROJECT_DIR/nghttp2.sh && $PROJECT_DIR/nghttp2.sh         # Compiles
+
+# Needed for appstream
+RUN chmod +x $PROJECT_DIR/xz.sh && $PROJECT_DIR/xz.sh                   # Compiles
 RUN chmod +x $PROJECT_DIR/libeconf.sh && $PROJECT_DIR/libeconf.sh       # Compiles
-RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh     # Compiles
+RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh               # Compiles
 
+# Needed for gtk4
+RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh       # Compiles
+
+# Needed for QR2M
+RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh         # Compiles
 RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh         # FAIL
-
+RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh     # Compiles
 RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh               # Compiles
 RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh   # Compiles
 
+# QR2M Compile circus
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
 
 

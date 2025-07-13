@@ -78,7 +78,7 @@ cd QR2M
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv
+  cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
 } 2>&1 | tee "$LOG_DIR/qr2m-03-build.log"
 
 STATUS=${PIPESTATUS[0]}

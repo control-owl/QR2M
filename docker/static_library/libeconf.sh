@@ -40,6 +40,7 @@ cd libeconf
 {
   meson setup builddir \
     --prefix=$STATIC_DIR \
+    --disable-shared \
     -Ddefault_library=static
 } 2>&1 | tee "$LOG_DIR/libeconf-02-setup.log"
 

@@ -22,38 +22,54 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/GNOME/pango.git pango
-} 2>&1 | tee "$LOG_DIR/pango-01-clone.log"
+  git clone https://github.com/GNOME/glib glib
+} 2>&1 | tee "$LOG_DIR/glib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/pango-01-clone.log"
-  echo "ERROR - pango - 01/04 - Clone"
+  cat "$LOG_DIR/glib-01-clone.log"
+  echo "ERROR - glib - 01/04 - Clone"
   exit 1
 fi
 
-cd pango
+cd glib
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    --default-library static \
-    --prefix=$STATIC_DIR \
-    -Ddocumentation=false \
-    -Dman-pages=false \
-    -Dintrospection=disabled \
-    -Dbuild-testsuite=false \
-    -Dbuild-examples=false \
+    -Dprefix="$STATIC_DIR" \
+    -Ddefault_library=static \
+    -Dselinux=disabled \
+    -Dxattr=false \
+    -Dlibmount=disabled \
+    -Dman=false \
+    -Dman-pages=disabled \
+    -Ddtrace=disabled \
+    -Dsystemtap=disabled \
     -Dsysprof=disabled \
-    -Dlibthai=disabled \
-    -Dxft=disabled
-} 2>&1 | tee "$LOG_DIR/pango-02-setup.log"
+    -Ddocumentation=false \
+    -Dgtk_doc=false \
+    -Dbsymbolic_functions=true \
+    -Dforce_posix_threads=false \
+    -Dtests=false \
+    -Dinstalled_tests=false \
+    -Dnls=disabled \
+    -Doss_fuzz=disabled \
+    -Dglib_debug=disabled \
+    -Dglib_assert=false \
+    -Dglib_checks=false \
+    -Dlibelf=disabled \
+    -Dmultiarch=false \
+    -Dintrospection=disabled \
+    -Dfile_monitor_backend=inotify \
+    --buildtype=release
+} 2>&1 | tee "$LOG_DIR/glib-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pango-02-setup.log
-  echo "ERROR - pango - 02/04 - Setup"
+  cat $LOG_DIR/glib-02-setup.log
+  echo "ERROR - glib - 02/04 - Setup"
   exit 1
 fi
 
@@ -61,12 +77,12 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/pango-03-compile.log"
+} 2>&1 | tee "$LOG_DIR/glib-03-compile.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pango-03-compile.log
-  echo "ERROR - pango - 03/04 - Compile"
+  cat $LOG_DIR/glib-03-compile.log
+  echo "ERROR - glib - 03/04 - Compile"
   exit 1
 fi
 
@@ -74,15 +90,15 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/pango-04-install.log"
+} 2>&1 | tee "$LOG_DIR/glib-04-install.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pango-04-install.log
-  echo "ERROR - pango - 04/04 - Install"
+  cat $LOG_DIR/glib-04-install.log
+  echo "ERROR - glib - 04/04 - Install"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "pango compiled and installed successfully"
+echo "glib compiled and installed successfully"

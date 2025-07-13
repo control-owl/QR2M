@@ -68,7 +68,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  meson compile -C builddir
+  ninja -C builddir
 } 2>&1 | tee "$LOG_DIR/pixbuf-03-compile.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -81,7 +81,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 { 
-  meson install -C builddir
+  ninja -C builddir install
 } 2>&1 | tee "$LOG_DIR/pixbuf-04-install.log"
 
 STATUS=${PIPESTATUS[0]}
