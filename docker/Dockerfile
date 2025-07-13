@@ -44,6 +44,7 @@ COPY docker/static_library/librsvg.sh $PROJECT_DIR/librsvg.sh
 COPY docker/static_library/gtk4.sh $PROJECT_DIR/gtk4.sh
 COPY docker/static_library/libadwaita.sh $PROJECT_DIR/libadwaita.sh
 COPY docker/static_library/glib.sh $PROJECT_DIR/glib.sh
+COPY docker/static_library/libxml2.sh $PROJECT_DIR/libxml2.sh
 COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
 
 # Needed for cairo
@@ -65,13 +66,14 @@ RUN chmod +x $PROJECT_DIR/curl.sh && $PROJECT_DIR/curl.sh               # Compil
 
 # Needed for gtk4
 RUN chmod +x $PROJECT_DIR/graphene.sh && $PROJECT_DIR/graphene.sh       # Compiles
+RUN chmod +x $PROJECT_DIR/libxml2.sh && $PROJECT_DIR/libxml2.sh         # Compiles
 
 # Needed for QR2M
 RUN chmod +x $PROJECT_DIR/cargo-c.sh && $PROJECT_DIR/cargo-c.sh         # Compiles
 RUN chmod +x $PROJECT_DIR/librsvg.sh && $PROJECT_DIR/librsvg.sh         # Compiles
 RUN chmod +x $PROJECT_DIR/appstream.sh && $PROJECT_DIR/appstream.sh     # Compiles
-RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh               # Compiles
-RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh   # Compiles
+RUN chmod +x $PROJECT_DIR/gtk4.sh && $PROJECT_DIR/gtk4.sh               # FAIL
+RUN chmod +x $PROJECT_DIR/libadwaita.sh && $PROJECT_DIR/libadwaita.sh   #
 
 # QR2M Compile circus
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh

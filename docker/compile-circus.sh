@@ -78,7 +78,7 @@ cd QR2M
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  cargo build --release --target "$TARGET" --features "$FEATURES" --locked --verbose
+  cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv
 } 2>&1 | tee "$LOG_DIR/qr2m-03-build.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -94,7 +94,7 @@ ls -l "$BUILD_PATH/release"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  cargo test --release --locked - --no-fail-fast --target "$TARGET" --features "offline" # "$FEATURES"
+  cargo test --release --locked - --no-fail-fast --target "$TARGET" -vv --features "offline" # "$FEATURES"
 } 2>&1 | tee "$LOG_DIR/qr2m-04-test.log"
 
 STATUS=${PIPESTATUS[0]}

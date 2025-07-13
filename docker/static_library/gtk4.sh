@@ -36,8 +36,11 @@ cd gtk4
 
 {
   meson setup builddir \
-    --default-library static \
     --prefix=$STATIC_DIR \
+    --default-library static \
+    -Dintrospection=disabled \
+    -Ddocumentation=false \
+    -Dman-pages=false \
     -Dmedia-gstreamer=disabled \
     -Dprint-cpdb=disabled \
     -Dprint-cups=disabled \
@@ -47,10 +50,7 @@ cd gtk4
     -Dtracker=disabled \
     -Dcolord=disabled \
     -Daccesskit=disabled \
-    -Dintrospection=disabled \
-    -Ddocumentation=false \
     -Dscreenshots=false \
-    -Dman-pages=false \
     -Dbuild-demos=false \
     -Dbuild-testsuite=false \
     -Dbuild-examples=false \
