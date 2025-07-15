@@ -41,8 +41,6 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dep       | Status   |
 #| ------------------------------- | --------- | -------- |
-RUN $PROJECT_DIR/glibc.sh         #| gtk4      | Fails    |
-
 RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/nghttp2.sh       #| curl      | Compiles |
 RUN $PROJECT_DIR/xz.sh            #| appstream | Compiles |
@@ -56,6 +54,7 @@ RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
 RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
+# RUN $PROJECT_DIR/glibc.sh         #| gtk4      | Fails    |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Compiles |
