@@ -39,30 +39,37 @@ RUN chmod +x $PROJECT_DIR/*.sh
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
-#|                Library       | Dep       | Status   |
-#| ---------------------------- | --------- | -------- |
-RUN $PROJECT_DIR/libxau.sh     #| cairo     | Compiles |
-RUN $PROJECT_DIR/nghttp2.sh    #| curl      | Compiles |
-RUN $PROJECT_DIR/xz.sh         #| appstream | Compiles |
-RUN $PROJECT_DIR/libeconf.sh   #| appstream | Compiles |
-RUN $PROJECT_DIR/curl.sh       #| appstream | Compiles |
-RUN $PROJECT_DIR/graphene.sh   #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libxml2.sh    #| gtk4      | Compiles |
-RUN $PROJECT_DIR/harfbuzz.sh   #| gtk4      | Compiles |
-RUN $PROJECT_DIR/fribidi.sh    #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libepoxy.sh   #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libtiff.sh    #| gtk4      | Compiles |
-RUN $PROJECT_DIR/fontconfig.sh #| gtk4      | Compiles |
-RUN $PROJECT_DIR/freetype.sh   #| gtk4      | Compiles |
-RUN $PROJECT_DIR/cairo.sh      #| librsvg   | Compiles |
-RUN $PROJECT_DIR/pango.sh      #| librsvg   | Compiles |
-RUN $PROJECT_DIR/gdk-pixbuf.sh #| librsvg   | Compiles |
-RUN $PROJECT_DIR/glib.sh       #| librsvg   | Compiles |
-RUN $PROJECT_DIR/cargo-c.sh    #| librsvg   | Compiles |
-RUN $PROJECT_DIR/librsvg.sh    #| QR2M      | Compiles |
-RUN $PROJECT_DIR/appstream.sh  #| QR2M      | Compiles |
-RUN $PROJECT_DIR/gtk4.sh       #| QR2M      | FAIL     |
-RUN $PROJECT_DIR/libadwaita.sh #| QR2M      |          |
+#|                Library          | Dep       | Status   |
+#| ------------------------------- | --------- | -------- |
+RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
+RUN $PROJECT_DIR/nghttp2.sh       #| curl      | Compiles |
+RUN $PROJECT_DIR/xz.sh            #| appstream | Compiles |
+RUN $PROJECT_DIR/libeconf.sh      #| appstream | Compiles |
+RUN $PROJECT_DIR/curl.sh          #| appstream | Compiles |
+RUN $PROJECT_DIR/graphene.sh      #| gtk4      | Compiles |
+RUN $PROJECT_DIR/libxml2.sh       #| gtk4      | Compiles |
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4      | Compiles |
+RUN $PROJECT_DIR/fribidi.sh       #| gtk4      | Compiles |
+RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
+RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
+RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
+RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
+RUN $PROJECT_DIR/glibc.sh         #| gtk4      | Compiles |
+RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
+RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
+RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Compiles |
+RUN $PROJECT_DIR/pcre2.sh         #| gtk4      | Compiles |
+RUN $PROJECT_DIR/pixman.sh        #| gtk4      | Compiles |
+RUN $PROJECT_DIR/zlib.sh          #| gtk4      | Compiles |
+RUN $PROJECT_DIR/cairo.sh         #| librsvg   | Compiles |
+RUN $PROJECT_DIR/pango.sh         #| librsvg   | Compiles |
+RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg   | Compiles |
+RUN $PROJECT_DIR/glib.sh          #| librsvg   | Compiles |
+RUN $PROJECT_DIR/cargo-c.sh       #| librsvg   | Compiles |
+RUN $PROJECT_DIR/librsvg.sh       #| QR2M      | Compiles |
+RUN $PROJECT_DIR/appstream.sh     #| QR2M      | Compiles |
+RUN $PROJECT_DIR/gtk4.sh          #| QR2M      | FAIL     |
+RUN $PROJECT_DIR/libadwaita.sh    #| QR2M      |          |
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - PROJECT COMPILE -.-. --- .--. -.-- .-. .. --. .... -
