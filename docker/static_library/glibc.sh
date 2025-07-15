@@ -49,8 +49,11 @@ cd glibc
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+mkdir -p builddir
+cd builddir
+
 {
-  ./configure \
+  ../configure \
     --enable-static \
     --disable-shared \
     --prefix=$STATIC_DIR
