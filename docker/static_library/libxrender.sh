@@ -22,30 +22,30 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/madler/zlib.git zlib
-} 2>&1 | tee "$LOG_DIR/zlib-01-clone.log"
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxrender.git libxrender
+} 2>&1 | tee "$LOG_DIR/libxrender-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/zlib-01-clone.log"
-  echo "ERROR - zlib - 01/05 - Clone"
+  cat "$LOG_DIR/libxrender-01-clone.log"
+  echo "ERROR - libxrender - 01/05 - Clone"
   exit 1
 fi
 
-cd zlib
+cd libxrender
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-# {
-#   ./autogen.sh
-# } 2>&1 | tee "$LOG_DIR/zlib-02-autogen.log"
-# 
-# STATUS=${PIPESTATUS[0]}
-# if [ "$STATUS" -ne 0 ]; then
-#   cat $LOG_DIR/zlib-02-autogen.log
-#   echo "ERROR - zlib - 02/05 - Clone"
-#   exit 1
-# fi
+{
+  ./autogen.sh
+} 2>&1 | tee "$LOG_DIR/libxrender-02-autogen.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/libxrender-02-autogen.log
+  echo "ERROR - libxrender - 02/05 - Clone"
+  exit 1
+fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -54,12 +54,12 @@ cd zlib
     --enable-static \
     --disable-shared \
     --prefix=$STATIC_DIR
-} 2>&1 | tee "$LOG_DIR/zlib-03-configure.log"
+} 2>&1 | tee "$LOG_DIR/libxrender-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-03-configure.log
-  echo "ERROR - zlib - 03/05 - Configure"
+  cat $LOG_DIR/libxrender-03-configure.log
+  echo "ERROR - libxrender - 03/05 - Configure"
   exit 1
 fi
 
@@ -67,12 +67,12 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/zlib-04-make.log"
+} 2>&1 | tee "$LOG_DIR/libxrender-04-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-04-make.log
-  echo "ERROR - zlib - 04/05 - Compile"
+  cat $LOG_DIR/libxrender-04-make.log
+  echo "ERROR - libxrender - 04/05 - Compile"
   exit 1
 fi
 
@@ -80,14 +80,14 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/zlib-05-install.log"
+} 2>&1 | tee "$LOG_DIR/libxrender-05-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-05-install.log
-  echo "ERROR - zlib - 05/05 - Install"
+  cat $LOG_DIR/libxrender-05-install.log
+  echo "ERROR - libxrender - 05/05 - Install"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "zlib compiled and installed successfully"
+echo "libxrender compiled and installed successfully"

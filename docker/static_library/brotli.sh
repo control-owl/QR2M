@@ -22,44 +22,44 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/madler/zlib.git zlib
-} 2>&1 | tee "$LOG_DIR/zlib-01-clone.log"
+  git clone https://github.com/google/brotli.git brotli
+} 2>&1 | tee "$LOG_DIR/brotli-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/zlib-01-clone.log"
-  echo "ERROR - zlib - 01/05 - Clone"
+  cat "$LOG_DIR/brotli-01-clone.log"
+  echo "ERROR - brotli - 01/05 - Clone"
   exit 1
 fi
 
-cd zlib
+cd brotli
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 # {
 #   ./autogen.sh
-# } 2>&1 | tee "$LOG_DIR/zlib-02-autogen.log"
+# } 2>&1 | tee "$LOG_DIR/brotli-02-autogen.log"
 # 
 # STATUS=${PIPESTATUS[0]}
 # if [ "$STATUS" -ne 0 ]; then
-#   cat $LOG_DIR/zlib-02-autogen.log
-#   echo "ERROR - zlib - 02/05 - Clone"
+#   cat $LOG_DIR/brotli-02-autogen.log
+#   echo "ERROR - brotli - 02/05 - Clone"
 #   exit 1
 # fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+mkdir -p builddir
+cd builddir
+
 {
-  ./configure \
-    --enable-static \
-    --disable-shared \
-    --prefix=$STATIC_DIR
-} 2>&1 | tee "$LOG_DIR/zlib-03-configure.log"
+  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR ..
+} 2>&1 | tee "$LOG_DIR/brotli-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-03-configure.log
-  echo "ERROR - zlib - 03/05 - Configure"
+  cat $LOG_DIR/brotli-03-configure.log
+  echo "ERROR - brotli - 03/05 - Configure"
   exit 1
 fi
 
@@ -67,12 +67,12 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/zlib-04-make.log"
+} 2>&1 | tee "$LOG_DIR/brotli-04-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-04-make.log
-  echo "ERROR - zlib - 04/05 - Compile"
+  cat $LOG_DIR/brotli-04-make.log
+  echo "ERROR - brotli - 04/05 - Compile"
   exit 1
 fi
 
@@ -80,14 +80,14 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/zlib-05-install.log"
+} 2>&1 | tee "$LOG_DIR/brotli-05-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-05-install.log
-  echo "ERROR - zlib - 05/05 - Install"
+  cat $LOG_DIR/brotli-05-install.log
+  echo "ERROR - brotli - 05/05 - Install"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "zlib compiled and installed successfully"
+echo "brotli compiled and installed successfully"
