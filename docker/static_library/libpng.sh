@@ -36,16 +36,16 @@ cd libpng
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
-  ./autogen.sh
-} 2>&1 | tee "$LOG_DIR/libpng-02-autogen.log"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libpng-02-autogen.log
-  echo "ERROR - libpng - 02/05 - Clone"
-  exit 1
-fi
+# {
+#   ./autogen.sh
+# } 2>&1 | tee "$LOG_DIR/libpng-02-autogen.log"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat $LOG_DIR/libpng-02-autogen.log
+#   echo "ERROR - libpng - 02/05 - Clone"
+#   exit 1
+# fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
