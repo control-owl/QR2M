@@ -35,7 +35,7 @@ fi
 cd gettext
 
 {
-  git https://git.savannah.gnu.org/git/gnulib.git gnulib
+  git clone https://git.savannah.gnu.org/git/gnulib.git gnulib
 } 2>&1 | tee "$LOG_DIR/gnulib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
