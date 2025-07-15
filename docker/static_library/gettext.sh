@@ -49,7 +49,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 # {
-#   ./gnulib-tool --dir=.. --lib=libgettextpo --m4-dir=.. --no-gnu-lib
+#   ./gnulib-tool --dir=.. --lib=libgettextpo --no-gnu-lib
 # } 2>&1 | tee "$LOG_DIR/gnulib-02-autogen.log"
 # 
 # STATUS=${PIPESTATUS[0]}
@@ -78,6 +78,7 @@ fi
   ./configure \
     --enable-static \
     --disable-shared \
+    --disable-nls \
     --prefix=$STATIC_DIR
 } 2>&1 | tee "$LOG_DIR/gettext-03-configure.log"
 
