@@ -34,7 +34,36 @@ fi
 
 cd gettext
 
+{
+  git https://git.savannah.gnu.org/git/gnulib.git gnulib
+} 2>&1 | tee "$LOG_DIR/gnulib-01-clone.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/gnulib-01-clone.log"
+  echo "ERROR - gnulib - 01/05 - Clone"
+  exit 1
+fi
+
+cd gnulib
+
+
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  ./gnulib-tool --create-auto --dir=.. --lib=libgettextpo --source-dir=.. --m4-dir=.. --no-gnu-lib
+} 2>&1 | tee "$LOG_DIR/gnulib-02-autogen.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/gnulib-02-autogen.log
+  echo "ERROR - gnulib - 02/05 - Clone"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+cd ..
 
 {
   ./autogen.sh
