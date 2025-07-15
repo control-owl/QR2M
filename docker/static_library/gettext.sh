@@ -45,25 +45,21 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd gnulib
-
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
-  ./gnulib-tool --dir=.. --lib=libgettextpo --m4-dir=.. --no-gnu-lib
-} 2>&1 | tee "$LOG_DIR/gnulib-02-autogen.log"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gnulib-02-autogen.log
-  echo "ERROR - gnulib - 02/05 - Clone"
-  exit 1
-fi
+# {
+#   ./gnulib-tool --dir=.. --lib=libgettextpo --m4-dir=.. --no-gnu-lib
+# } 2>&1 | tee "$LOG_DIR/gnulib-02-autogen.log"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat $LOG_DIR/gnulib-02-autogen.log
+#   echo "ERROR - gnulib - 02/05 - Clone"
+#   exit 1
+# fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-cd ..
 
 {
   ./autogen.sh
