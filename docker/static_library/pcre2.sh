@@ -49,11 +49,11 @@ cd pcre2
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+mkdir -p builddir
+cd builddir
+
 {
-  ./configure \
-    --enable-static \
-    --disable-shared \
-    --prefix=$STATIC_DIR
+  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR ..
 } 2>&1 | tee "$LOG_DIR/pcre2-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}

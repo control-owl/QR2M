@@ -54,22 +54,22 @@ RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
 RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
-# RUN $PROJECT_DIR/glibc.sh         #| gtk4      | Fails    |
+# RUN $PROJECT_DIR/glibc.sh       #| gtk4      | Fails    | is this needed ??
 RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
 RUN $PROJECT_DIR/zlib.sh          #| libpng    |  |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Fail |
-RUN $PROJECT_DIR/pcre2.sh         #| gtk4      | Compiles |
-RUN $PROJECT_DIR/pixman.sh        #| gtk4      | Compiles |
-RUN $PROJECT_DIR/cairo.sh         #| librsvg   | Compiles |
-RUN $PROJECT_DIR/pango.sh         #| librsvg   | Compiles |
-RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg   | Compiles |
-RUN $PROJECT_DIR/glib.sh          #| librsvg   | Compiles |
-RUN $PROJECT_DIR/cargo-c.sh       #| librsvg   | Compiles |
-RUN $PROJECT_DIR/librsvg.sh       #| QR2M      | Compiles |
-RUN $PROJECT_DIR/appstream.sh     #| QR2M      | Compiles |
-RUN $PROJECT_DIR/gtk4.sh          #| QR2M      | FAIL     |
-RUN $PROJECT_DIR/libadwaita.sh    #| QR2M      |          |
+RUN $PROJECT_DIR/pcre2.sh         #| gtk4      |  |
+RUN $PROJECT_DIR/pixman.sh        #| gtk4      |  |
+RUN $PROJECT_DIR/cairo.sh         #| librsvg   |  |
+RUN $PROJECT_DIR/pango.sh         #| librsvg   |  |
+RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg   |  |
+RUN $PROJECT_DIR/glib.sh          #| librsvg   |  |
+RUN $PROJECT_DIR/cargo-c.sh       #| librsvg   |  |
+RUN $PROJECT_DIR/librsvg.sh       #| QR2M      |  |
+RUN $PROJECT_DIR/appstream.sh     #| QR2M      |  |
+RUN $PROJECT_DIR/gtk4.sh          #| QR2M      |  |
+RUN $PROJECT_DIR/libadwaita.sh    #| QR2M      |  |
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - PROJECT COMPILE -.-. --- .--. -.-- .-. .. --. .... -
