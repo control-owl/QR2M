@@ -35,7 +35,7 @@ fi
 cd gettext
 
 {
-  git clone https://git.savannah.gnu.org/git/gnulib.git gnulib
+  git clone https://github.com/coreutils/gnulib.git gnulib
 } 2>&1 | tee "$LOG_DIR/gnulib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -51,7 +51,7 @@ cd gnulib
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./gnulib-tool --create-auto --dir=.. --lib=libgettextpo --source-dir=.. --m4-dir=.. --no-gnu-lib
+  ./gnulib-tool --dir=.. --lib=libgettextpo --source-dir=.. --m4-dir=.. --no-gnu-lib
 } 2>&1 | tee "$LOG_DIR/gnulib-02-autogen.log"
 
 STATUS=${PIPESTATUS[0]}
