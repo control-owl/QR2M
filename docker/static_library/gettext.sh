@@ -51,7 +51,7 @@ cd gnulib
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./gnulib-tool --dir=.. --lib=libgettextpo --source-dir=.. --m4-dir=.. --no-gnu-lib
+  ./gnulib-tool --dir=.. --lib=libgettextpo
 } 2>&1 | tee "$LOG_DIR/gnulib-02-autogen.log"
 
 STATUS=${PIPESTATUS[0]}
