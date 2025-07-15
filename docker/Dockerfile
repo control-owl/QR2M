@@ -19,11 +19,11 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         gettext-dev gettext-static openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
         libx11-dev libx11-static libxext-dev libxext-static glslang glslang-dev glslang-static \
         shaderc-dev shaderc-static libxkbcommon-dev libxkbcommon-static expat-dev expat-static \
-        freetype-dev freetype-static fontconfig-dev fontconfig-static brotli-dev brotli-static \
-        libpng-dev libpng-static libjpeg-turbo-dev libjpeg-turbo-static zlib-dev zlib-static \
-        bzip2-dev bzip2-static pixman-dev pixman-static graphite2-dev graphite2-static \
+        freetype-dev fontconfig-dev brotli-dev brotli-static \
+        libpng-dev libjpeg-turbo-dev zlib-dev \
+        bzip2-dev bzip2-static pixman-dev graphite2-dev graphite2-static \
         libxrandr-dev libxrender-dev pango-dev libxfixes-dev libxcursor-dev libxi-dev \
-        pcre2-dev pcre2-static fribidi-dev util-linux-dev util-linux-static \
+        pcre2-dev fribidi-dev util-linux-dev util-linux-static \
         libxcb-dev libxcb-static gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
         xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
         xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
