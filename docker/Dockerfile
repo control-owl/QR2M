@@ -19,7 +19,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         gettext-dev gettext-static openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
         libx11-dev libx11-static libxext-dev libxext-static glslang glslang-dev glslang-static \
         shaderc-dev shaderc-static libxkbcommon-dev libxkbcommon-static expat-dev expat-static \
-        freetype-dev fontconfig-dev brotli-dev brotli-static \
+        freetype-dev fontconfig-dev brotli-dev brotli-static gawk \
         libpng-dev libjpeg-turbo-dev zlib-dev \
         bzip2-dev bzip2-static pixman-dev graphite2-dev graphite2-static \
         libxrandr-dev libxrender-dev pango-dev libxfixes-dev libxcursor-dev libxi-dev \
@@ -41,6 +41,8 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dep       | Status   |
 #| ------------------------------- | --------- | -------- |
+RUN $PROJECT_DIR/glibc.sh         #| gtk4      | Fails    |
+
 RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/nghttp2.sh       #| curl      | Compiles |
 RUN $PROJECT_DIR/xz.sh            #| appstream | Compiles |
@@ -54,7 +56,6 @@ RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
 RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
-RUN $PROJECT_DIR/glibc.sh         #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Compiles |
