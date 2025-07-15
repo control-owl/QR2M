@@ -19,7 +19,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         gettext-dev gettext-static openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
         libx11-dev libx11-static libxext-dev libxext-static glslang glslang-dev glslang-static \
         shaderc-dev shaderc-static libxkbcommon-dev libxkbcommon-static expat-dev expat-static \
-        freetype-dev fontconfig-dev brotli-dev brotli-static gawk \
+        freetype-dev fontconfig-dev brotli-dev brotli-static gawk texinfo \
         libpng-dev libjpeg-turbo-dev zlib-dev \
         bzip2-dev bzip2-static pixman-dev graphite2-dev graphite2-static \
         libxrandr-dev libxrender-dev pango-dev libxfixes-dev libxcursor-dev libxi-dev \
