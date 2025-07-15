@@ -22,77 +22,72 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/cairo/cairo.git cairo
-} 2>&1 | tee "$LOG_DIR/cairo-01-clone.log"
+  git clone https://github.com/autotools-mirror/gettext.git gettext
+} 2>&1 | tee "$LOG_DIR/gettext-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/cairo-01-clone.log"
-  echo "ERROR - cairo - 01/04 - Clone"
+  cat "$LOG_DIR/gettext-01-clone.log"
+  echo "ERROR - gettext - 01/05 - Clone"
   exit 1
 fi
 
-cd cairo
+cd gettext
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  meson setup builddir \
-    -Dprefix="$STATIC_DIR" \
-    -Ddefault_library=static \
-    -Dtests=disabled \
-    -Dgtk_doc=false \
-    -Dfontconfig=enabled \
-    -Dfreetype=enabled \
-    -Dpng=enabled \
-    -Dxcb=enabled \
-    -Dxlib=enabled \
-    -Dzlib=enabled \
-    -Dglib=enabled \
-    -Ddwrite=disabled \
-    -Dquartz=disabled \
-    -Dtee=disabled \
-    -Dxlib-xcb=disabled \
-    -Dlzo=disabled \
-    -Dgtk2-utils=disabled \
-    -Dspectre=disabled \
-    -Dsymbol-lookup=disabled \
-    --buildtype=release
-} 2>&1 | tee "$LOG_DIR/cairo-02-setup.log"
+  ./autogen.sh
+} 2>&1 | tee "$LOG_DIR/gettext-02-autogen.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-02-setup.log
-  echo "ERROR - cairo - 02/04 - Setup"
+  cat $LOG_DIR/gettext-02-autogen.log
+  echo "ERROR - gettext - 02/05 - Clone"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/cairo-03-compile.log"
+  ./configure \
+    --enable-static \
+    --disable-shared \
+    --prefix=$STATIC_DIR
+} 2>&1 | tee "$LOG_DIR/gettext-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-03-compile.log
-  echo "ERROR - cairo - 03/04 - Compile"
+  cat $LOG_DIR/gettext-03-configure.log
+  echo "ERROR - gettext - 03/05 - Configure"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/cairo-04-install.log"
+  make -j"$(nproc)"
+} 2>&1 | tee "$LOG_DIR/gettext-04-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-04-install.log
-  echo "ERROR - cairo - 04/04 - Install"
+  cat $LOG_DIR/gettext-04-make.log
+  echo "ERROR - gettext - 04/05 - Compile"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "cairo compiled and installed successfully"
+{
+  make install
+} 2>&1 | tee "$LOG_DIR/gettext-05-install.log"
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/gettext-05-install.log
+  echo "ERROR - gettext - 05/05 - Install"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+echo "gettext compiled and installed successfully"

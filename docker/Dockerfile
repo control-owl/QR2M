@@ -42,15 +42,21 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #|                Library          | Dep       | Status   |
 #| ------------------------------- | --------- | -------- |
 RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
-RUN $PROJECT_DIR/libxcb.sh        #| cairo     |  |
-RUN $PROJECT_DIR/libx11.sh        #| cairo     |  |
-RUN $PROJECT_DIR/libxrender.sh    #| cairo     |  |
-RUN $PROJECT_DIR/libxext.sh       #| cairo     |  |
-RUN $PROJECT_DIR/brotli.sh        #| cairo     |  |
+RUN $PROJECT_DIR/libxcb.sh        #| cairo     | Compiles |
+RUN $PROJECT_DIR/libx11.sh        #| cairo     | Compiles |
+RUN $PROJECT_DIR/libxrender.sh    #| cairo     | Compiles |
+RUN $PROJECT_DIR/libxext.sh       #| cairo     | Compiles |
+RUN $PROJECT_DIR/brotli.sh        #| cairo     | Compiles |
+RUN $PROJECT_DIR/glib.sh          #| cairo     |  |
+RUN $PROJECT_DIR/zlib.sh          #| cairo     |  |
+RUN $PROJECT_DIR/gettext.sh       #| cairo     |  |
+
 RUN $PROJECT_DIR/nghttp2.sh       #| curl      | Compiles |
+
 RUN $PROJECT_DIR/xz.sh            #| appstream | Compiles |
 RUN $PROJECT_DIR/libeconf.sh      #| appstream | Compiles |
 RUN $PROJECT_DIR/curl.sh          #| appstream | Compiles |
+
 RUN $PROJECT_DIR/graphene.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libxml2.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4      | Compiles |
@@ -59,10 +65,11 @@ RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
 RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
+
 # RUN $PROJECT_DIR/glibc.sh       #| gtk4      | Fails    | is this needed ??
+
 RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
-RUN $PROJECT_DIR/zlib.sh          #| libpng    | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/pcre2.sh         #| gtk4      | Compiles |
 RUN $PROJECT_DIR/pixman.sh        #| gtk4      | Compiles |
@@ -70,8 +77,8 @@ RUN $PROJECT_DIR/pixman.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/cairo.sh         #| librsvg   | Fails |
 RUN $PROJECT_DIR/pango.sh         #| librsvg   |  |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg   |  |
-RUN $PROJECT_DIR/glib.sh          #| librsvg   |  |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg   |  |
+
 RUN $PROJECT_DIR/librsvg.sh       #| QR2M      |  |
 RUN $PROJECT_DIR/appstream.sh     #| QR2M      |  |
 RUN $PROJECT_DIR/gtk4.sh          #| QR2M      |  |
