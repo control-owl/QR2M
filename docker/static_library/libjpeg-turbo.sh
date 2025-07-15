@@ -49,9 +49,11 @@ cd libjpeg-turbo
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+mkdir -p builddir
+cd builddir
+
 {
-  cmake -G"Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=toolchain.cmake \
-    -DCMAKE_INSTALL_PREFIX=$STATIC_DIR
+  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR ..
 } 2>&1 | tee "$LOG_DIR/libjpeg-turbo-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
