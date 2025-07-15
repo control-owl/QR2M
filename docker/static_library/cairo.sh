@@ -40,24 +40,25 @@ cd cairo
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
-    -Dfontconfig=enabled \
-    -Dfreetype=enabled \
-    -Dpng=enabled \
-    -Dxcb=enabled \
-    -Dxlib=enabled \
-    -Dzlib=enabled \
-    -Dglib=enabled \
-    -Ddwrite=disabled \
-    -Dquartz=disabled \
-    -Dtee=disabled \
-    -Dxlib-xcb=disabled \
     -Dtests=disabled \
-    -Dlzo=disabled \
-    -Dgtk2-utils=disabled \
-    -Dspectre=disabled \
-    -Dsymbol-lookup=disabled \
     -Dgtk_doc=false \
     --buildtype=release
+    
+    # -Dfontconfig=enabled \
+    # -Dfreetype=enabled \
+    # -Dpng=enabled \
+    # -Dxcb=enabled \
+    # -Dxlib=enabled \
+    # -Dzlib=enabled \
+    # -Dglib=enabled \
+    # -Ddwrite=disabled \
+    # -Dquartz=disabled \
+    # -Dtee=disabled \
+    # -Dxlib-xcb=disabled \
+    # -Dlzo=disabled \
+    # -Dgtk2-utils=disabled \
+    # -Dspectre=disabled \
+    # -Dsymbol-lookup=disabled \
 } 2>&1 | tee "$LOG_DIR/cairo-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
