@@ -37,6 +37,8 @@ fi
 
 cd libeconf
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 {
   meson setup builddir \
     --prefix=$STATIC_DIR \
