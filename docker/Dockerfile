@@ -16,7 +16,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
     apk update && \
     apk add --no-cache \
         bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
-        gettext gettext-dev openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
+        gettext-dev gettext-libs openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
         libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
         brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev bzip2-static \
@@ -41,7 +41,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #| ------------------------------- | --------- | -------- |
 
 
-RUN $PROJECT_DIR/gettext.sh       #| cairo     |  |
+#RUN $PROJECT_DIR/gettext.sh       #| cairo     | Fail |  gnulib-lib/relocatable.h:114:37: error
 RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libx11.sh        #| cairo     | Compiles |
