@@ -49,6 +49,8 @@ cd gettext
 # git pull origin master
 # cd ..
 
+cargo install coreutils
+
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 # {

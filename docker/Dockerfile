@@ -26,7 +26,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
         xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
         yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev \
-        c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf coreutils \
+        c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static
 
 
