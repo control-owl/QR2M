@@ -48,12 +48,12 @@ cd brotli
 # fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-mkdir -p builddir
-cd builddir
-
 {
-  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR ..
+  cmake \
+    -DCMAKE_INSTALL_PREFIX=$STATIC_DIR \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_C_FLAGS="$CFLAGS" \
+    -DBROTLI_DISABLE_TESTS=ON
 } 2>&1 | tee "$LOG_DIR/brotli-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}

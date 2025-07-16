@@ -6,7 +6,19 @@ LABEL version="1.0"
 LABEL description="Build QR2M project with MUSL"
 
 ENV PROJECT_DIR="/home/QR2M"
-ENV PKG_CONFIG_PATH="$PROJECT_DIR/STATIC/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+ENV STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC"
+ENV PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig"
+ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+ENV CFLAGS="-O2 -fno-semantic-interposition"
+ENV CXXFLAGS="-O2 -fno-semantic-interposition"
+ENV PKG_CONFIG="pkg-config --static"
+ENV LDFLAGS="-L$STATIC_DIR/lib -static"
+ENV CC="gcc"
+ENV CXX="g++"
+ENV AR="ar"
+ENV RANLIB="ranlib"
+ENV STRIP="strip"
+
 WORKDIR $PROJECT_DIR
 
 
@@ -16,7 +28,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
     apk update && \
     apk add --no-cache \
         bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
-        gettext-dev gettext-libs openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
+        openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
         libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
         brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev bzip2-static \
@@ -37,18 +49,16 @@ RUN chmod +x $PROJECT_DIR/*.sh
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
-#|                Library          | Dep       | Status   |
-#| ------------------------------- | --------- | -------- |
-
-
-#RUN $PROJECT_DIR/gettext.sh       #| cairo     | Fail |  gnulib-lib/relocatable.h:114:37: error
+#|                Library          | Dep       | Status   | Error
+#| ------------------------------- | --------- | -------- | --------
+#RUN $PROJECT_DIR/gettext.sh       #| cairo     | Fail     | gnulib-lib/relocatable.h:114:37: error
+#RUN $PROJECT_DIR/glib.sh          #| cairo     | Fail |
+RUN $PROJECT_DIR/brotli.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libx11.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxrender.sh    #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxext.sh       #| cairo     | Compiles |
-RUN $PROJECT_DIR/brotli.sh        #| cairo     | Compiles |
-RUN $PROJECT_DIR/glib.sh          #| cairo     |  |
 RUN $PROJECT_DIR/zlib.sh          #| cairo     |  |
 RUN $PROJECT_DIR/nghttp2.sh       #| curl      | Compiles |
 RUN $PROJECT_DIR/xz.sh            #| appstream | Compiles |
@@ -62,7 +72,6 @@ RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
 RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
-# RUN $PROJECT_DIR/glibc.sh       #| gtk4      | Fails    | is this needed ??
 RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Compiles |
