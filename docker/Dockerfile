@@ -9,12 +9,12 @@ ENV PROJECT_DIR="/home/QR2M"
 ENV STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC"
 ENV PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig"
 ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-# ENV CFLAGS="-O2 -fno-semantic-interposition"
-# ENV CXXFLAGS="-O2 -fno-semantic-interposition"
+ENV CFLAGS="-O2 -fno-semantic-interposition"
+ENV CXXFLAGS="-O2 -fno-semantic-interposition"
 ENV PKG_CONFIG="pkg-config --static"
 ENV LDFLAGS="-L$STATIC_DIR/lib -static"
-# ENV CC="gcc"
-# ENV CXX="g++"
+ENV CC="gcc"
+ENV CXX="g++"
 # ENV AR="ar"
 # ENV RANLIB="ranlib"
 # ENV STRIP="strip"
@@ -31,7 +31,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
         libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
-        brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev bzip2-static \
+        brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev \
         pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev \
         libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
         util-linux-static libxcb-dev gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
@@ -49,42 +49,43 @@ RUN chmod +x $PROJECT_DIR/*.sh
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
-#|                Library          | Dep       | Status   | Error
-#| ------------------------------- | --------- | -------- | --------
-#RUN $PROJECT_DIR/gettext.sh      #| cairo     | Fail     | gnulib-lib/relocatable.h:114:37: error
-#RUN $PROJECT_DIR/glib.sh         #| cairo     | Fail     |
-RUN $PROJECT_DIR/brotli.sh        #| cairo     | Compiles |
-RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
-RUN $PROJECT_DIR/libxcb.sh        #| cairo     | Compiles |
-RUN $PROJECT_DIR/libx11.sh        #| cairo     | Compiles |
-RUN $PROJECT_DIR/libxrender.sh    #| cairo     | Compiles |
-RUN $PROJECT_DIR/libxext.sh       #| cairo     | Compiles |
-#RUN $PROJECT_DIR/zlib.sh         #| cairo,libxml2 | Fails   | libz.so.1.3.1.1-motley: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
-RUN $PROJECT_DIR/nghttp2.sh       #| curl      | Compiles |
-RUN $PROJECT_DIR/xz.sh            #| appstream | Compiles |
-RUN $PROJECT_DIR/libeconf.sh      #| appstream | Compiles |
-RUN $PROJECT_DIR/curl.sh          #| appstream | Compiles |
-RUN $PROJECT_DIR/graphene.sh      #| gtk4      | Compiles |
-#RUN $PROJECT_DIR/libxml2.sh      #| gtk4      | Fails | Missing zlib
-RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
-RUN $PROJECT_DIR/harfbuzz.sh      #| harfbuzz, gtk4 | Fails |
-RUN $PROJECT_DIR/fribidi.sh       #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
-RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
-RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Compiles |
-RUN $PROJECT_DIR/pcre2.sh         #| gtk4      | Compiles |
-RUN $PROJECT_DIR/pixman.sh        #| gtk4      | Compiles |
-RUN $PROJECT_DIR/cairo.sh         #| librsvg   | Fails |
-RUN $PROJECT_DIR/pango.sh         #| librsvg   |  |
-RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg   |  |
-RUN $PROJECT_DIR/cargo-c.sh       #| librsvg   |  |
-RUN $PROJECT_DIR/librsvg.sh       #| QR2M      |  |
-RUN $PROJECT_DIR/appstream.sh     #| QR2M      |  |
-RUN $PROJECT_DIR/gtk4.sh          #| QR2M      |  |
-RUN $PROJECT_DIR/libadwaita.sh    #| QR2M      |  |
+#|                Library          | Dep            | Status   | Error
+#| ------------------------------- | -------------- | -------- | --------
+#RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | gnulib-lib/relocatable.h:114:37: error
+#RUN $PROJECT_DIR/glib.sh         #| cairo          | Fail     |
+RUN $PROJECT_DIR/brotli.sh        #| cairo          | Compiles |
+RUN $PROJECT_DIR/libxau.sh        #| cairo          | Compiles |
+RUN $PROJECT_DIR/libxcb.sh        #| cairo          | Compiles |
+RUN $PROJECT_DIR/libx11.sh        #| cairo          | Compiles |
+RUN $PROJECT_DIR/libxrender.sh    #| cairo          | Compiles |
+RUN $PROJECT_DIR/libxext.sh       #| cairo          | Compiles |
+#RUN $PROJECT_DIR/zlib.sh         #| cairo,libxml2  | Fails    | libz.so.1.3.1.1-motley: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
+RUN $PROJECT_DIR/nghttp2.sh       #| curl           | Compiles |
+RUN $PROJECT_DIR/xz.sh            #| appstream      | Compiles |
+RUN $PROJECT_DIR/libeconf.sh      #| appstream      | Compiles |
+RUN $PROJECT_DIR/curl.sh          #| appstream      | Compiles |
+RUN $PROJECT_DIR/graphene.sh      #| gtk4           | Compiles |
+#RUN $PROJECT_DIR/libxml2.sh      #| gtk4           | Fails    | Missing zlib
+RUN $PROJECT_DIR/freetype.sh      #| harfbuzz, gtk4 | Compiles |
+RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz       |  |
+RUN $PROJECT_DIR/fribidi.sh       #| gtk4           | Compiles |
+RUN $PROJECT_DIR/libepoxy.sh      #| gtk4           | Compiles |
+RUN $PROJECT_DIR/libtiff.sh       #| gtk4           | Compiles |
+RUN $PROJECT_DIR/fontconfig.sh    #| gtk4           | Compiles |
+RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
+RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Compiles |
+RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Compiles |
+RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Compiles |
+RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fails    | Missing alot of static files
+RUN $PROJECT_DIR/cairo.sh         #| librsvg        | Fails |
+RUN $PROJECT_DIR/pango.sh         #| librsvg        |  |
+RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg        |  |
+RUN $PROJECT_DIR/cargo-c.sh       #| librsvg        |  |
+RUN $PROJECT_DIR/librsvg.sh       #| QR2M           |  |
+RUN $PROJECT_DIR/appstream.sh     #| QR2M           |  |
+RUN $PROJECT_DIR/gtk4.sh          #| QR2M           |  |
+RUN $PROJECT_DIR/libadwaita.sh    #| QR2M           |  |
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - PROJECT COMPILE -.-. --- .--. -.-- .-. .. --. .... -
