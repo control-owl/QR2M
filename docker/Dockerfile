@@ -67,17 +67,17 @@ RUN $PROJECT_DIR/curl.sh          #| appstream      | Compiles |
 RUN $PROJECT_DIR/graphene.sh      #| gtk4           | Compiles |
 #RUN $PROJECT_DIR/libxml2.sh      #| gtk4           | Fails    | Missing zlib
 RUN $PROJECT_DIR/freetype.sh      #| harfbuzz, gtk4 | Compiles |
-RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz       |  |
+RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz       | Fails    | Missing a lot of static files 
 RUN $PROJECT_DIR/fribidi.sh       #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libepoxy.sh      #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4           | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
-RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Compiles |
+#RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Fails    | crtbeginT.o: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
 RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Compiles |
 RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fails    | Missing alot of static files
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fails    | Missing a lot of static files
 RUN $PROJECT_DIR/cairo.sh         #| librsvg        | Fails |
 RUN $PROJECT_DIR/pango.sh         #| librsvg        |  |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg        |  |
