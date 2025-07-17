@@ -51,15 +51,15 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dep            | Status   | Error
 #| ------------------------------- | -------------- | -------- | --------
+RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Fails    | libz.so.1.3.1.1-motley: relocation R_X86_64_32 against hidden symbol __TMC_END__ can not be used when making a shared object
+RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     | 
 #RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | gnulib-lib/relocatable.h:114:37: error
-#RUN $PROJECT_DIR/glib.sh         #| cairo          | Fail     | 
 RUN $PROJECT_DIR/brotli.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libx11.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxrender.sh    #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxext.sh       #| cairo          | Compiles |
-#RUN $PROJECT_DIR/zlib.sh         #| cairo,libxml2  | Fails    | libz.so.1.3.1.1-motley: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
 RUN $PROJECT_DIR/nghttp2.sh       #| curl           | Compiles |
 RUN $PROJECT_DIR/xz.sh            #| appstream      | Compiles |
 RUN $PROJECT_DIR/libeconf.sh      #| appstream      | Compiles |
@@ -75,7 +75,7 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
 #RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4          | Fails    | crtbeginT.o: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
 #RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Fails    | Missing zlib
-RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Compiles |
+#RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Fails | attempted static link of dynamic object `/usr/lib/libz.so'
 RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fails    | Missing a lot of static files
 RUN $PROJECT_DIR/cairo.sh         #| librsvg        | Fails    |
