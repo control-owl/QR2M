@@ -66,12 +66,12 @@ RUN $PROJECT_DIR/libeconf.sh      #| appstream | Compiles |
 RUN $PROJECT_DIR/curl.sh          #| appstream | Compiles |
 RUN $PROJECT_DIR/graphene.sh      #| gtk4      | Compiles |
 #RUN $PROJECT_DIR/libxml2.sh      #| gtk4      | Fails | Missing zlib
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4      | Compiles |
+RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
+RUN $PROJECT_DIR/harfbuzz.sh      #| harfbuzz, gtk4 | Fails |
 RUN $PROJECT_DIR/fribidi.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libepoxy.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4      | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4      | Compiles |
-RUN $PROJECT_DIR/freetype.sh      #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4      | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4      | Compiles |
