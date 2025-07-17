@@ -9,15 +9,15 @@ ENV PROJECT_DIR="/home/QR2M"
 ENV STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC"
 ENV PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig"
 ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-ENV CFLAGS="-O2 -fno-semantic-interposition"
-ENV CXXFLAGS="-O2 -fno-semantic-interposition"
+# ENV CFLAGS="-O2 -fno-semantic-interposition"
+# ENV CXXFLAGS="-O2 -fno-semantic-interposition"
 ENV PKG_CONFIG="pkg-config --static"
 ENV LDFLAGS="-L$STATIC_DIR/lib -static"
-ENV CC="gcc"
-ENV CXX="g++"
-ENV AR="ar"
-ENV RANLIB="ranlib"
-ENV STRIP="strip"
+# ENV CC="gcc"
+# ENV CXX="g++"
+# ENV AR="ar"
+# ENV RANLIB="ranlib"
+# ENV STRIP="strip"
 
 WORKDIR $PROJECT_DIR
 
@@ -28,18 +28,18 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
     apk update && \
     apk add --no-cache \
         bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
-        openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev \
+        openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
         libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
         brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev bzip2-static \
         pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev \
-        libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev \
+        libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
         util-linux-static libxcb-dev gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
         xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
         xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
         yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev \
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
-        curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static
+        curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
@@ -51,8 +51,8 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dep       | Status   | Error
 #| ------------------------------- | --------- | -------- | --------
-#RUN $PROJECT_DIR/gettext.sh       #| cairo     | Fail     | gnulib-lib/relocatable.h:114:37: error
-#RUN $PROJECT_DIR/glib.sh          #| cairo     | Fail |
+#RUN $PROJECT_DIR/gettext.sh      #| cairo     | Fail     | gnulib-lib/relocatable.h:114:37: error
+#RUN $PROJECT_DIR/glib.sh         #| cairo     | Fail     |
 RUN $PROJECT_DIR/brotli.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo     | Compiles |
