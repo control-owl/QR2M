@@ -12,7 +12,6 @@ set -o pipefail
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
 STATIC_DIR="$CIRCUS/STATIC"
-export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 
 mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"

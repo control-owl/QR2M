@@ -8,16 +8,21 @@ LABEL description="Build QR2M project with MUSL"
 ENV PROJECT_DIR="/home/QR2M"
 ENV STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC"
 ENV PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig"
-ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+#ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
 ENV CFLAGS="-O2 -fno-semantic-interposition"
 ENV CXXFLAGS="-O2 -fno-semantic-interposition"
 ENV PKG_CONFIG="pkg-config --static"
+
+# PROBLEM ?????
 ENV LDFLAGS="-L$STATIC_DIR/lib -static"
+
+
 ENV CC="gcc"
 ENV CXX="g++"
-# ENV AR="ar"
-# ENV RANLIB="ranlib"
-# ENV STRIP="strip"
+ENV AR="ar"
+ENV RANLIB="ranlib"
+ENV STRIP="strip"
 
 WORKDIR $PROJECT_DIR
 
@@ -51,9 +56,9 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dep            | Status   | Error
 #| ------------------------------- | -------------- | -------- | --------
-RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Fails    | libz.so.1.3.1.1-motley: relocation R_X86_64_32 against hidden symbol __TMC_END__ can not be used when making a shared object
-RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     | 
-#RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | gnulib-lib/relocatable.h:114:37: error
+RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Compiles |
+#RUN $PROJECT_DIR/gettext.sh       #| cairo          | Fail |
+#RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     |
 RUN $PROJECT_DIR/brotli.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo          | Compiles |
@@ -65,17 +70,17 @@ RUN $PROJECT_DIR/xz.sh            #| appstream      | Compiles |
 RUN $PROJECT_DIR/libeconf.sh      #| appstream      | Compiles |
 RUN $PROJECT_DIR/curl.sh          #| appstream      | Compiles |
 RUN $PROJECT_DIR/graphene.sh      #| gtk4           | Compiles |
-#RUN $PROJECT_DIR/libxml2.sh      #| gtk4           | Fails    | Missing zlib
+RUN $PROJECT_DIR/libxml2.sh       #| gtk4           | Compiles |
 RUN $PROJECT_DIR/freetype.sh      #| harfbuzz, gtk4 | Compiles |
-RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz       | Fails    | Missing a lot of static files 
+RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz       | Compiles |
 RUN $PROJECT_DIR/fribidi.sh       #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libepoxy.sh      #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4           | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
-#RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4          | Fails    | crtbeginT.o: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
-#RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Fails    | Missing zlib
-#RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Fails | attempted static link of dynamic object `/usr/lib/libz.so'
+RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Fails    | crtbeginT.o: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
+RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Fails    | Missing zlib
+RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Fails | attempted static link of dynamic object `/usr/lib/libz.so'
 RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fails    | Missing a lot of static files
 RUN $PROJECT_DIR/cairo.sh         #| librsvg        | Fails    |

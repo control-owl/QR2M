@@ -11,7 +11,6 @@ set -o pipefail
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
 STATIC_DIR="$CIRCUS/STATIC"
-export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 
 mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"
@@ -53,7 +52,7 @@ mkdir -p builddir
 cd builddir
 
 {
-  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR ..
+  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DBUILD_SHARED_LIBS=OFF ..
 } 2>&1 | tee "$LOG_DIR/libjpeg-turbo-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
