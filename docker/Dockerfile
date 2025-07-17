@@ -52,7 +52,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #|                Library          | Dep            | Status   | Error
 #| ------------------------------- | -------------- | -------- | --------
 #RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | gnulib-lib/relocatable.h:114:37: error
-#RUN $PROJECT_DIR/glib.sh         #| cairo          | Fail     |
+#RUN $PROJECT_DIR/glib.sh         #| cairo          | Fail     | 
 RUN $PROJECT_DIR/brotli.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo          | Compiles |
@@ -73,12 +73,12 @@ RUN $PROJECT_DIR/libepoxy.sh      #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4           | Compiles |
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
-#RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Fails    | crtbeginT.o: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
-RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Compiles |
+#RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4          | Fails    | crtbeginT.o: relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
+#RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Fails    | Missing zlib
 RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Compiles |
 RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fails    | Missing a lot of static files
-RUN $PROJECT_DIR/cairo.sh         #| librsvg        | Fails |
+RUN $PROJECT_DIR/cairo.sh         #| librsvg        | Fails    |
 RUN $PROJECT_DIR/pango.sh         #| librsvg        |  |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg        |  |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg        |  |
