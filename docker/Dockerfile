@@ -59,7 +59,7 @@ RUN $PROJECT_DIR/libxcb.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libx11.sh        #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxrender.sh    #| cairo     | Compiles |
 RUN $PROJECT_DIR/libxext.sh       #| cairo     | Compiles |
-RUN $PROJECT_DIR/zlib.sh          #| cairo     |  |
+#RUN $PROJECT_DIR/zlib.sh          #| cairo    | Fails    | relocation R_X86_64_32 against hidden symbol `__TMC_END__' can not be used when making a shared object
 RUN $PROJECT_DIR/nghttp2.sh       #| curl      | Compiles |
 RUN $PROJECT_DIR/xz.sh            #| appstream | Compiles |
 RUN $PROJECT_DIR/libeconf.sh      #| appstream | Compiles |
