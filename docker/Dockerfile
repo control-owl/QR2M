@@ -59,6 +59,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #|                Library          | Dep            | Status   | Error
 #| ------------------------------- | -------------- | -------- | --------
 RUN $PROJECT_DIR/pcre2.sh         #| gtk4, glib     | Compiles |
+RUN $PROJECT_DIR/gvdb.sh          #| glib           | Fail     |  Assert failed: libintl.type_name() == internal
 RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz | Fail     |  Assert failed: libintl.type_name() == internal
 RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Compiles |
 #RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | Takes 15 minutes and fails
