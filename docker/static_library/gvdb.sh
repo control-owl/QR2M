@@ -38,8 +38,7 @@ cd gvdb
 {
   meson setup builddir \
     --default-library static \
-    --prefix=$STATIC_DIR \
-    -Dtests=false 
+    --prefix=$STATIC_DIR 
 } 2>&1 | tee "$LOG_DIR/gvdb-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
