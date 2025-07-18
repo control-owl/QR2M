@@ -72,7 +72,7 @@ RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles
 RUN $PROJECT_DIR/graphene.sh      #| gtk4               | Compiles
 RUN $PROJECT_DIR/libxml2.sh       #| gtk4               | Compiles
 RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles
-RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz           | Compiles
+RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz,cairo     | Compiles
 RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles
 RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles
@@ -80,8 +80,8 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4               | Compiles
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles
-RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   |
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4               |
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,cairo         |
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | attempted static link of dynamic object /usr/lib/libexpat.so.1.10.2
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            |
