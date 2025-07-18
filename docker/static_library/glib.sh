@@ -25,7 +25,7 @@ cd "$CIRCUS"
   git -C glib submodule update --init
   meson subprojects download --sourcedir glib
   # rm glib/subprojects/*.wrap
-  mv glib/subprojects/ .
+  # mv glib/subprojects/ .
 } 2>&1 | tee "$LOG_DIR/glib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
