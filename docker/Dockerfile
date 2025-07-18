@@ -37,14 +37,15 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
         libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
         brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest \
-        pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev \
+        pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev musl-locales \
         libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
         util-linux-static libxcb-dev gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
         xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
         xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
-        yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev \
+        yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev libxml2-utils \
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
-        curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev
+        curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
+        py3-pip python3 tzdata
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
@@ -58,7 +59,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #| ------------------------------- | -------------- | -------- | --------
 RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Compiles |
 #RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | Takes 15 minutes and fails
-#RUN $PROJECT_DIR/glib.sh         #| cairo          | Fail     | 
+RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     | 
 RUN $PROJECT_DIR/brotli.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo          | Compiles |
@@ -80,9 +81,9 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Compiles |
-RUN $PROJECT_DIR/pcre2.sh         #| gtk4           |     | attempted static link of dynamic object /usr/lib/libz.so
-RUN $PROJECT_DIR/pixman.sh        #| gtk4           |     |
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           |     | 
+RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Compiles |
+RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fail    | Missing glib-2.0
 RUN $PROJECT_DIR/cairo.sh         #| librsvg        |     |
 RUN $PROJECT_DIR/pango.sh         #| librsvg        |  |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg        |  |
