@@ -38,9 +38,9 @@ cd glib
 {
   git submodule update --init
   meson subprojects download --sourcedir .
-  rm glib/subprojects/*.wrap
-  mv glib/subprojects/ .
-  rm -rf glib
+  rm subprojects/*.wrap
+  mv subprojects/ .
+  # rm -rf glib
 
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
