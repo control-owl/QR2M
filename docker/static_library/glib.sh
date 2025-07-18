@@ -37,7 +37,7 @@ cd glib
 
 {
   git submodule update --init
-  meson subprojects download --sourcedir glib
+  meson subprojects download --sourcedir .
   rm glib/subprojects/*.wrap
   mv glib/subprojects/ .
   rm -rf glib
