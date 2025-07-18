@@ -45,7 +45,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev libxml2-utils \
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
-        py3-pip python3 tzdata
+        py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
