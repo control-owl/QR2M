@@ -46,7 +46,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs glib
+        gnu-libiconv-dev gnu-libiconv-libs
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
@@ -59,7 +59,6 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #|                Library          | Dep            | Status   | Error
 #| ------------------------------- | -------------- | -------- | --------
 RUN $PROJECT_DIR/pcre2.sh         #| gtk4, glib     | Compiles |
-RUN $PROJECT_DIR/gvdb.sh          #| glib           |      |
 RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz | Fail     | Assert failed: libintl.type_name() == internal
 RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Compiles |
 #RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | Takes 15 minutes and fails

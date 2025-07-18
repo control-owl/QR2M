@@ -44,7 +44,11 @@ fi
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
-    --buildtype=release
+    --buildtype=release \
+    -Dintrospection=disabled \
+    -Ddocumentation=false \
+    -Dbsymbolic_functions=false \
+    -Dman-pages=disabled
 } 2>&1 | tee "$LOG_DIR/glib-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
