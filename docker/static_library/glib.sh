@@ -50,7 +50,7 @@ fi
     -Ddocumentation=false \
     -Dbsymbolic_functions=false \
     -Dman-pages=disabled \
-    -Dintrospection=false 
+    -Dintrospection=disabled 
 } 2>&1 | tee "$LOG_DIR/glib-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
