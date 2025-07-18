@@ -35,11 +35,12 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git -C glib submodule update --init --recursive
-  meson subprojects download --sourcedir glib
-  # rm glib/subprojects/*.wrap
-  # mv glib/subprojects/ .
   cd glib
+  git submodule update --init --recursive
+  meson subprojects download --sourcedir glib
+  rm subprojects/*.wrap
+  mv subprojects/ .
+  rm -rf glib
 
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
