@@ -26,7 +26,6 @@ cd "$CIRCUS"
   meson subprojects download --sourcedir glib
   rm glib/subprojects/*.wrap
   mv glib/subprojects/ .
-  rm -rf glib
 } 2>&1 | tee "$LOG_DIR/glib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
