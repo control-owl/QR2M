@@ -65,7 +65,6 @@ RUN $PROJECT_DIR/libxdmcp.sh      #| cairo              | Compiles
 RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles
 RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles
 RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles
-RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   |
 RUN $PROJECT_DIR/nghttp2.sh       #| curl               | Compiles
 RUN $PROJECT_DIR/xz.sh            #| appstream          | Compiles
 RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles
@@ -81,6 +80,7 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4               | Compiles
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   |
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4               |
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
