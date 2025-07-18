@@ -46,7 +46,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs
+        gnu-libiconv-dev gnu-libiconv-libs glib
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
