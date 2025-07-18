@@ -52,7 +52,7 @@ mkdir -p builddir
 cd builddir
 
 {
-  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DBUILD_SHARED_LIBS=OFF ..
+  cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DENABLE_SHARED=0 ..
 } 2>&1 | tee "$LOG_DIR/libjpeg-turbo-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
