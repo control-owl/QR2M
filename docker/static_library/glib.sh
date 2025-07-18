@@ -39,7 +39,7 @@ fi
   git submodule update --init --recursive
   meson subprojects download --sourcedir glib
   rm subprojects/*.wrap
-  mv subprojects/ .
+  cp -r subprojects/* .
   rm -rf glib
 
   meson setup builddir \
@@ -49,7 +49,8 @@ fi
     -Dintrospection=disabled \
     -Ddocumentation=false \
     -Dbsymbolic_functions=false \
-    -Dman-pages=disabled
+    -Dman-pages=disabled \
+    -Dinternal_pcre=false
 } 2>&1 | tee "$LOG_DIR/glib-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
