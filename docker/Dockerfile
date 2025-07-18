@@ -1,23 +1,23 @@
 # -.-. --- .--. -.-- .-. .. --. .... - BASE SYSTEM -.-. --- .--. -.-- .-. .. --. .... -
 FROM rust:alpine AS base_system
 
-LABEL maintainer="control-owl@r-o0-t.wtf"
-LABEL version="1.0"
-LABEL description="Build QR2M project with MUSL"
+LABEL maintainer="control-owl@r-o0-t.wtf" \
+      version="1.0" \
+      description="Build QR2M project with MUSL"
 
-ENV PROJECT_DIR="/home/QR2M"
-ENV STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC"
-ENV PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig"
-ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
-ENV CFLAGS="-O2 -fno-semantic-interposition"
-ENV CXXFLAGS="-O2 -fno-semantic-interposition"
-ENV PKG_CONFIG="pkg-config --static"
-ENV LDFLAGS="-L$STATIC_DIR/lib -static"
-ENV CC="gcc"
-ENV CXX="g++"
-ENV AR="ar"
-ENV RANLIB="ranlib"
-ENV STRIP="strip"
+ENV PROJECT_DIR="/home/QR2M" \
+    STATIC_DIR="/home/QR2M/compile-circus/STATIC" \
+    PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig" \
+    PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig" \
+    CFLAGS="-O2 -fno-semantic-interposition" \
+    CXXFLAGS="-O2 -fno-semantic-interposition" \
+    PKG_CONFIG="pkg-config --static" \
+    LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -static" \
+    CC="gcc" \
+    CXX="g++" \
+    AR="ar" \
+    RANLIB="ranlib" \
+    STRIP="strip"
 
 WORKDIR $PROJECT_DIR
 
@@ -60,7 +60,7 @@ RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles |
 RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo              | Compiles |
-RUN $PROJECT_DIR/xorgproto.sh     #| cairo              |  |
+RUN $PROJECT_DIR/xorgproto.sh     #| cairo              | Compiles |
 RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles |
@@ -88,7 +88,6 @@ RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |  |
 RUN $PROJECT_DIR/appstream.sh     #| QR2M               |  |
 RUN $PROJECT_DIR/gtk4.sh          #| QR2M               |  |
 RUN $PROJECT_DIR/libadwaita.sh    #| QR2M               |  |
-
 
 #RUN $PROJECT_DIR/gettext.sh      #| cairo              |  |
 
