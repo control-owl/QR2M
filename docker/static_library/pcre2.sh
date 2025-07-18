@@ -52,7 +52,7 @@ mkdir -p builddir
 cd builddir
 
 {
-  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR ..
+  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DENABLE_SHARED=0 ..
 } 2>&1 | tee "$LOG_DIR/pcre2-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
