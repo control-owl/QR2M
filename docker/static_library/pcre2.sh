@@ -35,24 +35,29 @@ cd pcre2
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-# {
-#   ./autogen.sh
-# } 2>&1 | tee "$LOG_DIR/pcre2-02-autogen.log"
-# 
-# STATUS=${PIPESTATUS[0]}
-# if [ "$STATUS" -ne 0 ]; then
-#   cat $LOG_DIR/pcre2-02-autogen.log
-#   echo "ERROR - pcre2 - 02/05 - Clone"
-#   exit 1
-# fi
+{
+  ./autogen.sh
+} 2>&1 | tee "$LOG_DIR/pcre2-02-autogen.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/pcre2-02-autogen.log
+  echo "ERROR - pcre2 - 02/05 - Clone"
+  exit 1
+fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-mkdir -p builddir
-cd builddir
+# mkdir -p builddir
+# cd builddir
 
 {
-  cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DENABLE_SHARED=0 ..
+  # cmake -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DENABLE_SHARED=0 ..
+
+  ./configure \
+    --enable-static \
+    --disable-shared \
+    --prefix=$STATIC_DIR
 } 2>&1 | tee "$LOG_DIR/pcre2-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}

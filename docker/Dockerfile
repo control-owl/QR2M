@@ -82,7 +82,7 @@ RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/pcre2.sh         #| gtk4           |     | attempted static link of dynamic object /usr/lib/libz.so
 RUN $PROJECT_DIR/pixman.sh        #| gtk4           |     |
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           |     | Missing a lot of static files
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           |     | 
 RUN $PROJECT_DIR/cairo.sh         #| librsvg        |     |
 RUN $PROJECT_DIR/pango.sh         #| librsvg        |  |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg        |  |
