@@ -81,9 +81,9 @@ RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/pcre2.sh         #| gtk4, glib     | Compiles |
-RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     |  Assert failed: libintl.type_name() == internal
+RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz | Fail     |  Assert failed: libintl.type_name() == internal
 RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fail    | Missing glib-2.0
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fail     | Missing glib-2.0
 RUN $PROJECT_DIR/cairo.sh         #| librsvg        |     |
 RUN $PROJECT_DIR/pango.sh         #| librsvg        |  |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg        |  |
