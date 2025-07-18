@@ -38,7 +38,7 @@ fi
   git -C glib submodule update --init --recursive
   meson subprojects download --sourcedir glib
   # rm glib/subprojects/*.wrap
-  mv glib/subprojects/ .
+  # mv glib/subprojects/ .
   cd glib
 
   meson setup builddir \
