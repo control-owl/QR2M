@@ -59,7 +59,6 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #| ------------------------------- | -------------- | -------- | --------
 RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Compiles |
 #RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | Takes 15 minutes and fails
-RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     |  Assert failed: libintl.type_name() == internal
 RUN $PROJECT_DIR/brotli.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo          | Compiles |
@@ -81,7 +80,8 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4           | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4           | Compiles |
-RUN $PROJECT_DIR/pcre2.sh         #| gtk4           | Compiles |
+RUN $PROJECT_DIR/pcre2.sh         #| gtk4, glib     | Compiles |
+RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     |  Assert failed: libintl.type_name() == internal
 RUN $PROJECT_DIR/pixman.sh        #| gtk4           | Compiles |
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4           | Fail    | Missing glib-2.0
 RUN $PROJECT_DIR/cairo.sh         #| librsvg        |     |
