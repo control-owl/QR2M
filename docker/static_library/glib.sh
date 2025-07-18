@@ -31,16 +31,16 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd glib
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git submodule update --init
-  meson subprojects download --sourcedir .
-  rm subprojects/*.wrap
-  mv subprojects/ .
+  git -C glib submodule update --init
+  meson subprojects download --sourcedir glib
+  rm glib/subprojects/*.wrap
+  mv glib/subprojects/ .
   # rm -rf glib
+  cd glib
 
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
