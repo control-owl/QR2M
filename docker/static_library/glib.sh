@@ -11,6 +11,7 @@ set -o pipefail
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
 STATIC_DIR="$CIRCUS/STATIC"
+export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 
 mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"
@@ -35,22 +36,28 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  cd glib
-  git submodule update --init --recursive
+  git -C glib submodule update --init --recursive
   meson subprojects download --sourcedir glib
-  rm subprojects/*.wrap
-  cp -r subprojects/* .
-  rm -rf glib
-
+  cd glib
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
-    --buildtype=release \
-    -Dintrospection=disabled \
+    -Dtests=false \
     -Ddocumentation=false \
-    -Dbsymbolic_functions=false \
-    -Dman-pages=disabled \
-    -Dintrospection=disabled 
+    -Dman=false \
+    -Dlibmount=disabled \
+    -Dselinux=disabled \
+    -Dnls=enabled \
+    -Dlibelf=disabled \
+    -Dbuildtype=release \
+    -Dxattr=false \
+    -Ddtrace=disabled \
+    -Dsystemtap=disabled \
+    -Dsysprof=disabled \
+    -Dbsymbolic_functions=true \
+    -Dforce_posix_threads=false \
+    -Dintrospection=disabled \
+    -Dfile_monitor_backend=inotify
 } 2>&1 | tee "$LOG_DIR/glib-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -63,7 +70,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir
+  ninja -C glib/builddir
 } 2>&1 | tee "$LOG_DIR/glib-03-compile.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -76,7 +83,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir install
+  ninja -C glib/builddir install
 } 2>&1 | tee "$LOG_DIR/glib-04-install.log"
 
 STATUS=${PIPESTATUS[0]}
