@@ -5,19 +5,19 @@ LABEL maintainer="control-owl@r-o0-t.wtf"
 LABEL version="1.0"
 LABEL description="Build QR2M project with MUSL"
 
-ENV PROJECT_DIR="/home/QR2M" \
-    STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC" \
-    PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig" \
-    PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig" \
-    CFLAGS="-O2 -fno-semantic-interposition" \
-    CXXFLAGS="-O2 -fno-semantic-interposition" \
-    PKG_CONFIG="pkg-config --static" \
-    LDFLAGS="-L$STATIC_DIR/lib -static" \
-    CC="gcc" \
-    CXX="g++" \
-    AR="ar" \
-    RANLIB="ranlib" \
-    STRIP="strip"
+ENV PROJECT_DIR="/home/QR2M"
+ENV STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC"
+ENV PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig"
+ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
+ENV CFLAGS="-O2 -fno-semantic-interposition"
+ENV CXXFLAGS="-O2 -fno-semantic-interposition"
+ENV PKG_CONFIG="pkg-config --static"
+ENV LDFLAGS="-L$STATIC_DIR/lib -static"
+ENV CC="gcc"
+ENV CXX="g++"
+ENV AR="ar"
+ENV RANLIB="ranlib"
+ENV STRIP="strip"
 
 WORKDIR $PROJECT_DIR
 
@@ -41,7 +41,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs gettext-static gettext-libs xorgproto
+        gnu-libiconv-dev gnu-libiconv-libs gettext-static gettext-libs
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
