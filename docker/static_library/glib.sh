@@ -41,27 +41,6 @@ git submodule update --init --depth 1
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
-    -Dselinux=disabled \
-    -Dxattr=false \
-    -Dlibmount=disabled \
-    -Dman-pages=false \
-    -Ddtrace=disabled \
-    -Dsystemtap=disabled \
-    -Dsysprof=disabled \
-    -Ddocumentation=false \
-    -Dbsymbolic_functions=true \
-    -Dforce_posix_threads=false \
-    -Dtests=false \
-    -Dinstalled_tests=false \
-    -Dnls=enabled \
-    -Doss_fuzz=disabled \
-    -Dglib_debug=disabled \
-    -Dglib_assert=false \
-    -Dglib_checks=false \
-    -Dlibelf=disabled \
-    -Dmultiarch=false \
-    -Dintrospection=disabled \
-    -Dfile_monitor_backend=inotify \
     --buildtype=release
 } 2>&1 | tee "$LOG_DIR/glib-02-setup.log"
 
