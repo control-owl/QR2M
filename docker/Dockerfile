@@ -5,19 +5,19 @@ LABEL maintainer="control-owl@r-o0-t.wtf"
 LABEL version="1.0"
 LABEL description="Build QR2M project with MUSL"
 
-ENV PROJECT_DIR="/home/QR2M"
-ENV STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC"
-ENV PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig"
-ENV PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
-ENV CFLAGS="-O2 -fno-semantic-interposition"
-ENV CXXFLAGS="-O2 -fno-semantic-interposition"
-ENV PKG_CONFIG="pkg-config --static"
-ENV LDFLAGS="-L$STATIC_DIR/lib -static"
-ENV CC="gcc"
-ENV CXX="g++"
-ENV AR="ar"
-ENV RANLIB="ranlib"
-ENV STRIP="strip"
+ENV PROJECT_DIR="/home/QR2M" \
+    STATIC_DIR="$PROJECT_DIR/compile-circus/STATIC" \
+    PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig" \
+    PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig" \
+    CFLAGS="-O2 -fno-semantic-interposition" \
+    CXXFLAGS="-O2 -fno-semantic-interposition" \
+    PKG_CONFIG="pkg-config --static" \
+    LDFLAGS="-L$STATIC_DIR/lib -static" \
+    CC="gcc" \
+    CXX="g++" \
+    AR="ar" \
+    RANLIB="ranlib" \
+    STRIP="strip"
 
 WORKDIR $PROJECT_DIR
 
@@ -41,7 +41,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs gettext-static gettext-libs
+        gnu-libiconv-dev gnu-libiconv-libs gettext-static gettext-libs xorgproto
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
@@ -57,10 +57,10 @@ RUN $PROJECT_DIR/pcre2.sh         #| gtk4,glib          | Compiles |
 RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2,glib | Compiles |
 RUN $PROJECT_DIR/libffi.sh        #| gtk4,glib          | Compiles |
 RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles |
-#RUN $PROJECT_DIR/gettext.sh      #| cairo              | Fail     |
 RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo              | Compiles |
+RUN $PROJECT_DIR/xorgproto.sh     #| cairo              |  |
 RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles |
 RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles |
@@ -70,7 +70,7 @@ RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles |
 RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles |
 RUN $PROJECT_DIR/graphene.sh      #| gtk4               | Compiles |
 RUN $PROJECT_DIR/libxml2.sh       #| gtk4               | Compiles |
-RUN $PROJECT_DIR/freetype.sh      #| harfbuzz, gtk4     | Compiles |
+RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles |
 RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz           | Compiles |
 RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles |
 RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles |
@@ -79,8 +79,8 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4               | Compiles |
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles |
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles |
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles |
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   |  |
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4               |  |
-RUN $PROJECT_DIR/cairo.sh         #| librsvg            |  |
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |  |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |  |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            |  |
@@ -88,6 +88,9 @@ RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |  |
 RUN $PROJECT_DIR/appstream.sh     #| QR2M               |  |
 RUN $PROJECT_DIR/gtk4.sh          #| QR2M               |  |
 RUN $PROJECT_DIR/libadwaita.sh    #| QR2M               |  |
+
+
+#RUN $PROJECT_DIR/gettext.sh      #| cairo              |  |
 
 # -.-. --- .--. -.-- .-. .. --. .... - PROJECT COMPILE -.-. --- .--. -.-- .-. .. --. .... -
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
