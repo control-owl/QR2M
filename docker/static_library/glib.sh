@@ -22,11 +22,6 @@ cd "$CIRCUS"
 
 {
   git clone --depth 1 --no-tags https://gitlab.gnome.org/GNOME/glib.git glib
-  git -C glib submodule update --init
-  meson subprojects download --sourcedir glib
-  rm glib/subprojects/*.wrap
-  mv glib/subprojects/ .
-  rm -rf glib
 } 2>&1 | tee "$LOG_DIR/glib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -41,6 +36,12 @@ cd glib
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  git submodule update --init
+  meson subprojects download --sourcedir glib
+  rm glib/subprojects/*.wrap
+  mv glib/subprojects/ .
+  rm -rf glib
+
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
