@@ -59,7 +59,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #| ------------------------------- | -------------- | -------- | --------
 RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2  | Compiles |
 #RUN $PROJECT_DIR/gettext.sh      #| cairo          | Fail     | Takes 15 minutes and fails
-RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     | 
+RUN $PROJECT_DIR/glib.sh          #| cairo          | Fail     |  Assert failed: libintl.type_name() == internal
 RUN $PROJECT_DIR/brotli.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxau.sh        #| cairo          | Compiles |
 RUN $PROJECT_DIR/libxcb.sh        #| cairo          | Compiles |
