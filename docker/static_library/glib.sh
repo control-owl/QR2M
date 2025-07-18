@@ -22,8 +22,6 @@ cd "$CIRCUS"
 
 {
   git clone --depth 1 --no-tags https://gitlab.gnome.org/GNOME/glib.git glib
-  rm -rf subprojects/gvdb
-  git submodule update --init --depth 1
 } 2>&1 | tee "$LOG_DIR/glib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -34,6 +32,8 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 
 cd glib
+rm -rf subprojects/gvdb
+git submodule update --init --depth 1
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
