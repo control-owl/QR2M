@@ -36,6 +36,19 @@ cd libtiff
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  sed -i 's/--timeout=5/--timeout=30/' autogen.sh
+} 2>&1 | tee "$LOG_DIR/libtiff-01b-patch.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/libtiff-01b-patch.log"
+  echo "ERROR - libtiff - 01b/04 - Patch"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   ./autogen.sh
 } 2>&1 | tee "$LOG_DIR/libtiff-02-autogen.log"
 

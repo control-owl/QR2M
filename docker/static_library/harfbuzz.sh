@@ -40,11 +40,31 @@ cd harfbuzz
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
     -Dfreetype=enabled \
-    -Dglib=enabled \
+    -Dfontconfig=enabled \
     -Dcairo=enabled \
+    -Dglib=enabled \
+    -Dgobject=disabled \
+    -Dchafa=disabled \
+    -Dicu=disabled \
+    -Dgraphite2=disabled \
+    -Dfontations=disabled \
+    -Dgdi=disabled \
+    -Ddirectwrite=disabled \
+    -Dcoretext=disabled \
+    -Dharfrust=disabled \
+    -Dwasm=disabled \
     -Dtests=disabled \
+    -Dintrospection=disabled \
     -Ddocs=disabled \
-    --buildtype=release
+    -Ddoc_tests=false \
+    -Dutilities=disabled \
+    -Dbenchmark=disabled \
+    -Dicu_builtin=false \
+    -Dwith_libstdcxx=false \
+    -Dexperimental_api=false \
+    -Dragel_subproject=false \
+    -Dbuildtype=release \
+    -Db_ndebug=true
 } 2>&1 | tee "$LOG_DIR/harfbuzz-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}

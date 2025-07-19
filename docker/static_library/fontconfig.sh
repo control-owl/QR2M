@@ -36,56 +36,64 @@ cd fontconfig
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./autogen.sh
-} 2>&1 | tee "$LOG_DIR/fontconfig-02-autogen.log"
+  meson setup builddir \
+    -Dprefix="$STATIC_DIR" \
+    -Ddefault_library=static \
+    -Ddoc=disabled \
+    -Ddoc-txt=disabled \
+    -Ddoc-man=disabled \
+    -Ddoc-pdf=disabled \
+    -Ddoc-html=disabled \
+    -Dnls=disabled \
+    -Dtests=disabled \
+    -Dtools=disabled \
+    -Dcache-build=disabled \
+    -Diconv=disabled \
+    -Dxml-backend=expat \
+    -Dfontations=disabled \
+    -Ddefault-hinting=slight \
+    -Ddefault-sub-pixel-rendering=none \
+    -Dbitmap-conf=no-except-emoji \
+    -Ddefault-fonts-dirs=yes \
+    -Dadditional-fonts-dirs=yes \
+    -Dcache-dir=default \
+    -Dtemplate-dir=default \
+    -Dbaseconfig-dir=default \
+    -Dconfig-dir=default \
+    -Dxml-dir=default \
+    -Dbuildtype=release
+} 2>&1 | tee "$LOG_DIR/fontconfig-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/fontconfig-02-autogen.log
-  echo "ERROR - fontconfig - 02/05 - Clone"
+  cat "$LOG_DIR/fontconfig-02-setup.log"
+  echo "ERROR - fontconfig - 02/04 - Setup"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./configure \
-    --enable-static \
-    --disable-shared \
-    --prefix=$STATIC_DIR \
-    --with-freetype="$STATIC_DIR" \
-    --disable-docs
-} 2>&1 | tee "$LOG_DIR/fontconfig-03-configure.log"
+  ninja -C builddir
+} 2>&1 | tee "$LOG_DIR/fontconfig-03-compile.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/fontconfig-03-configure.log
-  echo "ERROR - fontconfig - 03/05 - Configure"
+  cat $LOG_DIR/fontconfig-03-compile.log
+  echo "ERROR - fontconfig - 03/04 - Compile"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/fontconfig-04-make.log"
+  ninja -C builddir install
+} 2>&1 | tee "$LOG_DIR/fontconfig-04-install.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/fontconfig-04-make.log
-  echo "ERROR - fontconfig - 04/05 - Compile"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  make install
-} 2>&1 | tee "$LOG_DIR/fontconfig-05-install.log"
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/fontconfig-05-install.log
-  echo "ERROR - fontconfig - 05/05 - Install"
+  cat $LOG_DIR/fontconfig-04-install.log
+  echo "ERROR - fontconfig - 04/04 - Install"
   exit 1
 fi
 

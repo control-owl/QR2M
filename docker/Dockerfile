@@ -72,16 +72,16 @@ RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles
 RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles
 RUN $PROJECT_DIR/graphene.sh      #| gtk4               | Compiles
 RUN $PROJECT_DIR/libxml2.sh       #| gtk4               | Compiles
-RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles
-RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz,cairo     | Compiles
-RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles
-RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles
-RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles
-RUN $PROJECT_DIR/fontconfig.sh    #| gtk4               | Compiles
-RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles
-RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles
-RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles
-RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   |
+RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles 26s
+RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz,cairo     | Compiles 6s
+RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles 7s
+RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles 25s
+RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles 122s
+RUN $PROJECT_DIR/fontconfig.sh    #| gtk4,cairo         | Compiles 10s
+RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles 23s
+RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles 25s
+RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles 21s
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles 30s
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              |
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
