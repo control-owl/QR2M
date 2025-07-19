@@ -46,6 +46,7 @@ cd pango
     -Dbuild-examples=false \
     -Dsysprof=disabled \
     -Dlibthai=disabled \
+    -Dfreetype=disabled \
     -Dxft=disabled
 } 2>&1 | tee "$LOG_DIR/pango-02-setup.log"
 

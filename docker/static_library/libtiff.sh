@@ -36,7 +36,7 @@ cd libtiff
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  sed -i 's/--timeout=5/--timeout=30/' autogen.sh
+  sed -i 's/--timeout=5/--timeout=60/' autogen.sh
 } 2>&1 | tee "$LOG_DIR/libtiff-01b-patch.log"
 
 STATUS=${PIPESTATUS[0]}
