@@ -9,7 +9,7 @@ ENV PROJECT_DIR="/home/QR2M" \
     STATIC_DIR="/home/QR2M/compile-circus/STATIC" \
     PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig" \
     PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig" \
-    CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized -Wno-unused-parameter" \
+    CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized -Wno-unused-parameter -Wno-traditional" \
     CXXFLAGS="-O2 -fno-semantic-interposition" \
     PKG_CONFIG="pkg-config --static" \
     LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -static" \
@@ -41,7 +41,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs gettext-static gettext-libs libxdmcp-dev
+        gnu-libiconv-dev gnu-libiconv-libs gettext-static gettext-libs libxdmcp-dev gcc g++
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
@@ -80,8 +80,8 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4               | Compiles
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,cairo         |
-RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | attempted static link of dynamic object /usr/lib/libexpat.so.1.10.2
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Fails: error: static declaration of ctime_r follows non-static declaration
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,cairo         | Fails: cairo missing
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            |

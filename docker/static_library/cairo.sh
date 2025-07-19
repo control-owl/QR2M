@@ -36,6 +36,20 @@ cd cairo
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  sed -i '/#ifndef HAVE_CTIME_R/,/#endif/d' src/cairo-ps-surface.c
+} 2>&1 | tee "$LOG_DIR/cairo-01b-patch.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/cairo-01b-patch.log"
+  echo "ERROR - cairo - 01b/04 - Patch"
+  exit 1
+fi
+
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
