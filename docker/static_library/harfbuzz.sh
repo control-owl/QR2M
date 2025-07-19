@@ -40,7 +40,6 @@ cd harfbuzz
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
     -Dfreetype=enabled \
-    -Dfontconfig=enabled \
     -Dcairo=enabled \
     -Dglib=enabled \
     -Dgobject=disabled \

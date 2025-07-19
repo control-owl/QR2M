@@ -53,35 +53,35 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dependant          | Status
 #| ------------------------------- | ------------------ | ------------------------------
-RUN $PROJECT_DIR/pcre2.sh         #| gtk4,glib          | Compiles
-RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2,glib | Compiles
-RUN $PROJECT_DIR/libffi.sh        #| gtk4,glib          | Compiles
-RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles
-RUN $PROJECT_DIR/libexpat.sh      #| cairo              | Compiles
-RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles
-RUN $PROJECT_DIR/libxau.sh        #| cairo              | Compiles
-RUN $PROJECT_DIR/libxcb.sh        #| cairo              | Compiles
-RUN $PROJECT_DIR/xorgproto.sh     #| cairo              | Compiles
-RUN $PROJECT_DIR/libxdmcp.sh      #| cairo              | Compiles
-RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles
-RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles
-RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles
-RUN $PROJECT_DIR/nghttp2.sh       #| curl               | Compiles
-RUN $PROJECT_DIR/xz.sh            #| appstream          | Compiles
-RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles
-RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles
-RUN $PROJECT_DIR/graphene.sh      #| gtk4               | Compiles
-RUN $PROJECT_DIR/libxml2.sh       #| gtk4               | Compiles
-RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles 26s
-RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz,cairo     | Compiles 6s
-RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles 7s
-RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles 25s
-RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles 122s
-RUN $PROJECT_DIR/fontconfig.sh    #| gtk4,cairo         | Compiles 10s
-RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles 23s
-RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles 25s
-RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles 21s
-RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles 30s
+RUN $PROJECT_DIR/pcre2.sh         #| gtk4,glib          | Compiles in 32s
+RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2,glib | Compiles in 3s
+RUN $PROJECT_DIR/libffi.sh        #| gtk4,glib          | Compiles in 22s
+RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles in 68s
+RUN $PROJECT_DIR/libexpat.sh      #| cairo              | Compiles in 27s
+RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles in 28s
+RUN $PROJECT_DIR/libxau.sh        #| cairo              | Compiles in 21s
+RUN $PROJECT_DIR/libxcb.sh        #| cairo              | Compiles in 38s
+RUN $PROJECT_DIR/xorgproto.sh     #| cairo              | Compiles in 4s
+RUN $PROJECT_DIR/libxdmcp.sh      #| cairo              | Compiles in 27s
+RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles in 63s
+RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles in 26s
+RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles in 30s
+RUN $PROJECT_DIR/nghttp2.sh       #| curl               | Compiles in 38s
+RUN $PROJECT_DIR/xz.sh            #| appstream          | Compiles in 41s
+RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles in 12s
+RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles in 88s
+RUN $PROJECT_DIR/graphene.sh      #| gtk4               | Compiles in 5s
+RUN $PROJECT_DIR/libxml2.sh       #| gtk4               | Compiles in 43s
+RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles in 26s
+RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz,cairo     | Compiles in 6s
+RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles in 7s
+RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles in 25s
+RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles in 122s
+RUN $PROJECT_DIR/fontconfig.sh    #| gtk4,cairo         | Compiles in 10s
+RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles in 23s
+RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles in 25s
+RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              |
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
