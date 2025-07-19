@@ -21,31 +21,46 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/madler/zlib.git zlib
-} 2>&1 | tee "$LOG_DIR/zlib-01-clone.log"
+  git clone https://github.com/libexpat/libexpat.git libexpat
+} 2>&1 | tee "$LOG_DIR/libexpat-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/zlib-01-clone.log"
-  echo "ERROR - zlib - 01/04 - Clone"
+  cat "$LOG_DIR/libexpat-01-clone.log"
+  echo "ERROR - libexpat - 01/05 - Clone"
   exit 1
 fi
 
-cd zlib
+cd libexpat
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+cd expat
+
+{
+  ./buildconf.sh
+} 2>&1 | tee "$LOG_DIR/libexpat-02-buildconf.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/libexpat-02-buildconf.log
+  echo "ERROR - libexpat - 02/05 - buildconf"
+  exit 1
+fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   ./configure \
-    --static \
+    --enable-static \
     --disable-shared \
     --prefix=$STATIC_DIR
-} 2>&1 | tee "$LOG_DIR/zlib-02-configure.log"
+} 2>&1 | tee "$LOG_DIR/libexpat-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-02-configure.log
-  echo "ERROR - zlib - 02/04 - Configure"
+  cat $LOG_DIR/libexpat-03-configure.log
+  echo "ERROR - libexpat - 03/05 - Configure"
   exit 1
 fi
 
@@ -53,12 +68,12 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/zlib-03-make.log"
+} 2>&1 | tee "$LOG_DIR/libexpat-04-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-03-make.log
-  echo "ERROR - zlib - 03/04 - Make"
+  cat $LOG_DIR/libexpat-04-make.log
+  echo "ERROR - libexpat - 04/05 - Compile"
   exit 1
 fi
 
@@ -66,14 +81,14 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/zlib-04-install.log"
+} 2>&1 | tee "$LOG_DIR/libexpat-05-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/zlib-04-install.log
-  echo "ERROR - zlib - 04/04 - Install"
+  cat $LOG_DIR/libexpat-05-install.log
+  echo "ERROR - libexpat - 05/05 - Install"
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "zlib compiled and installed successfully"
+echo "libexpat compiled and installed successfully"

@@ -57,6 +57,7 @@ RUN $PROJECT_DIR/pcre2.sh         #| gtk4,glib          | Compiles
 RUN $PROJECT_DIR/zlib.sh          #| cairo,libxml2,glib | Compiles
 RUN $PROJECT_DIR/libffi.sh        #| gtk4,glib          | Compiles
 RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles
+RUN $PROJECT_DIR/libexpat.sh      #| cairo              | Compiles
 RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles
 RUN $PROJECT_DIR/libxau.sh        #| cairo              | Compiles
 RUN $PROJECT_DIR/libxcb.sh        #| cairo              | Compiles
@@ -80,8 +81,8 @@ RUN $PROJECT_DIR/fontconfig.sh    #| gtk4               | Compiles
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles
-RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Fails: error: static declaration of ctime_r follows non-static declaration
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Fails: cairo missing
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   |
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              |
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            |
