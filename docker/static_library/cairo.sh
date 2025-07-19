@@ -53,7 +53,14 @@ fi
   meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
-    --buildtype=release
+    --buildtype=release \
+    -Dtests=disabled \
+    -Dpng=enabled \
+    -Dfreetype=enabled \
+    -Dfontconfig=enabled \
+    -Dglib=enabled \
+    -Dxlib=disabled \
+    -Dxcb=disabled
 } 2>&1 | tee "$LOG_DIR/cairo-02-setup.log"
 
 STATUS=${PIPESTATUS[0]}

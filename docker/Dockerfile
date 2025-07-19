@@ -9,7 +9,7 @@ ENV PROJECT_DIR="/home/QR2M" \
     STATIC_DIR="/home/QR2M/compile-circus/STATIC" \
     PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig" \
     PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig" \
-    CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized -Wno-unused-parameter -Wno-traditional" \
+    CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized -Wno-unused-parameter" \
     CXXFLAGS="-O2 -fno-semantic-interposition" \
     PKG_CONFIG="pkg-config --static" \
     LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -static" \
@@ -81,7 +81,7 @@ RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles
 RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Fails: error: static declaration of ctime_r follows non-static declaration
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,cairo         | Fails: cairo missing
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Fails: cairo missing
 RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            |
