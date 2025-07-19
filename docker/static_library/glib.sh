@@ -43,10 +43,10 @@ fi
     -Ddefault_library=static \
     -Dtests=false \
     -Ddocumentation=false \
-    -Dman=false \
+    -Dman-pages=disabled \
     -Dlibmount=disabled \
     -Dselinux=disabled \
-    -Dnls=disable \
+    -Dnls=disabled \
     -Dlibelf=disabled \
     -Dbuildtype=release \
     -Dxattr=false \
