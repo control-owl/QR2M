@@ -46,7 +46,7 @@ fi
     -Dman=false \
     -Dlibmount=disabled \
     -Dselinux=disabled \
-    -Dnls=enabled \
+    -Dnls=disable \
     -Dlibelf=disabled \
     -Dbuildtype=release \
     -Dxattr=false \
