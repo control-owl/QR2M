@@ -40,7 +40,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dependant          | Status
 #| ------------------------------- | ------------------ | ------------------------------
-#RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango   | Compiles in 502s
+RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango   | Compiles in 502s
 RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4          | Compiles in 32s
 RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2 | Compiles in 3s
 RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4          | Compiles in 22s
@@ -60,9 +60,9 @@ RUN $PROJECT_DIR/libbz2.sh        #| cairo,harfbuzz     | Compiles in 6s
 RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
 
 RUN $PROJECT_DIR/nghttp2.sh       #| curl               | Compiles in 38s
-RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles in 88s
+RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles in 68s
 
-RUN $PROJECT_DIR/openssl.sh       #| appstream          | Compiles in 221s
+RUN $PROJECT_DIR/openssl.sh       #| appstream          | Compiles in 320s
 RUN $PROJECT_DIR/xz.sh            #| appstream          | Compiles in 41s
 RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles in 12s
 RUN $PROJECT_DIR/libunistring.sh  #| appstream          |

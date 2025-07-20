@@ -28,7 +28,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone ttps://git.savannah.gnu.org/git/libunistring.git --depth 1 libunistring
+  git clone https://git.savannah.gnu.org/git/libunistring.git --depth 1 libunistring
 } 2>&1 | tee "$LOG_DIR/libunistring-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
