@@ -31,39 +31,8 @@ export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg
 
 cd "$CIRCUS"
 
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-#echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
-
-#echo "Set environment variables for build"
-#export PKG_CONFIG_ALLOW_CROSS=1
-#export OPENSSL_DIR=/usr
-#export OPENSSL_LIB_DIR=/usr/lib
-#export OPENSSL_INCLUDE_DIR=/usr/include
-#export OPENSSL_STATIC=1
-#export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-L/home/QR2M/compile-circus/STATIC/lib/pkgconfig -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
-
-echo "Checking pkg-config for dependencies"
-for pkg in gtk4 libadwaita-1; do
-  echo "Checking $pkg..."
-  {
-    pkg-config --modversion "$pkg"
-  } 2>&1 | tee "$LOG_DIR/qr2m-01-pkgconfig.log"
-
-  STATUS=${PIPESTATUS[0]}
-  if [ "$STATUS" -ne 0 ]; then
-    cat "$LOG_DIR/qr2m-01-pkgconfig.log"
-    echo "ERROR - qr2m - 01/06 - pkgconfig"
-    exit 1
-  fi
-done
-
-echo "Listing .pc files in $STATIC_DIR/lib/pkgconfig:"
-ls -l "$STATIC_DIR/lib/pkgconfig"
-
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "Cloning project..."
 {
   git clone https://github.com/control-owl/QR2M.git --depth 1 QR2M
 } 2>&1 | tee "$LOG_DIR/qr2m-02-clone.log"
