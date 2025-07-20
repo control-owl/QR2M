@@ -48,9 +48,9 @@ RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4          | Compiles in 22s
 RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles in 68s
 RUN $PROJECT_DIR/libexpat.sh      #| cairo              | Compiles in 27s
 RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles in 28s
+RUN $PROJECT_DIR/xorgproto.sh     #| cairo              | Compiles in 4s
 RUN $PROJECT_DIR/libxau.sh        #| cairo              | Compiles in 21s
 RUN $PROJECT_DIR/libxcb.sh        #| cairo              | Compiles in 38s
-RUN $PROJECT_DIR/xorgproto.sh     #| cairo              | Compiles in 4s
 RUN $PROJECT_DIR/libxdmcp.sh      #| cairo              | Compiles in 27s
 RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles in 63s
 RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles in 26s
@@ -73,7 +73,7 @@ RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s
 RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Compiles in 104s
 RUN $PROJECT_DIR/pango.sh         #| librsvg            | Compiles in 17s
-RUN $PROJECT_DIR/appstream.sh     #| QR2M               |
+RUN $PROJECT_DIR/appstream.sh     #| QR2M               | Fail Package openssl, required by libcurl, not found
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |
 RUN $PROJECT_DIR/gtk4.sh          #| QR2M               |

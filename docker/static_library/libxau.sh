@@ -22,6 +22,11 @@ export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
+export CC="gcc"
+export CXX="g++"
+export AR="ar"
+export RANLIB="ranlib"
+export STRIP="strip"
 
 cd "$CIRCUS"
 
