@@ -37,22 +37,24 @@ cd pixbuf
 
 {
   export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
-  export CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-  export LDFLAGS="-L$STATIC_DIR/lib -latomic"
+  export CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized -I$STATIC_DIR/include"
+  export LDFLAGS="-L$STATIC_DIR/lib -latomic -lintl"
   PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig" meson setup builddir \
     --default-library=static \
     --prefix=$STATIC_DIR \
     -Dpng=enabled \
-    -Dtiff=disabled \
-    -Djpeg=disabled \
+    -Dtiff=enabled \
+    -Djpeg=enabled \
     -Dgif=enabled \
     -Dglycin=disabled \
     -Dandroid=disabled \
     -Dothers=disabled \
     -Ddocumentation=false \
-    -Dintrospection=disabled \
+    -Dgtk_doc=false \
     -Dman=false \
+    -Dintrospection=disabled \
     -Drelocatable=false \
+    -Dbuiltin_loaders=all \
     -Dnative_windows_loaders=false \
     -Dtests=false \
     -Dinstalled_tests=false \
