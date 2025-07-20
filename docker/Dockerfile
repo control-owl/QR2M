@@ -56,6 +56,7 @@ RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles in 63s
 RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles in 26s
 RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles in 30s
 RUN $PROJECT_DIR/nghttp2.sh       #| curl               | Compiles in 38s
+RUN $PROJECT_DIR/openssl.sh       #| appstream          | Compiles in 221s
 RUN $PROJECT_DIR/xz.sh            #| appstream          | Compiles in 41s
 RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles in 12s
 RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles in 88s
