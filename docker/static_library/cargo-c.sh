@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  cargo install cargo-c
+  cargo install cargo-c --features=vendored-openssl
 } 2>&1 | tee "$LOG_DIR/cargo-c-01-install.log"
 
 STATUS=${PIPESTATUS[0]}

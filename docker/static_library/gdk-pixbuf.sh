@@ -54,7 +54,7 @@ cd pixbuf
     -Dman=false \
     -Dintrospection=disabled \
     -Drelocatable=false \
-    -Dbuiltin_loaders=all \
+    -Dbuiltin_loaders=default \
     -Dnative_windows_loaders=false \
     -Dtests=false \
     -Dinstalled_tests=false \
