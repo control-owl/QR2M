@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/autotools-mirror/gettext.git gettext
+  git clone https://git.savannah.gnu.org/git/gettext.git gettext
 } 2>&1 | tee "$LOG_DIR/gettext-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -93,9 +93,36 @@ fi
 
 {
   ./configure \
-    --enable-static \
     --disable-shared \
+    --enable-static \
     --disable-nls \
+    --with-pic \
+    --disable-java \
+    --disable-csharp \
+    --disable-c++ \
+    --disable-modula2 \
+    --disable-libasprintf \
+    --disable-curses \
+    --disable-openmp \
+    --disable-acl \
+    --disable-xattr \
+    --with-included-libunistring \
+    --with-included-gettext \
+    --with-included-libxml \
+    --without-libncurses-prefix \
+    --without-libtermcap-prefix \
+    --without-libxcurses-prefix \
+    --without-libcurses-prefix \
+    --without-libtextstyle-prefix \
+    --without-libsmack \
+    --without-selinux \
+    --without-emacs \
+    --without-git \
+    --without-bzip2 \
+    --without-xz \
+    --disable-dependency-tracking \
+    --enable-fast-install \
+    --disable-rpath \
     --prefix=$STATIC_DIR
 } 2>&1 | tee "$LOG_DIR/gettext-03-configure.log"
 
@@ -109,7 +136,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make -j"$(nproc)"
+  make -C gettext-runtime -j"$(nproc)"
 } 2>&1 | tee "$LOG_DIR/gettext-04-make.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -122,7 +149,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make install
+  make -C gettext-runtime install-exec
 } 2>&1 | tee "$LOG_DIR/gettext-05-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then

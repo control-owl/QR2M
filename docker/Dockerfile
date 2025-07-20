@@ -28,7 +28,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
     apk update && \
     apk add --no-cache \
         bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
-        openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext gettext-dev libepoxy-dev \
+        openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
         libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
         brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest \
@@ -41,7 +41,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs gettext-static gettext-libs libxdmcp-dev gcc g++
+        gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev gcc g++
 
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
@@ -53,6 +53,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dependant          | Status
 #| ------------------------------- | ------------------ | ------------------------------
+RUN $PROJECT_DIR/gettext.sh       #| cairo              | Compiles in 502s
 RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4          | Compiles in 32s
 RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2 | Compiles in 3s
 RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4          | Compiles in 22s
@@ -69,18 +70,18 @@ RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles in 30s
 RUN $PROJECT_DIR/nghttp2.sh       #| curl               | Compiles in 38s
 RUN $PROJECT_DIR/xz.sh            #| appstream          | Compiles in 41s
 RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles in 12s
-RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles in 88s  (600 sec)
+RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles in 88s
 RUN $PROJECT_DIR/graphene.sh      #| gtk4               | Compiles in 5s
 RUN $PROJECT_DIR/libxml2.sh       #| gtk4               | Compiles in 43s
 RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles in 26s
 RUN $PROJECT_DIR/libbz2.sh        #| harfbuzz,cairo     | Compiles in 6s
 RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles in 7s
-RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles in 25s  (700 sec)
-RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles in 122s (800 sec)
+RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles in 25s
+RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles in 122s
 RUN $PROJECT_DIR/fontconfig.sh    #| gtk4,cairo         | Compiles in 10s
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles in 23s
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles in 25s
-RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s  (900 sec)
+RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s
 RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Compiles in 104s (1000 sec)
 RUN $PROJECT_DIR/pango.sh         #| librsvg            | Fails in 19s
@@ -91,7 +92,6 @@ RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |
 RUN $PROJECT_DIR/gtk4.sh          #| QR2M               |
 RUN $PROJECT_DIR/libadwaita.sh    #| QR2M               |
 
-#RUN $PROJECT_DIR/gettext.sh      #| cairo              |
 
 # -.-. --- .--. -.-- .-. .. --. .... - PROJECT COMPILE -.-. --- .--. -.-- .-. .. --. .... -
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
