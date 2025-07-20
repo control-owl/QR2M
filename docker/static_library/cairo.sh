@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/cairo-01-clone.log"
-  echo "ERROR - cairo - 01/04 - Clone"
   exit 1
 fi
 
@@ -44,12 +43,11 @@ cd cairo
 
 {
   sed -i '/#ifndef HAVE_CTIME_R/,/#endif/d' src/cairo-ps-surface.c
-} 2>&1 | tee "$LOG_DIR/cairo-01b-patch.log"
+} 2>&1 | tee "$LOG_DIR/cairo-02-patch.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/cairo-01b-patch.log"
-  echo "ERROR - cairo - 01b/04 - Patch"
+  cat "$LOG_DIR/cairo-02-patch.log"
   exit 1
 fi
 
@@ -68,12 +66,11 @@ fi
     -Dglib=enabled \
     -Dxlib=disabled \
     -Dxcb=disabled
-} 2>&1 | tee "$LOG_DIR/cairo-02-setup.log"
+} 2>&1 | tee "$LOG_DIR/cairo-03-setup.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-02-setup.log
-  echo "ERROR - cairo - 02/04 - Setup"
+  cat $LOG_DIR/cairo-03-setup.log
   exit 1
 fi
 
@@ -81,12 +78,11 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/cairo-03-compile.log"
+} 2>&1 | tee "$LOG_DIR/cairo-04-compile.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-03-compile.log
-  echo "ERROR - cairo - 03/04 - Compile"
+  cat $LOG_DIR/cairo-04-compile.log
   exit 1
 fi
 
@@ -94,12 +90,11 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/cairo-04-install.log"
+} 2>&1 | tee "$LOG_DIR/cairo-05-install.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-04-install.log
-  echo "ERROR - cairo - 04/04 - Install"
+  cat $LOG_DIR/cairo-05-install.log
   exit 1
 fi
 

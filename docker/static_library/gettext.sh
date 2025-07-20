@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/gettext-01-clone.log"
-  echo "ERROR - gettext - 01/05 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd gettext
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gettext-02-autopull.log
-  echo "ERROR - gettext - 02/05 - Clone"
   exit 1
 fi
 
@@ -58,12 +56,11 @@ fi
 
 {
   ./autogen.sh
-} 2>&1 | tee "$LOG_DIR/gettext-02-autogen.log"
+} 2>&1 | tee "$LOG_DIR/gettext-03-autogen.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-02-autogen.log
-  echo "ERROR - gettext - 02/05 - Clone"
+  cat $LOG_DIR/gettext-03-autogen.log
   exit 1
 fi
 
@@ -102,12 +99,11 @@ fi
     --enable-fast-install \
     --disable-rpath \
     --prefix=$STATIC_DIR
-} 2>&1 | tee "$LOG_DIR/gettext-03-configure.log"
+} 2>&1 | tee "$LOG_DIR/gettext-04-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-03-configure.log
-  echo "ERROR - gettext - 03/05 - Configure"
+  cat $LOG_DIR/gettext-04-configure.log
   exit 1
 fi
 
@@ -115,12 +111,11 @@ fi
 
 {
   make -C gettext-runtime -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/gettext-04-make.log"
+} 2>&1 | tee "$LOG_DIR/gettext-05-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-04-make.log
-  echo "ERROR - gettext - 04/05 - Compile"
+  cat $LOG_DIR/gettext-05-make.log
   exit 1
 fi
 
@@ -128,11 +123,10 @@ fi
 
 {
   make -C gettext-runtime install-exec
-} 2>&1 | tee "$LOG_DIR/gettext-05-install.log"
+} 2>&1 | tee "$LOG_DIR/gettext-06-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-05-install.log
-  echo "ERROR - gettext - 05/05 - Install"
+  cat $LOG_DIR/gettext-06-install.log
   exit 1
 fi
 

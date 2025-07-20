@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/glib-01-clone.log"
-  echo "ERROR - glib - 01/04 - Clone"
   exit 1
 fi
 
@@ -69,7 +68,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/glib-02-setup.log
-  echo "ERROR - glib - 02/04 - Setup"
   exit 1
 fi
 
@@ -82,7 +80,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/glib-03-compile.log
-  echo "ERROR - glib - 03/04 - Compile"
   exit 1
 fi
 
@@ -95,7 +92,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/glib-04-install.log
-  echo "ERROR - glib - 04/04 - Install"
   exit 1
 fi
 

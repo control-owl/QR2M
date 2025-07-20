@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libpng-01-clone.log"
-  echo "ERROR - libpng - 01/05 - Clone"
   exit 1
 fi
 
@@ -47,12 +46,11 @@ cd libpng
     --enable-static \
     --disable-shared \
     --prefix=$STATIC_DIR
-} 2>&1 | tee "$LOG_DIR/libpng-03-configure.log"
+} 2>&1 | tee "$LOG_DIR/libpng-02-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libpng-03-configure.log
-  echo "ERROR - libpng - 03/05 - Configure"
+  cat $LOG_DIR/libpng-02-configure.log
   exit 1
 fi
 
@@ -60,12 +58,11 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/libpng-04-make.log"
+} 2>&1 | tee "$LOG_DIR/libpng-03-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libpng-04-make.log
-  echo "ERROR - libpng - 04/05 - Compile"
+  cat $LOG_DIR/libpng-03-make.log
   exit 1
 fi
 
@@ -73,11 +70,10 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/libpng-05-install.log"
+} 2>&1 | tee "$LOG_DIR/libpng-04-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libpng-05-install.log
-  echo "ERROR - libpng - 05/05 - Install"
+  cat $LOG_DIR/libpng-04-install.log
   exit 1
 fi
 

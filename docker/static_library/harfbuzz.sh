@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/harfbuzz-01-clone.log"
-  echo "ERROR - harfbuzz - 01/04 - Clone"
   exit 1
 fi
 
@@ -76,7 +75,6 @@ cd harfbuzz
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/harfbuzz-02-setup.log
-  echo "ERROR - harfbuzz - 02/04 - Setup"
   exit 1
 fi
 
@@ -89,7 +87,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/harfbuzz-03-compile.log
-  echo "ERROR - harfbuzz - 03/04 - Compile"
   exit 1
 fi
 
@@ -102,7 +99,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/harfbuzz-04-install.log
-  echo "ERROR - harfbuzz - 04/04 - Install"
   exit 1
 fi
 

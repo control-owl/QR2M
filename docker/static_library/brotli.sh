@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/brotli-01-clone.log"
-  echo "ERROR - brotli - 01/05 - Clone"
   exit 1
 fi
 
@@ -47,12 +46,11 @@ cd brotli
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_C_FLAGS="$CFLAGS" \
     -DBROTLI_DISABLE_TESTS=ON
-} 2>&1 | tee "$LOG_DIR/brotli-03-configure.log"
+} 2>&1 | tee "$LOG_DIR/brotli-02-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/brotli-03-configure.log
-  echo "ERROR - brotli - 03/05 - Configure"
+  cat $LOG_DIR/brotli-02-configure.log
   exit 1
 fi
 
@@ -60,12 +58,11 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/brotli-04-make.log"
+} 2>&1 | tee "$LOG_DIR/brotli-03-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/brotli-04-make.log
-  echo "ERROR - brotli - 04/05 - Compile"
+  cat $LOG_DIR/brotli-03-make.log
   exit 1
 fi
 
@@ -73,11 +70,10 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/brotli-05-install.log"
+} 2>&1 | tee "$LOG_DIR/brotli-04-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/brotli-05-install.log
-  echo "ERROR - brotli - 05/05 - Install"
+  cat $LOG_DIR/brotli-04-install.log
   exit 1
 fi
 

@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/nghttp2-01-clone.log"
-  echo "ERROR - nghttp2 - 01/07 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd nghttp2
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/nghttp2-02-autoreconf.log
-  echo "ERROR - nghttp2 - 02/07 - autoreconf"
   exit 1
 fi
 
@@ -62,7 +60,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/nghttp2-03-automake.log
-  echo "ERROR - nghttp2 - 03/07 - automake"
   exit 1
 fi
 
@@ -75,7 +72,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/nghttp2-04-autoconf.log
-  echo "ERROR - nghttp2 - 04/07 - autoconf"
   exit 1
 fi
 
@@ -113,7 +109,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/nghttp2-05-configure.log
-  echo "ERROR - nghttp2 - 05/07 - Configure"
   exit 1
 fi
 
@@ -126,7 +121,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/nghttp2-06-make.log
-  echo "ERROR - nghttp2 - 06/07 - make"
   exit 1
 fi
 
@@ -138,7 +132,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/nghttp2-07-install.log
-  echo "ERROR - nghttp2 - 07/07 - Install"
   exit 1
 fi
 

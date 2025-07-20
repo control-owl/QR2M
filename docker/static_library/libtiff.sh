@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libtiff-01-clone.log"
-  echo "ERROR - libtiff - 01/05 - Clone"
   exit 1
 fi
 
@@ -44,12 +43,11 @@ cd libtiff
 
 {
   sed -i 's/--timeout=5/--timeout=60/' autogen.sh
-} 2>&1 | tee "$LOG_DIR/libtiff-01b-patch.log"
+} 2>&1 | tee "$LOG_DIR/libtiff-02-patch.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/libtiff-01b-patch.log"
-  echo "ERROR - libtiff - 01b/04 - Patch"
+  cat "$LOG_DIR/libtiff-02-patch.log"
   exit 1
 fi
 
@@ -57,12 +55,11 @@ fi
 
 {
   ./autogen.sh
-} 2>&1 | tee "$LOG_DIR/libtiff-02-autogen.log"
+} 2>&1 | tee "$LOG_DIR/libtiff-03-autogen.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libtiff-02-autogen.log
-  echo "ERROR - libtiff - 02/05 - Clone"
+  cat $LOG_DIR/libtiff-03-autogen.log
   exit 1
 fi
 
@@ -75,12 +72,11 @@ fi
     --prefix=$STATIC_DIR \
     --with-zlib="$STATIC_DIR" \
     --disable-jpeg
-} 2>&1 | tee "$LOG_DIR/libtiff-03-configure.log"
+} 2>&1 | tee "$LOG_DIR/libtiff-04-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libtiff-03-configure.log
-  echo "ERROR - libtiff - 03/05 - Configure"
+  cat $LOG_DIR/libtiff-04-configure.log
   exit 1
 fi
 
@@ -88,12 +84,11 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/libtiff-04-make.log"
+} 2>&1 | tee "$LOG_DIR/libtiff-05-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libtiff-04-make.log
-  echo "ERROR - libtiff - 04/05 - Compile"
+  cat $LOG_DIR/libtiff-05-make.log
   exit 1
 fi
 
@@ -101,11 +96,10 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/libtiff-05-install.log"
+} 2>&1 | tee "$LOG_DIR/libtiff-06-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libtiff-05-install.log
-  echo "ERROR - libtiff - 05/05 - Install"
+  cat $LOG_DIR/libtiff-06-install.log
   exit 1
 fi
 

@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/zlib-01-clone.log"
-  echo "ERROR - zlib - 01/04 - Clone"
   exit 1
 fi
 
@@ -52,7 +51,6 @@ cd zlib
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/zlib-02-configure.log
-  echo "ERROR - zlib - 02/04 - Configure"
   exit 1
 fi
 
@@ -65,7 +63,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/zlib-03-make.log
-  echo "ERROR - zlib - 03/04 - Make"
   exit 1
 fi
 
@@ -77,7 +74,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/zlib-04-install.log
-  echo "ERROR - zlib - 04/04 - Install"
   exit 1
 fi
 

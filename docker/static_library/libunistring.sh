@@ -68,7 +68,7 @@ fi
 
 {
   ./configure \
-    --static \
+    --enable-static \
     --disable-shared \
     --prefix=$STATIC_DIR
 } 2>&1 | tee "$LOG_DIR/libunistring-04-configure.log"

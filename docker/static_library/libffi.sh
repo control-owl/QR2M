@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libffi-01-clone.log"
-  echo "ERROR - libffi - 01/05 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd libffi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libffi-02-autogen.log
-  echo "ERROR - libffi - 02/05 - Clone"
   exit 1
 fi
 
@@ -57,7 +55,7 @@ fi
 
 {
   ./configure \
-    --enable-static \
+     \
     --disable-shared \
     --prefix=$STATIC_DIR
 } 2>&1 | tee "$LOG_DIR/libffi-03-configure.log"
@@ -65,7 +63,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libffi-03-configure.log
-  echo "ERROR - libffi - 03/05 - Configure"
   exit 1
 fi
 
@@ -78,7 +75,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libffi-04-make.log
-  echo "ERROR - libffi - 04/05 - Compile"
   exit 1
 fi
 

@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libexpat-01-clone.log"
-  echo "ERROR - libexpat - 01/05 - Clone"
   exit 1
 fi
 
@@ -51,7 +50,6 @@ cd expat
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libexpat-02-buildconf.log
-  echo "ERROR - libexpat - 02/05 - buildconf"
   exit 1
 fi
 
@@ -67,7 +65,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libexpat-03-configure.log
-  echo "ERROR - libexpat - 03/05 - Configure"
   exit 1
 fi
 
@@ -80,7 +77,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libexpat-04-make.log
-  echo "ERROR - libexpat - 04/05 - Compile"
   exit 1
 fi
 
@@ -92,7 +88,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libexpat-05-install.log
-  echo "ERROR - libexpat - 05/05 - Install"
   exit 1
 fi
 

@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/pixman-01-clone.log"
-  echo "ERROR - pixman - 01/04 - Clone"
   exit 1
 fi
 
@@ -56,7 +55,6 @@ cd pixman
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pixman-02-setup.log
-  echo "ERROR - pixman - 02/04 - Setup"
   exit 1
 fi
 
@@ -69,7 +67,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pixman-03-compile.log
-  echo "ERROR - pixman - 03/04 - Compile"
   exit 1
 fi
 
@@ -82,7 +79,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pixman-04-install.log
-  echo "ERROR - pixman - 04/04 - Install"
   exit 1
 fi
 

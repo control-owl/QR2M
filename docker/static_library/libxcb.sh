@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libxcb-01-clone.log"
-  echo "ERROR - libxcb - 01/05 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd libxcb
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxcb-02-autoreconf.log
-  echo "ERROR - libxcb - 02/05 - Clone"
   exit 1
 fi
 
@@ -65,7 +63,6 @@ cd builddir
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxcb-03-configure.log
-  echo "ERROR - libxcb - 03/05 - Configure"
   exit 1
 fi
 
@@ -78,7 +75,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxcb-04-make.log
-  echo "ERROR - libxcb - 04/05 - Compile"
   exit 1
 fi
 
@@ -90,7 +86,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxcb-05-install.log
-  echo "ERROR - libxcb - 05/05 - Install"
   exit 1
 fi
 

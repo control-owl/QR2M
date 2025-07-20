@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/cargo-c-01-install.log
-  echo "ERROR - cargo-c - 01/02 - Install"
   exit 1
 fi
 
@@ -46,8 +45,7 @@ fi
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cargo-c-01-install.log
-  echo "ERROR - cargo-c - 02/02 - Verify"
+  cat $LOG_DIR/cargo-c-02-verify.log
   exit 1
 fi
 

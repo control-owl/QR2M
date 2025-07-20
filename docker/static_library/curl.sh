@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/curl-01-clone.log"
-  echo "ERROR - curl - 01/05 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd curl
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/curl-02-autoreconf.log
-  echo "ERROR - curl - 02/05 - Clone"
   exit 1
 fi
 
@@ -108,7 +106,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/curl-03-configure.log
-  echo "ERROR - curl - 03/05 - Configure"
   exit 1
 fi
 
@@ -121,7 +118,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/curl-04-make.log
-  echo "ERROR - curl - 04/05 - Compile"
   exit 1
 fi
 
@@ -133,7 +129,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/curl-05-install.log
-  echo "ERROR - curl - 05/05 - Install"
   exit 1
 fi
 

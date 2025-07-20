@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/freetype-01-clone.log"
-  echo "ERROR - freetype - 01/05 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd freetype
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/freetype-02-autogen.log
-  echo "ERROR - freetype - 02/05 - Clone"
   exit 1
 fi
 
@@ -66,7 +64,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/freetype-03-configure.log
-  echo "ERROR - freetype - 03/05 - Configure"
   exit 1
 fi
 
@@ -79,7 +76,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/freetype-04-make.log
-  echo "ERROR - freetype - 04/05 - Compile"
   exit 1
 fi
 
@@ -91,7 +87,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/freetype-05-install.log
-  echo "ERROR - freetype - 05/05 - Install"
   exit 1
 fi
 

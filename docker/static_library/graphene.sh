@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/graphene-01-clone.log"
-  echo "ERROR - Graphene - 01/04 - Clone"
   exit 1
 fi
 
@@ -55,7 +54,6 @@ cd graphene
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/graphene-02-setup.log
-  echo "ERROR - Graphene - 02/04 - Setup"
   exit 1
 fi
 
@@ -68,7 +66,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/graphene-03-compile.log
-  echo "ERROR - Graphene - 03/04 - Compile"
   exit 1
 fi
 
@@ -81,7 +78,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/graphene-04-install.log
-  echo "ERROR - Graphene - 04/04 - Install"
   exit 1
 fi
 

@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libxext-01-clone.log"
-  echo "ERROR - libxext - 01/05 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd libxext
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxext-02-autogen.log
-  echo "ERROR - libxext - 02/05 - Clone"
   exit 1
 fi
 
@@ -65,7 +63,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxext-03-configure.log
-  echo "ERROR - libxext - 03/05 - Configure"
   exit 1
 fi
 
@@ -78,7 +75,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxext-04-make.log
-  echo "ERROR - libxext - 04/05 - Compile"
   exit 1
 fi
 
@@ -90,7 +86,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxext-05-install.log
-  echo "ERROR - libxext - 05/05 - Install"
   exit 1
 fi
 

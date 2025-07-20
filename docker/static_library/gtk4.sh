@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/gtk4-01-clone.log"
-  echo "ERROR - gtk4 - 01/04 - Clone"
   exit 1
 fi
 
@@ -66,7 +65,6 @@ cd gtk4
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk4-02-setup.log
-  echo "ERROR - gtk4 - 02/04 - Setup"
   exit 1
 fi
 
@@ -79,7 +77,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk4-03-compile.log
-  echo "ERROR - gtk4 - 03/04 - Compile"
   exit 1
 fi
 
@@ -92,7 +89,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/gtk4-04-install.log
-  echo "ERROR - gtk4 - 04/04 - Install"
   exit 1
 fi
 

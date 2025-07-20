@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/openssl-01-clone.log"
-  echo "ERROR - openssl - 01/04 - Clone"
   exit 1
 fi
 
@@ -57,7 +56,6 @@ cd openssl
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/openssl-02-configure.log
-  echo "ERROR - openssl - 02/04 - Configure"
   exit 1
 fi
 
@@ -70,7 +68,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/openssl-03-make.log
-  echo "ERROR - openssl - 03/04 - Make"
   exit 1
 fi
 
@@ -82,7 +79,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/openssl-04-install.log
-  echo "ERROR - openssl - 04/04 - Install"
   exit 1
 fi
 

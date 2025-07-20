@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libepoxy-01-clone.log"
-  echo "ERROR - libepoxy - 01/04 - Clone"
   exit 1
 fi
 
@@ -53,7 +52,6 @@ cd libepoxy
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libepoxy-02-setup.log
-  echo "ERROR - libepoxy - 02/04 - Setup"
   exit 1
 fi
 
@@ -66,7 +64,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libepoxy-03-compile.log
-  echo "ERROR - libepoxy - 03/04 - Compile"
   exit 1
 fi
 
@@ -79,7 +76,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libepoxy-04-install.log
-  echo "ERROR - libepoxy - 04/04 - Install"
   exit 1
 fi
 

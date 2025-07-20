@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/fontconfig-01-clone.log"
-  echo "ERROR - fontconfig - 01/05 - Clone"
   exit 1
 fi
 
@@ -74,7 +73,6 @@ cd fontconfig
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/fontconfig-02-setup.log"
-  echo "ERROR - fontconfig - 02/04 - Setup"
   exit 1
 fi
 
@@ -87,7 +85,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/fontconfig-03-compile.log
-  echo "ERROR - fontconfig - 03/04 - Compile"
   exit 1
 fi
 
@@ -100,7 +97,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/fontconfig-04-install.log
-  echo "ERROR - fontconfig - 04/04 - Install"
   exit 1
 fi
 

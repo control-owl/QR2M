@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libx11-01-clone.log"
-  echo "ERROR - libx11 - 01/05 - Clone"
   exit 1
 fi
 
@@ -49,7 +48,6 @@ cd libx11
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libx11-02-autogen.log
-  echo "ERROR - libx11 - 02/05 - Clone"
   exit 1
 fi
 
@@ -65,7 +63,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libx11-03-configure.log
-  echo "ERROR - libx11 - 03/05 - Configure"
   exit 1
 fi
 
@@ -78,7 +75,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libx11-04-make.log
-  echo "ERROR - libx11 - 04/05 - Compile"
   exit 1
 fi
 
@@ -90,7 +86,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libx11-05-install.log
-  echo "ERROR - libx11 - 05/05 - Install"
   exit 1
 fi
 

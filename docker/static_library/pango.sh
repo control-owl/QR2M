@@ -34,7 +34,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/pango-01-clone.log"
-  echo "ERROR - pango - 01/04 - Clone"
   exit 1
 fi
 
@@ -60,7 +59,6 @@ cd pango
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pango-02-setup.log
-  echo "ERROR - pango - 02/04 - Setup"
   exit 1
 fi
 
@@ -73,7 +71,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pango-03-compile.log
-  echo "ERROR - pango - 03/04 - Compile"
   exit 1
 fi
 
@@ -86,7 +83,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pango-04-install.log
-  echo "ERROR - pango - 04/04 - Install"
   exit 1
 fi
 

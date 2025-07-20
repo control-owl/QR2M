@@ -39,7 +39,6 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libxau-01-clone.log"
-  echo "ERROR - libxau - 01/04 - Clone"
   exit 1
 fi
 
@@ -57,7 +56,6 @@ cd libxau
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxau-02-autogen.log
-  echo "ERROR - libxau - 02/04 - autogen"
   exit 1
 fi
 
@@ -70,7 +68,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxau-03-make.log
-  echo "ERROR - libxau - 03/04 - make"
   exit 1
 fi
 
@@ -83,7 +80,6 @@ fi
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/libxau-04-install.log
-  echo "ERROR - libxau - 04/04 - Install"
   exit 1
 fi
 
