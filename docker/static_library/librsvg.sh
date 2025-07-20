@@ -37,7 +37,12 @@ fi
 cd librsvg
 
 {
-  meson setup builddir \
+  export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
+  export PKG_CONFIG="pkg-config --static"
+  export RUSTFLAGS="-C link-arg=-L$STATIC_DIR/lib -C link-arg=-lz -C link-arg=-latomic"
+  export CFLAGS="-I$STATIC_DIR/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+  export LDFLAGS="-L$STATIC_DIR/lib -lz -latomic"
+  PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig" meson setup builddir \
     --prefix=$STATIC_DIR \
     -Ddefault_library=static \
     -Ddocs=disabled \

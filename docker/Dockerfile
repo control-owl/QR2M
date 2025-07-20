@@ -57,7 +57,6 @@ RUN $PROJECT_DIR/gettext.sh       #| cairo,glib,pango   | Compiles in 502s
 RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4          | Compiles in 32s
 RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2 | Compiles in 3s
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            | Compiles in 400s
-
 RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4          | Compiles in 22s
 RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles in 68s
 RUN $PROJECT_DIR/libexpat.sh      #| cairo              | Compiles in 27s
@@ -88,7 +87,7 @@ RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Compiles in 104s
 RUN $PROJECT_DIR/pango.sh         #| librsvg            | Compiles in 17s
 RUN $PROJECT_DIR/appstream.sh     #| QR2M               |
-RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            | Fails
+RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |
 RUN $PROJECT_DIR/gtk4.sh          #| QR2M               |
 RUN $PROJECT_DIR/libadwaita.sh    #| QR2M               |
