@@ -45,7 +45,7 @@ RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4          | Compiles in 32s
 RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2 | Compiles in 3s
 RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4          | Compiles in 22s
 RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz     | Compiles in 68s
-
+#------------------------------------------------------------------------glib 627s
 RUN $PROJECT_DIR/libexpat.sh      #| cairo              | Compiles in 27s
 RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles in 28s
 RUN $PROJECT_DIR/xorgproto.sh     #| cairo,libxau       | Compiles in 4s
@@ -58,19 +58,17 @@ RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles in 30s
 RUN $PROJECT_DIR/fontconfig.sh    #| cairo,gtk4         | Compiles in 29s
 RUN $PROJECT_DIR/libbz2.sh        #| cairo,harfbuzz     | Compiles in 6s
 RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
-
+#------------------------------------------------------------------------cairo 336s
 RUN $PROJECT_DIR/nghttp2.sh       #| curl               | Compiles in 38s
 RUN $PROJECT_DIR/curl.sh          #| appstream          | Compiles in 68s
-
 RUN $PROJECT_DIR/openssl.sh       #| appstream          | Compiles in 320s
 RUN $PROJECT_DIR/xz.sh            #| appstream          | Compiles in 41s
 RUN $PROJECT_DIR/libeconf.sh      #| appstream          | Compiles in 12s
 RUN $PROJECT_DIR/libunistring.sh  #| appstream          | Compiles in 354s
 RUN $PROJECT_DIR/appstream.sh     #| QR2M               | Compiles in 29s
-
+#------------------------------------------------------------------------appstream 872s
 RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4      | Compiles in 26s
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Compiles in 104s
-
 RUN $PROJECT_DIR/graphene.sh      #| gtk4               | Compiles in 5s
 RUN $PROJECT_DIR/libxml2.sh       #| gtk4               | Compiles in 43s
 RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles in 7s
@@ -79,15 +77,14 @@ RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles in 122s
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles in 23s
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles in 25s
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s
-RUN $PROJECT_DIR/gtk4.sh          #| QR2M               |
-
-RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
+RUN $PROJECT_DIR/gtk4.sh          #| QR2M               | Compiles in 232s
+#------------------------------------------------------------------------gtk4 633s
+RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            | Compiles in 12s
 RUN $PROJECT_DIR/pango.sh         #| librsvg            | Compiles in 17s
-RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            | Compiles in 400s
+RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            | Compiles in 500s
 RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |
-
 RUN $PROJECT_DIR/libadwaita.sh    #| QR2M               |
-
+#------------------------------------------------------------------------libadwaita
 
 # -.-. --- .--. -.-- .-. .. --. .... - PROJECT COMPILE -.-. --- .--. -.-- .-. .. --. .... -
 RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh

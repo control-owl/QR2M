@@ -35,12 +35,11 @@ cd "$CIRCUS"
 
 {
   git clone https://github.com/control-owl/QR2M.git --depth 1 QR2M
-} 2>&1 | tee "$LOG_DIR/qr2m-02-clone.log"
+} 2>&1 | tee "$LOG_DIR/qr2m-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/qr2m-02-clone.log"
-  echo "ERROR - qr2m - 02/06 - Clone"
+  cat "$LOG_DIR/qr2m-01-clone.log"
   exit 1
 fi
 
@@ -50,12 +49,11 @@ cd QR2M
 
 {
   cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv
-} 2>&1 | tee "$LOG_DIR/qr2m-03-build.log"
+} 2>&1 | tee "$LOG_DIR/qr2m-02-build.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/qr2m-03-build.log
-  echo "ERROR - qr2m - 03/06 - Build"
+  cat $LOG_DIR/qr2m-02-build.log
   exit 1
 fi
 
@@ -66,12 +64,11 @@ ls -l "$BUILD_PATH/release"
 
 {
   cargo test --release --locked - --no-fail-fast --target "$TARGET" -vv --features "offline" # "$FEATURES"
-} 2>&1 | tee "$LOG_DIR/qr2m-04-test.log"
+} 2>&1 | tee "$LOG_DIR/qr2m-03-test.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/qr2m-04-test.log
-  echo "ERROR - qr2m - 04/06 - Test"
+  cat $LOG_DIR/qr2m-03-test.log
   exit 1
 fi
 
@@ -84,23 +81,21 @@ echo "BIN=$BIN"
 if [ -f "$BIN" ]; then
   {
     file "$BIN"
-  } 2>&1 | tee "$LOG_DIR/qr2m-05-file_check.log"
+  } 2>&1 | tee "$LOG_DIR/qr2m-04-file_check.log"
 
   STATUS=${PIPESTATUS[0]}
   if [ "$STATUS" -ne 0 ]; then
     cat $LOG_DIR/qr2m-05-file_check.log
-    echo "ERROR - qr2m - 05/06 - File check"
   exit 1
   fi
 
   {
     ldd "$BIN"
-  } 2>&1 | tee "$LOG_DIR/qr2m-06-ldd_check.log"
+  } 2>&1 | tee "$LOG_DIR/qr2m-05-ldd_check.log"
 
   STATUS=${PIPESTATUS[0]}
   if [ "$STATUS" -ne 0 ]; then
-    cat $LOG_DIR/qr2m-06-ldd_check.log
-    echo "ERROR - qr2m - 06/06 - Ldd check"
+    cat $LOG_DIR/qr2m-05-ldd_check.log
   exit 1
   fi
 
