@@ -57,7 +57,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make -j"$(nproc)"
+  make -j"$(nproc)" -C builddir
 } 2>&1 | tee "$LOG_DIR/libjpeg-turbo-04-make.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -69,7 +69,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make install
+  make install -C builddir
 } 2>&1 | tee "$LOG_DIR/libjpeg-turbo-05-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
