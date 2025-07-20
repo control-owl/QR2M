@@ -50,9 +50,9 @@ RUN $PROJECT_DIR/libexpat.sh      #| cairo              | Compiles in 27s
 RUN $PROJECT_DIR/brotli.sh        #| cairo              | Compiles in 28s
 RUN $PROJECT_DIR/xorgproto.sh     #| cairo,libxau       | Compiles in 4s
 RUN $PROJECT_DIR/libxau.sh        #| cairo              | Compiles in 21s
-RUN $PROJECT_DIR/libxcb.sh        #| cairo              | Compiles in 38s
 RUN $PROJECT_DIR/libxdmcp.sh      #| cairo              | Compiles in 27s
-RUN $PROJECT_DIR/libx11.sh        #| cairo              | Compiles in 63s
+RUN $PROJECT_DIR/libxcb.sh        #| cairo,x11          | Compiles in 41s
+RUN $PROJECT_DIR/libx11.sh        #| cairo              |
 RUN $PROJECT_DIR/libxrender.sh    #| cairo              | Compiles in 26s
 RUN $PROJECT_DIR/libxext.sh       #| cairo              | Compiles in 30s
 RUN $PROJECT_DIR/fontconfig.sh    #| cairo,gtk4         | Compiles in 10s
