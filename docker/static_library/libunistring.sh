@@ -34,11 +34,35 @@ cd "$CIRCUS"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_DIR/libunistring-01-clone.log"
-  echo "ERROR - libunistring - 01/04 - Clone"
   exit 1
 fi
 
 cd libunistring
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+
+{
+  ./autopull.sh
+} 2>&1 | tee "$LOG_DIR/libunistring-02-autopull.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/libunistring-02-autopull.log
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  ./autogen.sh
+} 2>&1 | tee "$LOG_DIR/libunistring-03-autogen.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/libunistring-03-autogen.log
+  exit 1
+fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -47,12 +71,11 @@ cd libunistring
     --static \
     --disable-shared \
     --prefix=$STATIC_DIR
-} 2>&1 | tee "$LOG_DIR/libunistring-02-configure.log"
+} 2>&1 | tee "$LOG_DIR/libunistring-04-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libunistring-02-configure.log
-  echo "ERROR - libunistring - 02/04 - Configure"
+  cat $LOG_DIR/libunistring-04-configure.log
   exit 1
 fi
 
@@ -60,12 +83,11 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/libunistring-03-make.log"
+} 2>&1 | tee "$LOG_DIR/libunistring-05-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libunistring-03-make.log
-  echo "ERROR - libunistring - 03/04 - Make"
+  cat $LOG_DIR/libunistring-05-make.log
   exit 1
 fi
 
@@ -73,11 +95,10 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/libunistring-04-install.log"
+} 2>&1 | tee "$LOG_DIR/libunistring-06-install.log"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/libunistring-04-install.log
-  echo "ERROR - libunistring - 04/04 - Install"
+  cat $LOG_DIR/libunistring-06-install.log
   exit 1
 fi
 
