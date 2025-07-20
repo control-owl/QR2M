@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libsdl-org/libtiff.git libtiff
+  git clone https://github.com/libsdl-org/libtiff.git --depth 1 libtiff
 } 2>&1 | tee "$LOG_DIR/libtiff-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

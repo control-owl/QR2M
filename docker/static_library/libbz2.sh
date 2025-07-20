@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.com/bzip2/bzip2.git bzip2
+  git clone https://gitlab.com/bzip2/bzip2.git --depth 1 bzip2
 } 2>&1 | tee "$LOG_DIR/bzip2-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

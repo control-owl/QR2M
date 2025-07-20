@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/anholt/libepoxy.git libepoxy
+  git clone https://github.com/anholt/libepoxy.git --depth 1 libepoxy
 } 2>&1 | tee "$LOG_DIR/libepoxy-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

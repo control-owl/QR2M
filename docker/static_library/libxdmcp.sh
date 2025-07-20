@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxdmcp.git libxdmcp
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxdmcp.git --depth 1 libxdmcp
 } 2>&1 | tee "$LOG_DIR/libxdmcp-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

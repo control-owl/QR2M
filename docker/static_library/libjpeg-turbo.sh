@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git libjpeg-turbo
+  git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git --depth 1 libjpeg-turbo
 } 2>&1 | tee "$LOG_DIR/libjpeg-turbo-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/ximion/appstream.git appstream
+  git clone https://github.com/ximion/appstream.git --depth 1 appstream
 } 2>&1 | tee "$LOG_DIR/appstream-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

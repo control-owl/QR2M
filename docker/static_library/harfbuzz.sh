@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/harfbuzz/harfbuzz.git harfbuzz
+  git clone https://github.com/harfbuzz/harfbuzz.git --depth 1 harfbuzz
 } 2>&1 | tee "$LOG_DIR/harfbuzz-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

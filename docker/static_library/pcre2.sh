@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/PCRE2Project/pcre2.git pcre2
+  git clone https://github.com/PCRE2Project/pcre2.git --depth 1 pcre2
 } 2>&1 | tee "$LOG_DIR/pcre2-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

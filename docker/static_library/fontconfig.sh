@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/fontconfig/fontconfig.git fontconfig
+  git clone https://github.com/fontconfig/fontconfig.git --depth 1 fontconfig
 } 2>&1 | tee "$LOG_DIR/fontconfig-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

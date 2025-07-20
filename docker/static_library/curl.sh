@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/curl/curl curl
+  git clone https://github.com/curl/curl --depth 1 curl
 } 2>&1 | tee "$LOG_DIR/curl-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

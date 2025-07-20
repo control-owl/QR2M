@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/cairo/cairo.git cairo
+  git clone https://gitlab.freedesktop.org/cairo/cairo.git --depth 1 cairo
 } 2>&1 | tee "$LOG_DIR/cairo-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

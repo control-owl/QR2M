@@ -24,7 +24,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/librsvg.git librsvg
+  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
 } 2>&1 | tee "$LOG_DIR/librsvg-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

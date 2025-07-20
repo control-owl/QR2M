@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/tukaani-project/xz.git xz
+  git clone https://github.com/tukaani-project/xz.git --depth 1 xz
 } 2>&1 | tee "$LOG_DIR/xz-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

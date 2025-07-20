@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libffi/libffi.git libffi
+  git clone https://github.com/libffi/libffi.git --depth 1 libffi
 } 2>&1 | tee "$LOG_DIR/libffi-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

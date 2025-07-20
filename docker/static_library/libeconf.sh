@@ -24,7 +24,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/openSUSE/libeconf.git libeconf
+  git clone https://github.com/openSUSE/libeconf.git --depth 1 libeconf
 } 2>&1 | tee "$LOG_DIR/libeconf-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

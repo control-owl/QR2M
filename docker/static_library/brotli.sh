@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/google/brotli.git brotli
+  git clone https://github.com/google/brotli.git --depth 1 brotli
 } 2>&1 | tee "$LOG_DIR/brotli-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

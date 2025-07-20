@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/GNOME/libxml2 libxml2
+  git clone https://github.com/GNOME/libxml2 --depth 1 libxml2
 } 2>&1 | tee "$LOG_DIR/libxml2-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

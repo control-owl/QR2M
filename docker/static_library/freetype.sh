@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/freetype/freetype.git freetype
+  git clone https://github.com/freetype/freetype.git --depth 1 freetype
 } 2>&1 | tee "$LOG_DIR/freetype-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

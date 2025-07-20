@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/pnggroup/libpng.git libpng
+  git clone https://github.com/pnggroup/libpng.git --depth 1 libpng
 } 2>&1 | tee "$LOG_DIR/libpng-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/GNOME/pango.git pango
+  git clone https://github.com/GNOME/pango.git --depth 1 pango
 } 2>&1 | tee "$LOG_DIR/pango-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

@@ -22,7 +22,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git libxau
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git --depth 1 libxau
 } 2>&1 | tee "$LOG_DIR/libxau-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

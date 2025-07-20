@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git pixbuf
+  git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git --depth 1 pixbuf
 } 2>&1 | tee "$LOG_DIR/pixbuf-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

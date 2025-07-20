@@ -22,7 +22,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libx11.git libx11
+  git clone https://gitlab.freedesktop.org/xorg/lib/libx11.git --depth 1 libx11
 } 2>&1 | tee "$LOG_DIR/libx11-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

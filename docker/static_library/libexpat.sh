@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libexpat/libexpat.git libexpat
+  git clone https://github.com/libexpat/libexpat.git --depth 1 libexpat
 } 2>&1 | tee "$LOG_DIR/libexpat-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

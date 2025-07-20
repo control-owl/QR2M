@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/pixman/pixman.git pixman
+  git clone https://gitlab.freedesktop.org/pixman/pixman.git --depth 1 pixman
 } 2>&1 | tee "$LOG_DIR/pixman-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

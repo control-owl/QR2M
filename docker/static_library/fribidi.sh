@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/fribidi/fribidi.git fribidi
+  git clone https://github.com/fribidi/fribidi.git --depth 1 fribidi
 } 2>&1 | tee "$LOG_DIR/fribidi-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

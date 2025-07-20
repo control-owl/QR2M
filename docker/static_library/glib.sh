@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone --depth 1 --no-tags https://gitlab.gnome.org/GNOME/glib.git glib
+  git clone --depth 1 --no-tags https://gitlab.gnome.org/GNOME/glib.git --depth 1 glib
 } 2>&1 | tee "$LOG_DIR/glib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

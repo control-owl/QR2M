@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/madler/zlib.git zlib
+  git clone https://github.com/madler/zlib.git --depth 1 zlib
 } 2>&1 | tee "$LOG_DIR/zlib-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

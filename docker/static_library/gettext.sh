@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://git.savannah.gnu.org/git/gettext.git gettext
+  git clone https://git.savannah.gnu.org/git/gettext.git --depth 1 gettext
 } 2>&1 | tee "$LOG_DIR/gettext-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -32,35 +32,6 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 
 cd gettext
-
-# {
-#   git clone https://github.com/coreutils/gnulib.git gnulib
-# } 2>&1 | tee "$LOG_DIR/gnulib-01-clone.log"
-# 
-# STATUS=${PIPESTATUS[0]}
-# if [ "$STATUS" -ne 0 ]; then
-#   cat "$LOG_DIR/gnulib-01-clone.log"
-#   echo "ERROR - gnulib - 01/05 - Clone"
-#   exit 1
-# fi
-# 
-# cd gnulib
-# git pull origin master
-# cd ..
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-# {
-#   ./gnulib-tool --update
-# } 2>&1 | tee "$LOG_DIR/gnulib-02-autogen.log"
-# 
-# STATUS=${PIPESTATUS[0]}
-# if [ "$STATUS" -ne 0 ]; then
-#   cat $LOG_DIR/gnulib-02-autogen.log
-#   echo "ERROR - gnulib - 02/05 - Clone"
-#   exit 1
-# fi
-
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 

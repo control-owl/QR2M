@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/ebassi/graphene.git graphene
+  git clone https://github.com/ebassi/graphene.git --depth 1 graphene
 } 2>&1 | tee "$LOG_DIR/graphene-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

@@ -26,20 +26,15 @@ mkdir -p "$STATIC_DIR"
 cd /home/QR2M/compile-circus
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-echo "Set PKG_CONFIG_PATH"
-export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
 echo "Set environment variables for build"
 export PKG_CONFIG_ALLOW_CROSS=1
-export CFLAGS="-I$STATIC_DIR/include -static"
-export LDFLAGS="-L$STATIC_DIR/lib -static"
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include
 export OPENSSL_STATIC=1
-export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-L$STATIC_DIR/lib/pkgconfig -C link-arg=-L$STATIC_DIR/lib -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
+export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L/usr/lib -C link-arg=-L/home/QR2M/compile-circus/STATIC/lib/pkgconfig -C link-arg=-lssl -C link-arg=-lcrypto -C link-arg=-static"
 
 echo "Checking pkg-config for dependencies"
 for pkg in gtk4 libadwaita-1; do
@@ -63,7 +58,7 @@ ls -l "$STATIC_DIR/lib/pkgconfig"
 
 echo "Cloning project..."
 {
-  git clone https://github.com/control-owl/QR2M QR2M
+  git clone https://github.com/control-owl/QR2M.git --depth 1 QR2M
 } 2>&1 | tee "$LOG_DIR/qr2m-02-clone.log"
 
 STATUS=${PIPESTATUS[0]}

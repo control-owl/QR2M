@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/proto/xorgproto.git xorgproto
+  git clone https://gitlab.freedesktop.org/xorg/proto/xorgproto.git --depth 1 xorgproto
 } 2>&1 | tee "$LOG_DIR/xorgproto-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}

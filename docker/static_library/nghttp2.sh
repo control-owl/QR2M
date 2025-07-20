@@ -21,7 +21,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/nghttp2/nghttp2.git nghttp2
+  git clone https://github.com/nghttp2/nghttp2.git --depth 1 nghttp2
 } 2>&1 | tee "$LOG_DIR/nghttp2-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
