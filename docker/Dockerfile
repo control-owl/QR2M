@@ -5,20 +5,7 @@ LABEL maintainer="control-owl@r-o0-t.wtf" \
       version="1.0" \
       description="Build QR2M project with MUSL"
 
-ENV PROJECT_DIR="/home/QR2M" \
-    STATIC_DIR="/home/QR2M/compile-circus/STATIC" \
-    PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig" \
-    PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig" \
-    CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized -Wno-unused-parameter" \
-    CXXFLAGS="-O2 -fno-semantic-interposition" \
-    PKG_CONFIG="pkg-config --static" \
-    LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -static -latomic" \
-    CC="gcc" \
-    CXX="g++" \
-    AR="ar" \
-    RANLIB="ranlib" \
-    STRIP="strip"
-
+ENV PROJECT_DIR="/home/QR2M"
 WORKDIR $PROJECT_DIR
 
 

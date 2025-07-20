@@ -16,6 +16,13 @@ mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"
 mkdir -p "$STATIC_DIR"
 
+export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
+export PKG_CONFIG="pkg-config --static"
+export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
+export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
+
 cd "$CIRCUS"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
@@ -39,10 +46,7 @@ fi
   meson subprojects download --sourcedir glib
   cd glib
 
-  export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
-  export CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-  export LDFLAGS="-L$STATIC_DIR/lib -latomic"
-  PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig" meson setup builddir \
+  meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
     -Dtests=false \
