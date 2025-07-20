@@ -83,8 +83,8 @@ RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles in 23s
 RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles in 25s
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s
 RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Compiles in 104s (1000 sec)
-RUN $PROJECT_DIR/pango.sh         #| librsvg            | Fails in 19s
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Compiles in 104s
+RUN $PROJECT_DIR/pango.sh         #| librsvg            |
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            |
 RUN $PROJECT_DIR/appstream.sh     #| QR2M               |

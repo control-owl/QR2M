@@ -38,7 +38,11 @@ fi
   git -C glib submodule update --init --recursive
   meson subprojects download --sourcedir glib
   cd glib
-  meson setup builddir \
+
+  export PKG_CONFIG_PATH="$STATIC_DIR/lib/pkgconfig"
+  export CFLAGS="-O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+  export LDFLAGS="-L$STATIC_DIR/lib -latomic"
+  PKG_CONFIG_LIBDIR="$STATIC_DIR/lib/pkgconfig" meson setup builddir \
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
     -Dtests=false \
