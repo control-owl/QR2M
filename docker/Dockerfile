@@ -53,7 +53,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dependant          | Status
 #| ------------------------------- | ------------------ | ------------------------------
-RUN $PROJECT_DIR/gettext.sh       #| cairo              | Compiles in 502s
+RUN $PROJECT_DIR/gettext.sh       #| cairo,glib,pango   | Compiles in 502s
 RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4          | Compiles in 32s
 RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2 | Compiles in 3s
 RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4          | Compiles in 22s
@@ -84,7 +84,7 @@ RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles in 25s
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s
 RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz   | Compiles in 30s
 RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,              | Compiles in 104s
-RUN $PROJECT_DIR/pango.sh         #| librsvg            |
+RUN $PROJECT_DIR/pango.sh         #| librsvg            | Compiles in 17s
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            |
 RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            |
 RUN $PROJECT_DIR/appstream.sh     #| QR2M               |
