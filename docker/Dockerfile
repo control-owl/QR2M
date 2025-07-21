@@ -81,9 +81,9 @@ RUN $PROJECT_DIR/gtk4.sh          #| QR2M               | Compiles in 232s
 #------------------------------------------------------------------------gtk4 633s
 RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg            | Compiles in 12s
 RUN $PROJECT_DIR/pango.sh         #| librsvg            | Compiles in 17s
-RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            | Compiles in 500s
-RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |
+RUN $PROJECT_DIR/cargo-c.sh       #| librsvg            | Compiles in 645s
 RUN $PROJECT_DIR/libadwaita.sh    #| QR2M               |
+RUN $PROJECT_DIR/librsvg.sh       #| QR2M               |
 #------------------------------------------------------------------------libadwaita
 
 # -.-. --- .--. -.-- .-. .. --. .... - PROJECT COMPILE -.-. --- .--. -.-- .-. .. --. .... -
