@@ -75,7 +75,7 @@ RUN $PROJECT_DIR/fribidi.sh       #| gtk4               | Compiles in 7s
 RUN $PROJECT_DIR/libepoxy.sh      #| gtk4               | Compiles in 25s
 RUN $PROJECT_DIR/libtiff.sh       #| gtk4               | Compiles in 122s
 RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4               | Compiles in 23s
-RUN $PROJECT_DIR/libpng.sh        #| gtk4               | Compiles in 25s
+RUN $PROJECT_DIR/libpng.sh        #| gtk4               | fail
 RUN $PROJECT_DIR/pixman.sh        #| gtk4               | Compiles in 21s
 RUN $PROJECT_DIR/gtk4.sh          #| QR2M               | Compiles in 232s
 #------------------------------------------------------------------------gtk4 633s
