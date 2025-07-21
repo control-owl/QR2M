@@ -21,68 +21,74 @@ export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/li
 export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-#export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
-export ZLIB_STATIC=1
-export PKG_CONFIG_zlib_STATIC="true"
+export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
 
 cd "$CIRCUS"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
-} 2>&1 | tee "$LOG_DIR/librsvg-01-clone.log"
+  git clone https://github.com/pkgconf/pkgconf.git --depth 1 pkgconf
+} 2>&1 | tee "$LOG_DIR/pkgconf-01-clone.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/librsvg-01-clone.log"
+  cat "$LOG_DIR/pkgconf-01-clone.log"
   exit 1
 fi
 
-cd librsvg
+cd pkgconf
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  meson setup builddir \
-    --prefix=$STATIC_DIR \
-    -Ddefault_library=static \
-    -Ddocs=disabled \
-    -Dtests=false \
-    -Davif=disabled \
-    -Dpixbuf-loader=disabled \
-    -Dvala=disabled
-} 2>&1 | tee "$LOG_DIR/librsvg-02-setup.log"
+  ./autogen.sh
+} 2>&1 | tee "$LOG_DIR/pkgconf-02-autogen.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/librsvg-02-setup.log
+  cat $LOG_DIR/pkgconf-02-autogen.log
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH" ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/librsvg-03-ninja.log"
+  ./configure \
+    --enable-static \
+    --disable-shared \
+    --prefix=$STATIC_DIR
+} 2>&1 | tee "$LOG_DIR/pkgconf-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/librsvg-03-ninja.log
+  cat $LOG_DIR/pkgconf-03-configure.log
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/librsvg-04-install.log"
+  make -j"$(nproc)"
+} 2>&1 | tee "$LOG_DIR/pkgconf-04-make.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/librsvg-04-install.log
+  cat $LOG_DIR/pkgconf-04-make.log
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "librsvg compiled and installed successfully"
+{
+  make install
+} 2>&1 | tee "$LOG_DIR/pkgconf-05-install.log"
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat $LOG_DIR/pkgconf-05-install.log
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+echo "pkgconf compiled and installed successfully"
