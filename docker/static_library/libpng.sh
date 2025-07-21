@@ -47,15 +47,20 @@ cd libpng
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
-  ./autogen.sh
-} 2>&1 | tee "$LOG_DIR/xz-02-autogen.log"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/xz-02-autogen.log
-  exit 1
-fi
+# ERROR: running autoreconf on an initialized system. 
+# This is not necessary; it is only necessary to remake the autotools generated
+# files if Makefile.am or configure.ac change and make does the right thing with:
+#   ./configure --enable-maintainer-mode.
+# 
+# {
+#   ./autogen.sh
+# } 2>&1 | tee "$LOG_DIR/xz-02-autogen.log"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat $LOG_DIR/xz-02-autogen.log
+#   exit 1
+# fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
