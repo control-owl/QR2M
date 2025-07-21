@@ -28,7 +28,7 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  cargo install cargo-c --features=vendored-openssl --root "$STATIC_DIR" --locked --verbose
+  cargo install cargo-c --features=vendored-openssl --locked --verbose
 } 2>&1 | tee "$LOG_DIR/cargo-c-01-install.log"
 
 STATUS=${PIPESTATUS[0]}
@@ -40,7 +40,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  "$STATIC_DIR/bin/cargo-cbuild" --version
+  cargo-cbuild --version
 } 2>&1 | tee "$LOG_DIR/cargo-c-02-verify.log"
 
 STATUS=${PIPESTATUS[0]}
