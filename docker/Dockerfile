@@ -84,15 +84,15 @@ RUN $PROJECT_DIR/pkgconf.sh       #| librsvg                   | Compiles in 13s
 RUN $PROJECT_DIR/librsvg.sh       #| QR2M                      | Missing pkg-config ???
 #------------------------------------------------------------------------libadwaita
 
-FROM rust:alpine AS build_project
+# FROM rust:alpine AS build_project
+# 
+# ENV PROJECT_DIR=/home/QR2M
+# WORKDIR $PROJECT_DIR
+# 
+# RUN apk update && apk add --no-cache rust cargo pkgconf git coreutils bash \
+#  libxml2-dev curl-dev zlib-dev glib-dev glib-static \
+#  openssl-dev pango-dev libadwaita-dev
+# 
+# COPY --from=base_system $PROJECT_DIR/compile-circus $PROJECT_DIR/compile-circus
 
-ENV PROJECT_DIR=/home/QR2M
-WORKDIR $PROJECT_DIR
-
-RUN apk update && apk add --no-cache rust cargo pkgconf git coreutils bash \
- libxml2-dev curl-dev zlib-dev glib-dev glib-static \
- openssl-dev pango-dev libadwaita-dev
-
-COPY --from=base_system $PROJECT_DIR/compile-circus $PROJECT_DIR/compile-circus
-
-RUN chmod +x $PROJECT_DIR/compile-circus.sh && $PROJECT_DIR/compile-circus.sh
+RUN $PROJECT_DIR/compile-circus.sh
