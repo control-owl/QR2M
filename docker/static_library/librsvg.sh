@@ -51,7 +51,7 @@ cd librsvg
     -Ddocs=disabled \
     -Dtests=false \
     -Davif=disabled \
-    -Dpixbuf-loader=disabled \
+    -Dpixbuf-loader=enabled \
     -Dvala=disabled
 } 2>&1 | tee "$LOG_DIR/librsvg-02-setup.log"
 
