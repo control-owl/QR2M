@@ -51,7 +51,7 @@ cd librsvg
     -Ddocs=disabled \
     -Dtests=false \
     -Davif=disabled \
-    -Dpixbuf-loader=enabled \
+    -Dpixbuf-loader=disabled \
     -Dvala=disabled
 } 2>&1 | tee "$LOG_DIR/librsvg-02-setup.log"
 
@@ -85,10 +85,6 @@ if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/librsvg-04-install.log
   exit 1
 fi
-
-
-ln -sf /home/QR2M/compile-circus/STATIC/bin/pkgconf /usr/bin/pkg-config
-
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
