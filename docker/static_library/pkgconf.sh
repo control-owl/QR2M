@@ -57,7 +57,9 @@ fi
   ./configure \
     --enable-static \
     --disable-shared \
-    --prefix=$STATIC_DIR
+    --prefix=$STATIC_DIR \
+    --with-system-libdir=/home/QR2M/compile-circus/STATIC/lib \
+    --with-system-includedir=/home/QR2M/compile-circus/STATIC/include
 } 2>&1 | tee "$LOG_DIR/pkgconf-03-configure.log"
 
 STATUS=${PIPESTATUS[0]}
