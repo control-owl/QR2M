@@ -80,7 +80,7 @@ RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg                   | Compiles in 12s
 RUN $PROJECT_DIR/pango.sh         #| librsvg                   | Compiles in 17s
 #RUN $PROJECT_DIR/cargo-c.sh       #| librsvg                   | Compiles in 645s (needed????)
 RUN $PROJECT_DIR/libadwaita.sh    #| QR2M                      | Compiles in 45s
-# RUN $PROJECT_DIR/pkgconf.sh       #| librsvg                   | Compiles in 13s (needed????)
+RUN $PROJECT_DIR/pkgconf.sh       #| librsvg                   | Compiles in 13s (needed????)
 RUN $PROJECT_DIR/librsvg.sh       #| QR2M                      | Missing pkg-config ???
 #------------------------------------------------------------------------libadwaita
 
