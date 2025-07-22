@@ -86,6 +86,10 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
+
+ln -sf /home/QR2M/compile-circus/STATIC/bin/pkgconf /usr/bin/pkg-config
+
+
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 echo "librsvg compiled and installed successfully"
