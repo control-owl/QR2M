@@ -42,6 +42,8 @@ fi
 
 cd librsvg
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 {
   meson setup builddir \
     --prefix=$STATIC_DIR \

@@ -53,38 +53,56 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+# {
+#   ./configure \
+#     --enable-static \
+#     --disable-shared \
+#     --prefix=$STATIC_DIR \
+#     --with-system-libdir=/home/QR2M/compile-circus/STATIC/lib \
+#     --with-system-includedir=/home/QR2M/compile-circus/STATIC/include
+# } 2>&1 | tee "$LOG_DIR/pkgconf-03-configure.log"
+
 {
-  ./configure \
-    --enable-static \
-    --disable-shared \
+  meson setup builddir \
     --prefix=$STATIC_DIR \
-    --with-system-libdir=/home/QR2M/compile-circus/STATIC/lib \
-    --with-system-includedir=/home/QR2M/compile-circus/STATIC/include
-} 2>&1 | tee "$LOG_DIR/pkgconf-03-configure.log"
+    -Ddefault_library=static \
+    -Dtests=disabled \
+    -Dwith-system-libdir=/home/QR2M/compile-circus/STATIC/lib \
+    -Dwith-system-includedir=/home/QR2M/compile-circus/STATIC/include
+} 2>&1 | tee "$LOG_DIR/pkgconf-03-setup.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pkgconf-03-configure.log
+  cat $LOG_DIR/pkgconf-03-setup.log
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+# {
+#   make -j"$(nproc)"
+# } 2>&1 | tee "$LOG_DIR/pkgconf-04-make.log"
+
 {
-  make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/pkgconf-04-make.log"
+  ninja -C builddir
+} 2>&1 | tee "$LOG_DIR/pkgconf-04-ninja.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/pkgconf-04-make.log
+  cat $LOG_DIR/pkgconf-04-ninja.log
   exit 1
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+# {
+#   make install
+# } 2>&1 | tee "$LOG_DIR/pkgconf-05-install.log"
+
 {
-  make install
+  ninja -C builddir install
 } 2>&1 | tee "$LOG_DIR/pkgconf-05-install.log"
+
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat $LOG_DIR/pkgconf-05-install.log
