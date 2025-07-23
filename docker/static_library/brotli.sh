@@ -10,6 +10,7 @@ set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
@@ -31,11 +32,11 @@ cd "$CIRCUS"
   pc_files=()
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-verify.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -43,11 +44,11 @@ fi
 
 {
   git clone https://github.com/google/brotli.git --depth 1 brotli
-} 2>&1 | tee "$LOG_DIR/brotli-01-clone.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/brotli-01-clone.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -60,11 +61,11 @@ cd brotli
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_C_FLAGS="$CFLAGS" \
     -DBROTLI_DISABLE_TESTS=ON
-} 2>&1 | tee "$LOG_DIR/brotli-02-configure.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/brotli-02-configure.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -72,11 +73,11 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/brotli-03-make.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/brotli-03-make.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -84,10 +85,10 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/brotli-04-install.log"
+} 2>&1 | tee "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/brotli-04-install.log
+  cat "$LOG_FILE"
   exit 1
 fi
 

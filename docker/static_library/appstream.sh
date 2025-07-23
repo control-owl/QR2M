@@ -10,6 +10,7 @@ set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
@@ -37,11 +38,11 @@ cd "$CIRCUS"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-verify.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -49,11 +50,11 @@ fi
 
 {
   git clone https://github.com/ximion/appstream.git --depth 1 appstream
-} 2>&1 | tee "$LOG_DIR/appstream-clone.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-clone.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -79,11 +80,11 @@ cd appstream
     -Dinstall-docs=false \
     -Dmaintainer=false \
     -Dstatic-analysis=false 
-} 2>&1 | tee "$LOG_DIR/appstream-setup.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-setup.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -91,11 +92,11 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/appstream-compile.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-compile.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -103,11 +104,11 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/appstream-install.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-install.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 

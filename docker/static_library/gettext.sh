@@ -10,6 +10,7 @@ set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
@@ -31,11 +32,11 @@ cd "$CIRCUS"
   pc_files=()
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-verify.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -43,11 +44,11 @@ fi
 
 {
   git clone https://git.savannah.gnu.org/git/gettext.git --depth 1 gettext
-} 2>&1 | tee "$LOG_DIR/gettext-01-clone.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/gettext-01-clone.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -57,11 +58,11 @@ cd gettext
 
 {
   ./autopull.sh
-} 2>&1 | tee "$LOG_DIR/gettext-02-autopull.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-02-autopull.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -70,11 +71,11 @@ fi
 
 {
   ./autogen.sh
-} 2>&1 | tee "$LOG_DIR/gettext-03-autogen.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-03-autogen.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -84,7 +85,7 @@ fi
   ./configure \
     --disable-shared \
     --enable-static \
-    --disable-nls \
+    --enable-nls \
     --with-pic \
     --disable-java \
     --disable-csharp \
@@ -113,11 +114,11 @@ fi
     --enable-fast-install \
     --disable-rpath \
     --prefix=$STATIC_DIR
-} 2>&1 | tee "$LOG_DIR/gettext-04-configure.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-04-configure.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -125,11 +126,11 @@ fi
 
 {
   make -C gettext-runtime -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/gettext-05-make.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-05-make.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -137,10 +138,10 @@ fi
 
 {
   make -C gettext-runtime install-exec
-} 2>&1 | tee "$LOG_DIR/gettext-06-install.log"
+} 2>&1 | tee "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/gettext-06-install.log
+  cat "$LOG_FILE"
   exit 1
 fi
 

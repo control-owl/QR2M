@@ -35,7 +35,7 @@ cd "$CIRCUS"
     "fontconfig.pc"
     "fribidi.pc"
     "harfbuzz.pc"
-    "libintl.pc"
+#    "libintl.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"

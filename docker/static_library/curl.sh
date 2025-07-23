@@ -10,6 +10,7 @@ set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
@@ -36,11 +37,11 @@ cd "$CIRCUS"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-verify.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -48,11 +49,11 @@ fi
 
 {
   git clone https://github.com/curl/curl --depth 1 curl
-} 2>&1 | tee "$LOG_DIR/curl-01-clone.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/curl-01-clone.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -62,11 +63,11 @@ cd curl
 
 {
   autoreconf -fi
-} 2>&1 | tee "$LOG_DIR/curl-02-autoreconf.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/curl-02-autoreconf.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -119,12 +120,11 @@ fi
     --without-openssl-quic \
     --without-msh3 \
     --with-ca-bundle=/etc/ssl/certs/ca-certificates.crt
-
-} 2>&1 | tee "$LOG_DIR/curl-03-configure.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/curl-03-configure.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -132,11 +132,11 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/curl-04-make.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/curl-04-make.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -144,10 +144,10 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/curl-05-install.log"
+} 2>&1 | tee "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/curl-05-install.log
+  cat "$LOG_FILE"
   exit 1
 fi
 

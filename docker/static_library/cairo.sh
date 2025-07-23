@@ -10,6 +10,7 @@ set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
@@ -37,15 +38,15 @@ cd "$CIRCUS"
     "x11.pc"
     "xrender.pc"
     "xext.pc"
-    "libintl.pc"
+#    "libintl.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-verify.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -53,11 +54,11 @@ fi
 
 {
   git clone https://gitlab.freedesktop.org/cairo/cairo.git --depth 1 cairo
-} 2>&1 | tee "$LOG_DIR/cairo-01-clone.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/cairo-01-clone.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -67,11 +68,11 @@ cd cairo
 
 {
   sed -i '/#ifndef HAVE_CTIME_R/,/#endif/d' src/cairo-ps-surface.c
-} 2>&1 | tee "$LOG_DIR/cairo-02-patch.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/cairo-02-patch.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -90,11 +91,11 @@ fi
     -Dglib=enabled \
     -Dxlib=disabled \
     -Dxcb=disabled
-} 2>&1 | tee "$LOG_DIR/cairo-03-setup.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-03-setup.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -102,11 +103,11 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/cairo-04-compile.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-04-compile.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -114,11 +115,11 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/cairo-05-install.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/cairo-05-install.log
+  cat "$LOG_FILE"
   exit 1
 fi
 

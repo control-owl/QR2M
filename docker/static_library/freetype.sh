@@ -10,6 +10,7 @@ set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
@@ -31,11 +32,11 @@ cd "$CIRCUS"
   pc_files=()
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-verify.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -43,11 +44,11 @@ fi
 
 {
   git clone https://github.com/freetype/freetype.git --depth 1 freetype
-} 2>&1 | tee "$LOG_DIR/freetype-01-clone.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/freetype-01-clone.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -57,11 +58,11 @@ cd freetype
 
 {
   ./autogen.sh
-} 2>&1 | tee "$LOG_DIR/freetype-02-autogen.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/freetype-02-autogen.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -73,11 +74,11 @@ fi
     --disable-shared \
     --prefix=$STATIC_DIR \
     --with-zlib="$STATIC_DIR"
-} 2>&1 | tee "$LOG_DIR/freetype-03-configure.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/freetype-03-configure.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -85,11 +86,11 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_DIR/freetype-04-make.log"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/freetype-04-make.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -97,10 +98,10 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_DIR/freetype-05-install.log"
+} 2>&1 | tee "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/freetype-05-install.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
