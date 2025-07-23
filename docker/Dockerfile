@@ -27,61 +27,63 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev gcc g++ pkgconf cargo-c
+        gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev gcc g++
 
 # -.-. --- .--. -.-- .-. .. --. .... - BUILD SCRIPTS -.-. --- .--. -.-- .-. .. --. .... -
-COPY docker/compile-circus.sh $PROJECT_DIR/compile-circus.sh
-COPY docker/static_library/ $PROJECT_DIR/
+COPY docker/*.sh $PROJECT_DIR/
+COPY docker/static_library/*.sh $PROJECT_DIR/
 RUN chmod +x $PROJECT_DIR/*.sh
+
+
 
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dependant                  | Status
 #| ------------------------------- | -------------------------- | ----------------------
-RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango          | Compiles in 502s
-RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4                 | Compiles in 32s
+RUN $PROJECT_DIR/pkgconf.sh       #|                            | Compiles in 13s
+#RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango          | Compiles in 502s
+RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4                  | Compiles in 32s
 RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2,cargo-c | Compiles in 3s
-RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4                 | Compiles in 22s
-RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz            | Compiles in 68s
+RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4                  | Compiles in 22s
+RUN $PROJECT_DIR/glib.sh          #| cairo,harfbuzz             | Compiles in 68s
 #------------------------------------------------------------------------glib 627s
-RUN $PROJECT_DIR/libexpat.sh      #| cairo                     | Compiles in 27s
-RUN $PROJECT_DIR/brotli.sh        #| cairo                     | Compiles in 28s
-RUN $PROJECT_DIR/xorgproto.sh     #| cairo,libxau              | Compiles in 4s
-RUN $PROJECT_DIR/libxau.sh        #| cairo                     | Compiles in 21s
-RUN $PROJECT_DIR/libxdmcp.sh      #| cairo                     | Compiles in 27s
-RUN $PROJECT_DIR/libxcb.sh        #| cairo,x11                 | Compiles in 41s
-RUN $PROJECT_DIR/libx11.sh        #| cairo                     | Compiles in 67s
-RUN $PROJECT_DIR/libxrender.sh    #| cairo                     | Compiles in 26s
-RUN $PROJECT_DIR/libxext.sh       #| cairo                     | Compiles in 30s
-RUN $PROJECT_DIR/fontconfig.sh    #| cairo,gtk4                | Compiles in 29s
-RUN $PROJECT_DIR/libbz2.sh        #| cairo,harfbuzz            | Compiles in 6s
-RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz          | Compiles in 30s
+RUN $PROJECT_DIR/libexpat.sh      #| cairo                      | Compiles in 27s
+RUN $PROJECT_DIR/brotli.sh        #| cairo                      | Compiles in 28s
+RUN $PROJECT_DIR/xorgproto.sh     #| cairo,libxau               | Compiles in 4s
+RUN $PROJECT_DIR/libxau.sh        #| cairo                      | Compiles in 21s
+RUN $PROJECT_DIR/libxdmcp.sh      #| cairo                      | Compiles in 27s
+RUN $PROJECT_DIR/libxcb.sh        #| cairo,x11                  | Compiles in 41s
+RUN $PROJECT_DIR/libx11.sh        #| cairo                      | Compiles in 67s
+RUN $PROJECT_DIR/libxrender.sh    #| cairo                      | Compiles in 26s
+RUN $PROJECT_DIR/libxext.sh       #| cairo                      | Compiles in 30s
+RUN $PROJECT_DIR/fontconfig.sh    #| cairo,gtk4                 | Compiles in 29s
+RUN $PROJECT_DIR/libbz2.sh        #| cairo,harfbuzz             | Compiles in 6s
+RUN $PROJECT_DIR/cairo.sh         #| librsvg,harfbuzz           | Compiles in 30s
 #------------------------------------------------------------------------cairo 336s
-RUN $PROJECT_DIR/nghttp2.sh       #| curl                      | Compiles in 38s
-RUN $PROJECT_DIR/curl.sh          #| appstream                 | Compiles in 68s
-RUN $PROJECT_DIR/openssl.sh       #| appstream                 | Compiles in 320s
-RUN $PROJECT_DIR/xz.sh            #| appstream                 | Compiles in 41s
-RUN $PROJECT_DIR/libeconf.sh      #| appstream                 | Compiles in 12s
-RUN $PROJECT_DIR/libunistring.sh  #| appstream                 | Compiles in 354s
-RUN $PROJECT_DIR/appstream.sh     #| QR2M                      | Compiles in 29s
+RUN $PROJECT_DIR/nghttp2.sh       #| curl                       | Compiles in 38s
+RUN $PROJECT_DIR/curl.sh          #| appstream                  | Compiles in 68s
+RUN $PROJECT_DIR/openssl.sh       #| appstream                  | Compiles in 320s
+RUN $PROJECT_DIR/xz.sh            #| appstream                  | Compiles in 41s
+RUN $PROJECT_DIR/libeconf.sh      #| appstream                  | Compiles in 12s
+RUN $PROJECT_DIR/libunistring.sh  #| appstream                  | Compiles in 354s
+RUN $PROJECT_DIR/appstream.sh     #| QR2M                       | Compiles in 29s
 #------------------------------------------------------------------------appstream 872s
-RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4             | Compiles in 26s
-RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,                     | Compiles in 104s
-RUN $PROJECT_DIR/graphene.sh      #| gtk4                      | Compiles in 5s
-RUN $PROJECT_DIR/libxml2.sh       #| gtk4                      | Compiles in 43s
-RUN $PROJECT_DIR/fribidi.sh       #| gtk4                      | Compiles in 7s
-RUN $PROJECT_DIR/libepoxy.sh      #| gtk4                      | Compiles in 25s
-RUN $PROJECT_DIR/libtiff.sh       #| gtk4                      | Compiles in 122s
-RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4                      | Compiles in 23s
-RUN $PROJECT_DIR/libpng.sh        #| gtk4                      | Compiles in 15s
-RUN $PROJECT_DIR/pixman.sh        #| gtk4                      | Compiles in 21s
-RUN $PROJECT_DIR/gtk4.sh          #| QR2M                      | Compiles in 232s
+RUN $PROJECT_DIR/freetype.sh      #| harfbuzz,gtk4              | Compiles in 26s
+RUN $PROJECT_DIR/harfbuzz.sh      #| gtk4,                      | Compiles in 104s
+RUN $PROJECT_DIR/graphene.sh      #| gtk4                       | Compiles in 5s
+RUN $PROJECT_DIR/libxml2.sh       #| gtk4                       | Compiles in 43s
+RUN $PROJECT_DIR/fribidi.sh       #| gtk4                       | Compiles in 7s
+RUN $PROJECT_DIR/libepoxy.sh      #| gtk4                       | Compiles in 25s
+RUN $PROJECT_DIR/libtiff.sh       #| gtk4                       | Compiles in 122s
+RUN $PROJECT_DIR/libjpeg-turbo.sh #| gtk4                       | Compiles in 23s
+RUN $PROJECT_DIR/libpng.sh        #| gtk4                       | Compiles in 15s
+RUN $PROJECT_DIR/pixman.sh        #| gtk4                       | Compiles in 21s
+RUN $PROJECT_DIR/gtk4.sh          #| QR2M                       | Compiles in 232s
 #------------------------------------------------------------------------gtk4 633s
-RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg                   | Compiles in 12s
-RUN $PROJECT_DIR/pango.sh         #| librsvg                   | Compiles in 17s
-#RUN $PROJECT_DIR/cargo-c.sh       #| librsvg                  | Compiles in 645s (needed????)
-RUN $PROJECT_DIR/libadwaita.sh    #| QR2M                      | Compiles in 45s
-RUN $PROJECT_DIR/pkgconf.sh       #| librsvg                   | Compiles in 13s (needed????)
-RUN $PROJECT_DIR/librsvg.sh       #| QR2M                      | Missing pkg-config ???
+RUN $PROJECT_DIR/gdk-pixbuf.sh    #| librsvg                    | Compiles in 12s
+RUN $PROJECT_DIR/pango.sh         #| librsvg                    | Compiles in 17s
+RUN $PROJECT_DIR/cargo-c.sh       #| librsvg                    | Compiles in 645s
+RUN $PROJECT_DIR/libadwaita.sh    #| QR2M                       | Compiles in 45s
+RUN $PROJECT_DIR/librsvg.sh       #| QR2M                       | Missing pkg-config ???
 #------------------------------------------------------------------------libadwaita
 
 # FROM rust:alpine AS build_project

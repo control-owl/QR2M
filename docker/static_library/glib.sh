@@ -28,6 +28,25 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  pc_files=(
+    "libpcre2-8.pc"
+    "libffi.pc"
+    "zlib.pc"
+    "libintl.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   git clone --depth 1 --no-tags https://gitlab.gnome.org/GNOME/glib.git --depth 1 glib
 } 2>&1 | tee "$LOG_DIR/glib-01-clone.log"
 

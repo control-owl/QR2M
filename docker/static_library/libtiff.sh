@@ -28,6 +28,22 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  pc_files=(
+    "libjppeg.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   git clone https://github.com/libsdl-org/libtiff.git --depth 1 libtiff
 } 2>&1 | tee "$LOG_DIR/libtiff-01-clone.log"
 

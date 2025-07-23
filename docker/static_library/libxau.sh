@@ -33,6 +33,20 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  pc_files=()
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git --depth 1 libxau
 } 2>&1 | tee "$LOG_DIR/libxau-01-clone.log"
 

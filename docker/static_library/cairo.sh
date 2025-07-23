@@ -28,6 +28,30 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  pc_files=(
+    "pixman-1.pc"
+    "fontconfig.pc"
+    "freetype2.pc"
+    "libpng16.pc"
+    "zlib.pc"
+    "x11.pc"
+    "xrender.pc"
+    "xext.pc"
+    "libintl.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   git clone https://gitlab.freedesktop.org/cairo/cairo.git --depth 1 cairo
 } 2>&1 | tee "$LOG_DIR/cairo-01-clone.log"
 

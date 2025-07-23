@@ -28,6 +28,35 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  pc_files=(
+    "glib-2.0.pc"
+    "gobject-2.0.pc"
+    "cairo.pc"
+    "pango-1.0.pc"
+    "fribidi.pc"
+    "epoxy.pc"
+    "graphene-1.0.pc"
+    "gdk-pixbuf-2.0.pc"
+    "fontconfig.pc"
+    "freetype2.pc"
+    "libxml-2.0.pc"
+    "libtiff-4.pc"
+    "libpng16.pc"
+    "pixman-1.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk4
 } 2>&1 | tee "$LOG_DIR/gtk4-01-clone.log"
 

@@ -22,11 +22,32 @@ export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+export PATH="/usr/bin:/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export ZLIB_STATIC=1
 export PKG_CONFIG_zlib_STATIC="true"
 
 cd "$CIRCUS"
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  pc_files=(
+    "glib-2.0.pc"
+    "gobject-2.0.pc"
+    "cairo.pc"
+    "pango-1.0.pc"
+    "libxml-2.0.pc"
+    "gdk-pixbuf-2.0.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 

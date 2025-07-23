@@ -28,6 +28,28 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  pc_files=(
+    "glib-2.0.pc"
+    "cairo.pc"
+    "freetype2.pc"
+    "fontconfig.pc"
+    "fribidi.pc"
+    "harfbuzz.pc"
+    "libintl.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   git clone https://github.com/GNOME/pango.git --depth 1 pango
 } 2>&1 | tee "$LOG_DIR/pango-01-clone.log"
 

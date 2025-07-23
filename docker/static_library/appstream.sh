@@ -28,12 +28,32 @@ cd "$CIRCUS"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/ximion/appstream.git --depth 1 appstream
-} 2>&1 | tee "$LOG_DIR/appstream-01-clone.log"
+  pc_files=(
+    "libcurl.pc"
+    "libxml-2.0.pc"
+    "libeconf.pc"
+    "libunistring.pc"
+    "liblzma.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-01-clone.log"
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  git clone https://github.com/ximion/appstream.git --depth 1 appstream
+} 2>&1 | tee "$LOG_DIR/appstream-clone.log"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-clone.log"
   exit 1
 fi
 
@@ -59,11 +79,11 @@ cd appstream
     -Dinstall-docs=false \
     -Dmaintainer=false \
     -Dstatic-analysis=false 
-} 2>&1 | tee "$LOG_DIR/appstream-02-setup.log"
+} 2>&1 | tee "$LOG_DIR/appstream-setup.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-02-setup.log"
+  cat "$LOG_DIR/appstream-setup.log"
   exit 1
 fi
 
@@ -71,11 +91,11 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_DIR/appstream-03-compile.log"
+} 2>&1 | tee "$LOG_DIR/appstream-compile.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/appstream-03-compile.log
+  cat "$LOG_DIR/appstream-compile.log"
   exit 1
 fi
 
@@ -83,11 +103,11 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_DIR/appstream-04-install.log"
+} 2>&1 | tee "$LOG_DIR/appstream-install.log"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/appstream-04-install.log
+  cat "$LOG_DIR/appstream-install.log"
   exit 1
 fi
 
