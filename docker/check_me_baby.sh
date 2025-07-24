@@ -1,8 +1,18 @@
 #!/bin/bash
+# authors = ["Control Owl <qr2m[at]r-o0-t[dot]wtf>"]
+# license = "CC-BY-NC-ND-4.0  [2023-2025]  Control Owl"
+#
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+set -e
+set -x
+set -o pipefail
 
 needed_files=("$@")
 log_file="$LOG_DIR/$(basename "${BASH_SOURCE[1]}")-check.log"
 missing_files=0
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 if [ -z "$STATIC_DIR" ]; then
   echo "ERROR: STATIC_DIR is not defined" | tee -a "$log_file"

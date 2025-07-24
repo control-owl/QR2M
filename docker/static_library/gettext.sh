@@ -29,9 +29,9 @@ export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=()
+  needed_files=()
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
 } 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -139,6 +139,25 @@ fi
 {
   make -C gettext-runtime install-exec
 } 2>&1 | tee "$LOG_FILE"
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  compiled_files=(
+    # "libpkgconf.a"
+    # "libpkgconf.pc"
+    # "pkgconf"
+    # "bomtool"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
+} 2>&1 | tee "$LOG_FILE"
+
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"

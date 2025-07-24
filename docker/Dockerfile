@@ -40,7 +40,7 @@ RUN chmod +x $PROJECT_DIR/*.sh
 #|                Library          | Dependant                  | Status
 #| ------------------------------- | -------------------------- | ----------------------
 RUN $PROJECT_DIR/pkgconf.sh       #|                            | Compiles in 13s
-# RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango           | Compiles in 502s
+RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango           | Compiles in 502s
 # 
 # RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4                  | Compiles in 32s
 # RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2,cargo-c | Compiles in 3s
