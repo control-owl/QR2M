@@ -38,7 +38,7 @@ for file in "${needed_files[@]}"; do
     ;;
 
     a)
-      local search_dirs=(
+      search_dirs=(
         "$STATIC_DIR"
         "$STATIC_DIR/lib"
         "$STATIC_DIR/lib/pkgconfig"
@@ -58,7 +58,7 @@ for file in "${needed_files[@]}"; do
     ;;
 
     *)
-      local search_dirs=(
+      search_dirs=(
         "$STATIC_DIR/bin"
       )
 
