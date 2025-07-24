@@ -99,14 +99,19 @@ ln -sf /home/QR2M/compile-circus/STATIC/bin/pkgconf /home/QR2M/compile-circus/ST
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  a_files=()
+  compiled_files=(
+    "libpkgconf.a"
+    "libpkgconf.pc"
+    "pkgconf"
+    "bomtool"
+  )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${a_files[@]}"
-} 2>&1 | tee "$LOG_DIR/appstream-verify.log"
+  source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
+} 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/appstream-verify.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 

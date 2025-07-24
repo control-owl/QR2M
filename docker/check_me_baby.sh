@@ -41,6 +41,7 @@ for file in "${needed_files[@]}"; do
       local search_dirs=(
         "$STATIC_DIR"
         "$STATIC_DIR/lib"
+        "$STATIC_DIR/lib/pkgconfig"
         "$STATIC_DIR/shared"
         "$STATIC_DIR/include"
       )
@@ -57,8 +58,19 @@ for file in "${needed_files[@]}"; do
     ;;
 
     *)
-      echo "ERROR: Unsupported file type for $file" | tee -a "$log_file"
-      ((missing_files++))
+      local search_dirs=(
+        "$STATIC_DIR/bin"
+      )
+
+      for dir in "${search_dirs[@]}"; do
+        if find "$dir" -name "$file" | grep -q . ; then
+          echo "Found: $file in $dir" | tee -a "$log_file"
+          break
+        else
+          echo "ERROR: File $file not found in search paths" | tee -a "$log_file"
+          ((missing_files++))
+        fi
+      done
     ;;
   esac
   done

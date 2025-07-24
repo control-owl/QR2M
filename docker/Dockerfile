@@ -98,4 +98,4 @@ RUN $PROJECT_DIR/pkgconf.sh       #|                            | Compiles in 13
 # 
 # COPY --from=base_system $PROJECT_DIR/compile-circus $PROJECT_DIR/compile-circus
 
-RUN $PROJECT_DIR/compile-circus.sh
+# RUN $PROJECT_DIR/compile-circus.sh
