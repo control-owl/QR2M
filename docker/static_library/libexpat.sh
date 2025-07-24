@@ -10,6 +10,7 @@ set -o pipefail
 
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"

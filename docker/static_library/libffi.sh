@@ -14,6 +14,7 @@ STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 mkdir -p "$STATIC_DIR"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"

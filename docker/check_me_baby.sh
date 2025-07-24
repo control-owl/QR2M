@@ -1,7 +1,7 @@
 #!/bin/bash
 
-pc_files=("$@")
-log_file="$LOG_DIR/$(basename "${BASH_SOURCE[1]}")-01-verify.log"
+needed_files=("$@")
+log_file="$LOG_DIR/$(basename "${BASH_SOURCE[1]}")-check.log"
 missing_files=0
 
 if [ -z "$STATIC_DIR" ]; then
@@ -19,23 +19,52 @@ if [ -z "$LOG_DIR" ]; then
   exit 1
 fi
 
-if [ ${#pc_files[@]} -eq 0 ]; then
-  echo "WARNING: No .pc files specified for checking" | tee -a "$log_file"
+if [ ${#needed_files[@]} -eq 0 ]; then
+  echo "WARNING: No files specified for checking" | tee -a "$log_file"
   exit 0
 fi
 
-echo "Checking .pc files for $(basename "${BASH_SOURCE[1]}"):" | tee -a "$log_file"
-for pc in "${pc_files[@]}"; do
-  if [ -f "$STATIC_DIR/lib/pkgconfig/$pc" ] || [ -f "$STATIC_DIR/share/pkgconfig/$pc" ]; then
-    echo "Found $pc" | tee -a "$log_file"
-  else
-    echo "ERROR: $pc not found in $STATIC_DIR/lib/pkgconfig or $STATIC_DIR/share/pkgconfig" | tee -a "$log_file"
-    missing_files=1
-  fi
-done
+echo "Checking files for $(basename "${BASH_SOURCE[1]}"):" | tee -a "$log_file"
+
+for file in "${needed_files[@]}"; do
+  case "${file##*.}" in
+    pc)
+      if [ -f "$STATIC_DIR/lib/pkgconfig/$file" ] || [ -f "$STATIC_DIR/share/pkgconfig/$file" ]; then
+        echo "Found .pc file: $file" | tee -a "$log_file"
+      else
+        echo "ERROR: .pc file $file not found in $STATIC_DIR/lib/pkgconfig or $STATIC_DIR/share/pkgconfig" | tee -a "$log_file"
+        ((missing_files++))
+      fi
+    ;;
+
+    a)
+      local search_dirs=(
+        "$STATIC_DIR"
+        "$STATIC_DIR/lib"
+        "$STATIC_DIR/shared"
+        "$STATIC_DIR/include"
+      )
+
+      for dir in "${search_dirs[@]}"; do
+        if find "$dir" -name "$file" | grep -q . ; then
+          echo "Found static library: $file in $dir" | tee -a "$log_file"
+          break
+        else
+          echo "ERROR: Static library $file not found in search paths" | tee -a "$log_file"
+          ((missing_files++))
+        fi
+      done
+    ;;
+
+    *)
+      echo "ERROR: Unsupported file type for $file" | tee -a "$log_file"
+      ((missing_files++))
+    ;;
+  esac
+  done
 
 if [ $missing_files -ne 0 ]; then
-  echo "ERROR: One or more .pc files are missing for $(basename "${BASH_SOURCE[1]}")" | tee -a "$log_file"
+  echo "ERROR: One or more files are missing for $(basename "${BASH_SOURCE[1]}")" | tee -a "$log_file"
   exit 1
 fi
 
