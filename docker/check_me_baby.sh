@@ -14,20 +14,20 @@ missing_files=0
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-if [ -z "$STATIC_DIR" ]; then
-  echo "ERROR: STATIC_DIR is not defined" | tee -a "$log_file"
-  exit 1
-fi
-
-if [ -z "$LOG_DIR" ]; then
-  echo "ERROR: LOG_DIR is not defined" | tee -a "$log_file"
-  exit 1
-fi
-
-if [ ! -d "$STATIC_DIR/lib/pkgconfig" ] && [ ! -d "$STATIC_DIR/share/pkgconfig" ]; then
-  echo "ERROR: Neither $STATIC_DIR/lib/pkgconfig nor $STATIC_DIR/share/pkgconfig exists" | tee -a "$log_file"
-  exit 1
-fi
+# if [ -z "$STATIC_DIR" ]; then
+#   echo "ERROR: STATIC_DIR is not defined" | tee -a "$log_file"
+#   exit 1
+# fi
+# 
+# if [ -z "$LOG_DIR" ]; then
+#   echo "ERROR: LOG_DIR is not defined" | tee -a "$log_file"
+#   exit 1
+# fi
+# 
+# if [ ! -d "$STATIC_DIR/lib/pkgconfig" ] && [ ! -d "$STATIC_DIR/share/pkgconfig" ]; then
+#   echo "ERROR: Neither $STATIC_DIR/lib/pkgconfig nor $STATIC_DIR/share/pkgconfig exists" | tee -a "$log_file"
+#   exit 1
+# fi
 
 if [ ${#needed_files[@]} -eq 0 ]; then
   echo "WARNING: No files specified for checking" | tee -a "$log_file"

@@ -117,6 +117,7 @@ ln -sf /home/QR2M/compile-circus/STATIC/bin/pkgconf /home/QR2M/compile-circus/ST
     "libpkgconf.a"
     "libpkgconf.pc"
     "pkgconf"
+    "pkg-config"
     "bomtool"
   )
 
