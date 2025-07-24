@@ -20,7 +20,7 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
@@ -32,7 +32,7 @@ export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
   needed_files=()
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -44,7 +44,7 @@ fi
 
 {
   git clone https://git.savannah.gnu.org/git/gettext.git --depth 1 gettext
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -58,7 +58,7 @@ cd gettext
 
 {
   ./autopull.sh
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -71,7 +71,7 @@ fi
 
 {
   ./autogen.sh
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -85,36 +85,36 @@ fi
   ./configure \
     --prefix=$STATIC_DIR \
     --disable-shared \
-    --enable-static \
-    --enable-nls \
-    --with-pic \
-    --disable-java \
-    --disable-csharp \
-    --disable-c++ \
-    --disable-modula2 \
-    --disable-libasprintf \
-    --disable-curses \
-    --disable-openmp \
-    --disable-acl \
-    --disable-xattr \
-    --with-included-libunistring \
-    --with-included-gettext \
-    --with-included-libxml \
-    --without-libncurses-prefix \
-    --without-libtermcap-prefix \
-    --without-libxcurses-prefix \
-    --without-libcurses-prefix \
-    --without-libtextstyle-prefix \
-    --without-libsmack \
-    --without-selinux \
-    --without-emacs \
-    --without-git \
-    --without-bzip2 \
-    --without-xz \
-    --disable-dependency-tracking \
-    --enable-fast-install \
-    --disable-rpath
-} 2>&1 | tee "$LOG_FILE"
+    --enable-static #\
+#    --enable-nls \
+#    --with-pic \
+#    --disable-java \
+#    --disable-csharp \
+#    --disable-c++ \
+#    --disable-modula2 \
+#    --disable-libasprintf \
+#    --disable-curses \
+#    --disable-openmp \
+#    --disable-acl \
+#    --disable-xattr \
+#    --with-included-libunistring \
+#    --with-included-gettext \
+#    --with-included-libxml \
+#    --without-libncurses-prefix \
+#    --without-libtermcap-prefix \
+#    --without-libxcurses-prefix \
+#    --without-libcurses-prefix \
+#    --without-libtextstyle-prefix \
+#    --without-libsmack \
+#    --without-selinux \
+#    --without-emacs \
+#    --without-git \
+#    --without-bzip2 \
+#    --without-xz \
+#    --disable-dependency-tracking \
+#    --enable-fast-install \
+#    --disable-rpath
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -126,7 +126,7 @@ fi
 
 {
   make -C gettext-runtime -j"$(nproc)"
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -138,7 +138,7 @@ fi
 
 {
   make -C gettext-runtime install-exec
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -149,14 +149,12 @@ fi
 
 {
   compiled_files=(
-    # "libpkgconf.a"
-    # "libpkgconf.pc"
-    # "pkgconf"
-    # "bomtool"
+    "libintl.a"
+    "gettext"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -166,4 +164,4 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "gettext compiled and installed successfully"
+echo "$(basename "$0") compiled and installed successfully"
