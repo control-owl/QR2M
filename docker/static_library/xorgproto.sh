@@ -29,9 +29,9 @@ export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=()
+  needed_files=()
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -95,9 +95,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  compiled_files=(
-# no bin no lib files, only include ????
-  )
+  compiled_files=()
+  # no bin no lib files, only include file, a lot of them, what now ????
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"

@@ -39,17 +39,18 @@ RUN chmod +x $PROJECT_DIR/*.sh
 # -.-. --- .--. -.-- .-. .. --. .... - DEPENDENCIES -.-. --- .--. -.-- .-. .. --. .... -
 #|                Library          | Dependant                  | Status
 #| ------------------------------- | -------------------------- | ----------------------
-RUN $PROJECT_DIR/pkgconf.sh       #|                            | Compiles in 13s
-RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango           | Compiles in 502s
-RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4                  | Compiles in 32s
-RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2,cargo-c | Compiles in 3s
-RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4                  | Compiles in 22s
-RUN $PROJECT_DIR/libexpat.sh      #| cairo                      | Compiles in 27s
-RUN $PROJECT_DIR/brotli.sh        #| cairo                      | Compiles in 28s
-RUN $PROJECT_DIR/xorgproto.sh     #| cairo,libxau               | Compiles in 4s
+# RUN $PROJECT_DIR/pkgconf.sh       #|                            | Compiles in 13s
+# RUN $PROJECT_DIR/gettext.sh       #| glib,cairo,pango           | Compiles in 502s
+# RUN $PROJECT_DIR/pcre2.sh         #| glib,gtk4                  | Compiles in 32s
+# RUN $PROJECT_DIR/zlib.sh          #| glib,cairo,libxml2,cargo-c | Compiles in 3s
+# RUN $PROJECT_DIR/libffi.sh        #| glib,gtk4                  | Compiles in 22s
+# RUN $PROJECT_DIR/libexpat.sh      #| cairo                      | Compiles in 27s
+# RUN $PROJECT_DIR/brotli.sh        #| cairo                      | Compiles in 28s
+# RUN $PROJECT_DIR/xorgproto.sh     #| cairo,libxau               | Compiles in 4s
+RUN $PROJECT_DIR/libxau.sh        #| cairo                      | Compiles in 21s
 
 
-# RUN $PROJECT_DIR/libxau.sh        #| cairo                      | Compiles in 21s
+
 # RUN $PROJECT_DIR/libxdmcp.sh      #| cairo                      | Compiles in 27s
 # RUN $PROJECT_DIR/libxcb.sh        #| cairo,x11                  | Compiles in 41s
 # RUN $PROJECT_DIR/libx11.sh        #| cairo                      | Compiles in 67s

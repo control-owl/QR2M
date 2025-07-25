@@ -85,7 +85,8 @@ fi
   ./configure \
     --prefix=$STATIC_DIR \
     --disable-shared \
-    --enable-static #\
+    --enable-static 
+#\
 #    --enable-nls \
 #    --with-pic \
 #    --disable-java \
