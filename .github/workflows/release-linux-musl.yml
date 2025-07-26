@@ -50,7 +50,7 @@ jobs:
       - name: "Build with Docker"
         run: |
           mkdir -p ${{ env.OUTPUT_DIR }}
-          docker build -t qr2m-musl-builder -f docker/Dockerfile .
+          docker build -t qr2m-musl-builder -f docker/Dockerfile_multi .
 
       - name: "Extract version number"
         run: |
