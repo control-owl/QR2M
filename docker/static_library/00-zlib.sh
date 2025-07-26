@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git --depth 1 libxau
+  git clone https://github.com/madler/zlib.git --depth 1 zlib
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -52,16 +52,16 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libxau
+cd zlib
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./autogen.sh \
-    --enable-static \
+  ./configure \
+    --static \
     --disable-shared \
-    --prefix=$STATIC_DIR
-  } 2>&1 | tee -a "$LOG_FILE"
+    --prefix="$STATIC_DIR"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -83,10 +83,9 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{ 
+{
   make install
 } 2>&1 | tee -a "$LOG_FILE"
-
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -96,7 +95,10 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  compiled_files=()
+  compiled_files=(
+    "libz.a"
+    "zlib.pc"
+  )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"

@@ -32,7 +32,7 @@ export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
   needed_files=()
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -43,8 +43,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/google/brotli.git --depth 1 brotli
-} 2>&1 | tee "$LOG_FILE"
+  git clone https://github.com/ebassi/graphene.git --depth 1 graphene
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -52,28 +52,20 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd brotli
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-{
-  cmake \
-    -DCMAKE_INSTALL_PREFIX=$STATIC_DIR \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_C_FLAGS="$CFLAGS" \
-    -DBROTLI_DISABLE_TESTS=ON
-} 2>&1 | tee "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
+cd graphene
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make -j"$(nproc)"
-} 2>&1 | tee "$LOG_FILE"
+  meson setup builddir \
+    --prefix=$STATIC_DIR \
+    --default-library=static \
+    -Dgtk_doc=false \
+    -Dtests=false \
+    -Dinstalled_tests=false
+
+#    -Dintrospection=disabled \
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -84,8 +76,21 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make install
-} 2>&1 | tee "$LOG_FILE"
+  ninja -C builddir
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  ninja -C builddir install
+} 2>&1 | tee -a "$LOG_FILE"
+
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -96,12 +101,8 @@ fi
 
 {
   compiled_files=(
-    "libbrotlidec.a"
-    "libbrotlienc.a"
-    "libbrotlicommon.a"
-    "libbrotlidec.pc"
-    "libbrotlienc.pc"
-    "libbrotlicommon.pc"
+    "libgraphene-1.0.a"
+    "graphene-1.0.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

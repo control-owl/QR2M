@@ -30,15 +30,11 @@ cd "$CIRCUS"
 
 {
   pc_files=(
-    "libcurl.pc"
-    "libxml-2.0.pc"
-    "libeconf.pc"
-    "libunistring.pc"
-    "liblzma.pc"
+    "x11.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -49,8 +45,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/ximion/appstream.git --depth 1 appstream
-} 2>&1 | tee "$LOG_FILE"
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxrender.git --depth 1 libxrender
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -58,29 +54,13 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd appstream
+cd libxrender
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  meson setup builddir \
-    --prefix="$STATIC_DIR" \
-    --default-library=static \
-    -Dstemming=false \
-    -Dsystemd=false \
-    -Dvapi=false \
-    -Dqt=false \
-    -Dcompose=false \
-    -Dapt-support=false \
-    -Dgir=false \
-    -Dsvg-support=false \
-    -Dzstd-support=false \
-    -Ddocs=false \
-    -Dapidocs=false \
-    -Dinstall-docs=false \
-    -Dmaintainer=false \
-    -Dstatic-analysis=false 
-} 2>&1 | tee "$LOG_FILE"
+  ./autogen.sh
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -91,8 +71,11 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir
-} 2>&1 | tee "$LOG_FILE"
+  ./configure \
+    --enable-static \
+    --disable-shared \
+    --prefix=$STATIC_DIR
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -103,8 +86,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir install
-} 2>&1 | tee "$LOG_FILE"
+  make -j"$(nproc)"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -114,4 +97,32 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "appstream compiled and installed successfully"
+{
+  make install
+} 2>&1 | tee -a "$LOG_FILE"
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  compiled_files=(
+    "libXrender.a"
+    "xrender.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+echo "$(basename "$0") compiled and installed successfully"

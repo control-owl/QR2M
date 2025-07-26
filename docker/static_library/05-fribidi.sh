@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/madler/zlib.git --depth 1 zlib
+  git clone https://github.com/fribidi/fribidi.git --depth 1 fribidi
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -52,15 +52,24 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd zlib
+cd fribidi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./configure \
-    --static \
-    --disable-shared \
-    --prefix=$STATIC_DIR
+  meson setup builddir \
+    -Dprefix="$STATIC_DIR" \
+    -Ddefault_library=static \
+    -Ddocs=false \
+    -Dtests=false
+
+#\
+#    -Ddeprecated=false \
+#    -Dbin=false \
+#    -Dfuzzer_ldflags='' \
+#    -Dbuildtype=release \
+#    -Dc_args='-O2 -fno-semantic-interposition' \
+#    -Dpkg_config_path="$STATIC_DIR/lib/pkgconfig"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -72,7 +81,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make -j"$(nproc)"
+  ninja -C builddir
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -84,8 +93,9 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make install
+  ninja -C builddir install
 } 2>&1 | tee -a "$LOG_FILE"
+
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -96,8 +106,9 @@ fi
 
 {
   compiled_files=(
-    "libz.a"
-    "zlib.pc"
+    "libfribidi.a"
+    "fribidi.pc"
+    "fribidi"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

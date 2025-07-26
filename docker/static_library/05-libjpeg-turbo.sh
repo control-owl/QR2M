@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libffi/libffi.git --depth 1 libffi
+  git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git --depth 1 libjpeg-turbo
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -52,26 +52,15 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libffi
+cd libjpeg-turbo
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
-  ./autogen.sh
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./configure \
-    --disable-shared \
-    --prefix="$STATIC_DIR"
+  mkdir -p builddir
+  cd builddir
+  cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DENABLE_SHARED=0 ..
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -83,7 +72,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make -j"$(nproc)"
+  make -j"$(nproc)" -C builddir
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -95,9 +84,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make install
+  make install -C builddir
 } 2>&1 | tee -a "$LOG_FILE"
-
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -108,8 +96,10 @@ fi
 
 {
   compiled_files=(
-    "libffi.a"
-    "libffi.pc"
+    "libjpeg.a"
+    "libturbojpeg.a"
+    "libjpeg.pc"
+    "libturbojpeg.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
@@ -124,4 +114,3 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 echo "$(basename "$0") compiled and installed successfully"
-

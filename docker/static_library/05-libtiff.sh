@@ -23,17 +23,14 @@ export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   needed_files=(
-    "libpcre2-8.pc"
-    "libffi.pc"
     "zlib.pc"
-#    "libintl.pc" Missing!
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
@@ -48,7 +45,21 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone --depth 1 --no-tags https://gitlab.gnome.org/GNOME/glib.git --depth 1 glib
+  git clone https://github.com/libsdl-org/libtiff.git --depth 1 libtiff
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+cd libtiff
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  sed -i 's/--timeout=5/--timeout=60/' autogen.sh
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -60,29 +71,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git -C glib submodule update --init --recursive
-  meson subprojects download --sourcedir glib
-  cd glib
-
-  meson setup builddir \
-    -Dprefix="$STATIC_DIR" \
-    -Ddefault_library=static \
-    -Dtests=false \
-    -Ddocumentation=false \
-    -Dman-pages=disabled \
-    -Dlibmount=disabled \
-    -Dselinux=disabled \
-    -Dnls=disabled \
-    -Dlibelf=disabled \
-    -Dbuildtype=release \
-    -Dxattr=false \
-    -Ddtrace=disabled \
-    -Dsystemtap=disabled \
-    -Dsysprof=disabled \
-    -Dbsymbolic_functions=true \
-    -Dforce_posix_threads=false \
-    -Dintrospection=disabled \
-    -Dfile_monitor_backend=inotify
+  ./autogen.sh
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -94,7 +83,12 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C glib/builddir
+  ./configure \
+    --enable-static \
+    --disable-shared \
+    --prefix=$STATIC_DIR \
+    --with-zlib="$STATIC_DIR"
+#    --disable-jpeg
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -106,9 +100,20 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C glib/builddir install
+  make -j"$(nproc)"
 } 2>&1 | tee -a "$LOG_FILE"
 
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  make install
+} 2>&1 | tee -a "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -119,8 +124,9 @@ fi
 
 {
   compiled_files=(
-#    "glib.a"
-#    "glib-2.0.pc"
+    "libtiff.a"
+    "libtiffxx.a"
+    "libtiff-4.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

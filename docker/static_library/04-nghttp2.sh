@@ -17,27 +17,51 @@ mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"
 mkdir -p "$STATIC_DIR"
 
-export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
-export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-
 cd "$CIRCUS"
 
+export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
+export PKG_CONFIG="pkg-config --static"
+export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz"
+export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=(
-    "libnghttp2.pc"
-    "libssl.pc"
-    "libcrypto.pc"
+  needed_files=(
     "zlib.pc"
+    "openssl.pc"
   )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_FILE"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_DIR/appstream-verify.log"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  git clone https://github.com/nghttp2/nghttp2.git --depth 1 nghttp2
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+cd nghttp2
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  autoreconf -i
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -48,22 +72,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/curl/curl --depth 1 curl
-} 2>&1 | tee "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-cd curl
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  autoreconf -fi
-} 2>&1 | tee "$LOG_FILE"
+  automake
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -74,53 +84,46 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
+  autoconf
+} 2>&1 | tee -a "$LOG_FILE"
 
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
   ./configure \
     --enable-static \
     --disable-shared \
     --prefix="$STATIC_DIR" \
-    --with-openssl \
     --with-zlib="$STATIC_DIR" \
-    --with-nghttp2="$STATIC_DIR" \
-    --enable-ipv6 \
-    --without-brotli \
-    --without-zstd \
-    --without-libidn2 \
-    --without-libpsl \
-    --without-gnutls \
-    --without-mbedtls \
-    --without-wolfssl \
-    --without-schannel \
-    --without-amissl \
-    --without-rustls \
-    --without-libssh \
-    --without-libssh2 \
-    --without-gssapi \
-    --without-gsasl \
-    --disable-tls-srp \
-    --disable-ares \
-    --disable-threaded-resolver \
-    --disable-unix-sockets \
-    --without-winidn \
-    --disable-docs \
-    --disable-manual \
-    --disable-verbose \
-    --disable-sspi \
-    --disable-ldap \
-    --disable-ldaps \
-    --disable-ipfs \
-    --disable-rtsp \
-    --without-librtmp \
-    --disable-alt-svc \
-    --disable-headers-api \
-    --disable-hsts \
-    --without-ngtcp2 \
-    --without-nghttp3 \
-    --without-quiche \
-    --without-openssl-quic \
-    --without-msh3 \
-    --with-ca-bundle=/etc/ssl/certs/ca-certificates.crt
-} 2>&1 | tee "$LOG_FILE"
+    --with-openssl="$STATIC_DIR"
+
+#    --enable-lib-only \
+#    --disable-werror \
+#    --disable-debug \
+#    --disable-threads \
+#    --disable-http3 \
+#    --without-libxml2 \
+#    --without-jansson \
+#    --without-libevent-openssl \
+#    --without-libcares \
+#    --without-wolfssl \
+#    --without-libev \
+#    --without-jemalloc \
+#    --without-systemd \
+#    --without-mruby \
+#    --without-neverbleed \
+#    --without-libngtcp2 \
+#    --without-libnghttp3 \
+#    --without-libbpf \
+#    --without-libbrotlienc \
+#    --without-libbrotlidec
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -132,7 +135,7 @@ fi
 
 {
   make -j"$(nproc)"
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -144,7 +147,7 @@ fi
 
 {
   make install
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -153,4 +156,21 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "curl compiled and installed successfully"
+{
+  compiled_files=(
+    "libnghttp2.a"
+    "libnghttp2.pc"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+echo "$(basename "$0") compiled and installed successfully"

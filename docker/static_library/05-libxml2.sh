@@ -23,24 +23,17 @@ export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-#export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz"
+export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=(
-    "glib-2.0.pc"
-    "cairo.pc"
-    "freetype2.pc"
-    "fontconfig.pc"
-    "fribidi.pc"
-    "harfbuzz.pc"
-    "libintl.a"
+  needed_files=(
+    "zlib.pc"
   )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -52,7 +45,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/GNOME/pango.git --depth 1 pango
+  git clone https://github.com/GNOME/libxml2.git --depth 1 libxml2
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -61,23 +54,12 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd pango
+cd libxml2
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  meson setup builddir \
-    --default-library static \
-    --prefix=$STATIC_DIR \
-    -Ddocumentation=false \
-    -Dman-pages=false \
-    -Dintrospection=disabled \
-    -Dbuild-testsuite=false \
-    -Dbuild-examples=false \
-    -Dsysprof=disabled \
-    -Dlibthai=disabled \
-    -Dfreetype=disabled \
-    -Dxft=disabled
+  ./autogen.sh
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -89,7 +71,44 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir
+  ./configure \
+    --enable-static \
+    --disable-shared \
+    --prefix="$STATIC_DIR" \
+    --with-zlib="$STATIC_DIR"
+
+#    --with-sax1 \
+#    --with-xpath \
+#    --with-xinclude \
+#    --with-reader \
+#    --with-writer \
+#    --with-output \
+#    --with-push \
+#    --with-valid \
+#    --with-catalog \
+#    --with-regexps \
+#    --with-threads \
+#    --without-c14n \
+#    --without-html \
+#    --without-schemas \
+#    --without-schematron \
+#    --without-pattern \
+#    --without-xptr \
+#    --without-modules \
+#    --without-python \
+#    --without-icu \
+#    --without-iconv \
+#    --without-iso8859x \
+#    --without-lzma \
+#    --without-history \
+#    --without-readline \
+#    --without-debug \
+#    --without-docs \
+#    --without-thread-alloc \
+#    --without-http \
+#    --without-minimum \
+#    --without-legacy \
+#    --disable-werror
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -101,7 +120,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir install
+  make -j"$(nproc)"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -112,11 +131,21 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+{
+  make install
+} 2>&1 | tee -a "$LOG_FILE"
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   compiled_files=(
-#    "libXdmcp.a"
-#    "xdmcp.pc"
+    "libxml2.a"
+    "libxml-2.0.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

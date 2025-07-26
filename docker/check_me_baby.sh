@@ -37,8 +37,8 @@ fi
 echo "Checking files for $(basename "${BASH_SOURCE[1]}"):" | tee -a "$log_file"
 
 declare -A search_paths=(
-  [pc]="$STATIC_DIR/lib/pkgconfig $STATIC_DIR/share/pkgconfig"
-  [a]="$STATIC_DIR $STATIC_DIR/lib $STATIC_DIR/lib/pkgconfig $STATIC_DIR/shared $STATIC_DIR/include"
+  [pc]="$STATIC_DIR/lib/pkgconfig $STATIC_DIR/lib64/pkgconfig $STATIC_DIR/share/pkgconfig"
+  [a]="$STATIC_DIR $STATIC_DIR/lib $STATIC_DIR/lib64 $STATIC_DIR/lib/pkgconfig $STATIC_DIR/shared $STATIC_DIR/include"
   [default]="$STATIC_DIR/bin"
 )
 

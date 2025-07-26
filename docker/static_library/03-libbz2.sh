@@ -17,26 +17,22 @@ mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"
 mkdir -p "$STATIC_DIR"
 
-export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
-export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-
 cd "$CIRCUS"
 
+export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
+export PKG_CONFIG="pkg-config --static"
+export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
+export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=(
-    "freetype2.pc"
-    "expat.pc"
-    "bzip2.pc"
-  )
+  needed_files=()
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
-} 2>&1 | tee "$LOG_FILE"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -47,47 +43,27 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/fontconfig/fontconfig.git --depth 1 fontconfig
-} 2>&1 | tee "$LOG_FILE"
+  git clone https://gitlab.com/bzip2/bzip2.git --depth 1 bzip2
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
+  echo "ERROR - bzip2 - 01/04 - Clone"
   exit 1
 fi
 
-cd fontconfig
+cd bzip2
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    -Dprefix="$STATIC_DIR" \
-    -Ddefault_library=static \
-    -Ddoc=disabled \
-    -Ddoc-txt=disabled \
-    -Ddoc-man=disabled \
-    -Ddoc-pdf=disabled \
-    -Ddoc-html=disabled \
-    -Dnls=disabled \
-    -Dtests=disabled \
-    -Dtools=disabled \
-    -Dcache-build=disabled \
-    -Diconv=disabled \
-    -Dxml-backend=expat \
-    -Dfontations=disabled \
-    -Ddefault-hinting=slight \
-    -Ddefault-sub-pixel-rendering=none \
-    -Dbitmap-conf=no-except-emoji \
-    -Ddefault-fonts-dirs=yes \
-    -Dadditional-fonts-dirs=yes \
-    -Dcache-dir=default \
-    -Dtemplate-dir=default \
-    -Dbaseconfig-dir=default \
-    -Dconfig-dir=default \
-    -Dxml-dir=default \
+    --default-library static \
+    --prefix=$STATIC_DIR \
+    -Ddocs=disabled \
     -Dbuildtype=release
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -99,7 +75,7 @@ fi
 
 {
   ninja -C builddir
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -111,7 +87,7 @@ fi
 
 {
   ninja -C builddir install
-} 2>&1 | tee "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -121,4 +97,23 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-echo "fontconfig compiled and installed successfully"
+
+{
+  compiled_files=(
+    "libbz2.a"
+    "bz2.pc"
+    "bzip2"
+  )
+
+  source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+echo "$(basename "$0") compiled and installed successfully"
