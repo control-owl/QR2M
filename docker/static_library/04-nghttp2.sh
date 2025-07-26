@@ -101,28 +101,27 @@ fi
     --disable-shared \
     --prefix="$STATIC_DIR" \
     --with-zlib="$STATIC_DIR" \
-    --with-openssl="$STATIC_DIR"
-
-#    --enable-lib-only \
-#    --disable-werror \
-#    --disable-debug \
-#    --disable-threads \
-#    --disable-http3 \
-#    --without-libxml2 \
-#    --without-jansson \
-#    --without-libevent-openssl \
-#    --without-libcares \
-#    --without-wolfssl \
-#    --without-libev \
-#    --without-jemalloc \
-#    --without-systemd \
-#    --without-mruby \
-#    --without-neverbleed \
-#    --without-libngtcp2 \
-#    --without-libnghttp3 \
-#    --without-libbpf \
-#    --without-libbrotlienc \
-#    --without-libbrotlidec
+    --with-openssl="$STATIC_DIR" \
+    --enable-lib-only \
+    --disable-werror \
+    --disable-debug \
+    --disable-threads \
+    --disable-http3 \
+    --without-libxml2 \
+    --without-jansson \
+    --without-libevent-openssl \
+    --without-libcares \
+    --without-wolfssl \
+    --without-libev \
+    --without-jemalloc \
+    --without-systemd \
+    --without-mruby \
+    --without-neverbleed \
+    --without-libngtcp2 \
+    --without-libnghttp3 \
+    --without-libbpf \
+    --without-libbrotlienc \
+    --without-libbrotlidec
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

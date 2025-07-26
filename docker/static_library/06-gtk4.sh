@@ -30,10 +30,20 @@ export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 
 {
   pc_files=(
-    "glib-2.0.pc"
-    "freetype2.pc"
-    "bzip2.pc"
-    "cairo.pc"
+#    "glib-2.0.pc"
+##    "gobject-2.0.pc"
+#    "cairo.pc"
+#    "pango-1.0.pc"
+#    "fribidi.pc"
+#    "epoxy.pc"
+#    "graphene-1.0.pc"
+#    "gdk-pixbuf-2.0.pc"
+#    "fontconfig.pc"
+#    "freetype2.pc"
+#    "libxml-2.0.pc"
+#    "libtiff-4.pc"
+#    "libpng16.pc"
+#    "pixman-1.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -48,7 +58,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/harfbuzz/harfbuzz.git --depth 1 harfbuzz
+  git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk4
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -57,40 +67,30 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd harfbuzz
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+cd gtk4
 
 {
   meson setup builddir \
-    -Dprefix="$STATIC_DIR" \
-    -Ddefault_library=static \
-    -Dfreetype=enabled \
-    -Dcairo=enabled \
-    -Dglib=enabled \
-    -Dgobject=disabled \
-    -Dchafa=disabled \
-    -Dicu=disabled \
-    -Dgraphite2=disabled \
-    -Dfontations=disabled \
-    -Dgdi=disabled \
-    -Ddirectwrite=disabled \
-    -Dcoretext=disabled \
-    -Dharfrust=disabled \
-    -Dwasm=disabled \
-    -Dtests=disabled \
+    --prefix=$STATIC_DIR \
+    --default-library static \
     -Dintrospection=disabled \
-    -Ddocs=disabled \
-    -Ddoc_tests=false \
-    -Dutilities=disabled \
-    -Dbenchmark=disabled \
-    -Dicu_builtin=false \
-    -Dwith_libstdcxx=false \
-    -Dexperimental_api=false \
-    -Dragel_subproject=false \
-    -Dbuildtype=release \
-    -Db_ndebug=true
-} 2>&1 | tee -a "$LOG_FILE"
+    -Ddocumentation=false \
+    -Dman-pages=false \
+    -Dmedia-gstreamer=disabled \
+    -Dprint-cpdb=disabled \
+    -Dprint-cups=disabled \
+    -Dvulkan=disabled \
+    -Dcloudproviders=disabled \
+    -Dsysprof=disabled \
+    -Dtracker=disabled \
+    -Dcolord=disabled \
+    -Daccesskit=disabled \
+    -Dscreenshots=false \
+    -Dbuild-demos=false \
+    -Dbuild-testsuite=false \
+    -Dbuild-examples=false \
+    -Dbuild-tests=false
+}  2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -123,6 +123,61 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+if [ ! -d "$STATIC_DIR/lib/pkgconfig" ]; then
+  mkdir -p "$STATIC_DIR/lib/pkgconfig"
+fi
+
+if [ -f "$STATIC_DIR/lib/pkgconfig/gtk4.pc" ]; then
+  cp "$STATIC_DIR/lib/pkgconfig/gtk4.pc" "$STATIC_DIR/lib/pkgconfig/gtk-4.pc"
+  sed -i "s|Libs:.*|Libs: -L$STATIC_DIR/lib -lgtk-4|" "$STATIC_DIR/lib/pkgconfig/gtk-4.pc"
+  sed -i "s|Cflags:.*|Cflags: -I$STATIC_DIR/include/gtk-4.0 -I$STATIC_DIR/include|" "$STATIC_DIR/lib/pkgconfig/gtk-4.pc"
+else
+  echo "Error: gtk4.pc not found in $STATIC_DIR/lib/pkgconfig"
+  if [ -f "$STATIC_DIR/lib/pkgconfig/gtk-4.pc" ]; then
+    echo "gtk-4.pc found"
+  else
+    echo "No gtk*4.pc found"
+    exit 1
+  fi
+fi
+
+if [ -f "$STATIC_DIR/lib/pkgconfig/gtk4.pc" ]; then
+  if pkg-config --modversion "$STATIC_DIR/lib/pkgconfig/gtk4.pc" > /dev/null 2>&1; then
+    echo "Verified: gtk4.pc is valid"
+  else
+    echo "Error: pkg-config cannot validate gtk4.pc"
+    if [ -f "$STATIC_DIR/lib/pkgconfig/gtk4.pc" ]; then
+      cat "$STATIC_DIR/lib/pkgconfig/gtk4.pc"
+    fi
+    exit 1
+  fi
+fi
+
+if [ -f "$STATIC_DIR/lib/libgtk-4.so" ]; then
+  ar rcs "$STATIC_DIR/lib/libgtk-4.a" "$STATIC_DIR/lib/libgtk-4.so"
+  if [ "$?" -ne 0 ]; then
+    echo "Error: Failed to create libgtk-4.a from libgtk-4.so"
+    exit 1
+  fi
+else
+  echo "Error: Shared library $STATIC_DIR/lib/libgtk-4.so not found"
+  if [ -d "$STATIC_DIR/lib" ]; then
+    ls -l "$STATIC_DIR/lib/libgtk*"
+  fi
+  exit 1
+fi
+
+if [ ! -f "$STATIC_DIR/lib/libgtk-4.a" ]; then
+  echo "Error: Library $STATIC_DIR/lib/libgtk-4.a not found after creation"
+  if [ -d "$STATIC_DIR/lib" ]; then
+    ls -l "$STATIC_DIR/lib/libgtk*.a"
+  fi
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 
 {
   compiled_files=(

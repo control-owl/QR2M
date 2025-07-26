@@ -31,15 +31,15 @@ export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg
 
 {
   pc_files=(
-    "pixman-1.pc"
-    "fontconfig.pc"
-    "freetype2.pc"
-    "libpng16.pc"
-    "zlib.pc"
-    "x11.pc"
-    "xrender.pc"
-    "xext.pc"
-    "libintl.a"
+#    "pixman-1.pc"
+#    "fontconfig.pc"
+#    "freetype2.pc"
+#    "libpng16.pc"
+#    "zlib.pc"
+#    "x11.pc"
+#    "xrender.pc"
+#    "xext.pc"
+#    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"

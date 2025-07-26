@@ -85,36 +85,34 @@ fi
   ./configure \
     --prefix=$STATIC_DIR \
     --disable-shared \
-    --enable-static 
-#\
-#    --enable-nls \
-#    --with-pic \
-#    --disable-java \
-#    --disable-csharp \
-#    --disable-c++ \
-#    --disable-modula2 \
-#    --disable-libasprintf \
-#    --disable-curses \
-#    --disable-openmp \
-#    --disable-acl \
-#    --disable-xattr \
-#    --with-included-libunistring \
-#    --with-included-gettext \
-#    --with-included-libxml \
-#    --without-libncurses-prefix \
-#    --without-libtermcap-prefix \
-#    --without-libxcurses-prefix \
-#    --without-libcurses-prefix \
-#    --without-libtextstyle-prefix \
-#    --without-libsmack \
-#    --without-selinux \
-#    --without-emacs \
-#    --without-git \
-#    --without-bzip2 \
-#    --without-xz \
-#    --disable-dependency-tracking \
-#    --enable-fast-install \
-#    --disable-rpath
+    --enable-static \
+    --with-pic \
+    --disable-java \
+    --disable-csharp \
+    --disable-c++ \
+    --disable-modula2 \
+    --disable-libasprintf \
+    --disable-curses \
+    --disable-openmp \
+    --disable-acl \
+    --disable-xattr \
+    --with-included-libunistring \
+    --with-included-gettext \
+    --with-included-libxml \
+    --without-libncurses-prefix \
+    --without-libtermcap-prefix \
+    --without-libxcurses-prefix \
+    --without-libcurses-prefix \
+    --without-libtextstyle-prefix \
+    --without-libsmack \
+    --without-selinux \
+    --without-emacs \
+    --without-git \
+    --without-bzip2 \
+    --without-xz \
+    --disable-dependency-tracking \
+    --enable-fast-install \
+    --disable-rpath
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

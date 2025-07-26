@@ -69,21 +69,20 @@ fi
     -Ddefault_library=static \
     -Dtests=false \
     -Ddocumentation=false \
-    -Dman-pages=disabled
-#\
-#    -Dlibmount=disabled \
-#    -Dselinux=disabled \
-#    -Dnls=disabled \
-#    -Dlibelf=disabled \
-#    -Dbuildtype=release \
-#    -Dxattr=false \
-#    -Ddtrace=disabled \
-#    -Dsystemtap=disabled \
-#    -Dsysprof=disabled \
-#    -Dbsymbolic_functions=true \
-#    -Dforce_posix_threads=false \
-#    -Dintrospection=disabled \
-#    -Dfile_monitor_backend=inotify
+    -Dman-pages=disabled \
+    -Dlibmount=disabled \
+    -Dselinux=disabled \
+    -Dnls=disabled \
+    -Dlibelf=disabled \
+    -Dbuildtype=release \
+    -Dxattr=false \
+    -Ddtrace=disabled \
+    -Dsystemtap=disabled \
+    -Dsysprof=disabled \
+    -Dbsymbolic_functions=true \
+    -Dforce_posix_threads=false \
+    -Dintrospection=disabled \
+    -Dfile_monitor_backend=inotify
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

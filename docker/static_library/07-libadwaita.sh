@@ -25,20 +25,13 @@ export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-export PATH="/usr/bin:/home/QR2M/compile-circus/STATIC/bin:$PATH"
-export ZLIB_STATIC=1
-export PKG_CONFIG_zlib_STATIC="true"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   pc_files=(
-    "glib-2.0.pc"
-    "gobject-2.0.pc"
-    "cairo.pc"
-    "pango-1.0.pc"
-    "libxml-2.0.pc"
-    "gdk-pixbuf-2.0.pc"
+#    "gtk4.pc"
+#    "appstream.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -53,7 +46,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
+  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -62,20 +55,21 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd librsvg
+cd libadwaita
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
+    --default-library static \
     --prefix=$STATIC_DIR \
-    -Ddefault_library=static \
-    -Ddocs=disabled \
-    -Dtests=false \
-    -Davif=disabled \
-    -Dpixbuf-loader=disabled \
-    -Dvala=disabled
-} 2>&1 | tee -a "$LOG_FILE"
+    -Dexamples=false \
+    -Dgtk_doc=false \
+    -Ddocumentation=false \
+    -Dintrospection=disabled \
+    -Dvapi=false \
+    -Dtests=false
+}  2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -86,9 +80,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
-  ninja -C builddir
-} 2>&1 | tee -a "$LOG_FILE"
+  ninja -C builddir 2>&1
+} | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then

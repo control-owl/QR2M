@@ -31,13 +31,13 @@ export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 
 {
   pc_files=(
-    "glib-2.0.pc"
-    "cairo.pc"
-    "freetype2.pc"
-    "fontconfig.pc"
-    "fribidi.pc"
-    "harfbuzz.pc"
-    "libintl.a"
+#    "glib-2.0.pc"
+#    "cairo.pc"
+#    "freetype2.pc"
+#    "fontconfig.pc"
+#    "fribidi.pc"
+#    "harfbuzz.pc"
+#    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"

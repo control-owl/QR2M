@@ -51,9 +51,6 @@ jobs:
         run: |
           mkdir -p ${{ env.OUTPUT_DIR }}
           docker build -t qr2m-musl-builder -f docker/Dockerfile .
-          #docker run --rm -v ${{ github.workspace }}:/usr/src/app -w /usr/src/app qr2m-musl-builder
-          echo "Listing output directory on host:"
-          ls -l ${{ env.OUTPUT_DIR }}
 
       - name: "Extract version number"
         run: |

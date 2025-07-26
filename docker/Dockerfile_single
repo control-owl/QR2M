@@ -42,10 +42,12 @@ RUN chmod +x $PROJECT_DIR/*.sh
 RUN $PROJECT_DIR/00-pkgconf.sh       #|                            | Compiles in 8s
 RUN $PROJECT_DIR/00-zlib.sh          #|                            | Compiles in 3s
 
+
 RUN $PROJECT_DIR/01-gettext.sh       #|                            | Compiles in 475s
 RUN $PROJECT_DIR/01-libffi.sh        #|                            | Compiles in 20s
 RUN $PROJECT_DIR/01-pcre2.sh         #|                            | Compiles in 26s
 RUN $PROJECT_DIR/01-glib.sh          #| pcre2,libffi,gettext,zlib  | Compiles in 69s
+
 
 RUN $PROJECT_DIR/02-xorgproto.sh     #|                            | Compiles in 4s
 RUN $PROJECT_DIR/02-libxau.sh        #| xorgproto                  | Compiles in 19s
@@ -55,15 +57,18 @@ RUN $PROJECT_DIR/02-libx11.sh        #| libxcb                     | Compiles in
 RUN $PROJECT_DIR/02-libxrender.sh    #| libx11                     | Compiles in 26s
 RUN $PROJECT_DIR/02-libxext.sh       #| libx11                     | Compiles in 30s
 
+
 RUN $PROJECT_DIR/03-libexpat.sh      #|                            | Compiles in 27s
 RUN $PROJECT_DIR/03-libbz2.sh        #|                            | Compiles in 6s
 RUN $PROJECT_DIR/03-freetype.sh      #| zlib                       | Compiles in 26s
 RUN $PROJECT_DIR/03-fontconfig.sh    #| freetype,libbz2,libexpat   | Compiles in 29s
 
+
 RUN $PROJECT_DIR/04-openssl.sh       #| zlib                       | Compiles in 305s
 RUN $PROJECT_DIR/04-nghttp2.sh       #| zlib,openssl               | Compiles in 35s
 RUN $PROJECT_DIR/04-curl.sh          #| zlib,openssl,nghttp2       | Compiles in 69s
 RUN $PROJECT_DIR/04-cargo-c.sh       #| openssl                    | Compiles in 479s
+
 
 RUN $PROJECT_DIR/05-libpng.sh        #| zlib                       | Compiles in 15s
 RUN $PROJECT_DIR/05-libxml2.sh       #| zlib                       | Compiles in 41s
@@ -77,15 +82,18 @@ RUN $PROJECT_DIR/05-libepoxy.sh      #|                            | Compiles in
 RUN $PROJECT_DIR/05-brotli.sh        #|                            | Compiles in 28s
 RUN $PROJECT_DIR/05-xz.sh            #|                            | Compiles in 41s
 RUN $PROJECT_DIR/05-libunistring.sh  #|                            | Compiles in 354s
-RUN $PROJECT_DIR/05-gdk-pixbuf.sh    #| glib,pcre2,libffi,libpng,libjpeg | Checked, fail
-RUN $PROJECT_DIR/05-appstream.sh     #| curl,libxml2,libeconf,libunistring | Compiles in 29s
+RUN $PROJECT_DIR/05-gdk-pixbuf.sh    #| glib,pcre2,ffi,png,jpeg    | Checked, fail
+RUN $PROJECT_DIR/05-appstream.sh     #| curl,xml2,econf,unistring  | Compiles in 29s
 
-RUN $PROJECT_DIR/cairo.sh         #|                      | Compiles in 30s
-RUN $PROJECT_DIR/pango.sh         #|                     | Compiles in 17s
-RUN $PROJECT_DIR/harfbuzz.sh      #|                      | Compiles in 104s
-RUN $PROJECT_DIR/gtk4.sh          #|                        | Compiles in 232s
-RUN $PROJECT_DIR/libadwaita.sh    #|                        | Compiles in 45s
-RUN $PROJECT_DIR/librsvg.sh       #|                        | Missing pkg-config ???
+
+RUN $PROJECT_DIR/06-cairo.sh         #|                            | Compiles in 30s
+RUN $PROJECT_DIR/06-pango.sh         #|                            | Compiles in 17s
+RUN $PROJECT_DIR/06-harfbuzz.sh      #|                            | Compiles in 104s
+RUN $PROJECT_DIR/06-gtk4.sh          #|                            | Compiles in 232s
+
+
+RUN $PROJECT_DIR/07-libadwaita.sh    #|                            | Compiles in 45s
+RUN $PROJECT_DIR/07-librsvg.sh       #|                            | Missing pkg-config ???
 
 # FROM rust:alpine AS build_project
 # 
