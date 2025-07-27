@@ -32,7 +32,6 @@ export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
   pc_files=(
     "glib-2.0.pc"
     "freetype2.pc"
-    "bzip2.pc"
     "cairo.pc"
   )
 
@@ -66,7 +65,6 @@ cd harfbuzz
     -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
     -Dfreetype=enabled \
-    -Dgobject=disabled \
     -Dchafa=disabled \
     -Dicu=disabled \
     -Dgraphite2=disabled \

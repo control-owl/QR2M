@@ -60,7 +60,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-    "$STATIC_DIR/bin/cargo-cbuild" --version
+  "$STATIC_DIR/bin/cargo-cbuild" --version
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

@@ -32,7 +32,7 @@ export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
   pc_files=(
     "glib-2.0.pc"
     "cairo.pc"
-    "pango-1.0.pc"
+    "pango.pc"
     "fribidi.pc"
     "epoxy.pc"
     "graphene-1.0.pc"

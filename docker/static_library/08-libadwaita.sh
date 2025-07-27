@@ -30,8 +30,8 @@ export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg
 
 {
   pc_files=(
-#    "gtk4.pc"
-#    "appstream.pc"
+    "gtk4.pc"
+    "appstream.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -105,8 +105,8 @@ fi
 
 {
   compiled_files=(
-#    "libXdmcp.a"
-#    "xdmcp.pc"
+    "libadwaita-1.a"
+    "libadwaita-1.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

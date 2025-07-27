@@ -20,22 +20,27 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+#export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -L/home/QR2M/compile-circus/STATIC/lib64 -lz -latomic"
+export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-L/home/QR2M/compile-circus/STATIC/lib64"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  needed_files=(
-    "libpcre2-8.pc"
-    "libffi.pc"
-    "zlib.pc"
+  pc_files=(
+    "glib-2.0.pc"
+    "cairo.pc"
+    "pango.pc"
+    "libxml-2.0.pc"
+    "gobject-2.0.pc"
+    "gdk-pixbuf-2.0.pc"
+    "freetype2.pc"
   )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -47,7 +52,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone --depth 1 --no-tags https://gitlab.gnome.org/GNOME/glib.git --depth 1 glib
+  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -56,32 +61,20 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
+cd librsvg
+
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git -C glib submodule update --init --recursive
-  meson subprojects download --sourcedir glib
-  cd glib
-
   meson setup builddir \
-    -Dprefix="$STATIC_DIR" \
+    --prefix=$STATIC_DIR \
     -Ddefault_library=static \
+    -Ddocs=disabled \
     -Dtests=false \
-    -Ddocumentation=false \
-    -Dman-pages=disabled \
-    -Dlibmount=disabled \
-    -Dselinux=disabled \
-    -Dnls=disabled \
-    -Dlibelf=disabled \
-    -Dbuildtype=release \
-    -Dxattr=false \
-    -Ddtrace=disabled \
-    -Dsystemtap=disabled \
-    -Dsysprof=disabled \
-    -Dbsymbolic_functions=true \
-    -Dforce_posix_threads=false \
-    -Dintrospection=disabled \
-    -Dfile_monitor_backend=inotify
+    -Davif=disabled \
+    -Dpixbuf-loader=disabled \
+    -Dvala=disabled \
+    -Dtriplet=x86_64-unknown-linux-musl
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -93,7 +86,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C glib/builddir
+  ninja -C builddir
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -105,7 +98,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C glib/builddir install
+  ninja -C builddir install
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -118,8 +111,8 @@ fi
 
 {
   compiled_files=(
-#    "glib.a"
-    "glib-2.0.pc"
+#    "libXdmcp.a"
+#    "xdmcp.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

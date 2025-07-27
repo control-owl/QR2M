@@ -19,27 +19,24 @@ mkdir -p "$STATIC_DIR"
 
 cd "$CIRCUS"
 
-#export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-#export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-#export PKG_CONFIG="pkg-config --static"
-#export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-#export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
+export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+export PKG_CONFIG="pkg-config --static"
+export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 #export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-#export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=(
-    "glib-2.0.pc"
-    "cairo.pc"
-    "pango.pc"
-    "libxml-2.0.pc"
-    "gobject-2.0.pc"
-    "gdk-pixbuf-2.0.pc"
+  needed_files=(
+#    "libcurl.pc"
+#    "libxml-2.0.pc"
+#    "libeconf.pc"
+#    "libunistring.a"
   )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -51,7 +48,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
+  git clone https://github.com/KhronosGroup/Vulkan-Loader.git --depth 1 vulkan
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -60,19 +57,14 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd librsvg
+cd vulkan
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  meson setup builddir \
-    --prefix=$STATIC_DIR \
-    -Ddefault_library=static \
-    -Ddocs=disabled \
-    -Dtests=false \
-    -Davif=disabled \
-    -Dpixbuf-loader=disabled \
-    -Dvala=disabled
+  mkdir builddir
+  cd builddir
+  cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -84,7 +76,6 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
   ninja -C builddir
 } 2>&1 | tee -a "$LOG_FILE"
 
@@ -110,8 +101,10 @@ fi
 
 {
   compiled_files=(
-#    "libXdmcp.a"
-#    "xdmcp.pc"
+    "libxmlb.a"
+    "libvulkan.a"
+    "xmlb.pc"
+    "vulkan.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

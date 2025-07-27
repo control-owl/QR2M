@@ -10,7 +10,8 @@ WORKDIR $PROJECT_DIR
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories && \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
     apk update && \
-    apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool gcc g++
+    apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf \
+        automake libtool gcc g++ clang flex-dev flex-libs gawk rustc-dev
 
 COPY docker/check_me_baby.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/check_me_baby.sh
@@ -87,9 +88,10 @@ RUN $PROJECT_DIR/04-fontconfig.sh    #| Compiles in 29s
 
 FROM base_system AS cargo_c
 
-RUN apk add zlib-dev openssl-dev nghttp2-dev curl-dev util-linux-dev \
-    docbook-xml docbook-xsl gettext-dev gettext-libs uutils-coreutils \
-    gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata appstream-dev appstream-glib-dev curl-dev dbus desktop-file-utils docbook-xml docbook-xsl gettext-dev gettext-libs gnu-libiconv-dev gnu-libiconv-libs itstool po4a py3-pip py3-pytest python3 rust-bindgen tzdata uutils-coreutils util-linux-dev util-linux-static yaml-dev yaml-static
+RUN apk add zlib-dev openssl-dev nghttp2-dev curl-dev util-linux-dev util-linux-static \
+    docbook-xml docbook-xsl gettext-dev gettext-libs uutils-coreutils rust-bindgen yaml-dev \
+    gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata appstream-dev appstream-glib-dev \
+    dbus desktop-file-utils
 
 COPY docker/static_library/05-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/05-*.sh
@@ -148,9 +150,7 @@ COPY --from=unistring /usr/local/bin /usr/local/bin
 COPY --from=unistring $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/07-appstream.sh     #| Compiles in 29s
-RUN $PROJECT_DIR/07-gdk-pixbuf.sh    #| fail
-
-# Testing
+RUN $PROJECT_DIR/07-gdk-pixbuf.sh    #| Compiles
 
 
 FROM base_system AS gtk4
@@ -160,7 +160,8 @@ RUN apk add \
     libxrender-dev libxrandr-dev libxfixes-dev libxcursor-dev libxi-dev \
     libxau-dev libxdmcp-dev libxcb-dev expat-dev bzip2-dev freetype-dev \
     fontconfig-dev cairo-dev pango-dev harfbuzz-dev libepoxy-dev gdk-pixbuf-dev \
-    librsvg-dev gtk4.0-dev libadwaita-dev libxkbcommon-dev libxkbcommon-static
+    librsvg-dev gtk4.0-dev libadwaita-dev libxkbcommon-dev libxkbcommon-static \
+    libunwind-dev llvm-dev graphite2-static graphite2-dev util-linux-static util-linux-dev
 
 COPY docker/static_library/08-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/08-*.sh
@@ -170,15 +171,16 @@ COPY --from=gdk_pixbuf /usr/local/bin /usr/local/bin
 COPY --from=gdk_pixbuf $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/08-cairo.sh         #| Compiles in 30s
-RUN $PROJECT_DIR/08-pango.sh         #| Compiles in 17s
 RUN $PROJECT_DIR/08-harfbuzz.sh      #| Compiles in 104s
+RUN $PROJECT_DIR/08-pango.sh         #| Compiles in 17s
 RUN $PROJECT_DIR/08-gtk4.sh          #| Compiles in 232s
+RUN $PROJECT_DIR/08-libadwaita.sh    #| Compiles in 45s
+RUN $PROJECT_DIR/08-librsvg.sh       #| Compiles
 
 
+FROM base_system AS project_deps
 
-FROM base_system AS libadwaita
-
-RUN apk add librsvg-dev libadwaita-dev rustc-dev libunwind-dev
+RUN apk add vulkan-loader-dev
 
 COPY docker/static_library/09-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/09-*.sh
@@ -187,17 +189,31 @@ COPY --from=gtk4 /usr/local/lib /usr/local/lib
 COPY --from=gtk4 /usr/local/bin /usr/local/bin
 COPY --from=gtk4 $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/09-libadwaita.sh    #| Compiles in 45s
-RUN $PROJECT_DIR/09-librsvg.sh       #| Missing pkg-config
-
+RUN $PROJECT_DIR/09-vulkan.sh       #|
 
 FROM base_system AS compile_circus
+
+RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
+        openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
+        libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
+        libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
+        brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest \
+        pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev musl-locales \
+        libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
+        util-linux-static libxcb-dev gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
+        xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
+        xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
+        yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev libxml2-utils \
+        c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
+        curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
+        py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
+        gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev gcc g++
 
 COPY docker/compile_circus.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/compile_circus.sh
 
-COPY --from=libadwaita /usr/local/lib /usr/local/lib
-COPY --from=libadwaita /usr/local/bin /usr/local/bin
-COPY --from=libadwaita $PROJECT_DIR $PROJECT_DIR
+COPY --from=project_deps /usr/local/lib /usr/local/lib
+COPY --from=project_deps /usr/local/bin /usr/local/bin
+COPY --from=project_deps $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/compile_circus.sh

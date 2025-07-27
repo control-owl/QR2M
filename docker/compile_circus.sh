@@ -16,30 +16,31 @@ OUTPUT_DIR="$BUILD_PATH/release"
 OUTPUT="false"
 CIRCUS="/home/QR2M/compile-circus"
 LOG_DIR="$CIRCUS/LOG"
+LOG_FILE="$LOG_DIR/$(basename "$0").log"
 STATIC_DIR="$CIRCUS/STATIC"
 
 mkdir -p "$CIRCUS"
 mkdir -p "$LOG_DIR"
 mkdir -p "$STATIC_DIR"
 
+cd "$CIRCUS"
+
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
+#export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-
-cd "$CIRCUS"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -L/home/QR2M/compile-circus/STATIC/lib64"
+export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-L/home/QR2M/compile-circus/STATIC/lib64"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   git clone https://github.com/control-owl/QR2M.git --depth 1 QR2M
-} 2>&1 | tee "$LOG_DIR/qr2m-01-clone.log"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_DIR/qr2m-01-clone.log"
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -49,11 +50,11 @@ cd QR2M
 
 {
   cargo build --release --target "$TARGET" --features "$FEATURES" --locked -vv
-} 2>&1 | tee "$LOG_DIR/qr2m-02-build.log"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/qr2m-02-build.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -64,11 +65,11 @@ ls -l "$BUILD_PATH/release"
 
 {
   cargo test --release --locked - --no-fail-fast --target "$TARGET" -vv --features "offline" # "$FEATURES"
-} 2>&1 | tee "$LOG_DIR/qr2m-03-test.log"
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
-  cat $LOG_DIR/qr2m-03-test.log
+  cat "$LOG_FILE"
   exit 1
 fi
 
@@ -81,21 +82,21 @@ echo "BIN=$BIN"
 if [ -f "$BIN" ]; then
   {
     file "$BIN"
-  } 2>&1 | tee "$LOG_DIR/qr2m-04-file_check.log"
+  } 2>&1 | tee -a "$LOG_FILE"
 
   STATUS=${PIPESTATUS[0]}
   if [ "$STATUS" -ne 0 ]; then
-    cat $LOG_DIR/qr2m-05-file_check.log
+    cat "$LOG_FILE"
   exit 1
   fi
 
   {
     ldd "$BIN"
-  } 2>&1 | tee "$LOG_DIR/qr2m-05-ldd_check.log"
+  } 2>&1 | tee -a "$LOG_FILE"
 
   STATUS=${PIPESTATUS[0]}
   if [ "$STATUS" -ne 0 ]; then
-    cat $LOG_DIR/qr2m-05-ldd_check.log
+    cat "$LOG_FILE"
   exit 1
   fi
 
