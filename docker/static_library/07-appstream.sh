@@ -65,20 +65,21 @@ cd appstream
   meson setup builddir \
     --prefix="$STATIC_DIR" \
     --default-library=static \
-    -Dstemming=false \
-    -Dsystemd=false \
-    -Dvapi=false \
-    -Dqt=false \
-    -Dcompose=false \
-    -Dapt-support=false \
-    -Dgir=false \
-    -Dsvg-support=false \
-    -Dzstd-support=false \
-    -Ddocs=false \
-    -Dapidocs=false \
-    -Dinstall-docs=false \
-    -Dmaintainer=false \
-    -Dstatic-analysis=false 
+    -Ddocs=false
+#\
+#    -Dstemming=false \
+#    -Dsystemd=false \
+#    -Dvapi=false \
+#    -Dqt=false \
+#    -Dcompose=false \
+#    -Dapt-support=false \
+#    -Dgir=false \
+#    -Dsvg-support=false \
+#    -Dzstd-support=false \
+#    -Dapidocs=false \
+#    -Dinstall-docs=false \
+#    -Dmaintainer=false \
+#    -Dstatic-analysis=false
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

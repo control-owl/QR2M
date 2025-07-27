@@ -48,7 +48,16 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/KhronosGroup/Vulkan-Loader.git --depth 1 vulkan
+  git clone https://github.com/KhronosGroup/Vulkan-Headers.git --depth 1 vulkan-headers
+  cd vulkan-headers
+  mkdir -p builddir && cd builddir
+  cmake \
+    -DCMAKE_INSTALL_PREFIX="$STATIC_DIR" \
+    -DBUILD_SHARED_LIBS=0 \
+    -DCMAKE_BUILD_TYPE=Release \
+    ..
+  make -j"$(nproc)"
+  make install
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -57,14 +66,49 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd vulkan
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+cd "$CIRCUS"
 
 {
-  mkdir builddir
+  git clone https://github.com/KhronosGroup/Vulkan-Loader.git --depth 1 vulkan-loader
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+cd vulkan-loader
+
+# Patch CMakeLists.txt to enforce static library only
+{
+  sed -i '/add_library(vulkan/ s/SHARED/STATIC/' CMakeLists.txt
+  sed -i '/add_library(vulkan/ s/ SHARED / STATIC /' CMakeLists.txt
+  sed -i 's/set_target_properties(vulkan PROPERTIES OUTPUT_NAME vulkan.*$/set_target_properties(vulkan PROPERTIES OUTPUT_NAME vulkan)/' CMakeLists.txt
+} 2>&1 | tee -a "$LOG_FILE"
+
+# Patch CMakeLists.txt to disable beta extensions
+{
+  sed -i 's/target_compile_definitions(loader_common_options INTERFACE VK_ENABLE_BETA_EXTENSIONS)/# Disabled VK_ENABLE_BETA_EXTENSIONS/' CMakeLists.txt
+} 2>&1 | tee -a "$LOG_FILE"
+
+# Patch vk_object_types.h to remove CUDA-related object types
+{
+  sed -i '/VK_OBJECT_TYPE_CUDA_MODULE_NV/d' loader/generated/vk_object_types.h
+  sed -i '/VK_OBJECT_TYPE_CUDA_FUNCTION_NV/d' loader/generated/vk_object_types.h
+} 2>&1 | tee -a "$LOG_FILE"
+
+
+{
+  mkdir -p builddir
   cd builddir
-  cmake .. -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+  cmake \
+    -DCMAKE_INSTALL_PREFIX="$STATIC_DIR" \
+    -DBUILD_SHARED_LIBS=0 \
+    -DCMAKE_BUILD_TYPE=Release \
+    ..
+  make -j"$(nproc)"
+  make install
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -74,26 +118,43 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  ninja -C builddir
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
+#
+#{
+#  ninja
+#} 2>&1 | tee -a "$LOG_FILE"
+#
+#STATUS=${PIPESTATUS[0]}
+#if [ "$STATUS" -ne 0 ]; then
+#  cat "$LOG_FILE"
+#  exit 1
+#fi
+#
+## -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+#
+#{
+#  ninja install
+#} 2>&1 | tee -a "$LOG_FILE"
+#
+#STATUS=${PIPESTATUS[0]}
+#if [ "$STATUS" -ne 0 ]; then
+#  cat "$LOG_FILE"
+#  exit 1
+#fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
-  ninja -C builddir install
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
+if [ -f "$STATIC_DIR/lib/libvulkan.so" ]; then
+  ar rcs "$STATIC_DIR/lib/libvulkan.a" "$STATIC_DIR/lib/libvulkan.so"
+  if [ "$?" -ne 0 ]; then
+    echo "Error: Failed to create libvulkan.a from libvulkan.so"
+    exit 1
+  fi
+  echo "Create libvulkan.a from libvulkan.so"
+else
+  echo "Error: Shared library $STATIC_DIR/lib/libvulkan.so not found"
+  if [ -d "$STATIC_DIR/lib" ]; then
+    ls -l "$STATIC_DIR/lib/libvulkan*"
+  fi
   exit 1
 fi
 
@@ -101,9 +162,7 @@ fi
 
 {
   compiled_files=(
-    "libxmlb.a"
     "libvulkan.a"
-    "xmlb.pc"
     "vulkan.pc"
   )
 

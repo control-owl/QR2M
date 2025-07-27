@@ -180,7 +180,8 @@ RUN $PROJECT_DIR/08-librsvg.sh       #| Compiles
 
 FROM base_system AS project_deps
 
-RUN apk add vulkan-loader-dev
+RUN apk add vulkan-loader-dev xrandr libxrandr-dev wayland-static wayland-dev \
+        vulkan-headers vulkan-loader vulkan-tools vulkan-utility-libraries
 
 COPY docker/static_library/09-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/09-*.sh
@@ -189,7 +190,7 @@ COPY --from=gtk4 /usr/local/lib /usr/local/lib
 COPY --from=gtk4 /usr/local/bin /usr/local/bin
 COPY --from=gtk4 $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/09-vulkan.sh       #|
+RUN $PROJECT_DIR/09-vulkan.sh       #| Compiles in 15s
 
 FROM base_system AS compile_circus
 
