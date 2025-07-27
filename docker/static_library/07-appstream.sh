@@ -20,21 +20,20 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
 export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
-export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
+#export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   needed_files=(
-    "glib-2.0.pc"
-    "libpcre2-8.pc"
-    "libffi.pc"
-    "libpng.pc"
-    "libpng16.pc"
+    "libcurl.pc"
+    "libxml-2.0.pc"
+    "libeconf.pc"
+    "libunistring.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
@@ -49,7 +48,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git --depth 1 pixbuf
+  git clone https://github.com/ximion/appstream.git --depth 1 appstream
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -58,28 +57,28 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd pixbuf
+cd appstream
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
+    --prefix="$STATIC_DIR" \
     --default-library=static \
-    --prefix=$STATIC_DIR \
-    -Dbuiltin_loaders=default \
-    -Ddocumentation=false \
-    -Dgtk_doc=false \
-    -Dman=false \
-    -Dtests=false \
-    -Dintrospection=disabled \
-    -Dglycin=disabled \
-    -Dandroid=disabled \
-    -Dothers=disabled \
-    -Drelocatable=false \
-    -Dnative_windows_loaders=false \
-    -Dinstalled_tests=false \
-    -Dgio_sniffing=false \
-    -Dthumbnailer=disabled
+    -Dstemming=false \
+    -Dsystemd=false \
+    -Dvapi=false \
+    -Dqt=false \
+    -Dcompose=false \
+    -Dapt-support=false \
+    -Dgir=false \
+    -Dsvg-support=false \
+    -Dzstd-support=false \
+    -Ddocs=false \
+    -Dapidocs=false \
+    -Dinstall-docs=false \
+    -Dmaintainer=false \
+    -Dstatic-analysis=false 
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -102,7 +101,7 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{ 
+{
   ninja -C builddir install
 } 2>&1 | tee -a "$LOG_FILE"
 
@@ -116,8 +115,10 @@ fi
 
 {
   compiled_files=(
-#    "libXdmcp.a"
-#    "xdmcp.pc"
+    "libxmlb.a"
+    "libappstream.a"
+    "xmlb.pc"
+    "appstream.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

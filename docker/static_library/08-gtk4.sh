@@ -30,20 +30,19 @@ export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 
 {
   pc_files=(
-#    "glib-2.0.pc"
-##    "gobject-2.0.pc"
-#    "cairo.pc"
-#    "pango-1.0.pc"
-#    "fribidi.pc"
-#    "epoxy.pc"
-#    "graphene-1.0.pc"
-#    "gdk-pixbuf-2.0.pc"
-#    "fontconfig.pc"
-#    "freetype2.pc"
-#    "libxml-2.0.pc"
-#    "libtiff-4.pc"
-#    "libpng16.pc"
-#    "pixman-1.pc"
+    "glib-2.0.pc"
+    "cairo.pc"
+    "pango-1.0.pc"
+    "fribidi.pc"
+    "epoxy.pc"
+    "graphene-1.0.pc"
+    "gdk-pixbuf-2.0.pc"
+    "fontconfig.pc"
+    "freetype2.pc"
+    "libxml-2.0.pc"
+    "libtiff-4.pc"
+    "libpng16.pc"
+    "pixman-1.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -181,8 +180,8 @@ fi
 
 {
   compiled_files=(
-#    "libXdmcp.a"
-#    "xdmcp.pc"
+    "libgtk-4.a"
+    "gtk4.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

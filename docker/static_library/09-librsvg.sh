@@ -19,19 +19,24 @@ mkdir -p "$STATIC_DIR"
 
 cd "$CIRCUS"
 
-export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
-export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
+#export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
+#export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
+#export PKG_CONFIG="pkg-config --static"
+#export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+#export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
+#export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
+#export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   pc_files=(
-#    "gtk4.pc"
-#    "appstream.pc"
+    "glib-2.0.pc"
+    "cairo.pc"
+    "pango.pc"
+    "libxml-2.0.pc"
+    "gobject-2.0.pc"
+    "gdk-pixbuf-2.0.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -46,7 +51,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita
+  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -55,21 +60,20 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libadwaita
+cd librsvg
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    --default-library static \
     --prefix=$STATIC_DIR \
-    -Dexamples=false \
-    -Dgtk_doc=false \
-    -Ddocumentation=false \
-    -Dintrospection=disabled \
-    -Dvapi=false \
-    -Dtests=false
-}  2>&1 | tee -a "$LOG_FILE"
+    -Ddefault_library=static \
+    -Ddocs=disabled \
+    -Dtests=false \
+    -Davif=disabled \
+    -Dpixbuf-loader=disabled \
+    -Dvala=disabled
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -80,8 +84,9 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir 2>&1
-} | tee -a "$LOG_FILE"
+  export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+  ninja -C builddir
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then

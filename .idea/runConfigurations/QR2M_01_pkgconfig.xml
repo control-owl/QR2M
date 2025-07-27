@@ -1,10 +1,10 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="QR2M 02 pkgconfig" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
+  <configuration default="false" name="QR2M 01 pkgconfig" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
     <deployment type="dockerfile">
       <settings>
-        <option name="imageTag" value="qr2m_02_pkgconfig" />
+        <option name="imageTag" value="qr2m_01_pkgconfig" />
         <option name="buildCliOptions" value="--target pkgconfig" />
-        <option name="containerName" value="qr2m_02_pkgconfig" />
+        <option name="containerName" value="qr2m_01_pkgconfig" />
         <option name="contextFolderPath" value="." />
         <option name="sourceFilePath" value="docker/Dockerfile_multi" />
       </settings>

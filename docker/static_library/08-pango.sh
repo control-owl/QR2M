@@ -26,14 +26,18 @@ export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-inte
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 #export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
 
+
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   pc_files=(
-#    "glib-2.0.pc"
-#    "freetype2.pc"
-#    "bzip2.pc"
-#    "cairo.pc"
+    "glib-2.0.pc"
+    "cairo.pc"
+    "freetype2.pc"
+    "fontconfig.pc"
+    "fribidi.pc"
+    "harfbuzz.pc"
+    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -48,7 +52,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/harfbuzz/harfbuzz.git --depth 1 harfbuzz
+  git clone https://github.com/GNOME/pango.git --depth 1 pango
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -57,36 +61,23 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd harfbuzz
+cd pango
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    -Dprefix="$STATIC_DIR" \
-    -Ddefault_library=static \
-    -Dfreetype=enabled \
-    -Dgobject=disabled \
-    -Dchafa=disabled \
-    -Dicu=disabled \
-    -Dgraphite2=disabled \
-    -Dfontations=disabled \
-    -Dgdi=disabled \
-    -Ddirectwrite=disabled \
-    -Dcoretext=disabled \
-    -Dharfrust=disabled \
-    -Dwasm=disabled \
-    -Dtests=disabled \
+    --default-library static \
+    --prefix=$STATIC_DIR \
+    -Ddocumentation=false \
+    -Dman-pages=false \
     -Dintrospection=disabled \
-    -Ddocs=disabled \
-    -Ddoc_tests=false \
-    -Dutilities=disabled \
-    -Dbenchmark=disabled \
-    -Dicu_builtin=false \
-    -Dwith_libstdcxx=false \
-    -Dexperimental_api=false \
-    -Dragel_subproject=false \
-    -Dbuildtype=release
+    -Dbuild-testsuite=false \
+    -Dbuild-examples=false \
+    -Dsysprof=disabled \
+    -Dlibthai=disabled \
+    -Dfreetype=disabled \
+    -Dxft=disabled
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -121,10 +112,11 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+
 {
   compiled_files=(
-#    "libXdmcp.a"
-#    "xdmcp.pc"
+    "libpango-1.0.a"
+    "pango.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

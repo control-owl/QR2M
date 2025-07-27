@@ -25,20 +25,21 @@ export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
 export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
-export PATH="/usr/bin:/home/QR2M/compile-circus/STATIC/bin:$PATH"
-export ZLIB_STATIC=1
-export PKG_CONFIG_zlib_STATIC="true"
+
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   pc_files=(
-#    "glib-2.0.pc"
-#    "gobject-2.0.pc"
-#    "cairo.pc"
-#    "pango-1.0.pc"
-#    "libxml-2.0.pc"
-#    "gdk-pixbuf-2.0.pc"
+    "pixman-1.pc"
+    "fontconfig.pc"
+    "freetype2.pc"
+    "libpng16.pc"
+    "zlib.pc"
+    "x11.pc"
+    "xrender.pc"
+    "xext.pc"
+    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -53,7 +54,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
+  git clone https://gitlab.freedesktop.org/cairo/cairo.git --depth 1 cairo
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -62,19 +63,30 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd librsvg
+cd cairo
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  sed -i '/#ifndef HAVE_CTIME_R/,/#endif/d' src/cairo-ps-surface.c
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    --prefix=$STATIC_DIR \
+    -Dprefix="$STATIC_DIR" \
     -Ddefault_library=static \
-    -Ddocs=disabled \
-    -Dtests=false \
-    -Davif=disabled \
-    -Dpixbuf-loader=disabled \
-    -Dvala=disabled
+    --buildtype=release \
+    -Dtests=disabled \
+    -Dxlib=disabled \
+    -Dxcb=disabled
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -86,7 +98,6 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
   ninja -C builddir
 } 2>&1 | tee -a "$LOG_FILE"
 
@@ -110,10 +121,11 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+
 {
   compiled_files=(
-#    "libXdmcp.a"
-#    "xdmcp.pc"
+    "libcairo.a"
+    "cairo.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

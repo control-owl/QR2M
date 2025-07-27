@@ -1,10 +1,10 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="QR2M 09 gtk4" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
+  <configuration default="false" name="QR2M 05 cargo_c" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
     <deployment type="dockerfile">
       <settings>
-        <option name="imageTag" value="qr2m_09_gtk4" />
-        <option name="buildCliOptions" value="--target gtk4" />
-        <option name="containerName" value="qr2m_09_gtk4" />
+        <option name="imageTag" value="qr2m_05_cargo_c" />
+        <option name="buildCliOptions" value="--target cargo_c" />
+        <option name="containerName" value="qr2m_05_cargo_c" />
         <option name="contextFolderPath" value="." />
         <option name="sourceFilePath" value="docker/Dockerfile_multi" />
       </settings>
