@@ -10,8 +10,7 @@ WORKDIR $PROJECT_DIR
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories && \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
     apk update && \
-    apk add --no-cache \
-      bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool gcc g++
+    apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool gcc g++
 
 COPY docker/*.sh $PROJECT_DIR
 COPY docker/static_library/*.sh $PROJECT_DIR
@@ -23,7 +22,8 @@ FROM base_system AS pkgconfig
 
 RUN apk add --no-cache pkgconf-dev zlib-dev
 
-COPY --from=base_system /usr/local /usr/local
+COPY --from=base_system /usr/local/lib /usr/local/lib
+COPY --from=base_system /usr/local/bin /usr/local/bin
 COPY --from=base_system /home/QR2M /home/QR2M
 
 RUN $PROJECT_DIR/00-pkgconf.sh       # Compiles in 8s
@@ -34,7 +34,8 @@ FROM base_system AS glib
 
 RUN apk add --no-cache libffi-dev pcre2-dev gettext-dev pcre2-dev gperf texinfo
 
-COPY --from=pkgconfig /usr/local /usr/local
+COPY --from=pkgconfig /usr/local/lib /usr/local/lib
+COPY --from=pkgconfig /usr/local/bin /usr/local/bin
 COPY --from=pkgconfig $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/01-gettext.sh       #| Compiles in 475s
@@ -47,7 +48,8 @@ FROM base_system AS x11
 
 RUN apk add --no-cache libxau-dev libxdmcp-dev libxcb-dev libx11-dev libxrender-dev libxext-dev xcb-util-dev
 
-COPY --from=glib /usr/local /usr/local
+COPY --from=glib /usr/local/lib /usr/local/lib
+COPY --from=glib /usr/local/bin /usr/local/bin
 COPY --from=glib $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/02-xorgproto.sh     #| Compiles in 4s
@@ -63,7 +65,8 @@ FROM base_system AS fontconfig
 
 RUN apk add --no-cache expat-dev bzip2-dev freetype-dev fontconfig-dev zlib-dev py3-pytest
 
-COPY --from=x11 /usr/local /usr/local
+COPY --from=x11 /usr/local/lib /usr/local/lib
+COPY --from=x11 /usr/local/bin /usr/local/bin
 COPY --from=x11 $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/03-libexpat.sh      #| Compiles in 27s
@@ -78,7 +81,8 @@ RUN apk add --no-cache zlib-dev openssl-dev nghttp2-dev curl-dev \
     docbook-xml docbook-xsl gettext-dev gettext-libs \
     gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata
 
-COPY --from=fontconfig /usr/local /usr/local
+COPY --from=fontconfig /usr/local/lib /usr/local/lib
+COPY --from=fontconfig /usr/local/bin /usr/local/bin
 COPY --from=fontconfig $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/04-openssl.sh       #| Compiles in 305s
@@ -95,7 +99,8 @@ RUN apk add --no-cache \
     glib-dev pcre2-dev libffi-dev gettext-dev libepoxy-dev appstream-dev \
     gdk-pixbuf-dev texinfo gperf
 
-COPY --from=cargo_c /usr/local /usr/local
+COPY --from=cargo_c /usr/local/lib /usr/local/lib
+COPY --from=cargo_c /usr/local/bin /usr/local/bin
 COPY --from=cargo_c $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/05-libpng.sh        #| Compiles in 15s
@@ -115,10 +120,12 @@ RUN $PROJECT_DIR/05-libunistring.sh  #| Compiles in 354s
 FROM base_system AS gdk_pixbuf
 
 RUN apk add --no-cache \
-    zlib-dev glib-dev appstream-dev gdk-pixbuf-dev texinfo gperf \
-    openssl-dev curl-dev openssl-libs-static appstream-glib-dev
+    zlib-dev glib-dev appstream-dev gdk-pixbuf-dev texinfo gperf libpng-dev shared-mime-info \
+    openssl-dev curl-dev openssl-libs-static appstream-glib-dev tiff-dev libjpeg-turbo-dev \
+    docbook-xml docbook-xsl
 
-COPY --from=unistring /usr/local /usr/local
+COPY --from=unistring /usr/local/lib /usr/local/lib
+COPY --from=unistring /usr/local/bin /usr/local/bin
 COPY --from=unistring $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/06-appstream.sh     #| Compiles in 29s
@@ -136,7 +143,8 @@ RUN apk add --no-cache \
     fontconfig-dev cairo-dev pango-dev harfbuzz-dev libepoxy-dev gdk-pixbuf-dev \
     librsvg-dev gtk4.0-dev libadwaita-dev
 
-COPY --from=gdk_pixbuf /usr/local /usr/local
+COPY --from=gdk_pixbuf /usr/local/lib /usr/local/lib
+COPY --from=gdk_pixbuf /usr/local/bin /usr/local/bin
 COPY --from=gdk_pixbuf $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/07-cairo.sh         #| Compiles in 30s
@@ -150,7 +158,8 @@ FROM base_system AS libadwaita
 
 RUN apk add --no-cache librsvg-dev libadwaita-dev
 
-COPY --from=gtk4 /usr/local /usr/local
+COPY --from=gtk4 /usr/local/lib /usr/local/lib
+COPY --from=gtk4 /usr/local/bin /usr/local/bin
 COPY --from=gtk4 $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/08-libadwaita.sh    #| Compiles in 45s
@@ -159,7 +168,8 @@ RUN $PROJECT_DIR/08-librsvg.sh       #| Missing pkg-config
 
 FROM base_system AS compile_circus
 
-COPY --from=libadwaita /usr/local /usr/local
+COPY --from=libadwaita /usr/local/lib /usr/local/lib
+COPY --from=libadwaita /usr/local/bin /usr/local/bin
 COPY --from=libadwaita $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/compile-circus.sh
