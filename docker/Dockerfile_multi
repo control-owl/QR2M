@@ -18,8 +18,6 @@ COPY docker/static_library/*.sh $PROJECT_DIR
 
 RUN chmod +x $PROJECT_DIR/*.sh
 
-# Compiles
-
 
 FROM base_system AS pkgconfig
 
@@ -30,8 +28,6 @@ COPY --from=base_system /home/QR2M /home/QR2M
 
 RUN $PROJECT_DIR/00-pkgconf.sh       # Compiles in 8s
 RUN $PROJECT_DIR/00-zlib.sh          # Compiles in 3s
-
-# Compiles
 
 
 FROM base_system AS glib
@@ -45,8 +41,6 @@ RUN $PROJECT_DIR/01-gettext.sh       #| Compiles in 475s
 RUN $PROJECT_DIR/01-libffi.sh        #| Compiles in 20s
 RUN $PROJECT_DIR/01-pcre2.sh         #| Compiles in 26s
 RUN $PROJECT_DIR/01-glib.sh          #| Compiles in 69s
-
-# Compiles
 
 
 FROM base_system AS x11
@@ -64,8 +58,6 @@ RUN $PROJECT_DIR/02-libx11.sh        #| Compiles in 67s
 RUN $PROJECT_DIR/02-libxrender.sh    #| Compiles in 26s
 RUN $PROJECT_DIR/02-libxext.sh       #| Compiles in 30s
 
-# Compiles
-
 
 FROM base_system AS fontconfig
 
@@ -79,14 +71,11 @@ RUN $PROJECT_DIR/03-libbz2.sh        #| Compiles in 6s
 RUN $PROJECT_DIR/03-freetype.sh      #| Compiles in 26s
 RUN $PROJECT_DIR/03-fontconfig.sh    #| Compiles in 29s
 
-# Compiles
-
 
 FROM base_system AS cargo_c
 
-# can be trimmed
-RUN apk add --no-cache zlib-dev openssl-dev nghttp2-dev curl-dev openssl-libs-static \
-    appstream-dev appstream-glib-dev dbus desktop-file-utils docbook-xml docbook-xsl gettext-dev gettext-libs \
+RUN apk add --no-cache zlib-dev openssl-dev nghttp2-dev curl-dev \
+    docbook-xml docbook-xsl gettext-dev gettext-libs \
     gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata
 
 COPY --from=fontconfig /usr/local /usr/local
@@ -97,15 +86,14 @@ RUN $PROJECT_DIR/04-nghttp2.sh       #| Compiles in 35s
 RUN $PROJECT_DIR/04-curl.sh          #| Compiles in 69s
 RUN $PROJECT_DIR/04-cargo-c.sh       #| Compiles in 479s
 
-# Compiles
 
-
-FROM base_system AS appstream
+FROM base_system AS unistring
 
 RUN apk add --no-cache \
     zlib-dev libpng-dev libxml2-dev tiff-dev libjpeg-turbo-dev graphene-dev \
     fribidi-dev libeconf-dev pixman-dev brotli-dev xz-dev libunistring-dev po4a \
-    glib-dev pcre2-dev libffi-dev gettext-dev libepoxy-dev appstream-dev gdk-pixbuf-dev
+    glib-dev pcre2-dev libffi-dev gettext-dev libepoxy-dev appstream-dev \
+    gdk-pixbuf-dev texinfo gperf
 
 COPY --from=cargo_c /usr/local /usr/local
 COPY --from=cargo_c $PROJECT_DIR $PROJECT_DIR
@@ -122,8 +110,19 @@ RUN $PROJECT_DIR/05-libepoxy.sh      #| Compiles in 25s
 RUN $PROJECT_DIR/05-brotli.sh        #| Compiles in 28s
 RUN $PROJECT_DIR/05-xz.sh            #| Compiles in 41s
 RUN $PROJECT_DIR/05-libunistring.sh  #| Compiles in 354s
-RUN $PROJECT_DIR/05-appstream.sh     #| Compiles in 29s
-RUN $PROJECT_DIR/05-gdk-pixbuf.sh    #| fail
+
+
+FROM base_system AS gdk-pixbuf
+
+RUN apk add --no-cache \
+    zlib-dev glib-dev appstream-dev gdk-pixbuf-dev texinfo gperf \
+    openssl-dev curl-dev openssl-libs-static appstream-glib-dev
+
+COPY --from=unistring /usr/local /usr/local
+COPY --from=unistring $PROJECT_DIR $PROJECT_DIR
+
+RUN $PROJECT_DIR/06-appstream.sh     #| Compiles in 29s
+RUN $PROJECT_DIR/06-gdk-pixbuf.sh    #| fail
 
 # Testing
 
@@ -131,20 +130,19 @@ RUN $PROJECT_DIR/05-gdk-pixbuf.sh    #| fail
 FROM base_system AS gtk4
 
 RUN apk add --no-cache \
-    glib-dev pcre2-dev libffi-dev gettext-dev zlib-dev \
-    libx11-dev libxext-dev libxrender-dev libxrandr-dev libxfixes-dev libxcursor-dev libxi-dev \
-    libxau-dev libxdmcp-dev libxcb-dev \
-    expat-dev bzip2-dev freetype-dev fontconfig-dev \
-    cairo-dev pango-dev harfbuzz-dev libepoxy-dev gdk-pixbuf-dev librsvg-dev \
-    gtk4.0-dev libadwaita-dev
+    glib-dev pcre2-dev libffi-dev gettext-dev zlib-dev libx11-dev libxext-dev \
+    libxrender-dev libxrandr-dev libxfixes-dev libxcursor-dev libxi-dev \
+    libxau-dev libxdmcp-dev libxcb-dev expat-dev bzip2-dev freetype-dev \
+    fontconfig-dev cairo-dev pango-dev harfbuzz-dev libepoxy-dev gdk-pixbuf-dev \
+    librsvg-dev gtk4.0-dev libadwaita-dev
 
-COPY --from=appstream /usr/local /usr/local
-COPY --from=appstream $PROJECT_DIR $PROJECT_DIR
+COPY --from=gdk_pixbuf /usr/local /usr/local
+COPY --from=gdk_pixbuf $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/06-cairo.sh         #| Compiles in 30s
-RUN $PROJECT_DIR/06-pango.sh         #| Compiles in 17s
-RUN $PROJECT_DIR/06-harfbuzz.sh      #| Compiles in 104s
-RUN $PROJECT_DIR/06-gtk4.sh          #| Compiles in 232s
+RUN $PROJECT_DIR/07-cairo.sh         #| Compiles in 30s
+RUN $PROJECT_DIR/07-pango.sh         #| Compiles in 17s
+RUN $PROJECT_DIR/07-harfbuzz.sh      #| Compiles in 104s
+RUN $PROJECT_DIR/07-gtk4.sh          #| Compiles in 232s
 
 
 
@@ -155,8 +153,8 @@ RUN apk add --no-cache librsvg-dev libadwaita-dev
 COPY --from=gtk4 /usr/local /usr/local
 COPY --from=gtk4 $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/07-libadwaita.sh    #| Compiles in 45s
-RUN $PROJECT_DIR/07-librsvg.sh       #| Missing pkg-config
+RUN $PROJECT_DIR/08-libadwaita.sh    #| Compiles in 45s
+RUN $PROJECT_DIR/08-librsvg.sh       #| Missing pkg-config
 
 
 FROM base_system AS compile_circus
