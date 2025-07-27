@@ -33,7 +33,7 @@ export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
     "libpcre2-8.pc"
     "libffi.pc"
     "zlib.pc"
-    "libintl.a"
+#    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
