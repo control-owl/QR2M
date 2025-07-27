@@ -112,7 +112,7 @@ RUN $PROJECT_DIR/05-xz.sh            #| Compiles in 41s
 RUN $PROJECT_DIR/05-libunistring.sh  #| Compiles in 354s
 
 
-FROM base_system AS gdk-pixbuf
+FROM base_system AS gdk_pixbuf
 
 RUN apk add --no-cache \
     zlib-dev glib-dev appstream-dev gdk-pixbuf-dev texinfo gperf \
