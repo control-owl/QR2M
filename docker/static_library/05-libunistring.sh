@@ -84,7 +84,8 @@ fi
   ./configure \
     --enable-static \
     --disable-shared \
-    --prefix=$STATIC_DIR
+    --prefix=$STATIC_DIR \
+    --with-gnulib-prefix=$STATIC_DIR
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

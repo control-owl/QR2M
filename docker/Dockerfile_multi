@@ -10,27 +10,33 @@ WORKDIR $PROJECT_DIR
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositories && \
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
     apk update && \
-    apk add --no-cache bash build-base git cmake ninja meson bison musl-dev autoconf automake libtool
+    apk add --no-cache \
+      bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool gcc g++
 
 COPY docker/*.sh $PROJECT_DIR
 COPY docker/static_library/*.sh $PROJECT_DIR
 
 RUN chmod +x $PROJECT_DIR/*.sh
 
+# Compiles
+
 
 FROM base_system AS pkgconfig
 
 RUN apk add --no-cache pkgconf-dev zlib-dev
 
+COPY --from=base_system /usr/local /usr/local
 COPY --from=base_system /home/QR2M /home/QR2M
 
 RUN $PROJECT_DIR/00-pkgconf.sh       # Compiles in 8s
 RUN $PROJECT_DIR/00-zlib.sh          # Compiles in 3s
 
+# Compiles
+
 
 FROM base_system AS glib
 
-RUN apk add --no-cache libffi-dev pcre2-dev gettext-dev pcre2-dev
+RUN apk add --no-cache libffi-dev pcre2-dev gettext-dev pcre2-dev gperf texinfo
 
 COPY --from=pkgconfig /usr/local /usr/local
 COPY --from=pkgconfig $PROJECT_DIR $PROJECT_DIR
@@ -40,12 +46,12 @@ RUN $PROJECT_DIR/01-libffi.sh        #| Compiles in 20s
 RUN $PROJECT_DIR/01-pcre2.sh         #| Compiles in 26s
 RUN $PROJECT_DIR/01-glib.sh          #| Compiles in 69s
 
+# Compiles
+
 
 FROM base_system AS x11
 
-RUN apk add --no-cache \
-    libx11-dev libxext-dev libxkbcommon-dev libxrandr-dev libxrender-dev libxfixes-dev \
-    libxcursor-dev libxi-dev libxau-dev libxdmcp-dev libxcb-dev
+RUN apk add --no-cache libxau-dev libxdmcp-dev libxcb-dev libx11-dev libxrender-dev libxext-dev xcb-util-dev
 
 COPY --from=glib /usr/local /usr/local
 COPY --from=glib $PROJECT_DIR $PROJECT_DIR
@@ -58,10 +64,12 @@ RUN $PROJECT_DIR/02-libx11.sh        #| Compiles in 67s
 RUN $PROJECT_DIR/02-libxrender.sh    #| Compiles in 26s
 RUN $PROJECT_DIR/02-libxext.sh       #| Compiles in 30s
 
+# Compiles
+
 
 FROM base_system AS fontconfig
 
-RUN apk add --no-cache expat-dev bzip2-dev freetype-dev fontconfig-dev zlib-dev
+RUN apk add --no-cache expat-dev bzip2-dev freetype-dev fontconfig-dev zlib-dev py3-pytest
 
 COPY --from=x11 /usr/local /usr/local
 COPY --from=x11 $PROJECT_DIR $PROJECT_DIR
@@ -71,10 +79,15 @@ RUN $PROJECT_DIR/03-libbz2.sh        #| Compiles in 6s
 RUN $PROJECT_DIR/03-freetype.sh      #| Compiles in 26s
 RUN $PROJECT_DIR/03-fontconfig.sh    #| Compiles in 29s
 
+# Compiles
+
 
 FROM base_system AS cargo_c
 
-RUN apk add --no-cache zlib-dev openssl-dev openssl-libs-static nghttp2-dev curl-dev
+# can be trimmed
+RUN apk add --no-cache zlib-dev openssl-dev nghttp2-dev curl-dev openssl-libs-static \
+    appstream-dev appstream-glib-dev dbus desktop-file-utils docbook-xml docbook-xsl gettext-dev gettext-libs \
+    gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata
 
 COPY --from=fontconfig /usr/local /usr/local
 COPY --from=fontconfig $PROJECT_DIR $PROJECT_DIR
@@ -84,20 +97,22 @@ RUN $PROJECT_DIR/04-nghttp2.sh       #| Compiles in 35s
 RUN $PROJECT_DIR/04-curl.sh          #| Compiles in 69s
 RUN $PROJECT_DIR/04-cargo-c.sh       #| Compiles in 479s
 
+# Compiles
+
 
 FROM base_system AS appstream
 
 RUN apk add --no-cache \
     zlib-dev libpng-dev libxml2-dev tiff-dev libjpeg-turbo-dev graphene-dev \
-    fribidi-dev libeconf-dev pixman-dev brotli-dev xz-dev libunistring-dev \
-    glib-dev pcre2-dev libffi-dev gettext-dev
+    fribidi-dev libeconf-dev pixman-dev brotli-dev xz-dev libunistring-dev po4a \
+    glib-dev pcre2-dev libffi-dev gettext-dev libepoxy-dev appstream-dev gdk-pixbuf-dev
 
 COPY --from=cargo_c /usr/local /usr/local
 COPY --from=cargo_c $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/05-libpng.sh        #| Compiles in 15s
 RUN $PROJECT_DIR/05-libxml2.sh       #| Compiles in 41s
-RUN $PROJECT_DIR/05-libtiff.sh       #| Compiles in 122s
+RUN $PROJECT_DIR/05-libtiff.sh       #| Compiles in 32s
 RUN $PROJECT_DIR/05-graphene.sh      #| Compiles in 5s
 RUN $PROJECT_DIR/05-fribidi.sh       #| Compiles in 8s
 RUN $PROJECT_DIR/05-libeconf.sh      #| Compiles in 12s
@@ -107,8 +122,10 @@ RUN $PROJECT_DIR/05-libepoxy.sh      #| Compiles in 25s
 RUN $PROJECT_DIR/05-brotli.sh        #| Compiles in 28s
 RUN $PROJECT_DIR/05-xz.sh            #| Compiles in 41s
 RUN $PROJECT_DIR/05-libunistring.sh  #| Compiles in 354s
-RUN $PROJECT_DIR/05-gdk-pixbuf.sh    #| glib,pcre2,ffi,png,jpeg    | Checked, fail
-RUN $PROJECT_DIR/05-appstream.sh     #| curl,xml2,econf,unistring  | Compiles in 29s
+RUN $PROJECT_DIR/05-appstream.sh     #| Compiles in 29s
+RUN $PROJECT_DIR/05-gdk-pixbuf.sh    #| fail
+
+# Testing
 
 
 FROM base_system AS gtk4
@@ -128,6 +145,7 @@ RUN $PROJECT_DIR/06-cairo.sh         #| Compiles in 30s
 RUN $PROJECT_DIR/06-pango.sh         #| Compiles in 17s
 RUN $PROJECT_DIR/06-harfbuzz.sh      #| Compiles in 104s
 RUN $PROJECT_DIR/06-gtk4.sh          #| Compiles in 232s
+
 
 
 FROM base_system AS libadwaita
