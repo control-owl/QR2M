@@ -198,7 +198,7 @@ RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev aut
         openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
         libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
-        brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest \
+        brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest vulkan-loader \
         pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev musl-locales \
         libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
         util-linux-static libxcb-dev gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
@@ -208,7 +208,7 @@ RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev aut
         c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
         curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
         py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev gcc g++
+        gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev gcc g++ vulkan-headers vulkan-utility-libraries
 
 COPY docker/compile_circus.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/compile_circus.sh

@@ -65,20 +65,19 @@ cd appstream
   meson setup builddir \
     --prefix="$STATIC_DIR" \
     --default-library=static \
-    -Ddocs=false
-#\
-#    -Dstemming=false \
-#    -Dsystemd=false \
-#    -Dvapi=false \
-#    -Dqt=false \
-#    -Dcompose=false \
-#    -Dapt-support=false \
-#    -Dgir=false \
-#    -Dsvg-support=false \
-#    -Dzstd-support=false \
-#    -Dapidocs=false \
-#    -Dinstall-docs=false \
+    -Ddocs=false \
+    -Dinstall-docs=false \
+    -Dapidocs=false \
+    -Dsystemd=false \
+    -Dstemming=false \
+    -Dvapi=false \
+    -Dqt=false \
+    -Dgir=false \
+    -Dapt-support=false \
+    -Dzstd-support=false
 #    -Dmaintainer=false \
+#    -Dcompose=false \
+#    -Dsvg-support=false \
 #    -Dstatic-analysis=false
 } 2>&1 | tee -a "$LOG_FILE"
 

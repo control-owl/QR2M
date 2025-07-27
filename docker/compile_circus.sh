@@ -27,11 +27,12 @@ cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-#export PKG_CONFIG="pkg-config --static"
+export PKG_CONFIG="pkg-config --static"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -L/home/QR2M/compile-circus/STATIC/lib64 -lvulkan -lappstream"
-export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-L/home/QR2M/compile-circus/STATIC/lib64"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -L/home/QR2M/compile-circus/STATIC/lib64"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-L$STATIC_DIR/lib -C link-arg=-L$STATIC_DIR/lib64 -C link-arg=-static -C link-arg=-lappstream -C link-arg=-ladwaita-1 -C link-arg=-lgtk-4 -C link-arg=-lglib-2.0 -C link-arg=-lgobject-2.0 -C link-arg=-lxml2 -C link-arg=-lvulkan -C link-arg=-lz -C link-arg=-latomic"
+
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 

@@ -66,9 +66,9 @@ cd libadwaita
     -Dexamples=false \
     -Dgtk_doc=false \
     -Ddocumentation=false \
-    -Dintrospection=disabled \
-    -Dvapi=false \
     -Dtests=false
+#    -Dvapi=false \
+#    -Dintrospection=disabled \
 }  2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

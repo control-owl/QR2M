@@ -1,9 +1,6 @@
 fn main() {
   set_environment();
 
-  let out_dir = std::env::var("OUT_DIR").unwrap();
-  println!("cargo::rustc-link-search=native={}", out_dir);
-
   if std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "windows" {
     use winres;
     let mut res = winres::WindowsResource::new();
