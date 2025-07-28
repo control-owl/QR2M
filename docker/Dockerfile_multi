@@ -43,8 +43,8 @@ RUN apk add \
         libxau-dev libxdmcp-dev libxcb-dev libx11-dev libxrender-dev libxext-dev xcb-util-dev \
         expat-dev bzip2-dev freetype-dev fontconfig-dev zlib-dev py3-pytest
 
-COPY docker/static_library/03-*.sh $PROJECT_DIR
-RUN chmod +x $PROJECT_DIR/03-*.sh
+COPY docker/static_library/02-*.sh $PROJECT_DIR
+RUN chmod +x $PROJECT_DIR/02-*.sh
 
 COPY --from=stage_1 /usr/local/lib /usr/local/lib
 COPY --from=stage_1 /usr/local/bin /usr/local/bin
@@ -71,8 +71,8 @@ RUN apk add \
         gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata appstream-dev appstream-glib-dev \
         dbus desktop-file-utils
 
-COPY docker/static_library/05-*.sh $PROJECT_DIR
-RUN chmod +x $PROJECT_DIR/05-*.sh
+COPY docker/static_library/03-*.sh $PROJECT_DIR
+RUN chmod +x $PROJECT_DIR/03-*.sh
 
 COPY --from=stage_2 /usr/local/lib /usr/local/lib
 COPY --from=stage_2 /usr/local/bin /usr/local/bin
@@ -99,8 +99,8 @@ RUN apk add \
         vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev wayland-static \
         xrandr xz-dev yaml-dev zlib-dev
 
-COPY docker/static_library/06-*.sh $PROJECT_DIR
-RUN chmod +x $PROJECT_DIR/06-*.sh
+COPY docker/static_library/04-*.sh $PROJECT_DIR
+RUN chmod +x $PROJECT_DIR/04-*.sh
 
 COPY --from=stage_3 /usr/local/lib /usr/local/lib
 COPY --from=stage_3 /usr/local/bin /usr/local/bin
