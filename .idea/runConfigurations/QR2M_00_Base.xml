@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="QR2M 00 base_system" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
+  <configuration default="false" name="QR2M 00 Base" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
     <deployment type="dockerfile">
       <settings>
         <option name="imageTag" value="qr2m_00_base_system" />

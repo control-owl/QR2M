@@ -11,9 +11,9 @@ build = "build.rs"
 
 
 [dependencies]
-gtk4 = { version = "0.9.6", features = ["gnome_46"] }
-libadwaita = "0.7.2"
-glib = "0.20.10"
+gtk4 = { version = "0.10.0", features = ["gnome_46"] }
+libadwaita = "0.8.0"
+glib = "0.21.0"
 rust-i18n = "3.1.5"
 toml = "0.8.22"
 serde = { version = "1.0.219", features = ["derive"] }

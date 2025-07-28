@@ -1,3 +1,8 @@
+# version 0.87.0
+- crates updated:
+  - gtk4 updated to 0.10.0
+  - libadwaita updated to 0.8.0
+
 # version 0.86.0
 - GitHub Actions auto release CI/CD
   - Linux GNU
