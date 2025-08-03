@@ -31,10 +31,10 @@ COPY --from=base_system /home/QR2M /home/QR2M
 
 RUN $PROJECT_DIR/01-pkgconf.sh       # Compiles in 8s
 RUN $PROJECT_DIR/01-zlib.sh          # Compiles in 3s
-RUN $PROJECT_DIR/01-libffi.sh        #| Compiles in 20s
-RUN $PROJECT_DIR/01-pcre2.sh         #| Compiles in 26s
-RUN $PROJECT_DIR/01-glib.sh          #| Compiles in 69s
-RUN $PROJECT_DIR/01-gettext.sh       #| Compiles in 475s
+RUN $PROJECT_DIR/01-libffi.sh        # Compiles in 17s
+RUN $PROJECT_DIR/01-pcre2.sh         # Compiles in 22s
+RUN $PROJECT_DIR/01-glib.sh          # Compiles in 62s
+RUN $PROJECT_DIR/01-gettext.sh       # Compiles in 475s
 
 
 FROM base_system AS stage_2
@@ -50,17 +50,18 @@ COPY --from=stage_1 /usr/local/lib /usr/local/lib
 COPY --from=stage_1 /usr/local/bin /usr/local/bin
 COPY --from=stage_1 $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/02-xorgproto.sh     #| Compiles in 4s
-RUN $PROJECT_DIR/02-libxau.sh        #| Compiles in 19s
-RUN $PROJECT_DIR/02-libxdmcp.sh      #| Compiles in 28s
-RUN $PROJECT_DIR/02-libxcb.sh        #| Compiles in 32s
-RUN $PROJECT_DIR/02-libx11.sh        #| Compiles in 67s
-RUN $PROJECT_DIR/02-libxrender.sh    #| Compiles in 26s
-RUN $PROJECT_DIR/02-libxext.sh       #| Compiles in 30s
-RUN $PROJECT_DIR/02-libexpat.sh      #| Compiles in 27s
-RUN $PROJECT_DIR/02-libbz2.sh        #| Compiles in 6s
-RUN $PROJECT_DIR/02-freetype.sh      #| Compiles in 26s
-RUN $PROJECT_DIR/02-fontconfig.sh    #| Compiles in 29s
+RUN $PROJECT_DIR/02-xorgproto.sh     # Compiles in 4s
+RUN $PROJECT_DIR/02-xorg-macros.sh   # Compiles in 5s
+RUN $PROJECT_DIR/02-libxau.sh        # Compiles in 19s
+RUN $PROJECT_DIR/02-libxdmcp.sh      # Compiles in 21s
+RUN $PROJECT_DIR/02-libxcb.sh        # Compiles in 27s
+RUN $PROJECT_DIR/02-libx11.sh        # Compiles in 55s
+RUN $PROJECT_DIR/02-libxrender.sh    # Compiles in 20s
+RUN $PROJECT_DIR/02-libxext.sh       # Compiles in 20s
+RUN $PROJECT_DIR/02-libexpat.sh      # Compiles in 22s
+RUN $PROJECT_DIR/02-libbz2.sh        # Compiles in 6s
+RUN $PROJECT_DIR/02-freetype.sh      # Compiles in 18s
+RUN $PROJECT_DIR/02-fontconfig.sh    # Compiles in 12s
 
 
 FROM base_system AS stage_3
@@ -78,26 +79,16 @@ COPY --from=stage_2 /usr/local/lib /usr/local/lib
 COPY --from=stage_2 /usr/local/bin /usr/local/bin
 COPY --from=stage_2 $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/03-openssl.sh       #| Compiles in 306s
-RUN $PROJECT_DIR/03-nghttp2.sh       #| Compiles in 35s
-RUN $PROJECT_DIR/03-curl.sh          #| Compiles in 69s
-RUN $PROJECT_DIR/03-cargo-c.sh       #| Compiles in 479s
+RUN $PROJECT_DIR/03-openssl.sh       # Compiles in 306s
+RUN $PROJECT_DIR/03-nghttp2.sh       # Compiles in 35s
+RUN $PROJECT_DIR/03-curl.sh          # Compiles in 69s
+RUN $PROJECT_DIR/03-cargo-c.sh       # Compiles in 479s
 
 
 FROM base_system AS stage_4
 
-RUN apk add \
-        appstream-dev brotli-dev bzip2-dev cairo-dev curl-dev docbook-xml docbook-xsl \
-        expat-dev fontconfig-dev fribidi-dev freetype-dev gdk-pixbuf-dev gettext-dev \
-        glib-dev graphene-dev graphite2-dev graphite2-static gperf gtk4.0-dev harfbuzz-dev \
-        itstool libadwaita-dev libeconf-dev libepoxy-dev libffi-dev libjpeg-turbo-dev \
-        libpng-dev libunwind-dev libunistring-dev libx11-dev libxau-dev libxcb-dev \
-        libxcursor-dev libxdmcp-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev \
-        libxkbcommon-static libxml2-dev libxrandr-dev libxrender-dev llvm-dev openssl-dev \
-        openssl-libs-static pango-dev pcre2-dev pixman-dev po4a shared-mime-info texinfo \
-        tiff-dev util-linux-dev util-linux-static vulkan-headers vulkan-loader \
-        vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev wayland-static \
-        xrandr xz-dev yaml-dev zlib-dev
+RUN apk add tiff-dev libepoxy-dev libpng-dev libxml2-dev libjpeg-turbo-dev graphene-dev fribidi-dev \
+        libeconf-dev brotli-dev libunistring-dev yaml-dev po4a texinfo gperf xz-dev
 
 COPY docker/static_library/04-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/04-*.sh
@@ -106,29 +97,67 @@ COPY --from=stage_3 /usr/local/lib /usr/local/lib
 COPY --from=stage_3 /usr/local/bin /usr/local/bin
 COPY --from=stage_3 $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/04-libpng.sh        #| Compiles in 15s
-RUN $PROJECT_DIR/04-libxml2.sh       #| Compiles in 41s
-RUN $PROJECT_DIR/04-libtiff.sh       #| Compiles in 32s
-RUN $PROJECT_DIR/04-graphene.sh      #| Compiles in 5s
-RUN $PROJECT_DIR/04-fribidi.sh       #| Compiles in 8s
-RUN $PROJECT_DIR/04-libeconf.sh      #| Compiles in 12s
-RUN $PROJECT_DIR/04-pixman.sh        #| Compiles in 21s
-RUN $PROJECT_DIR/04-libjpeg-turbo.sh #| Compiles in 23s
-RUN $PROJECT_DIR/04-libepoxy.sh      #| Compiles in 25s
-RUN $PROJECT_DIR/04-brotli.sh        #| Compiles in 28s
-RUN $PROJECT_DIR/04-xz.sh            #| Compiles in 41s
-RUN $PROJECT_DIR/04-libunistring.sh  #| Compiles in 354s
-RUN $PROJECT_DIR/04-appstream.sh     #| Compiles in 29s
-RUN $PROJECT_DIR/04-gdk-pixbuf.sh    #| Compiles in 17s
-RUN $PROJECT_DIR/04-cairo.sh         #| Compiles in 30s
-RUN $PROJECT_DIR/04-harfbuzz.sh      #| Compiles in 104s
-RUN $PROJECT_DIR/04-pango.sh         #| Compiles in 17s
-RUN $PROJECT_DIR/04-gtk4.sh          #| Compiles in 232s
-RUN $PROJECT_DIR/04-libadwaita.sh    #| Compiles in 45s
-RUN $PROJECT_DIR/04-librsvg.sh       #| Compiles in 150s
-RUN $PROJECT_DIR/04-vulkan.sh        #| Compiles in 15s
+RUN $PROJECT_DIR/04-libpng.sh        # Compiles in 15s
+RUN $PROJECT_DIR/04-libxml2.sh       # Compiles in 41s
+RUN $PROJECT_DIR/04-libjpeg-turbo.sh # Compiles in 23s
+RUN $PROJECT_DIR/04-libtiff.sh       # Compiles in 32s
+RUN $PROJECT_DIR/04-graphene.sh      # Compiles in 5s
+RUN $PROJECT_DIR/04-fribidi.sh       # Compiles in 8s
+RUN $PROJECT_DIR/04-libeconf.sh      # Compiles in 12s
+RUN $PROJECT_DIR/04-pixman.sh        # Compiles in 21s
+RUN $PROJECT_DIR/04-libepoxy.sh      # Compiles in 25s
+RUN $PROJECT_DIR/04-brotli.sh        # Compiles in 28s
+RUN $PROJECT_DIR/04-xz.sh            # Compiles in 41s
+RUN $PROJECT_DIR/04-libunistring.sh  # Compiles in 354s
+RUN $PROJECT_DIR/04-libyaml.sh       # Compiles in 13s
+
 
 FROM base_system AS stage_5
+
+RUN apk add appstream-dev gdk-pixbuf-dev cairo-dev harfbuzz-dev pango-dev gperf itstool \
+        openssl-dev openssl-libs-static glib-dev libxml2-dev docbook-xml docbook-xsl
+
+COPY docker/static_library/05-*.sh $PROJECT_DIR
+RUN chmod +x $PROJECT_DIR/05-*.sh
+
+COPY --from=stage_4 /usr/local/lib /usr/local/lib
+COPY --from=stage_4 /usr/local/bin /usr/local/bin
+COPY --from=stage_4 $PROJECT_DIR $PROJECT_DIR
+
+RUN $PROJECT_DIR/05-appstream.sh     # Compiles in 25s
+RUN $PROJECT_DIR/05-gdk-pixbuf.sh    # Compiles in 10s
+RUN $PROJECT_DIR/05-cairo.sh         # Compiles in 25s
+RUN $PROJECT_DIR/05-harfbuzz.sh      # Compiles in 91s
+RUN $PROJECT_DIR/05-pango.sh         # Compiles in 18s
+
+
+FROM base_system AS stage_6
+
+RUN apk add gtk4.0-dev libadwaita-dev bzip2-dev  curl-dev \
+        expat-dev fontconfig-dev freetype-dev  gettext-dev \
+        glib-dev graphite2-dev graphite2-static \
+        libunwind-dev libx11-dev libxau-dev libxcb-dev \
+        libxcursor-dev libxdmcp-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev \
+        libxkbcommon-static libxml2-dev libxrandr-dev libxrender-dev llvm-dev openssl-dev \
+        openssl-libs-static  pcre2-dev shared-mime-info \
+        util-linux-dev util-linux-static vulkan-headers vulkan-loader \
+        vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev wayland-static \
+        xrandr zlib-dev libcurl uutils-coreutils
+
+COPY docker/static_library/06-*.sh $PROJECT_DIR
+RUN chmod +x $PROJECT_DIR/06-*.sh
+
+COPY --from=stage_5 /usr/local/lib /usr/local/lib
+COPY --from=stage_5 /usr/local/bin /usr/local/bin
+COPY --from=stage_5 $PROJECT_DIR $PROJECT_DIR
+
+#RUN $PROJECT_DIR/06-librsvg.sh       # Compiles in 150s
+RUN $PROJECT_DIR/06-gtk4.sh          # Compiles in 232s
+RUN $PROJECT_DIR/06-libadwaita.sh    # Compiles in 45s
+RUN $PROJECT_DIR/06-vulkan.sh        # Compiles in 15s
+
+
+FROM base_system AS stage_7
 
 RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
         openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
@@ -149,8 +178,8 @@ RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev aut
 COPY docker/compile_circus.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/compile_circus.sh
 
-COPY --from=stage_4 /usr/local/lib /usr/local/lib
-COPY --from=stage_4 /usr/local/bin /usr/local/bin
-COPY --from=stage_4 $PROJECT_DIR $PROJECT_DIR
+COPY --from=stage_6 /usr/local/lib /usr/local/lib
+COPY --from=stage_6 /usr/local/bin /usr/local/bin
+COPY --from=stage_6 $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/compile_circus.sh

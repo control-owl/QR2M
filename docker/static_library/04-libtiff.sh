@@ -20,17 +20,18 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -ljpeg"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+export PKG_CONFIG="pkg-config --static"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   needed_files=(
     "zlib.pc"
+    "libjpeg.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
@@ -86,9 +87,7 @@ fi
   ./configure \
     --enable-static \
     --disable-shared \
-    --prefix=$STATIC_DIR \
-    --with-zlib="$STATIC_DIR"
-#    --disable-jpeg
+    --prefix=$STATIC_DIR
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

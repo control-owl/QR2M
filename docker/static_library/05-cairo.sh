@@ -20,21 +20,25 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+export PKG_CONFIG="pkg-config --static"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   needed_files=(
-    "glib-2.0.pc"
-    "libpcre2-8.pc"
-    "libffi.pc"
-    "libpng.pc"
+    "pixman-1.pc"
+    "fontconfig.pc"
+    "freetype2.pc"
     "libpng16.pc"
+    "zlib.pc"
+    "x11.pc"
+    "xrender.pc"
+    "xext.pc"
+    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
@@ -49,7 +53,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git --depth 1 pixbuf
+  git clone https://gitlab.freedesktop.org/cairo/cairo.git --depth 1 cairo
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -58,28 +62,32 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd pixbuf
+cd cairo
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  sed -i '/#ifndef HAVE_CTIME_R/,/#endif/d' src/cairo-ps-surface.c
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    --default-library=static \
-    --prefix=$STATIC_DIR \
-    -Dbuiltin_loaders=default \
-    -Ddocumentation=false \
-    -Dgtk_doc=false \
-    -Dman=false \
-    -Dtests=false \
-    -Dintrospection=disabled \
-    -Dglycin=disabled \
-    -Dandroid=disabled \
-    -Dothers=disabled \
-    -Drelocatable=false \
-    -Dnative_windows_loaders=false \
-    -Dinstalled_tests=false \
-    -Dgio_sniffing=false \
-    -Dthumbnailer=disabled
+    -Dprefix="$STATIC_DIR" \
+    -Ddefault_library=static \
+    --buildtype=release \
+    -Dtests=disabled
+
+#\
+#    -Dxlib=disabled \
+#    -Dxcb=disabled
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -102,7 +110,7 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{ 
+{
   ninja -C builddir install
 } 2>&1 | tee -a "$LOG_FILE"
 
@@ -114,10 +122,11 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+
 {
   compiled_files=(
-    "libgdk_pixbuf-2.0.a"
-    "gdk-pixbuf-2.0.pc"
+    "libcairo.a"
+    "cairo.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

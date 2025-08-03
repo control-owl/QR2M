@@ -4,7 +4,7 @@
       <settings>
         <option name="imageTag" value="qr2m_stage_1" />
         <option name="buildCliOptions" value="--target stage_1" />
-        <option name="containerName" value="qr2m_stage_1" />
+        <option name="containerName" value="qr2m_01_basics" />
         <option name="contextFolderPath" value="." />
         <option name="sourceFilePath" value="docker/Dockerfile_multi" />
       </settings>

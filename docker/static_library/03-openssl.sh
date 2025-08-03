@@ -20,11 +20,11 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+export PKG_CONFIG="pkg-config --static"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -65,7 +65,7 @@ cd openssl
     no-tests \
     no-apps \
     --prefix="$STATIC_DIR" \
-    --openssldir="$STATIC_DIR/openssl" \
+    --openssldir="$STATIC_DIR" \
     --with-zlib-lib="$STATIC_DIR/lib" \
     --with-zlib-include="$STATIC_DIR/include"
 } 2>&1 | tee -a "$LOG_FILE"

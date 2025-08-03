@@ -20,23 +20,21 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/x86_64-linux-musl/pkgconfig:/usr/local/lib/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-#export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
+export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+export PKG_CONFIG="pkg-config --static"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  needed_files=(
-    "libcurl.pc"
-    "libxml-2.0.pc"
-    "libeconf.pc"
-    "libunistring.a"
+  pc_files=(
+    "gtk4.pc"
+    "appstream.pc"
   )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -48,7 +46,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/ximion/appstream.git --depth 1 appstream
+  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -57,29 +55,21 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd appstream
+cd libadwaita
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    --prefix="$STATIC_DIR" \
-    --default-library=static \
-    -Ddocs=false \
-    -Dinstall-docs=false \
-    -Dapidocs=false \
-    -Dsystemd=false \
-    -Dstemming=false \
-    -Dvapi=false \
-    -Dqt=false \
-    -Dgir=false \
-    -Dapt-support=false \
-    -Dzstd-support=false
-#    -Dmaintainer=false \
-#    -Dcompose=false \
-#    -Dsvg-support=false \
-#    -Dstatic-analysis=false
-} 2>&1 | tee -a "$LOG_FILE"
+    --default-library static \
+    --prefix=$STATIC_DIR \
+    -Dexamples=false \
+    -Dgtk_doc=false \
+    -Ddocumentation=false \
+    -Dtests=false
+#    -Dvapi=false \
+#    -Dintrospection=disabled \
+}  2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -90,8 +80,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir
-} 2>&1 | tee -a "$LOG_FILE"
+  ninja -C builddir 2>&1
+} | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -115,10 +105,8 @@ fi
 
 {
   compiled_files=(
-    "libxmlb.a"
-    "libappstream.a"
-    "xmlb.pc"
-    "appstream.pc"
+    "libadwaita-1.a"
+    "libadwaita-1.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

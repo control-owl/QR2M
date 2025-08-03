@@ -20,19 +20,26 @@ mkdir -p "$STATIC_DIR"
 cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export PKG_CONFIG="pkg-config --static"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
+export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/local/lib/pkgconfig"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lz -latomic"
-#export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib -C link-arg=-lz -C link-arg=-latomic"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -lcairo -lgdk_pixbuf-2.0 -lglib-2.0 -lgobject-2.0 -lz -lxml2 -lpng"
+#export RUSTFLAGS="-C link-arg=-L/home/QR2M/compile-circus/STATIC/lib"
+export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
+#export PKG_CONFIG="pkg-config --static"
+
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   pc_files=(
     "glib-2.0.pc"
-    "freetype2.pc"
     "cairo.pc"
+    "pango.pc"
+    "libxml-2.0.pc"
+    "gobject-2.0.pc"
+    "gdk-pixbuf-2.0.pc"
+    "freetype2.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
@@ -47,7 +54,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/harfbuzz/harfbuzz.git --depth 1 harfbuzz
+  git clone https://gitlab.gnome.org/GNOME/librsvg.git --depth 1 librsvg
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -56,35 +63,21 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd harfbuzz
+cd librsvg
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    -Dprefix="$STATIC_DIR" \
+    --prefix=$STATIC_DIR \
     -Ddefault_library=static \
-    -Dfreetype=enabled \
-    -Dchafa=disabled \
-    -Dicu=disabled \
-    -Dgraphite2=disabled \
-    -Dfontations=disabled \
-    -Dgdi=disabled \
-    -Ddirectwrite=disabled \
-    -Dcoretext=disabled \
-    -Dharfrust=disabled \
-    -Dwasm=disabled \
-    -Dtests=disabled \
-    -Dintrospection=disabled \
     -Ddocs=disabled \
-    -Ddoc_tests=false \
-    -Dutilities=disabled \
-    -Dbenchmark=disabled \
-    -Dicu_builtin=false \
-    -Dwith_libstdcxx=false \
-    -Dexperimental_api=false \
-    -Dragel_subproject=false \
-    -Dbuildtype=release
+    -Dtests=false \
+    -Dintrospection=disabled \
+    -Davif=disabled \
+    -Dpixbuf-loader=disabled \
+    -Dvala=disabled \
+    -Dtriplet=x86_64-unknown-linux-musl
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -121,8 +114,8 @@ fi
 
 {
   compiled_files=(
-    "libharfbuzz.a"
-    "harfbuzz.pc"
+#    "libXdmcp.a"
+#    "xdmcp.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
