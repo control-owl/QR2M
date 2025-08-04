@@ -68,9 +68,9 @@ FROM base_system AS stage_3
 
 RUN apk add \
         zlib-dev openssl-dev nghttp2-dev curl-dev util-linux-dev util-linux-static \
-        docbook-xml docbook-xsl gettext-dev gettext-libs uutils-coreutils rust-bindgen yaml-dev \
-        gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata appstream-dev appstream-glib-dev \
-        dbus desktop-file-utils
+        docbook-xml docbook-xsl gettext-dev gettext-libs uutils-coreutils rust-bindgen \
+        gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata appstream-dev \
+        appstream-glib-dev dbus desktop-file-utils yaml-dev
 
 COPY docker/static_library/03-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/03-*.sh
@@ -133,16 +133,12 @@ RUN $PROJECT_DIR/05-pango.sh         # Compiles in 18s
 
 FROM base_system AS stage_6
 
-RUN apk add gtk4.0-dev libadwaita-dev bzip2-dev  curl-dev \
-        expat-dev fontconfig-dev freetype-dev  gettext-dev \
-        glib-dev graphite2-dev graphite2-static \
-        libunwind-dev libx11-dev libxau-dev libxcb-dev \
-        libxcursor-dev libxdmcp-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev \
-        libxkbcommon-static libxml2-dev libxrandr-dev libxrender-dev llvm-dev openssl-dev \
-        openssl-libs-static  pcre2-dev shared-mime-info \
+RUN apk add gtk4.0-dev libadwaita-dev graphite2-dev graphite2-static \
+        libunwind-dev libxcursor-dev libxfixes-dev libxi-dev libxkbcommon-dev \
+        libxrandr-dev libxrender-dev llvm-dev pcre2-dev shared-mime-info \
         util-linux-dev util-linux-static vulkan-headers vulkan-loader \
-        vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev wayland-static \
-        xrandr zlib-dev libcurl uutils-coreutils
+        vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev \
+        wayland-static xrandr zlib-dev uutils-coreutils
 
 COPY docker/static_library/06-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/06-*.sh
@@ -151,7 +147,8 @@ COPY --from=stage_5 /usr/local/lib /usr/local/lib
 COPY --from=stage_5 /usr/local/bin /usr/local/bin
 COPY --from=stage_5 $PROJECT_DIR $PROJECT_DIR
 
-#RUN $PROJECT_DIR/06-librsvg.sh       # Compiles in 150s
+#RUN $PROJECT_DIR/06-librsvg.sh       # WTF man, it seams that I do not need this, days lost troubleshooting this shit
+RUN $PROJECT_DIR/06-libxkbcommon.sh  # 
 RUN $PROJECT_DIR/06-gtk4.sh          # Compiles in 232s
 RUN $PROJECT_DIR/06-libadwaita.sh    # Compiles in 45s
 RUN $PROJECT_DIR/06-vulkan.sh        # Compiles in 15s
@@ -162,7 +159,7 @@ FROM base_system AS stage_7
 RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
         openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
-        libxkbcommon-dev libxkbcommon-static expat-dev expat-static freetype-dev fontconfig-dev \
+        libxkbcommon-dev expat-dev expat-static freetype-dev fontconfig-dev \
         brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest vulkan-loader \
         pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev musl-locales \
         libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
