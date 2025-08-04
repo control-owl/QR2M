@@ -46,7 +46,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/libxkbcommon.git --depth 1 libxkbcommon
+  git clone https://github.com/xkbcommon/libxkbcommon --depth 1 libxkbcommon
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
