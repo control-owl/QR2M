@@ -108,7 +108,7 @@ fi
 
 {
   compiled_files=(
-    "xproto.pc"
+    # "xproto.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

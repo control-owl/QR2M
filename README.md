@@ -21,6 +21,10 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 
 ## Project status
 
+### I have been trying to compile my app with MUSL since 19 June 2025. No app updates will be carried out until this is complete.
+
+This is currently my main focus, and I want to make my app as portable as possible. The task is very difficult, as I have to precompile **+40 libraries** without any error. Each test takes almost an **hour**, and I only see one error at a time. As soon as I fix it, a new one pops up. It's so annoying that I have to solve the problem in order to sleep well.
+
 | **Security Status**                                                                                                                                                                                       |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Verify GPG Signature](https://github.com/control-owl/QR2M/actions/workflows/verify-gpg-signature.yml/badge.svg)](https://github.com/control-owl/QR2M/actions/workflows/verify-gpg-signature.yml)       |
@@ -30,7 +34,7 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/release-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/release-linux-gnu.yml)             |
 | [![macOS aarch64 Darwin](https://github.com/control-owl/QR2M/actions/workflows/release-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/release-macos-aarch64.yml) |
-| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml)              |
+| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/release-linux-musl.yml/badge.svg?branch=docker)](https://github.com/control-owl/QR2M/actions/workflows/release-linux-musl.yml)              |
 
 
 ## Table of Contents

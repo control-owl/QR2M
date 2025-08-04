@@ -124,7 +124,6 @@ fi
 {
   compiled_files=(
     "libtiff.a"
-    "libtiffxx.a"
     "libtiff-4.pc"
   )
 

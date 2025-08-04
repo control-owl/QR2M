@@ -118,30 +118,6 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-#
-#{
-#  ninja
-#} 2>&1 | tee -a "$LOG_FILE"
-#
-#STATUS=${PIPESTATUS[0]}
-#if [ "$STATUS" -ne 0 ]; then
-#  cat "$LOG_FILE"
-#  exit 1
-#fi
-#
-## -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-#
-#{
-#  ninja install
-#} 2>&1 | tee -a "$LOG_FILE"
-#
-#STATUS=${PIPESTATUS[0]}
-#if [ "$STATUS" -ne 0 ]; then
-#  cat "$LOG_FILE"
-#  exit 1
-#fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 if [ -f "$STATIC_DIR/lib/libvulkan.so" ]; then
   ar rcs "$STATIC_DIR/lib/libvulkan.a" "$STATIC_DIR/lib/libvulkan.so"
