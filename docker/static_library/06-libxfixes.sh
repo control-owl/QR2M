@@ -30,8 +30,13 @@ export PKG_CONFIG="pkg-config --static"
 
 {
   needed_files=(
-    "gtk4.pc"
-    "appstream.pc"
+#    "glib-2.0.pc"
+#    "cairo.pc"
+#    "freetype2.pc"
+#    "fontconfig.pc"
+#    "fribidi.pc"
+#    "harfbuzz.pc"
+#    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
@@ -46,7 +51,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxfixes.git --depth 1 libxfixes
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -55,21 +60,15 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libadwaita
+cd libxfixes
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
     --default-library static \
-    --prefix=$STATIC_DIR \
-    -Dexamples=false \
-    -Dgtk_doc=false \
-    -Ddocumentation=false \
-    -Dtests=false
-#    -Dvapi=false \
-#    -Dintrospection=disabled \
-}  2>&1 | tee -a "$LOG_FILE"
+    --prefix=$STATIC_DIR
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -80,8 +79,8 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ninja -C builddir 2>&1
-} | tee -a "$LOG_FILE"
+  ninja -C builddir
+} 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -103,10 +102,11 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+
 {
   compiled_files=(
-    "libadwaita-1.a"
-    "libadwaita-1.pc"
+#    "liblibxfixes-1.0.a"
+#    "libxfixes.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

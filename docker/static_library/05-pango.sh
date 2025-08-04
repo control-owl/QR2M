@@ -29,7 +29,7 @@ export PKG_CONFIG="pkg-config --static"
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=(
+  needed_files=(
     "glib-2.0.pc"
     "cairo.pc"
     "freetype2.pc"
@@ -39,7 +39,7 @@ export PKG_CONFIG="pkg-config --static"
     "libintl.a"
   )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

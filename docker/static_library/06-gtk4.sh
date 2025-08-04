@@ -22,14 +22,14 @@ cd "$CIRCUS"
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
 export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -static -lXrandr -lXrender -lX11 -lXext -lxkbcommon -lXi -lffi"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export PKG_CONFIG="pkg-config --static"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  pc_files=(
+  needed_files=(
     "glib-2.0.pc"
     "cairo.pc"
     "pango.pc"
@@ -45,7 +45,7 @@ export PKG_CONFIG="pkg-config --static"
     "pixman-1.pc"
   )
 
-  source "$PROJECT_DIR/check_me_baby.sh" "${pc_files[@]}"
+  source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -71,24 +71,24 @@ cd gtk4
 {
   meson setup builddir \
     --prefix=$STATIC_DIR \
-    --default-library static \
+    --default-library=static \
     -Dintrospection=disabled \
     -Ddocumentation=false \
     -Dman-pages=false \
-    -Dmedia-gstreamer=disabled \
-    -Dprint-cpdb=disabled \
-    -Dprint-cups=disabled \
-    -Dvulkan=disabled \
-    -Dcloudproviders=disabled \
-    -Dsysprof=disabled \
-    -Dtracker=disabled \
-    -Dcolord=disabled \
-    -Daccesskit=disabled \
-    -Dscreenshots=false \
+    -Dbuild-tests=false \
     -Dbuild-demos=false \
     -Dbuild-testsuite=false \
     -Dbuild-examples=false \
-    -Dbuild-tests=false
+    -Dmedia-gstreamer=disabled \
+    -Dprint-cpdb=disabled \
+    -Dprint-cups=disabled #\
+#    -Dcloudproviders=disabled \
+#    -Dvulkan=disabled \
+#    -Dsysprof=disabled \
+#    -Dtracker=disabled \
+#    -Dcolord=disabled \
+#    -Daccesskit=disabled \
+#    -Dscreenshots=false
 }  2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

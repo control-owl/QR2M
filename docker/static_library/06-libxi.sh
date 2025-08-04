@@ -21,8 +21,8 @@ cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
+export XFIXES_CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+export XFIXES_LIBS="-L/home/QR2M/compile-circus/STATIC/lib"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export PKG_CONFIG="pkg-config --static"
 
@@ -30,10 +30,8 @@ export PKG_CONFIG="pkg-config --static"
 
 {
   needed_files=(
-    "gtk4.pc"
-    "appstream.pc"
+    #PKG_CHECK_MODULES(XI, [xproto >= 7.0.13] [x11 >= 1.6] [xextproto >= 7.0.3] [xext >= 1.0.99.1] [inputproto >= 2.3.99.1])
   )
-
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
 } 2>&1 | tee -a "$LOG_FILE"
 
@@ -46,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxi.git --depth 1 libxi
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -55,46 +53,52 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libadwaita
+cd libxi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  meson setup builddir \
-    --default-library static \
-    --prefix=$STATIC_DIR \
-    -Dexamples=false \
-    -Dgtk_doc=false \
-    -Ddocumentation=false \
-    -Dtests=false
-#    -Dvapi=false \
-#    -Dintrospection=disabled \
-}  2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  ninja -C builddir 2>&1
-} | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  ninja -C builddir install
+  ./autogen.sh
 } 2>&1 | tee -a "$LOG_FILE"
 
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  ./configure \
+    --enable-static \
+    --disable-shared \
+    --prefix=$STATIC_DIR
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  make -j"$(nproc)"
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  make install
+} 2>&1 | tee -a "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
@@ -105,8 +109,9 @@ fi
 
 {
   compiled_files=(
-    "libadwaita-1.a"
-    "libadwaita-1.pc"
+#    "liblzma.a"
+#    "liblzma.pc"
+#    "lzma"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
