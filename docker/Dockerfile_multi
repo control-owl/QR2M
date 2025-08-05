@@ -153,7 +153,8 @@ RUN $PROJECT_DIR/06-libxkbcommon.sh  # Compiles in 21s
 RUN $PROJECT_DIR/06-libxrandr.sh     # Compiles in 3s
 RUN $PROJECT_DIR/06-vulkan.sh        # Compiles in 15s
 RUN $PROJECT_DIR/06-libxi.sh         # Compiles in 23s
-RUN $PROJECT_DIR/06-libxfixes.sh     # Compiles in
+RUN $PROJECT_DIR/06-libxfixes.sh     # 
+RUN $PROJECT_DIR/06-libxcursor.sh    # 
 RUN $PROJECT_DIR/06-gtk4.sh          #
 RUN $PROJECT_DIR/06-libadwaita.sh    #
 
