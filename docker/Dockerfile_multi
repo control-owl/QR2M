@@ -133,7 +133,8 @@ RUN $PROJECT_DIR/05-pango.sh         # Compiles in 18s
 
 FROM base_system AS stage_6
 
-RUN apk add gtk4.0-dev libadwaita-dev libxrandr-dev libxkbcommon-dev libxi
+RUN apk add gtk4.0-dev libadwaita-dev libxrandr-dev libxkbcommon-dev libxi libxdamage-dev \
+        libxcursor-dev libxfixes-dev
 
 #\
 #        libunwind-dev libxcursor-dev libxfixes-dev libxi-dev libxkbcommon-dev \
@@ -155,6 +156,7 @@ RUN $PROJECT_DIR/06-vulkan.sh        # Compiles in 15s
 RUN $PROJECT_DIR/06-libxi.sh         # Compiles in 23s
 RUN $PROJECT_DIR/06-libxfixes.sh     # 
 RUN $PROJECT_DIR/06-libxcursor.sh    # 
+RUN $PROJECT_DIR/06-libxdamage.sh     # 
 RUN $PROJECT_DIR/06-gtk4.sh          #
 RUN $PROJECT_DIR/06-libadwaita.sh    #
 

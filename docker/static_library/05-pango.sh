@@ -66,7 +66,7 @@ cd pango
 
 {
   meson setup builddir \
-    --default-library static \
+    --default-library=static \
     --prefix=$STATIC_DIR \
     -Ddocumentation=false \
     -Dman-pages=false \

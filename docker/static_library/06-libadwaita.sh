@@ -61,7 +61,7 @@ cd libadwaita
 
 {
   meson setup builddir \
-    --default-library static \
+    --default-library=static \
     --prefix=$STATIC_DIR \
     -Dexamples=false \
     -Dgtk_doc=false \

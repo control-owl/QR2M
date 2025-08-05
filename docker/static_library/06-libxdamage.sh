@@ -21,7 +21,7 @@ cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
+export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include  -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export PKG_CONFIG="pkg-config --static"
@@ -30,13 +30,6 @@ export PKG_CONFIG="pkg-config --static"
 
 {
   needed_files=(
-#    "glib-2.0.pc"
-#    "cairo.pc"
-#    "freetype2.pc"
-#    "fontconfig.pc"
-#    "fribidi.pc"
-#    "harfbuzz.pc"
-#    "libintl.a"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
@@ -51,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxfixes.git --depth 1 libxfixes
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxdamage.git --depth 1 libxdamage
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -60,14 +53,14 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libxfixes
+cd libxdamage
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
   meson setup builddir \
-    --default-library=static \
-    --prefix=$STATIC_DIR
+    --prefix="$STATIC_DIR" \
+    --default-library=static
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -102,11 +95,12 @@ fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-
 {
   compiled_files=(
-#    "liblibxfixes-1.0.a"
-#    "libxfixes.pc"
+    #"libxmlb.a"
+    #"liblibxdamage.a"
+    #"xmlb.pc"
+    #"libxdamage.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

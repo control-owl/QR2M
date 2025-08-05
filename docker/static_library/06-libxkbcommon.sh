@@ -61,7 +61,7 @@ cd libxkbcommon
 
 {
   meson setup builddir \
-    --default-library static \
+    --default-library=static \
     --prefix=$STATIC_DIR \
     -Denable-wayland=false
 }  2>&1 | tee -a "$LOG_FILE"

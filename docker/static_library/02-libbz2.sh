@@ -59,7 +59,7 @@ cd bzip2
 
 {
   meson setup builddir \
-    --default-library static \
+    --default-library=static \
     --prefix=$STATIC_DIR \
     -Ddocs=disabled \
     -Dbuildtype=release
