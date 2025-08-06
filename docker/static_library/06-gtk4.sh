@@ -81,14 +81,14 @@ cd gtk4
     -Dbuild-examples=false \
     -Dmedia-gstreamer=disabled \
     -Dprint-cpdb=disabled \
-    -Dprint-cups=disabled #\
-#    -Dcloudproviders=disabled \
-#    -Dvulkan=disabled \
-#    -Dsysprof=disabled \
-#    -Dtracker=disabled \
-#    -Dcolord=disabled \
-#    -Daccesskit=disabled \
-#    -Dscreenshots=false
+    -Dprint-cups=disabled \
+    -Dcloudproviders=disabled \
+    -Dvulkan=disabled \
+    -Dsysprof=disabled \
+    -Dtracker=disabled \
+    -Dcolord=disabled \
+    -Daccesskit=disabled \
+    -Dscreenshots=false
 }  2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
