@@ -134,11 +134,11 @@ RUN $PROJECT_DIR/05-pango.sh         # Compiles in 18s
 FROM base_system AS stage_6
 
 RUN apk add gtk4.0-dev libadwaita-dev libxrandr-dev libxkbcommon-dev libxi libxdamage-dev \
-        libxcursor-dev libxfixes-dev libxinerama-dev \
-        util-linux-dev util-linux-static vulkan-headers vulkan-loader \
-        vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev
+        libxcursor-dev libxfixes-dev libxinerama-dev glslang glslang-dev \
 
 #\
+#        util-linux-dev util-linux-static vulkan-headers vulkan-loader \
+#        vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev \
 #        libunwind-dev zlib-dev\
 #        libxrender-dev llvm-dev pcre2-dev shared-mime-info \
 #        wayland-static xrandr  uutils-coreutils
