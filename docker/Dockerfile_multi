@@ -148,10 +148,10 @@ RUN $PROJECT_DIR/05-libadwaita.sh    # Compiles in 28s
 
 FROM base_system AS stage_6
 
-RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
+RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev musl autoconf automake libtool \
         openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
         libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
-        libxkbcommon-dev expat-dev expat-static freetype-dev fontconfig-dev \
+        libxkbcommon-dev expat-dev expat-static freetype-dev fontconfig-dev musl-utils \
         brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest vulkan-loader \
         pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev musl-locales \
         libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
