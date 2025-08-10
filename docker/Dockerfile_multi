@@ -114,8 +114,9 @@ RUN $PROJECT_DIR/04-libyaml.sh       # Compiles in 13s
 
 FROM base_system AS stage_5
 
-RUN apk add appstream-dev gdk-pixbuf-dev cairo-dev harfbuzz-dev pango-dev gperf itstool \
-        openssl-dev openssl-libs-static glib-dev libxml2-dev docbook-xml docbook-xsl
+RUN apk add appstream-dev gdk-pixbuf-dev cairo-dev harfbuzz-dev pango-dev gperf itstool openssl-dev \
+        openssl-libs-static glib-dev libxml2-dev docbook-xml docbook-xsl libxrandr-dev libxkbcommon-dev \
+        libxi libxdamage-dev libxcursor-dev libxfixes-dev libxinerama-dev libsass-dev gtk4.0-dev
 
 COPY docker/static_library/05-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/05-*.sh
@@ -129,21 +130,23 @@ RUN $PROJECT_DIR/05-gdk-pixbuf.sh    # Compiles in 10s
 RUN $PROJECT_DIR/05-cairo.sh         # Compiles in 25s
 RUN $PROJECT_DIR/05-harfbuzz.sh      # Compiles in 91s
 RUN $PROJECT_DIR/05-pango.sh         # Compiles in 18s
+RUN $PROJECT_DIR/05-libxkbcommon.sh  # Compiles in 21s
+RUN $PROJECT_DIR/05-libxrandr.sh     # Compiles in 3s
+RUN $PROJECT_DIR/05-vulkan.sh        # Compiles in 15s
+RUN $PROJECT_DIR/05-libxi.sh         # Compiles in 23s
+RUN $PROJECT_DIR/05-libxfixes.sh     # Compiles in 3s
+RUN $PROJECT_DIR/05-libxcursor.sh    # Compiles in 4s
+RUN $PROJECT_DIR/05-libxdamage.sh    # Compiles in 3s
+RUN $PROJECT_DIR/05-libxinerama.sh   # Compiles in 3s
+RUN $PROJECT_DIR/05-libdrm.sh        # Compiles in 9s
+RUN $PROJECT_DIR/05-libsass.sh       # Compiles in 57s
+RUN $PROJECT_DIR/05-libxcomposite.sh # Compiles in 2s
+RUN $PROJECT_DIR/05-gtk4.sh          # Compiles in 163s
 
 
 FROM base_system AS stage_6
 
-RUN apk add gtk4.0-dev libadwaita-dev libxrandr-dev libxkbcommon-dev libxi libxdamage-dev \
-        libxcursor-dev libxfixes-dev libxinerama-dev libsass-dev
-        # glslang glslang-dev \
-        # vulkan-headers vulkan-loader vulkan-loader-dev vulkan-tools vulkan-utility-libraries
-
-#\
-#        util-linux-dev util-linux-static vulkan-headers vulkan-loader \
-#        vulkan-loader-dev vulkan-tools vulkan-utility-libraries wayland-dev \
-#        libunwind-dev zlib-dev\
-#        libxrender-dev llvm-dev pcre2-dev shared-mime-info \
-#        wayland-static xrandr  uutils-coreutils
+RUN apk add libadwaita-dev
 
 COPY docker/static_library/06-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/06-*.sh
@@ -152,17 +155,7 @@ COPY --from=stage_5 /usr/local/lib /usr/local/lib
 COPY --from=stage_5 /usr/local/bin /usr/local/bin
 COPY --from=stage_5 $PROJECT_DIR $PROJECT_DIR
 
-RUN $PROJECT_DIR/06-libxkbcommon.sh  # Compiles in 21s
-RUN $PROJECT_DIR/06-libxrandr.sh     # Compiles in 3s
-RUN $PROJECT_DIR/06-vulkan.sh        # Compiles in 15s
-RUN $PROJECT_DIR/06-libxi.sh         # Compiles in 23s
-RUN $PROJECT_DIR/06-libxfixes.sh     # Compiles in 3s
-RUN $PROJECT_DIR/06-libxcursor.sh    # Compiles in 4s
-RUN $PROJECT_DIR/06-libxdamage.sh    # Compiles in 3s
-RUN $PROJECT_DIR/06-libxinerama.sh   # Compiles in 3s
-RUN $PROJECT_DIR/06-libdrm.sh        # Compiles in 9s
-RUN $PROJECT_DIR/06-libsass.sh       # Compiles in 57s
-RUN $PROJECT_DIR/06-gtk4.sh          # FAIL
+
 RUN $PROJECT_DIR/06-libadwaita.sh    #
 
 

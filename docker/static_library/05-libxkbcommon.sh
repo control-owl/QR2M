@@ -100,8 +100,8 @@ fi
 
 {
   compiled_files=(
-    # "libxkbcommon-1.a"
-    # "libxkbcommon-1.pc"
+     "libxkbcommon.a"
+#     "libxkbcommon.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"

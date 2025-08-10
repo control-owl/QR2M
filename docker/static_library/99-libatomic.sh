@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/sass/libsass.git --depth 1 libsass
+  git clone https://github.com/gcc-mirror/gcc.git --depth 1 gcc
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -52,19 +52,19 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libsass
+cd gcc/libatomic
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
-  autoreconf --force --install
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
+#{
+#  ./autogen.sh
+#} 2>&1 | tee -a "$LOG_FILE"
+#
+#STATUS=${PIPESTATUS[0]}
+#if [ "$STATUS" -ne 0 ]; then
+#  cat "$LOG_FILE"
+#  exit 1
+#fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -72,8 +72,7 @@ fi
   ./configure \
     --enable-static \
     --disable-shared \
-    --prefix=$STATIC_DIR \
-    --disable-tests
+    --prefix=$STATIC_DIR
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

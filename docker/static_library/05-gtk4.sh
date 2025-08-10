@@ -19,10 +19,11 @@ mkdir -p "$STATIC_DIR"
 
 cd "$CIRCUS"
 
-export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
-export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized -Wno-deprecated-declarations" # librsvg fails without -Wno-deprecated-declarations
-export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
+#export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
+export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/lib64/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
+export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized -fPIC"
+export CXXFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-deprecated-declarations -fPIC"
+export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib -L/home/QR2M/compile-circus/STATIC/lib64 -lXrandr -lXrender -lX11 -lXext -lxkbcommon -lXi -lffi -lssl -lcrypto -lcurl"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export PKG_CONFIG="pkg-config --static"
 
@@ -43,6 +44,7 @@ export PKG_CONFIG="pkg-config --static"
     "libtiff-4.pc"
     "libpng16.pc"
     "pixman-1.pc"
+    "libssl.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${needed_files[@]}"
@@ -68,27 +70,43 @@ fi
 
 cd gtk4
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 {
   meson setup builddir \
     --prefix=$STATIC_DIR \
-    --default-library=static \
-    -Dintrospection=disabled \
-    -Ddocumentation=false \
-    -Dman-pages=false \
-    -Dbuild-tests=false \
-    -Dbuild-demos=false \
-    -Dbuild-testsuite=false \
-    -Dbuild-examples=false \
+    -Ddefault_library=static \
+    -Dx11-backend=true \
+    -Dwayland-backend=false \
+    -Dbroadway-backend=false \
+    -Dwin32-backend=false \
+    -Dmacos-backend=false \
+    -Dandroid-backend=false \
+    \
     -Dmedia-gstreamer=disabled \
     -Dprint-cpdb=disabled \
     -Dprint-cups=disabled \
-    -Dcloudproviders=disabled \
+    \
     -Dvulkan=disabled \
+    -Dcloudproviders=disabled \
     -Dsysprof=disabled \
     -Dtracker=disabled \
     -Dcolord=disabled \
+    -Df16c=enabled \
     -Daccesskit=disabled \
-    -Dscreenshots=false
+    -Dandroid-runtime=disabled \
+    \
+    -Dintrospection=disabled \
+    \
+    -Ddocumentation=false \
+    -Dscreenshots=false \
+    -Dman-pages=false \
+    \
+    -Dprofile=auto \
+    -Dbuild-demos=false \
+    -Dbuild-testsuite=false \
+    -Dbuild-examples=false \
+    -Dbuild-tests=false
 }  2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

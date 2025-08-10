@@ -21,7 +21,8 @@ cd "$CIRCUS"
 
 export PKG_CONFIG_LIBDIR="/home/QR2M/compile-circus/STATIC/lib/pkgconfig"
 export PKG_CONFIG_PATH="/home/QR2M/compile-circus/STATIC/lib/pkgconfig:/home/QR2M/compile-circus/STATIC/share/pkgconfig"
-export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized -fPIC"
+export CXXFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition"
+export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-interposition -Wno-maybe-uninitialized"
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export PKG_CONFIG="pkg-config --static"
@@ -43,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git --depth 1 libjpeg-turbo
+  git clone https://github.com/sass/libsass.git --depth 1 libsass
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -52,27 +53,12 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libjpeg-turbo
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-
-{
-  mkdir -p builddir
-  cd builddir
-  cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$STATIC_DIR -DENABLE_SHARED=0 ..
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
+cd libsass
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make -j"$(nproc)" -C builddir
+  autoreconf --force --install
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -84,7 +70,35 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  make install -C builddir
+  ./configure \
+    --enable-static \
+    --enable-shared \
+    --prefix=$STATIC_DIR \
+    --disable-tests
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  make -j"$(nproc)"
+} 2>&1 | tee -a "$LOG_FILE"
+
+STATUS=${PIPESTATUS[0]}
+if [ "$STATUS" -ne 0 ]; then
+  cat "$LOG_FILE"
+  exit 1
+fi
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+{
+  make install
 } 2>&1 | tee -a "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -96,10 +110,8 @@ fi
 
 {
   compiled_files=(
-    "libjpeg.a"
-    "libturbojpeg.a"
-    "libjpeg.pc"
-    "libturbojpeg.pc"
+    "libsass.a"
+    "libsass.pc"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
