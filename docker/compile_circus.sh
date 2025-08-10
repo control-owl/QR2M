@@ -58,9 +58,13 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 
 echo "Listing build directory:"
+ls -l "$BUILD_PATH"
 ls -l "$BUILD_PATH/release"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+exit 1
+
 
 {
   cargo test --release --locked --no-fail-fast --target "$TARGET" -vv --features "$FEATURES"
@@ -71,12 +75,6 @@ if [ "$STATUS" -ne 0 ]; then
   cat "$LOG_FILE"
   exit 1
 fi
-
-
-ls -la $BUILD_PATH/
-ls -la $BUILD_PATH/release
-
-
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
