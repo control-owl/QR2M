@@ -58,6 +58,7 @@ if [ "$STATUS" -ne 0 ]; then
 fi
 
 cd libadwaita
+cp /home/QR2M/compile-circus/STATIC/lib/libsass.so.1.0.0 /home/QR2M/compile-circus/STATIC/lib/libsass.so.1
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -66,11 +67,11 @@ cd libadwaita
     --default-library=static \
     --prefix=$STATIC_DIR \
     -Dexamples=false \
-    -Dgtk_doc=false \
     -Ddocumentation=false \
     -Dtests=false \
-    -Dvapi=false \
-    -Dintrospection=disabled
+    -Dvapi=false
+#    \
+#    -Dintrospection=disabled
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

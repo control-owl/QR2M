@@ -116,7 +116,8 @@ FROM base_system AS stage_5
 
 RUN apk add appstream-dev gdk-pixbuf-dev cairo-dev harfbuzz-dev pango-dev gperf itstool openssl-dev \
         openssl-libs-static glib-dev libxml2-dev docbook-xml docbook-xsl libxrandr-dev libxkbcommon-dev \
-        libxi libxdamage-dev libxcursor-dev libxfixes-dev libxinerama-dev libsass-dev gtk4.0-dev
+        libxi libxdamage-dev libxcursor-dev libxfixes-dev libxinerama-dev libsass-dev gtk4.0-dev \
+        libadwaita-dev libsass-dev
 
 COPY docker/static_library/05-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/05-*.sh
@@ -142,24 +143,10 @@ RUN $PROJECT_DIR/05-libdrm.sh        # Compiles in 9s
 RUN $PROJECT_DIR/05-libsass.sh       # Compiles in 57s
 RUN $PROJECT_DIR/05-libxcomposite.sh # Compiles in 2s
 RUN $PROJECT_DIR/05-gtk4.sh          # Compiles in 163s
+RUN $PROJECT_DIR/05-libadwaita.sh    # Compiles in 28s
 
 
 FROM base_system AS stage_6
-
-RUN apk add libadwaita-dev
-
-COPY docker/static_library/06-*.sh $PROJECT_DIR
-RUN chmod +x $PROJECT_DIR/06-*.sh
-
-COPY --from=stage_5 /usr/local/lib /usr/local/lib
-COPY --from=stage_5 /usr/local/bin /usr/local/bin
-COPY --from=stage_5 $PROJECT_DIR $PROJECT_DIR
-
-
-RUN $PROJECT_DIR/06-libadwaita.sh    #
-
-
-FROM base_system AS stage_7
 
 RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf automake libtool \
         openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
@@ -180,8 +167,8 @@ RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev aut
 COPY docker/compile_circus.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/compile_circus.sh
 
-COPY --from=stage_6 /usr/local/lib /usr/local/lib
-COPY --from=stage_6 /usr/local/bin /usr/local/bin
-COPY --from=stage_6 $PROJECT_DIR $PROJECT_DIR
+COPY --from=stage_5 /usr/local/lib /usr/local/lib
+COPY --from=stage_5 /usr/local/bin /usr/local/bin
+COPY --from=stage_5 $PROJECT_DIR $PROJECT_DIR
 
 RUN $PROJECT_DIR/compile_circus.sh
