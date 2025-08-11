@@ -4,6 +4,8 @@ LABEL maintainer="control-owl@r-o0-t.wtf" \
       version="1.0" \
       description="Build QR2M project with MUSL"
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
 ENV PROJECT_DIR="/home/QR2M"
 WORKDIR $PROJECT_DIR
 
@@ -11,16 +13,28 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" > /etc/apk/repositor
     echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
     apk update && \
     apk add \
-        bash build-base git cmake ninja meson bison pkgconf-dev musl-dev autoconf \
-        automake libtool gcc g++ clang flex-dev flex-libs gawk rustc-dev
+        bash build-base git cmake ninja meson bison autoconf po4a \
+        automake libtool gcc g++ clang flex-dev flex-libs gawk gperf texinfo \
+        rustc-dev rust-bindgen \
+        docbook-xml docbook-xsl \
+        musl musl-dev musl-utils musl-locales \
+        util-linux-dev uutils-coreutils \
+        dbus desktop-file-utils
 
 COPY docker/check_me_baby.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/check_me_baby.sh
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 FROM base_system AS stage_1
 
-RUN apk add pkgconf-dev zlib-dev libffi-dev pcre2-dev gettext-dev pcre2-dev gperf texinfo
+RUN apk add \
+        pkgconf-dev \
+        zlib-dev \
+        libffi-dev \
+        pcre2-dev \
+        glib-dev \
+        gettext-dev
 
 COPY docker/static_library/01-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/01-*.sh
@@ -36,12 +50,21 @@ RUN $PROJECT_DIR/01-pcre2.sh         # Compiles in 22s
 RUN $PROJECT_DIR/01-glib.sh          # Compiles in 62s
 RUN $PROJECT_DIR/01-gettext.sh       # Compiles in 475s
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 FROM base_system AS stage_2
 
 RUN apk add \
-        libxau-dev libxdmcp-dev libxcb-dev libx11-dev libxrender-dev libxext-dev xcb-util-dev \
-        expat-dev bzip2-dev freetype-dev fontconfig-dev zlib-dev py3-pytest
+        libxau-dev \
+        libxdmcp-dev \
+        libxcb-dev xcb-util-dev \
+        libx11-dev \
+        libxrender-dev \
+        libxext-dev \
+        expat-dev b\
+        bzip2-dev \
+        freetype-dev \
+        fontconfig-dev py3-pytest
 
 COPY docker/static_library/02-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/02-*.sh
@@ -63,14 +86,14 @@ RUN $PROJECT_DIR/02-libbz2.sh        # Compiles in 6s
 RUN $PROJECT_DIR/02-freetype.sh      # Compiles in 18s
 RUN $PROJECT_DIR/02-fontconfig.sh    # Compiles in 12s
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 FROM base_system AS stage_3
 
 RUN apk add \
-        zlib-dev openssl-dev nghttp2-dev curl-dev util-linux-dev util-linux-static \
-        docbook-xml docbook-xsl gettext-dev gettext-libs uutils-coreutils rust-bindgen \
-        gnu-libiconv-dev gnu-libiconv-libs itstool po4a tzdata appstream-dev \
-        appstream-glib-dev dbus desktop-file-utils yaml-dev
+        openssl-dev \
+        nghttp2-dev \
+        curl-dev 
 
 COPY docker/static_library/03-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/03-*.sh
@@ -82,13 +105,26 @@ COPY --from=stage_2 $PROJECT_DIR $PROJECT_DIR
 RUN $PROJECT_DIR/03-openssl.sh       # Compiles in 306s
 RUN $PROJECT_DIR/03-nghttp2.sh       # Compiles in 35s
 RUN $PROJECT_DIR/03-curl.sh          # Compiles in 69s
-RUN $PROJECT_DIR/03-cargo-c.sh       # Compiles in 479s
+#RUN $PROJECT_DIR/03-cargo-c.sh       # Compiles in 479s
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 FROM base_system AS stage_4
 
-RUN apk add tiff-dev libepoxy-dev libpng-dev libxml2-dev libjpeg-turbo-dev graphene-dev fribidi-dev \
-        libeconf-dev brotli-dev libunistring-dev yaml-dev po4a texinfo gperf xz-dev
+RUN apk add \
+        libpng-dev \
+        libxml2-dev \
+        libjpeg-turbo-dev \
+        tiff-dev \
+        graphene-dev \
+        fribidi-dev \
+        libeconf-dev \
+        pixman-dev \
+        libepoxy-dev \
+        brotli-dev \
+        xz-dev \
+        libunistring-dev \
+        yaml-dev
 
 COPY docker/static_library/04-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/04-*.sh
@@ -111,13 +147,29 @@ RUN $PROJECT_DIR/04-xz.sh            # Compiles in 41s
 RUN $PROJECT_DIR/04-libunistring.sh  # Compiles in 354s
 RUN $PROJECT_DIR/04-libyaml.sh       # Compiles in 13s
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 FROM base_system AS stage_5
 
-RUN apk add appstream-dev gdk-pixbuf-dev cairo-dev harfbuzz-dev pango-dev gperf itstool openssl-dev \
-        openssl-libs-static glib-dev libxml2-dev docbook-xml docbook-xsl libxrandr-dev libxkbcommon-dev \
-        libxi libxdamage-dev libxcursor-dev libxfixes-dev libxinerama-dev libsass-dev gtk4.0-dev \
-        libadwaita-dev libsass-dev
+RUN apk add \
+        appstream-dev \
+        gdk-pixbuf-dev \
+        cairo-dev \
+        harfbuzz-dev \
+        pango-dev \
+        libxkbcommon-dev \
+        libxrandr-dev \
+        vulkan-loader-dev \
+        libxi-dev \
+        libxfixes-dev \
+        libxcursor-dev \
+        libxdamage-dev \
+        libxinerama-dev \
+        libdrm-dev \
+        libsass-dev \
+        libxcomposite-dev \
+        gtk4.0-dev \
+        libadwaita-dev
 
 COPY docker/static_library/05-*.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/05-*.sh
@@ -145,24 +197,25 @@ RUN $PROJECT_DIR/05-libxcomposite.sh # Compiles in 2s
 RUN $PROJECT_DIR/05-gtk4.sh          # Compiles in 163s
 RUN $PROJECT_DIR/05-libadwaita.sh    # Compiles in 28s
 
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 FROM base_system AS stage_6
 
-RUN apk add bash build-base git cmake ninja meson bison pkgconf-dev musl-dev musl autoconf automake libtool \
-        openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
-        libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
-        libxkbcommon-dev expat-dev expat-static freetype-dev fontconfig-dev musl-utils \
-        brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest vulkan-loader \
-        pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev musl-locales \
-        libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
-        util-linux-static libxcb-dev gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
-        xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
-        xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
-        yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev libxml2-utils \
-        c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
-        curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
-        py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
-        gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev gcc g++ vulkan-headers vulkan-utility-libraries
+# RUN apk add \
+# openssl-dev openssl-libs-static glib-dev cairo-dev harfbuzz-dev gettext-dev libepoxy-dev \
+# libx11-dev libxext-dev glslang glslang-dev glslang-static shaderc-dev shaderc-static \
+# libxkbcommon-dev expat-dev expat-static freetype-dev fontconfig-dev  \
+# brotli-dev gawk texinfo libpng-dev libjpeg-turbo-dev zlib-dev bzip2-dev py3-pytest vulkan-loader \
+# pixman-dev graphite2-dev graphite2-static libxrandr-dev libxrender-dev pango-dev  \
+# libxfixes-dev libxcursor-dev libxi-dev pcre2-dev fribidi-dev util-linux-dev tiff-dev \
+# util-linux-static libxcb-dev gdk-pixbuf-dev librsvg-dev vulkan-loader-dev vulkan-tools \
+# xz-dev flex-dev flex-libs libxdamage-dev libunwind-dev libxau-dev po4a rust-bindgen \
+# xcb-util-dev graphene-dev gtk4.0-dev libadwaita-dev appstream-dev appstream-glib-dev \
+# yaml-dev yaml-static zstd-dev zstd-static nghttp2-dev nghttp2-libs libxml2-dev libxml2-utils \
+# c-ares-dev c-ares-utils ca-certificates libeconf-dev itstool gperf uutils-coreutils \
+# curl-dev rustc-dev ngtcp2-dev ngtcp2-static libidn2-dev libidn2-static libffi-dev libxslt \
+# py3-pip python3 tzdata dbus desktop-file-utils docbook-xml docbook-xsl shared-mime-info \
+# gnu-libiconv-dev gnu-libiconv-libs gettext-libs libxdmcp-dev vulkan-headers vulkan-utility-libraries
 
 COPY docker/compile_circus.sh $PROJECT_DIR
 RUN chmod +x $PROJECT_DIR/compile_circus.sh
