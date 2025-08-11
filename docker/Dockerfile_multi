@@ -61,7 +61,7 @@ RUN apk add \
         libx11-dev \
         libxrender-dev \
         libxext-dev \
-        expat-dev b\
+        expat-dev \
         bzip2-dev \
         freetype-dev \
         fontconfig-dev py3-pytest
