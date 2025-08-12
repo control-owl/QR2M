@@ -46,7 +46,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxdmcp.git --depth 1 libxdmcp
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxdmcp.git --depth 1 --verbose libxdmcp
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

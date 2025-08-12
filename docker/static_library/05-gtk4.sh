@@ -59,7 +59,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 gtk4
+  git clone https://gitlab.gnome.org/GNOME/gtk.git --depth 1 --verbose gtk4
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/pkgconf/pkgconf.git --depth 1 pkgconf
+  git clone https://github.com/pkgconf/pkgconf.git --depth 1 --verbose pkgconf
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

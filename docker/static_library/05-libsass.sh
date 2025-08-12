@@ -44,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/sass/libsass.git --depth 1 libsass
+  git clone https://github.com/sass/libsass.git --depth 1 --verbose libsass
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

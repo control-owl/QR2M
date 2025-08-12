@@ -51,7 +51,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxcomposite.git --depth 1 libxcomposite
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxcomposite.git --depth 1 --verbose libxcomposite
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

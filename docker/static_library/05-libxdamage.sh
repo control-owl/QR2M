@@ -44,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxdamage.git --depth 1 libxdamage
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxdamage.git --depth 1 --verbose libxdamage
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

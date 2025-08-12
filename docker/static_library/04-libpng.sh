@@ -44,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/pnggroup/libpng.git --depth 1 libpng
+  git clone https://github.com/pnggroup/libpng.git --depth 1 --verbose libpng
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

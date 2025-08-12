@@ -48,7 +48,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/fontconfig/fontconfig.git --depth 1 fontconfig
+  git clone https://github.com/fontconfig/fontconfig.git --depth 1 --verbose fontconfig
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

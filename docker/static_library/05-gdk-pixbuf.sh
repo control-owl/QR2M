@@ -49,7 +49,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git --depth 1 pixbuf
+  git clone https://gitlab.gnome.org/GNOME/gdk-pixbuf.git --depth 1 --verbose pixbuf
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

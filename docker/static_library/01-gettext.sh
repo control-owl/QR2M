@@ -44,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://git.savannah.gnu.org/git/gettext.git --depth 1 gettext
+  git clone https://git.savannah.gnu.org/git/gettext.git --depth 1 --verbose gettext
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

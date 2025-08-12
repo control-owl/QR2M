@@ -51,7 +51,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/GNOME/pango.git --depth 1 pango
+  git clone https://github.com/GNOME/pango.git --depth 1 --verbose pango
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

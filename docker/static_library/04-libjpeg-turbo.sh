@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git --depth 1 libjpeg-turbo
+  git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git --depth 1 --verbose libjpeg-turbo
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

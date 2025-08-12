@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/util/macros.git --depth 1 xorg-macros
+  git clone https://gitlab.freedesktop.org/xorg/util/macros.git --depth 1 --verbose xorg-macros
 } 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

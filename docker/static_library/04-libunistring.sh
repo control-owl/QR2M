@@ -44,7 +44,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://git.savannah.gnu.org/git/libunistring.git --depth 1 libunistring
+  git clone https://git.savannah.gnu.org/git/libunistring.git --depth 1 --verbose libunistring
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

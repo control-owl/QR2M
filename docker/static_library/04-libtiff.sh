@@ -46,7 +46,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/libsdl-org/libtiff.git --depth 1 libtiff
+  git clone https://github.com/libsdl-org/libtiff.git --depth 1 --verbose libtiff
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://git.savannah.gnu.org/git/gnulib.git/ --depth 1 gnulib
+  GIT_TRACE_PACKET=true git clone https://git.savannah.gnu.org/git/gnulib.git --depth 1 --verbose gnulib
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

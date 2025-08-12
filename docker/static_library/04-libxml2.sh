@@ -45,7 +45,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/GNOME/libxml2.git --depth 1 libxml2
+  git clone https://github.com/GNOME/libxml2.git --depth 1 --verbose libxml2
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

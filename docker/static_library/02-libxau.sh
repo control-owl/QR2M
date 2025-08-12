@@ -45,7 +45,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git --depth 1 libxau
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxau.git --depth 1 --verbose libxau
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

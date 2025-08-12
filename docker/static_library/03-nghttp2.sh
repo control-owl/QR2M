@@ -46,7 +46,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/nghttp2/nghttp2.git --depth 1 nghttp2
+  git clone https://github.com/nghttp2/nghttp2.git --depth 1 --verbose nghttp2
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

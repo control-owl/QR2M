@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/PCRE2Project/pcre2.git --depth 1 pcre2
+  git clone https://github.com/PCRE2Project/pcre2.git --depth 1 --verbose pcre2
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

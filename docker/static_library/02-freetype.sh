@@ -46,7 +46,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/freetype/freetype.git --depth 1 freetype
+  git clone https://github.com/freetype/freetype.git --depth 1 --verbose freetype
 } 2>&1 | tee "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

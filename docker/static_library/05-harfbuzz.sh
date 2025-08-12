@@ -47,7 +47,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/harfbuzz/harfbuzz.git --depth 1 harfbuzz
+  git clone https://github.com/harfbuzz/harfbuzz.git --depth 1 --verbose harfbuzz
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

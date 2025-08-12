@@ -48,7 +48,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxrender.git --depth 1 libxrender
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxrender.git --depth 1 --verbose libxrender
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

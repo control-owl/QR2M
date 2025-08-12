@@ -48,7 +48,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/KhronosGroup/Vulkan-Headers.git --depth 1 vulkan-headers
+  git clone https://github.com/KhronosGroup/Vulkan-Headers.git --depth 1 --verbose vulkan-headers
   cd vulkan-headers
   mkdir -p builddir && cd builddir
   cmake \
@@ -69,7 +69,7 @@ fi
 cd "$CIRCUS"
 
 {
-  git clone https://github.com/KhronosGroup/Vulkan-Loader.git --depth 1 vulkan-loader
+  git clone https://github.com/KhronosGroup/Vulkan-Loader.git --depth 1 --verbose vulkan-loader
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

@@ -53,7 +53,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/cairo/cairo.git --depth 1 cairo
+  git clone https://gitlab.freedesktop.org/cairo/cairo.git --depth 1 --verbose cairo
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

@@ -45,7 +45,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://github.com/openssl/openssl.git --depth 1 openssl
+  git clone https://github.com/openssl/openssl.git --depth 1 --verbose openssl
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

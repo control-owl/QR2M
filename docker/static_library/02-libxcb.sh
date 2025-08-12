@@ -47,7 +47,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxcb.git --depth 1 libxcb
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxcb.git --depth 1 --verbose libxcb
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

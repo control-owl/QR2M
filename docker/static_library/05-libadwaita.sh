@@ -48,7 +48,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 libadwaita
+  git clone https://gitlab.gnome.org/GNOME/libadwaita.git --depth 1 --verbose libadwaita
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}

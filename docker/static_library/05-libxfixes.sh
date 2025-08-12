@@ -51,7 +51,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://gitlab.freedesktop.org/xorg/lib/libxfixes.git --depth 1 libxfixes
+  git clone https://gitlab.freedesktop.org/xorg/lib/libxfixes.git --depth 1 --verbose libxfixes
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
