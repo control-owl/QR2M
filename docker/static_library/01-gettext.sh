@@ -58,7 +58,7 @@ cd gettext
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  sed -i 's/--timeout=5/--timeout=60/' autogen.sh
+  sed -i 's/--timeout=5/--timeout=60/' autopull.sh
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
