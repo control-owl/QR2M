@@ -119,6 +119,10 @@ cd gnulib
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
+
+ln -sf /home/QR2M/compile-circus/STATIC/gnulib/gnulib-tool /home/QR2M/compile-circus/STATIC/bin/gnulib-tool
+
+
 {
   compiled_files=(
     # "libintl.a"
