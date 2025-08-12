@@ -96,26 +96,26 @@ cd gnulib
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
-  make -C gnulib-runtime -j"$(nproc)"
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  make -C gnulib-runtime install-exec
-} 2>&1 | tee -a "$LOG_FILE"
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
+# {
+#   make -j"$(nproc)"
+# } 2>&1 | tee -a "$LOG_FILE"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat "$LOG_FILE"
+#   exit 1
+# fi
+# 
+# # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+# 
+# {
+#   make -C gnulib-runtime install-exec
+# } 2>&1 | tee -a "$LOG_FILE"
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat "$LOG_FILE"
+#   exit 1
+# fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
