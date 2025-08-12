@@ -25,6 +25,7 @@ export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-inte
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export PKG_CONFIG="pkg-config --static"
+export GNULIB_SRCDIR="/home/QR2M/compile-circus/STATIC"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 

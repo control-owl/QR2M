@@ -1,6 +1,6 @@
 FROM rust:alpine AS base_system
 
-LABEL maintainer="control-owl@r-o0-t.wtf" \
+LABEL maintainer="qr2m[at]r-o0-t[dot]wtf" \
       version="1.0" \
       description="Build QR2M project with MUSL"
 
@@ -44,6 +44,7 @@ COPY --from=base_system /usr/local/bin /usr/local/bin
 COPY --from=base_system /home/QR2M /home/QR2M
 
 RUN $PROJECT_DIR/01-pkgconf.sh       # Compiles in 8s
+RUN $PROJECT_DIR/01-gnulib.sh        # 
 RUN $PROJECT_DIR/01-zlib.sh          # Compiles in 3s
 RUN $PROJECT_DIR/01-libffi.sh        # Compiles in 17s
 RUN $PROJECT_DIR/01-pcre2.sh         # Compiles in 22s

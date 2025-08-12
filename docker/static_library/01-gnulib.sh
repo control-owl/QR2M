@@ -25,7 +25,6 @@ export CFLAGS="-I/home/QR2M/compile-circus/STATIC/include -O2 -fno-semantic-inte
 export LDFLAGS="-L/home/QR2M/compile-circus/STATIC/lib"
 export PATH="/home/QR2M/compile-circus/STATIC/bin:$PATH"
 export PKG_CONFIG="pkg-config --static"
-export GNULIB_SRCDIR="/home/QR2M/compile-circus/STATIC"
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
@@ -44,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  git clone https://git.savannah.gnu.org/git/libunistring.git --depth 1 libunistring
+  git clone https://git.savannah.gnu.org/git/gnulib.git/ --depth 1 gnulib
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -53,12 +52,52 @@ if [ "$STATUS" -ne 0 ]; then
   exit 1
 fi
 
-cd libunistring
+cd gnulib
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+
+# {
+#   ./autopull.sh
+# } 2>&1 | tee -a "$LOG_FILE"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat "$LOG_FILE"
+#   exit 1
+# fi
+
+
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+# 
+# {
+#   ./autogen.sh
+# } 2>&1 | tee -a "$LOG_FILE"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat "$LOG_FILE"
+#   exit 1
+# fi
+# 
+# # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+# 
+# {
+#   ./configure \
+#     --prefix=$STATIC_DIR \
+#     --disable-shared \
+#     --enable-static
+# } 2>&1 | tee -a "$LOG_FILE"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#   cat "$LOG_FILE"
+#   exit 1
+# fi
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./autopull.sh
+  make -C gnulib-runtime -j"$(nproc)"
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -70,46 +109,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  ./autogen.sh
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  ./configure \
-    --enable-static \
-    --disable-shared \
-    --prefix=$STATIC_DIR
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  make -j"$(nproc)"
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
-  cat "$LOG_FILE"
-  exit 1
-fi
-
-# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
-
-{
-  make install
+  make -C gnulib-runtime install-exec
 } 2>&1 | tee -a "$LOG_FILE"
 STATUS=${PIPESTATUS[0]}
 if [ "$STATUS" -ne 0 ]; then
@@ -121,7 +121,8 @@ fi
 
 {
   compiled_files=(
-    "libunistring.a"
+    # "libintl.a"
+    # "gnulib"
   )
 
   source "$PROJECT_DIR/check_me_baby.sh" "${compiled_files[@]}"
