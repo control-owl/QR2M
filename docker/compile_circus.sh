@@ -10,7 +10,7 @@ set -o pipefail
 
 APP_NAME="QR2M"
 TARGET="x86_64-unknown-linux-musl"
-FEATURES="dev"
+FEATURES="offline"
 BUILD_PATH="target/$TARGET"
 OUTPUT_DIR="$BUILD_PATH/release"
 OUTPUT="false"
