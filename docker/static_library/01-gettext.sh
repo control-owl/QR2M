@@ -56,17 +56,17 @@ cd gettext
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
- sed -i 's/--timeout=5/--timeout=60/' autopull.sh
-} 2>&1 | tee -a "$LOG_FILE"
+# {
+#  sed -i 's/--timeout=5/--timeout=60/' autopull.sh
+# } 2>&1 | tee -a "$LOG_FILE"
+# 
+# STATUS=${PIPESTATUS[0]}
+# if [ "$STATUS" -ne 0 ]; then
+#  cat "$LOG_FILE"
+#  exit 1
+# fi
 
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
- cat "$LOG_FILE"
- exit 1
-fi
-
-# # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
+# -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
  ./autopull.sh
@@ -97,34 +97,35 @@ fi
   ./configure \
     --prefix=$STATIC_DIR \
     --disable-shared \
-    --enable-static \
-    --with-pic \
-    --disable-java \
-    --disable-csharp \
-    --disable-c++ \
-    --disable-modula2 \
-    --disable-libasprintf \
-    --disable-curses \
-    --disable-openmp \
-    --disable-acl \
-    --disable-xattr \
-    --with-included-libunistring \
-    --with-included-gettext \
-    --with-included-libxml \
-    --without-libncurses-prefix \
-    --without-libtermcap-prefix \
-    --without-libxcurses-prefix \
-    --without-libcurses-prefix \
-    --without-libtextstyle-prefix \
-    --without-libsmack \
-    --without-selinux \
-    --without-emacs \
-    --without-git \
-    --without-bzip2 \
-    --without-xz \
-    --disable-dependency-tracking \
-    --enable-fast-install \
-    --disable-rpath
+    --enable-static 
+    #\
+    # --with-pic \
+    # --disable-java \
+    # --disable-csharp \
+    # --disable-c++ \
+    # --disable-modula2 \
+    # --disable-libasprintf \
+    # --disable-curses \
+    # --disable-openmp \
+    # --disable-acl \
+    # --disable-xattr \
+    # --with-included-libunistring \
+    # --with-included-gettext \
+    # --with-included-libxml \
+    # --without-libncurses-prefix \
+    # --without-libtermcap-prefix \
+    # --without-libxcurses-prefix \
+    # --without-libcurses-prefix \
+    # --without-libtextstyle-prefix \
+    # --without-libsmack \
+    # --without-selinux \
+    # --without-emacs \
+    # --without-git \
+    # --without-bzip2 \
+    # --without-xz \
+    # --disable-dependency-tracking \
+    # --enable-fast-install \
+    # --disable-rpath
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
