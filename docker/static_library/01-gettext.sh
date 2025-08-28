@@ -43,7 +43,7 @@ fi
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
 {
-  GIT_TRACE_PACKET=true git clone https://git.savannah.gnu.org/git/gettext.git --depth 1 --verbose gettext
+  git clone https://git.savannah.gnu.org/git/gettext.git --depth 1 --verbose gettext
 } 2>&1 | tee -a "$LOG_FILE"
 
 STATUS=${PIPESTATUS[0]}
@@ -56,15 +56,15 @@ cd gettext
 
 # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-{
- sed -i 's/--timeout=5/--timeout=60/' autopull.sh
-} 2>&1 | tee -a "$LOG_FILE"
-
-STATUS=${PIPESTATUS[0]}
-if [ "$STATUS" -ne 0 ]; then
- cat "$LOG_FILE"
- exit 1
-fi
+#{
+# sed -i 's/--timeout=5/--timeout=60/' autopull.sh
+#} 2>&1 | tee -a "$LOG_FILE"
+#
+#STATUS=${PIPESTATUS[0]}
+#if [ "$STATUS" -ne 0 ]; then
+# cat "$LOG_FILE"
+# exit 1
+#fi
 
 # # -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
