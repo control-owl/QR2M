@@ -7341,7 +7341,7 @@ fn create_welcome_window(
   Ok(welcome_window)
 }
 
-#[cfg(feature = "dev")]
+// #[cfg(feature = "dev")]
 fn create_new_wallet_window(
   application: &adw::Application,
   last_window: Option<gtk::ApplicationWindow>,
@@ -7443,6 +7443,7 @@ fn create_new_wallet_window(
       coin1.cmp(&coin2).into()
     }
   });
+
   let address_sorted_model = gtk::SortListModel::new(Some(address_store_new.clone()), Some(sorter));
   let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
   let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
@@ -7509,6 +7510,22 @@ fn create_new_wallet_window(
   wallet_main_box.set_margin_bottom(10);
 
   new_wallet_window.set_child(Some(&wallet_main_box));
+
+  generate_wallet_button.connect_clicked(clone!(
+    #[weak]
+    source_dropdown,
+    #[weak]
+    derivation_dropdown,
+    move |_| {
+      let selected_entropy_source_index = source_dropdown.selected() as usize;
+      let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+      let source = selected_entropy_source_value.unwrap().to_string();
+
+      let selected_derivation_path = derivation_dropdown.selected() as usize;
+      let selected_derivation_path_value = VALID_BIP_DERIVATIONS.get(selected_derivation_path);
+      let derivation_path = selected_derivation_path_value.unwrap().to_string();
+    }
+  ));
 
   Ok(new_wallet_window)
 }
