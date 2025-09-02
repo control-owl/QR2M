@@ -170,7 +170,7 @@ mod tests {
     ];
 
     for vector in test_vectors {
-      match keys::generate_master_keys_secp256k1(vector.seed, "0x0488ADE4", "0x0488B21E") {
+      match keys::generate_master_keys_secp256k1(vector.seed, None, None) {
         Ok(_) => {
           crate::d3bug("<<< generate_master_keys_secp256k1", "debug");
         }

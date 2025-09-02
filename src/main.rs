@@ -1208,7 +1208,7 @@ impl WalletSettings {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CryptoAddresses {
   id: Option<String>,
   coin_name: Option<String>,
@@ -3762,8 +3762,8 @@ fn create_main_window(
 
   // JUMP: Action: Generate Seed button
   generate_seed_button.connect_clicked(clone!(
-    #[strong]
-    app_messages_state,
+    // #[strong]
+    // app_messages_state,
     #[weak]
     entropy_source_dropdown,
     #[weak]
@@ -3959,8 +3959,8 @@ fn create_main_window(
           if key_derivation == "secp256k1" {
             match keys::generate_master_keys_secp256k1(
               &seed_string,
-              &private_header,
-              &public_header,
+              Some(&private_header),
+              Some(&public_header),
             ) {
               Ok(_) => {
                 d3bug("<<< generate_master_keys_secp256k1", "debug");
@@ -4878,6 +4878,7 @@ fn create_main_window(
                   let coin_path_id = match derivation_path_to_integer(&derivation_path) {
                     Ok(value) => value,
                     Err(err) => {
+                      // BUG: If custom derivation path is set to "m/" then this will spam the terminal with "[ERROR] Error parsing derivation path m//10094: Custom("Empty segment not allowed")"
                       d3bug(
                         &format!(
                           "Error parsing derivation path {derivation_path}: {err:?}"
@@ -7459,6 +7460,8 @@ fn create_new_wallet_window(
     source_dropdown,
     #[weak]
     derivation_dropdown,
+    #[strong]
+    address_store_new,
     move |_| {
       let selected_entropy_source_index = source_dropdown.selected() as usize;
       let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
@@ -7479,13 +7482,84 @@ fn create_new_wallet_window(
           return;
         }
       };
+
       // Generate Master keys
+      let (master_private, master_public) =
+        match keys::generate_master_keys_secp256k1(&seed, None, None) {
+          Ok(value) => {
+            d3bug("<<< generate_master_keys_secp256k1", "debug");
+            value
+          }
+          Err(err) => {
+            return d3bug(
+              &format!("generate_master_keys_secp256k1: \n{err:?}"),
+              "error",
+            );
+          }
+        };
 
       // Generate all active addresses
+      //   extract all active coins
+      let resource_path = std::path::Path::new("coin").join("ECDB.csv");
+      let resource_path_str = resource_path.to_str().unwrap_or_default();
+      let my_public = qr2m_lib::get_text_from_resources(&my_key.to_string_lossy());
 
-      // Fill the table out
+      let file = File::open(resource_path_str).unwrap();
+      let reader = io::BufReader::new(file);
 
-      // + create save button (maybe more)
+      let wallet_settings = {
+        let lock = WALLET_SETTINGS.lock().unwrap();
+        lock.clone()
+      };
+
+      for line in reader.lines() {
+        let line = line.unwrap_or("0".to_string());
+        let columns: Vec<&str> = line.split(',').collect();
+
+        if columns.len() > 1 && columns[0] == "1" {
+          let active_coin_index = columns[1].parse().unwrap_or(0);
+
+          let magic_ingredients = keys::AddressHocusPokus {
+            coin_index: wallet_settings.coin_index.unwrap_or_default(),
+            derivation_path: derivation_path.clone(),
+            master_private_key_bytes: wallet_settings
+              .master_private_key_bytes
+              .clone()
+              .unwrap_or_default(),
+            master_chain_code_bytes: wallet_settings
+              .master_chain_code_bytes
+              .clone()
+              .unwrap_or_default(),
+            public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
+            key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
+            wallet_import_format: wallet_settings
+              .wallet_import_format
+              .clone()
+              .unwrap_or_default(),
+            hash: wallet_settings.hash.clone().unwrap_or_default(),
+          };
+
+          if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
+            let new_entry = CryptoAddresses {
+              id: Some(active_coin_index.to_string()),
+              coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
+              derivation_path: Some(derivation_path.clone()),
+              address: Some(address.address),
+              public_key: Some(address.public_key),
+              private_key: Some(address.private_key),
+            };
+
+            // address_store_new.append(&new_entry);
+            println!("new_entry: {:?}", new_entry);
+          } else {
+            d3bug(
+              &format!("Problem with generating address with index {active_coin_index:?}"),
+              "error",
+            );
+          }
+        }
+      }
+      // TODO: create save button (maybe more)
     }
   ));
 

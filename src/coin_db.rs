@@ -384,7 +384,7 @@ pub fn create_sorter() -> FunctionOutput<gtk::CustomSorter> {
 }
 
 fn create_coin_database() -> FunctionOutput<Vec<CoinDatabase>> {
-  let resource_path = std::path::Path::new("coin").join("ECDB.csv");
+  let resource_path = std::path::Path::new("coin").join(COINLIST_FILE);
   let resource_path_str = resource_path.to_str().unwrap_or_default();
   let csv_content = qr2m_lib::get_text_from_resources(resource_path_str);
 
