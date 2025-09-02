@@ -450,7 +450,7 @@ pub fn generate_sha256_ripemd160_address(
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-pub fn generate_entropy(source: &str, entropy_length: u64) -> FunctionOutput<String> {
+pub fn generate_entropy(source: &str, entropy_length: Option<u64>) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
@@ -458,6 +458,8 @@ pub fn generate_entropy(source: &str, entropy_length: u64) -> FunctionOutput<Str
     println!(" - Entropy source: {source:?}");
     println!(" - Entropy length: {entropy_length:?}");
   }
+
+  let entropy_length = entropy_length.unwrap_or(256);
 
   match source {
     "RNG" | "RNG+" => {

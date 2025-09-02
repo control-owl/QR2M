@@ -3797,89 +3797,32 @@ fn create_main_window(
       let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
       let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
       let source = selected_entropy_source_value.unwrap().to_string();
-      let entropy_length = selected_entropy_length_value.unwrap();
+      let entropy_length = *selected_entropy_length_value.unwrap() as u64;
+      let mnemonic_index = mnemonic_dictionary_dropdown.selected() as usize;
+      let selected_dictionary = VALID_MNEMONIC_DICTIONARY.get(mnemonic_index);
+      let mnemonic_dictionary = selected_dictionary.unwrap();
 
-      // let pre_entropy = keys::generate_entropy(&source, *entropy_length as u64);
-
-      let pre_entropy =
-        keys::generate_entropy(&source, *entropy_length as u64).unwrap_or_else(|err| {
-          d3bug(&format!("generate_entropy: {err:?}"), "error");
-          String::new()
-        });
-
-      if !pre_entropy.is_empty() {
-        let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy);
-        let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-
-        // let lock_app_settings = APP_SETTINGS.read().unwrap();
-        // let mnemonic_dictionary = lock_app_settings
-        //     .wallet_mnemonic_dictionary
-        //     .clone()
-        //     .unwrap();
-
-        let value = mnemonic_dictionary_dropdown.selected() as usize;
-        let selected_dictionary = VALID_MNEMONIC_DICTIONARY.get(value);
-        let mnemonic_dictionary = selected_dictionary.unwrap();
-
-        let mnemonic_words =
-          match keys::generate_mnemonic_words(&full_entropy, Some(mnemonic_dictionary)) {
-            Ok(mnemonic) => {
-              d3bug("<<< generate_mnemonic_words", "debug");
-              mnemonic
-            }
-            Err(err) => {
-              d3bug(&format!("generate_mnemonic_words: {err:?}"), "error");
-              return;
-            }
-          };
-        let passphrase_text = mnemonic_passphrase_text.text().to_string();
-        let seed = match keys::generate_seed_from_mnemonic(&mnemonic_words, &passphrase_text) {
-          Ok(seed) => {
-            d3bug("<<< generate_seed_from_mnemonic", "debug");
-            seed
-          }
-          Err(err) => {
-            d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
-            return;
-          }
-        };
-        let seed_hex = hex::encode(&seed[..]);
-
-        entropy_text.buffer().set_text(&full_entropy);
-        mnemonic_words_text.buffer().set_text(&mnemonic_words);
-        seed_text.buffer().set_text(&seed_hex.to_string());
-
-        #[cfg(debug_assertions)]
-        {
-          println!("\t- Entropy checksum: {checksum:?}");
-          println!("\t- Final entropy: {full_entropy:?}");
-          println!("\t- Seed (hex): {seed_hex:?}");
+      let (entropy, mnemonic_words, seed) = match generate_seed(
+        &source,
+        Some(entropy_length),
+        Some(&mnemonic_passphrase_text.text().to_string()),
+        Some(mnemonic_dictionary),
+      ) {
+        Ok(values) => {
+          d3bug("<<< generate_seed", "debug");
+          values
         }
-
-        {
-          let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-          wallet_settings.entropy_checksum = Some(checksum.clone());
-          wallet_settings.entropy_string = Some(full_entropy.clone());
-          wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
-          wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
-          wallet_settings.seed = Some(seed_hex.clone());
+        Err(err) => {
+          d3bug(&format!("generate_seed: {:?}", err), "error");
+          return;
         }
+      };
 
-        master_private_key_text.buffer().set_text("");
-        master_public_key_text.buffer().set_text("");
-      } else {
-        #[cfg(debug_assertions)]
-        eprintln!("\t- {}", &t!("error.entropy.empty"));
-
-        let lock_app_messages = app_messages_state.borrow();
-        match lock_app_messages.queue_message(
-          t!("error.entropy.empty").to_string(),
-          gtk::MessageType::Warning,
-        ) {
-          Ok(_) => {}
-          Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
-        };
-      }
+      entropy_text.buffer().set_text(&entropy);
+      mnemonic_words_text.buffer().set_text(&mnemonic_words);
+      seed_text.buffer().set_text(&seed);
+      master_private_key_text.buffer().set_text("");
+      master_public_key_text.buffer().set_text("");
     }
   ));
 
@@ -7341,7 +7284,7 @@ fn create_welcome_window(
   Ok(welcome_window)
 }
 
-// #[cfg(feature = "dev")]
+#[cfg(feature = "dev")]
 fn create_new_wallet_window(
   application: &adw::Application,
   last_window: Option<gtk::ApplicationWindow>,
@@ -7524,6 +7467,25 @@ fn create_new_wallet_window(
       let selected_derivation_path = derivation_dropdown.selected() as usize;
       let selected_derivation_path_value = VALID_BIP_DERIVATIONS.get(selected_derivation_path);
       let derivation_path = selected_derivation_path_value.unwrap().to_string();
+
+      // Generate seed
+      let (entropy, mnemonic_words, seed) = match generate_seed(&source, None, None, None) {
+        Ok(values) => {
+          d3bug("<<< generate_seed", "debug");
+          values
+        }
+        Err(err) => {
+          d3bug(&format!("generate_seed: {:?}", err), "error");
+          return;
+        }
+      };
+      // Generate Master keys
+
+      // Generate all active addresses
+
+      // Fill the table out
+
+      // + create save button (maybe more)
     }
   ));
 
@@ -7813,3 +7775,63 @@ impl BrainBatch {
 //
 //   Ok(fps)
 // }
+
+fn generate_seed(
+  source: &str,
+  entropy_length: Option<u64>,
+  passphrase_text: Option<&str>,
+  dictionary: Option<&str>,
+) -> FunctionOutput<(String, String, String)> {
+  let pre_entropy = keys::generate_entropy(source, entropy_length).unwrap_or_else(|err| {
+    d3bug(&format!("generate_entropy: {err:?}"), "error");
+    String::new()
+  });
+
+  let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy);
+  let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+
+  let mnemonic_words = match keys::generate_mnemonic_words(&full_entropy, dictionary) {
+    Ok(mnemonic) => {
+      d3bug("<<< generate_mnemonic_words", "debug");
+      mnemonic
+    }
+    Err(err) => {
+      return Err(AppError::Custom(format!(
+        "generate_mnemonic_words: {err:?}"
+      )));
+    }
+  };
+
+  let seed =
+    match keys::generate_seed_from_mnemonic(&mnemonic_words, passphrase_text.unwrap_or_default()) {
+      Ok(seed) => {
+        d3bug("<<< generate_seed_from_mnemonic", "debug");
+        seed
+      }
+      Err(err) => {
+        return Err(AppError::Custom(format!(
+          "generate_seed_from_mnemonic: {err:?}"
+        )));
+      }
+    };
+
+  let seed_hex = hex::encode(&seed[..]);
+
+  #[cfg(debug_assertions)]
+  {
+    println!("\t- Entropy: {full_entropy:?}");
+    println!("\t- Mnemonic words: {mnemonic_words:?}");
+    println!("\t- Seed (hex): {seed:?}");
+  }
+
+  {
+    let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+    wallet_settings.entropy_checksum = Some(checksum.clone());
+    wallet_settings.entropy_string = Some(full_entropy.clone());
+    wallet_settings.mnemonic_passphrase = Some(passphrase_text.unwrap_or_default().to_string());
+    wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
+    wallet_settings.seed = Some(seed_hex.clone());
+  }
+
+  Ok((full_entropy, mnemonic_words, seed_hex))
+}

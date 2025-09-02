@@ -114,6 +114,6 @@
   "editor.formatOnSave": true,
   "git-graph.referenceLabels.alignment": "Branches (on the left) & Tags (on the right)",
   "github-actions.workflows.pinned.workflows": [],
-  "rust-analyzer.cargo.features": [],
+  "rust-analyzer.cargo.features": "all",
   "lldb.suppressUpdateNotifications": true
 }
