@@ -60,6 +60,7 @@
   "todo-tree.general.tags": [
     "BUG",
     "PANIC",
+    "ERROR",
     "JUMP",
     "TODO",
     "todo!()",
@@ -71,7 +72,8 @@
   ],
   "todo-tree.general.tagGroups": {
     "BUG": [
-      "PANIC"
+      "PANIC",
+      "ERROR"
     ],
     "TODO": [
       "todo!()",

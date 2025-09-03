@@ -7500,65 +7500,69 @@ fn create_new_wallet_window(
 
       // Generate all active addresses
       //   extract all active coins
+
+      // ERROR: Static problem borrowed shit
       let resource_path = std::path::Path::new("coin").join("ECDB.csv");
       let resource_path_str = resource_path.to_str().unwrap_or_default();
-      let my_public = qr2m_lib::get_text_from_resources(&my_key.to_string_lossy());
+      let my_public = qr2m_lib::get_file_from_resources(resource_path_str);
 
-      let file = File::open(resource_path_str).unwrap();
-      let reader = io::BufReader::new(file);
+      match my_public {
+        Ok(file) => {
+          let reader = io::BufReader::new(file.contents());
 
-      let wallet_settings = {
-        let lock = WALLET_SETTINGS.lock().unwrap();
-        lock.clone()
-      };
-
-      for line in reader.lines() {
-        let line = line.unwrap_or("0".to_string());
-        let columns: Vec<&str> = line.split(',').collect();
-
-        if columns.len() > 1 && columns[0] == "1" {
-          let active_coin_index = columns[1].parse().unwrap_or(0);
-
-          let magic_ingredients = keys::AddressHocusPokus {
-            coin_index: wallet_settings.coin_index.unwrap_or_default(),
-            derivation_path: derivation_path.clone(),
-            master_private_key_bytes: wallet_settings
-              .master_private_key_bytes
-              .clone()
-              .unwrap_or_default(),
-            master_chain_code_bytes: wallet_settings
-              .master_chain_code_bytes
-              .clone()
-              .unwrap_or_default(),
-            public_key_hash: wallet_settings.public_key_hash.clone().unwrap_or_default(),
-            key_derivation: wallet_settings.key_derivation.clone().unwrap_or_default(),
-            wallet_import_format: wallet_settings
-              .wallet_import_format
-              .clone()
-              .unwrap_or_default(),
-            hash: wallet_settings.hash.clone().unwrap_or_default(),
+          let wallet_settings = {
+            let lock = WALLET_SETTINGS.lock().unwrap();
+            lock.clone()
           };
 
-          if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
-            let new_entry = CryptoAddresses {
-              id: Some(active_coin_index.to_string()),
-              coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
-              derivation_path: Some(derivation_path.clone()),
-              address: Some(address.address),
-              public_key: Some(address.public_key),
-              private_key: Some(address.private_key),
-            };
+          for line in reader.lines() {
+            let line = line.unwrap_or("0".to_string());
+            let columns: Vec<&str> = line.split(',').collect();
 
-            // address_store_new.append(&new_entry);
-            println!("new_entry: {:?}", new_entry);
-          } else {
-            d3bug(
-              &format!("Problem with generating address with index {active_coin_index:?}"),
-              "error",
-            );
+            if columns.len() > 1 && columns[0] == "1" {
+              let active_coin_index = columns[1].parse().unwrap_or(0);
+
+              let magic_ingredients = keys::AddressHocusPokus {
+                coin_index: columns[1].parse().unwrap_or(0),
+                derivation_path: derivation_path.clone(),
+                master_private_key_bytes: wallet_settings
+                  .master_private_key_bytes
+                  .clone()
+                  .unwrap_or_default(),
+                master_chain_code_bytes: wallet_settings
+                  .master_chain_code_bytes
+                  .clone()
+                  .unwrap_or_default(),
+                public_key_hash: columns[8].parse().unwrap_or("".to_string()),
+                key_derivation: columns[4].parse().unwrap_or("".to_string()),
+                wallet_import_format: columns[10].parse().unwrap_or("".to_string()),
+                hash: columns[5].parse().unwrap_or("".to_string()),
+              };
+
+              if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
+                let new_entry = CryptoAddresses {
+                  id: Some(active_coin_index.to_string()),
+                  coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
+                  derivation_path: Some(derivation_path.clone()),
+                  address: Some(address.address),
+                  public_key: Some(address.public_key),
+                  private_key: Some(address.private_key),
+                };
+
+                // address_store_new.append(&new_entry);
+                println!("new_entry: {:?}", new_entry);
+              } else {
+                d3bug(
+                  &format!("Problem with generating address with index {active_coin_index:?}"),
+                  "error",
+                );
+              }
+            }
           }
         }
+        Err(_) => {}
       }
+
       // TODO: create save button (maybe more)
     }
   ));
