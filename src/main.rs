@@ -7505,6 +7505,7 @@ fn create_new_wallet_window(
       let resource_path = std::path::Path::new("coin").join("ECDB.csv");
       let resource_path_str = resource_path.to_str().unwrap_or_default();
       let my_public = qr2m_lib::get_file_from_resources(resource_path_str);
+      let brain_batch = Arc::new(Mutex::new(BrainBatch::new(BatchConfig::from_speed(1.0))));
 
       match my_public {
         Ok(file) => {
@@ -7540,17 +7541,25 @@ fn create_new_wallet_window(
               };
 
               if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
-                let new_entry = CryptoAddresses {
-                  id: Some(active_coin_index.to_string()),
-                  coin_name: Some(wallet_settings.coin_name.clone().unwrap_or_default()),
-                  derivation_path: Some(derivation_path.clone()),
-                  address: Some(address.address),
-                  public_key: Some(address.public_key),
-                  private_key: Some(address.private_key),
-                };
+                let new_entry = AddressDatabase::new(
+                  &active_coin_index.to_string(),
+                  &wallet_settings.coin_name.clone().unwrap_or_default(),
+                  &derivation_path.clone(),
+                  &address.address,
+                  &address.public_key,
+                  &address.private_key,
+                );
 
                 // address_store_new.append(&new_entry);
                 println!("new_entry: {:?}", new_entry);
+                let mut batch = Vec::new();
+                batch.push(new_entry);
+
+                let duration =
+                  brain_batch
+                    .lock()
+                    .unwrap()
+                    .process_batch(&address_store_new, batch, 60.0);
               } else {
                 d3bug(
                   &format!("Problem with generating address with index {active_coin_index:?}"),
