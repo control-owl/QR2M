@@ -1208,7 +1208,7 @@ impl WalletSettings {
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CryptoAddresses {
   id: Option<String>,
   coin_name: Option<String>,
@@ -3762,8 +3762,8 @@ fn create_main_window(
 
   // JUMP: Action: Generate Seed button
   generate_seed_button.connect_clicked(clone!(
-    #[strong]
-    app_messages_state,
+    // #[strong]
+    // app_messages_state,
     #[weak]
     entropy_source_dropdown,
     #[weak]
@@ -3797,89 +3797,32 @@ fn create_main_window(
       let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
       let selected_entropy_length_value = VALID_ENTROPY_LENGTHS.get(selected_entropy_length_index);
       let source = selected_entropy_source_value.unwrap().to_string();
-      let entropy_length = selected_entropy_length_value.unwrap();
+      let entropy_length = *selected_entropy_length_value.unwrap() as u64;
+      let mnemonic_index = mnemonic_dictionary_dropdown.selected() as usize;
+      let selected_dictionary = VALID_MNEMONIC_DICTIONARY.get(mnemonic_index);
+      let mnemonic_dictionary = selected_dictionary.unwrap();
 
-      // let pre_entropy = keys::generate_entropy(&source, *entropy_length as u64);
-
-      let pre_entropy =
-        keys::generate_entropy(&source, *entropy_length as u64).unwrap_or_else(|err| {
-          d3bug(&format!("generate_entropy: {err:?}"), "error");
-          String::new()
-        });
-
-      if !pre_entropy.is_empty() {
-        let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy);
-        let full_entropy = format!("{}{}", &pre_entropy, &checksum);
-
-        // let lock_app_settings = APP_SETTINGS.read().unwrap();
-        // let mnemonic_dictionary = lock_app_settings
-        //     .wallet_mnemonic_dictionary
-        //     .clone()
-        //     .unwrap();
-
-        let value = mnemonic_dictionary_dropdown.selected() as usize;
-        let selected_dictionary = VALID_MNEMONIC_DICTIONARY.get(value);
-        let mnemonic_dictionary = selected_dictionary.unwrap();
-
-        let mnemonic_words =
-          match keys::generate_mnemonic_words(&full_entropy, Some(mnemonic_dictionary)) {
-            Ok(mnemonic) => {
-              d3bug("<<< generate_mnemonic_words", "debug");
-              mnemonic
-            }
-            Err(err) => {
-              d3bug(&format!("generate_mnemonic_words: {err:?}"), "error");
-              return;
-            }
-          };
-        let passphrase_text = mnemonic_passphrase_text.text().to_string();
-        let seed = match keys::generate_seed_from_mnemonic(&mnemonic_words, &passphrase_text) {
-          Ok(seed) => {
-            d3bug("<<< generate_seed_from_mnemonic", "debug");
-            seed
-          }
-          Err(err) => {
-            d3bug(&format!("generate_seed_from_mnemonic: {err:?}"), "error");
-            return;
-          }
-        };
-        let seed_hex = hex::encode(&seed[..]);
-
-        entropy_text.buffer().set_text(&full_entropy);
-        mnemonic_words_text.buffer().set_text(&mnemonic_words);
-        seed_text.buffer().set_text(&seed_hex.to_string());
-
-        #[cfg(debug_assertions)]
-        {
-          println!("\t- Entropy checksum: {checksum:?}");
-          println!("\t- Final entropy: {full_entropy:?}");
-          println!("\t- Seed (hex): {seed_hex:?}");
+      let (entropy, mnemonic_words, seed) = match generate_seed(
+        &source,
+        Some(entropy_length),
+        Some(&mnemonic_passphrase_text.text()),
+        Some(mnemonic_dictionary),
+      ) {
+        Ok(values) => {
+          d3bug("<<< generate_seed", "debug");
+          values
         }
-
-        {
-          let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
-          wallet_settings.entropy_checksum = Some(checksum.clone());
-          wallet_settings.entropy_string = Some(full_entropy.clone());
-          wallet_settings.mnemonic_passphrase = Some(passphrase_text.clone());
-          wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
-          wallet_settings.seed = Some(seed_hex.clone());
+        Err(err) => {
+          d3bug(&format!("generate_seed: {:?}", err), "error");
+          return;
         }
+      };
 
-        master_private_key_text.buffer().set_text("");
-        master_public_key_text.buffer().set_text("");
-      } else {
-        #[cfg(debug_assertions)]
-        eprintln!("\t- {}", &t!("error.entropy.empty"));
-
-        let lock_app_messages = app_messages_state.borrow();
-        match lock_app_messages.queue_message(
-          t!("error.entropy.empty").to_string(),
-          gtk::MessageType::Warning,
-        ) {
-          Ok(_) => {}
-          Err(err) => d3bug(&format!("queue_message: {err:?}"), "error"),
-        };
-      }
+      entropy_text.buffer().set_text(&entropy);
+      mnemonic_words_text.buffer().set_text(&mnemonic_words);
+      seed_text.buffer().set_text(&seed);
+      master_private_key_text.buffer().set_text("");
+      master_public_key_text.buffer().set_text("");
     }
   ));
 
@@ -4016,8 +3959,8 @@ fn create_main_window(
           if key_derivation == "secp256k1" {
             match keys::generate_master_keys_secp256k1(
               &seed_string,
-              &private_header,
-              &public_header,
+              Some(&private_header),
+              Some(&public_header),
             ) {
               Ok(_) => {
                 d3bug("<<< generate_master_keys_secp256k1", "debug");
@@ -4935,6 +4878,7 @@ fn create_main_window(
                   let coin_path_id = match derivation_path_to_integer(&derivation_path) {
                     Ok(value) => value,
                     Err(err) => {
+                      // BUG: If custom derivation path is set to "m/" then this will spam the terminal with "[ERROR] Error parsing derivation path m//10094: Custom("Empty segment not allowed")"
                       d3bug(
                         &format!(
                           "Error parsing derivation path {derivation_path}: {err:?}"
@@ -7419,6 +7363,7 @@ fn create_new_wallet_window(
   let derivation_dropdown = gtk::DropDown::from_strings(&valid_derivation_as_ref);
   derivation_main_box.append(&derivation_dropdown);
   wallet_main_content_box.append(&derivation_main_box);
+  derivation_dropdown.set_selected(1);
 
   // Button
   let generate_wallet_button = gtk::Button::new();
@@ -7432,8 +7377,8 @@ fn create_new_wallet_window(
     let entry1 = obj1.downcast_ref::<AddressDatabase>().unwrap();
     let entry2 = obj2.downcast_ref::<AddressDatabase>().unwrap();
 
-    let id1 = entry1.property::<String>("id");
-    let id2 = entry2.property::<String>("id");
+    let id1 = entry1.property::<String>("id").parse::<u32>().unwrap_or(0);
+    let id2 = entry2.property::<String>("id").parse::<u32>().unwrap_or(0);
     let coin1 = entry1.property::<String>("coin");
     let coin2 = entry2.property::<String>("coin");
 
@@ -7443,6 +7388,7 @@ fn create_new_wallet_window(
       coin1.cmp(&coin2).into()
     }
   });
+
   let address_sorted_model = gtk::SortListModel::new(Some(address_store_new.clone()), Some(sorter));
   let address_selection_model = gtk::SingleSelection::new(Some(address_sorted_model));
   let address_treeview = gtk::ColumnView::new(Some(address_selection_model.clone()));
@@ -7509,6 +7455,149 @@ fn create_new_wallet_window(
   wallet_main_box.set_margin_bottom(10);
 
   new_wallet_window.set_child(Some(&wallet_main_box));
+
+  // JUMP: CONTINUE HERE
+  generate_wallet_button.connect_clicked(clone!(
+    #[weak]
+    source_dropdown,
+    #[weak]
+    derivation_dropdown,
+    #[strong]
+    address_store_new,
+    move |_| {
+      address_store_new.remove_all();
+      let selected_entropy_source_index = source_dropdown.selected() as usize;
+      let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
+      let source = selected_entropy_source_value.unwrap().to_string();
+
+      let selected_derivation_path = derivation_dropdown.selected() as usize;
+      let selected_derivation_path_value = VALID_BIP_DERIVATIONS.get(selected_derivation_path);
+
+      let mnemonic_rng_string: String = (0..1024)
+        .map(|_| char::from(rand::rng().random_range(32..127)))
+        .collect();
+
+      // let derivation_path = format!("m/{}", derivation_path)
+      // Generate seed
+      let (entropy, mnemonic_words, seed) =
+        match generate_seed(&source, None, Some(&mnemonic_rng_string), None) {
+          Ok(values) => {
+            d3bug("<<< generate_seed", "debug");
+            values
+          }
+          Err(err) => {
+            d3bug(&format!("generate_seed: {:?}", err), "error");
+            return;
+          }
+        };
+
+      println!("{}", entropy);
+      println!("{}", mnemonic_words);
+      println!("{}", mnemonic_rng_string);
+      println!("{}", seed);
+
+      // Generate Master keys
+      let (master_private, master_public) =
+        match keys::generate_master_keys_secp256k1(&seed, None, None) {
+          Ok(value) => {
+            d3bug("<<< generate_master_keys_secp256k1", "debug");
+            value
+          }
+          Err(err) => {
+            return d3bug(
+              &format!("generate_master_keys_secp256k1: \n{err:?}"),
+              "error",
+            );
+          }
+        };
+
+      println!("{}", master_private);
+      println!("{}", master_public);
+
+      // ERROR: Static problem borrowed shit
+      let resource_path = std::path::Path::new("coin").join("ECDB.csv");
+      let resource_path_str = resource_path.to_str().unwrap_or_default();
+      let my_public = qr2m_lib::get_file_from_resources(resource_path_str);
+      let brain_batch = Arc::new(Mutex::new(BrainBatch::new(BatchConfig::from_speed(1.0))));
+
+      if let Ok(file) = my_public {
+        let reader = io::BufReader::new(file.contents());
+
+        let wallet_settings = {
+          let lock = WALLET_SETTINGS.lock().unwrap();
+          lock.clone()
+        };
+
+        for line in reader.lines() {
+          let line = line.unwrap_or("0".to_string());
+          let columns: Vec<&str> = line.split(',').collect();
+
+          if columns.len() > 1 && columns[0] == "1" {
+            let active_coin_index = columns[1].parse().unwrap_or(0);
+
+            let derivation_path = match selected_derivation_path_value {
+              Some(value) => {
+                if let "32" = *value {
+                  String::from("m/0'/0'/0'")
+                } else {
+                  // String::from("m/44'/0'/0'/0/0'")
+                  format!("m/44'/{}'/0'/0/0'", active_coin_index)
+                }
+              }
+              None => format!("m/44'/{}'/0'/0/0'", active_coin_index),
+            };
+
+            let magic_ingredients = keys::AddressHocusPokus {
+              coin_index: active_coin_index,
+              derivation_path: derivation_path.clone(),
+              master_private_key_bytes: wallet_settings
+                .master_private_key_bytes
+                .clone()
+                .unwrap_or_default(),
+              master_chain_code_bytes: wallet_settings
+                .master_chain_code_bytes
+                .clone()
+                .unwrap_or_default(),
+              public_key_hash: columns[8].parse().unwrap_or("".to_string()),
+              key_derivation: columns[4].parse().unwrap_or("".to_string()),
+              wallet_import_format: columns[10].parse().unwrap_or("".to_string()),
+              hash: columns[5].parse().unwrap_or("".to_string()),
+            };
+
+            let mut batch = Vec::new();
+
+            if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
+              let new_entry = AddressDatabase::new(
+                columns[1],
+                columns[3],
+                &derivation_path.clone(),
+                &address.address,
+                &address.public_key,
+                &address.private_key,
+              );
+
+              // address_store_new.append(&new_entry);
+              // println!("new_entry: {:?}", new_entry);
+              batch.push(new_entry);
+
+              let duration =
+                brain_batch
+                  .lock()
+                  .unwrap()
+                  .process_batch(&address_store_new, batch, 60.0);
+            } else {
+              d3bug(
+                &format!("Problem with generating address with index {active_coin_index:?}"),
+                "error",
+              );
+            }
+          }
+        }
+      }
+
+      // TODO: create save button (maybe more)
+    }
+  ));
 
   Ok(new_wallet_window)
 }
@@ -7796,3 +7885,63 @@ impl BrainBatch {
 //
 //   Ok(fps)
 // }
+
+fn generate_seed(
+  source: &str,
+  entropy_length: Option<u64>,
+  passphrase_text: Option<&str>,
+  dictionary: Option<&str>,
+) -> FunctionOutput<(String, String, String)> {
+  let pre_entropy = keys::generate_entropy(source, entropy_length).unwrap_or_else(|err| {
+    d3bug(&format!("generate_entropy: {err:?}"), "error");
+    String::new()
+  });
+
+  let checksum = qr2m_lib::calculate_checksum_for_entropy(&pre_entropy);
+  let full_entropy = format!("{}{}", &pre_entropy, &checksum);
+
+  let mnemonic_words = match keys::generate_mnemonic_words(&full_entropy, dictionary) {
+    Ok(mnemonic) => {
+      d3bug("<<< generate_mnemonic_words", "debug");
+      mnemonic
+    }
+    Err(err) => {
+      return Err(AppError::Custom(format!(
+        "generate_mnemonic_words: {err:?}"
+      )));
+    }
+  };
+
+  let seed =
+    match keys::generate_seed_from_mnemonic(&mnemonic_words, passphrase_text.unwrap_or_default()) {
+      Ok(seed) => {
+        d3bug("<<< generate_seed_from_mnemonic", "debug");
+        seed
+      }
+      Err(err) => {
+        return Err(AppError::Custom(format!(
+          "generate_seed_from_mnemonic: {err:?}"
+        )));
+      }
+    };
+
+  let seed_hex = hex::encode(&seed[..]);
+
+  #[cfg(debug_assertions)]
+  {
+    println!("\t- Entropy: {full_entropy:?}");
+    println!("\t- Mnemonic words: {mnemonic_words:?}");
+    println!("\t- Seed (hex): {seed:?}");
+  }
+
+  {
+    let mut wallet_settings = WALLET_SETTINGS.lock().unwrap();
+    wallet_settings.entropy_checksum = Some(checksum.clone());
+    wallet_settings.entropy_string = Some(full_entropy.clone());
+    wallet_settings.mnemonic_passphrase = Some(passphrase_text.unwrap_or_default().to_string());
+    wallet_settings.mnemonic_words = Some(mnemonic_words.clone());
+    wallet_settings.seed = Some(seed_hex.clone());
+  }
+
+  Ok((full_entropy, mnemonic_words, seed_hex))
+}

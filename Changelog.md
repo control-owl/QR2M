@@ -1,3 +1,7 @@
+# version 0.87.0
+- New wallet
+- cargo updated
+
 # version 0.86.0
 - GitHub Actions auto release CI/CD
   - Linux GNU

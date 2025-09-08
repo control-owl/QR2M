@@ -20,7 +20,7 @@
   "editor.minimap.enabled": false,
   "workbench.colorCustomizations": {},
   "terminal.integrated.tabs.enabled": false,
-  "workbench.colorTheme": "Default Light Modern",
+  "workbench.colorTheme": "Default Dark Modern",
   "todo-tree.highlights.defaultHighlight": {
     "type": "text"
   },
@@ -60,6 +60,7 @@
   "todo-tree.general.tags": [
     "BUG",
     "PANIC",
+    "ERROR",
     "JUMP",
     "TODO",
     "todo!()",
@@ -71,7 +72,8 @@
   ],
   "todo-tree.general.tagGroups": {
     "BUG": [
-      "PANIC"
+      "PANIC",
+      "ERROR"
     ],
     "TODO": [
       "todo!()",
@@ -114,6 +116,6 @@
   "editor.formatOnSave": true,
   "git-graph.referenceLabels.alignment": "Branches (on the left) & Tags (on the right)",
   "github-actions.workflows.pinned.workflows": [],
-  "rust-analyzer.cargo.features": [],
+  "rust-analyzer.cargo.features": "all",
   "lldb.suppressUpdateNotifications": true
 }

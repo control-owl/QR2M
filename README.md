@@ -30,7 +30,6 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Linux x86_64 GNU](https://github.com/control-owl/QR2M/actions/workflows/release-linux-gnu.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/release-linux-gnu.yml)             |
 | [![macOS aarch64 Darwin](https://github.com/control-owl/QR2M/actions/workflows/release-macos-aarch64.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/release-macos-aarch64.yml) |
-| [![Linux x86_64 MUSL](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml/badge.svg?branch=master)](https://github.com/control-owl/QR2M/actions/workflows/check-linux-musl.yml)              |
 
 
 ## Table of Contents

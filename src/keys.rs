@@ -450,7 +450,7 @@ pub fn generate_sha256_ripemd160_address(
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-pub fn generate_entropy(source: &str, entropy_length: u64) -> FunctionOutput<String> {
+pub fn generate_entropy(source: &str, entropy_length: Option<u64>) -> FunctionOutput<String> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.generate_entropy").to_string());
@@ -458,6 +458,8 @@ pub fn generate_entropy(source: &str, entropy_length: u64) -> FunctionOutput<Str
     println!(" - Entropy source: {source:?}");
     println!(" - Entropy length: {entropy_length:?}");
   }
+
+  let entropy_length = entropy_length.unwrap_or(256);
 
   match source {
     "RNG" | "RNG+" => {
@@ -733,9 +735,9 @@ pub fn generate_entropy_from_file(file_path: &str, entropy_length: u64) -> Funct
 
 pub fn generate_master_keys_secp256k1(
   seed: &str,
-  mut private_header: &str,
-  mut public_header: &str,
-) -> FunctionOutput<()> {
+  private_header: Option<&str>,
+  public_header: Option<&str>,
+) -> FunctionOutput<(String, String)> {
   #[cfg(debug_assertions)]
   {
     println!("[+] {}", &t!("log.derive_master_keys").to_string());
@@ -743,17 +745,21 @@ pub fn generate_master_keys_secp256k1(
     println!(" - Public header: {public_header:?}");
   }
 
-  if private_header.is_empty() {
-    private_header = "0x0488ADE4";
-  }
-  if public_header.is_empty() {
-    public_header = "0x0488B21E";
-  }
+  let private_header = u32::from_str_radix(
+    private_header
+      .unwrap_or("0x0488ADE4")
+      .trim_start_matches("0x"),
+    16,
+  )
+  .expect(&t!("error.master.parse.header", value = "private"));
 
-  let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
-    .expect(&t!("error.master.parse.header", value = "private"));
-  let public_header = u32::from_str_radix(public_header.trim_start_matches("0x"), 16)
-    .expect(&t!("error.master.parse.header", value = "public"));
+  let public_header = u32::from_str_radix(
+    public_header
+      .unwrap_or("0x0488B21E")
+      .trim_start_matches("0x"),
+    16,
+  )
+  .expect(&t!("error.master.parse.header", value = "public"));
 
   let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode"));
   let message = "Bitcoin seed";
@@ -823,7 +829,7 @@ pub fn generate_master_keys_secp256k1(
   wallet_settings.master_chain_code_bytes = Some(master_chain_code_bytes.to_vec());
   wallet_settings.master_public_key_bytes = Some(master_public_key_bytes.to_vec());
 
-  Ok(())
+  Ok((master_private_key_encoded, master_public_key_encoded))
 }
 
 // pub fn generate_address(ingredients: AddressHocusPokus) -> FunctionOutput<AddressResult> {
