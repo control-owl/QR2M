@@ -3805,7 +3805,7 @@ fn create_main_window(
       let (entropy, mnemonic_words, seed) = match generate_seed(
         &source,
         Some(entropy_length),
-        Some(&mnemonic_passphrase_text.text().to_string()),
+        Some(&mnemonic_passphrase_text.text()),
         Some(mnemonic_dictionary),
       ) {
         Ok(values) => {
@@ -7455,6 +7455,7 @@ fn create_new_wallet_window(
 
   new_wallet_window.set_child(Some(&wallet_main_box));
 
+  // JUMP: CONTINUE HERE
   generate_wallet_button.connect_clicked(clone!(
     #[weak]
     source_dropdown,
@@ -7463,25 +7464,45 @@ fn create_new_wallet_window(
     #[strong]
     address_store_new,
     move |_| {
+      address_store_new.remove_all();
       let selected_entropy_source_index = source_dropdown.selected() as usize;
       let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
       let source = selected_entropy_source_value.unwrap().to_string();
 
       let selected_derivation_path = derivation_dropdown.selected() as usize;
       let selected_derivation_path_value = VALID_BIP_DERIVATIONS.get(selected_derivation_path);
-      let derivation_path = selected_derivation_path_value.unwrap().to_string();
-
-      // Generate seed
-      let (entropy, mnemonic_words, seed) = match generate_seed(&source, None, None, None) {
-        Ok(values) => {
-          d3bug("<<< generate_seed", "debug");
-          values
+      let derivation_path = match selected_derivation_path_value {
+        Some(value) => {
+          if let "32" = *value {
+            String::from("m/0'/0'/0'")
+          } else {
+            String::from("m/44'/0'/0'/0/0'")
+          }
         }
-        Err(err) => {
-          d3bug(&format!("generate_seed: {:?}", err), "error");
-          return;
-        }
+        None => String::from("m/44'/0'/0'/0/0'"),
       };
+
+      let mnemonic_rng_string: String = (0..1024)
+        .map(|_| char::from(rand::rng().random_range(32..127)))
+        .collect();
+
+      // let derivation_path = format!("m/{}", derivation_path)
+      // Generate seed
+      let (entropy, mnemonic_words, seed) =
+        match generate_seed(&source, None, Some(&mnemonic_rng_string), None) {
+          Ok(values) => {
+            // println!("{}", entropy);
+            // println!("{}", mnemonic_words);
+            // println!("{}", seed);
+            // println!("{}", mnemonic_rng_string);
+            d3bug("<<< generate_seed", "debug");
+            values
+          }
+          Err(err) => {
+            d3bug(&format!("generate_seed: {:?}", err), "error");
+            return;
+          }
+        };
 
       // Generate Master keys
       let (master_private, master_public) =
@@ -7498,78 +7519,73 @@ fn create_new_wallet_window(
           }
         };
 
-      // Generate all active addresses
-      //   extract all active coins
-
       // ERROR: Static problem borrowed shit
       let resource_path = std::path::Path::new("coin").join("ECDB.csv");
       let resource_path_str = resource_path.to_str().unwrap_or_default();
       let my_public = qr2m_lib::get_file_from_resources(resource_path_str);
       let brain_batch = Arc::new(Mutex::new(BrainBatch::new(BatchConfig::from_speed(1.0))));
 
-      match my_public {
-        Ok(file) => {
-          let reader = io::BufReader::new(file.contents());
+      if let Ok(file) = my_public {
+        let reader = io::BufReader::new(file.contents());
 
-          let wallet_settings = {
-            let lock = WALLET_SETTINGS.lock().unwrap();
-            lock.clone()
-          };
+        let wallet_settings = {
+          let lock = WALLET_SETTINGS.lock().unwrap();
+          lock.clone()
+        };
 
-          for line in reader.lines() {
-            let line = line.unwrap_or("0".to_string());
-            let columns: Vec<&str> = line.split(',').collect();
+        for line in reader.lines() {
+          let line = line.unwrap_or("0".to_string());
+          let columns: Vec<&str> = line.split(',').collect();
 
-            if columns.len() > 1 && columns[0] == "1" {
-              let active_coin_index = columns[1].parse().unwrap_or(0);
+          if columns.len() > 1 && columns[0] == "1" {
+            let active_coin_index = columns[1].parse().unwrap_or(0);
 
-              let magic_ingredients = keys::AddressHocusPokus {
-                coin_index: active_coin_index,
-                derivation_path: derivation_path.clone(),
-                master_private_key_bytes: wallet_settings
-                  .master_private_key_bytes
-                  .clone()
-                  .unwrap_or_default(),
-                master_chain_code_bytes: wallet_settings
-                  .master_chain_code_bytes
-                  .clone()
-                  .unwrap_or_default(),
-                public_key_hash: columns[8].parse().unwrap_or("".to_string()),
-                key_derivation: columns[4].parse().unwrap_or("".to_string()),
-                wallet_import_format: columns[10].parse().unwrap_or("".to_string()),
-                hash: columns[5].parse().unwrap_or("".to_string()),
-              };
+            let magic_ingredients = keys::AddressHocusPokus {
+              coin_index: active_coin_index,
+              derivation_path: derivation_path.clone(),
+              master_private_key_bytes: wallet_settings
+                .master_private_key_bytes
+                .clone()
+                .unwrap_or_default(),
+              master_chain_code_bytes: wallet_settings
+                .master_chain_code_bytes
+                .clone()
+                .unwrap_or_default(),
+              public_key_hash: columns[8].parse().unwrap_or("".to_string()),
+              key_derivation: columns[4].parse().unwrap_or("".to_string()),
+              wallet_import_format: columns[10].parse().unwrap_or("".to_string()),
+              hash: columns[5].parse().unwrap_or("".to_string()),
+            };
 
-              if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
-                let new_entry = AddressDatabase::new(
-                  &wallet_settings.coin_index.unwrap().to_string(),
-                  &wallet_settings.coin_name.clone().unwrap_or_default(),
-                  &derivation_path.clone(),
-                  &address.address,
-                  &address.public_key,
-                  &address.private_key,
-                );
+            let mut batch = Vec::new();
 
-                // address_store_new.append(&new_entry);
-                println!("new_entry: {:?}", new_entry);
-                let mut batch = Vec::new();
-                batch.push(new_entry);
+            if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
+              let new_entry = AddressDatabase::new(
+                columns[1],
+                columns[3],
+                &derivation_path.clone(),
+                &address.address,
+                &address.public_key,
+                &address.private_key,
+              );
 
-                let duration =
-                  brain_batch
-                    .lock()
-                    .unwrap()
-                    .process_batch(&address_store_new, batch, 60.0);
-              } else {
-                d3bug(
-                  &format!("Problem with generating address with index {active_coin_index:?}"),
-                  "error",
-                );
-              }
+              // address_store_new.append(&new_entry);
+              // println!("new_entry: {:?}", new_entry);
+              batch.push(new_entry);
+
+              let duration =
+                brain_batch
+                  .lock()
+                  .unwrap()
+                  .process_batch(&address_store_new, batch, 60.0);
+            } else {
+              d3bug(
+                &format!("Problem with generating address with index {active_coin_index:?}"),
+                "error",
+              );
             }
           }
         }
-        Err(_) => {}
       }
 
       // TODO: create save button (maybe more)
