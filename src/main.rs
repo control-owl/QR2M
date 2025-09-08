@@ -7524,7 +7524,7 @@ fn create_new_wallet_window(
               let active_coin_index = columns[1].parse().unwrap_or(0);
 
               let magic_ingredients = keys::AddressHocusPokus {
-                coin_index: columns[1].parse().unwrap_or(0),
+                coin_index: active_coin_index,
                 derivation_path: derivation_path.clone(),
                 master_private_key_bytes: wallet_settings
                   .master_private_key_bytes
@@ -7542,7 +7542,7 @@ fn create_new_wallet_window(
 
               if let Ok(Some(address)) = keys::generate_address(magic_ingredients) {
                 let new_entry = AddressDatabase::new(
-                  &active_coin_index.to_string(),
+                  &wallet_settings.coin_index.unwrap().to_string(),
                   &wallet_settings.coin_name.clone().unwrap_or_default(),
                   &derivation_path.clone(),
                   &address.address,
