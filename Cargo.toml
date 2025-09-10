@@ -11,9 +11,9 @@ build = "build.rs"
 
 
 [dependencies]
-gtk4 = { version = "0.10.0", features = ["gnome_48"] }
-libadwaita = "0.8.0"
-glib = "0.21.1"
+gtk4 = { version = "0.9.6", features = ["gnome_46"] }
+libadwaita = "0.7.2"
+glib = "0.20.10"
 
 toml = "0.9.5"
 toml_edit = "0.23.4"
