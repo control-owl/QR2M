@@ -259,7 +259,7 @@ pub fn get_texture_from_resource(image_name: &str) -> gtk::gdk::Texture {
   }
 }
 
-pub fn get_file_from_resources(file_name: &str) -> Result<&include_dir::File, String> {
+pub fn get_file_from_resources(file_name: &str) -> Result<&include_dir::File<'_>, String> {
   RES_DIR
     .get_file(file_name)
     .ok_or_else(|| format!("File '{file_name}' not found in resources"))

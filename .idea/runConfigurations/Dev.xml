@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Dev" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="Run" singleton="false">
-    <option name="buildProfileId" value="release" />
+    <option name="buildProfileId" value="dev" />
     <option name="command" value="run --package QR2M --bin QR2M --features dev --target-dir &quot;target/dev&quot;" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />

@@ -3,7 +3,7 @@
 
 // -.-. --- .--. -.-- .-. .. --. .... - / --.- .-. ..--- -- .- - .-. --- ----- - -.. --- - .-- - ..-.
 
-// #![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 // #![allow(non_snake_case)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
@@ -661,144 +661,162 @@ impl AppSettings {
 
     match key {
       "wallet_entropy_source" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.wallet_entropy_source {
-            self.wallet_entropy_source = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.wallet_entropy_source
+        {
+          self.wallet_entropy_source = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "wallet_entropy_length" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.wallet_entropy_length {
-            self.wallet_entropy_length = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.wallet_entropy_length
           }
+        {
+          let value = value as u32;
+          self.wallet_entropy_length = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "wallet_mnemonic_length" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.wallet_mnemonic_length {
-            self.wallet_mnemonic_length = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.wallet_mnemonic_length
           }
+        {
+          let value = value as u32;
+          self.wallet_mnemonic_length = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "wallet_bip" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.wallet_bip {
-            self.wallet_bip = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.wallet_bip
           }
+        {
+          let value = value as u32;
+          self.wallet_bip = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "wallet_address_count" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.wallet_address_count {
-            self.wallet_address_count = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.wallet_address_count
           }
+        {
+          let value = value as u32;
+          self.wallet_address_count = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "wallet_hardened_address" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.wallet_hardened_address {
-            self.wallet_hardened_address = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.wallet_hardened_address
+        {
+          self.wallet_hardened_address = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "wallet_mnemonic_dictionary" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.wallet_mnemonic_dictionary {
-            self.wallet_mnemonic_dictionary = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.wallet_mnemonic_dictionary
+        {
+          self.wallet_mnemonic_dictionary = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_save_size" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.gui_save_size {
-            self.gui_save_size = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.gui_save_size
+        {
+          self.gui_save_size = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_last_width" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.gui_last_width {
-            self.gui_last_width = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.gui_last_width
           }
+        {
+          let value = value as u32;
+          self.gui_last_width = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_last_height" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.gui_last_height {
-            self.gui_last_height = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.gui_last_height
           }
+        {
+          let value = value as u32;
+          self.gui_last_height = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_maximized" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.gui_maximized {
-            self.gui_maximized = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.gui_maximized
+        {
+          self.gui_maximized = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_theme" => {
-        if let Some(new_theme) = new_value.as_str() {
-          if Some(new_theme.to_string()) != self.gui_theme {
-            self.gui_theme = Some(new_theme.to_string());
+        if let Some(new_theme) = new_value.as_str()
+          && Some(new_theme.to_string()) != self.gui_theme
+        {
+          self.gui_theme = Some(new_theme.to_string());
 
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
+
+          let preferred_theme = match new_theme {
+            "Light" => adw::ColorScheme::ForceLight,
+            "Dark" => adw::ColorScheme::ForceDark,
+            _ => adw::ColorScheme::PreferLight,
+          };
+
+          adw::StyleManager::default().set_color_scheme(preferred_theme);
+
+          if let Some(state) = gui_state {
+            let mut state = state.borrow_mut();
+            state.gui_theme = Some(new_theme.to_string());
+          } else {
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-
-            let preferred_theme = match new_theme {
-              "Light" => adw::ColorScheme::ForceLight,
-              "Dark" => adw::ColorScheme::ForceDark,
-              _ => adw::ColorScheme::PreferLight,
-            };
-
-            adw::StyleManager::default().set_color_scheme(preferred_theme);
-
-            if let Some(state) = gui_state {
-              let mut state = state.borrow_mut();
-              state.gui_theme = Some(new_theme.to_string());
-            } else {
-              #[cfg(debug_assertions)]
-              println!("State in gui_theme is None");
-            }
+            println!("State in gui_theme is None");
           }
         } else {
           #[cfg(debug_assertions)]
@@ -806,21 +824,21 @@ impl AppSettings {
         }
       }
       "gui_icons" => {
-        if let Some(new_icons) = new_value.as_str() {
-          if Some(new_icons.to_string()) != self.gui_icons {
-            self.gui_icons = Some(new_icons.to_string());
+        if let Some(new_icons) = new_value.as_str()
+          && Some(new_icons.to_string()) != self.gui_icons
+        {
+          self.gui_icons = Some(new_icons.to_string());
 
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
+
+          if let Some(state) = gui_state {
+            let mut state = state.borrow_mut();
+            state.gui_icon_theme = self.gui_icons.clone();
+            state.reload_gui_icons();
+          } else {
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-
-            if let Some(state) = gui_state {
-              let mut state = state.borrow_mut();
-              state.gui_icon_theme = self.gui_icons.clone();
-              state.reload_gui_icons();
-            } else {
-              #[cfg(debug_assertions)]
-              println!("State in gui_icons is None");
-            }
+            println!("State in gui_icons is None");
           }
         } else {
           #[cfg(debug_assertions)]
@@ -828,236 +846,251 @@ impl AppSettings {
         }
       }
       "gui_language" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.gui_language {
-            self.gui_language = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.gui_language
+        {
+          self.gui_language = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_search" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.gui_search {
-            self.gui_search = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.gui_search
+        {
+          self.gui_search = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_notifications" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.gui_notifications {
-            self.gui_notifications = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.gui_notifications
+        {
+          self.gui_notifications = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_notification_timeout" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.gui_notification_timeout {
-            self.gui_notification_timeout = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.gui_notification_timeout
           }
+        {
+          let value = value as u32;
+          self.gui_notification_timeout = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_log" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.gui_log {
-            self.gui_log = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.gui_log
+        {
+          self.gui_log = Some(value);
 
-            if let Some(state) = gui_state {
-              let mut gui_state_lock = state.borrow_mut();
-              gui_state_lock.gui_log_status = Some(value);
-            } else {
-              #[cfg(debug_assertions)]
-              println!("State in gui_theme is None");
-            }
-
+          if let Some(state) = gui_state {
+            let mut gui_state_lock = state.borrow_mut();
+            gui_state_lock.gui_log_status = Some(value);
+          } else {
             #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+            println!("State in gui_theme is None");
           }
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "gui_log_level" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.gui_log_level {
-            self.gui_log_level = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.gui_log_level
+        {
+          self.gui_log_level = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "anu_enabled" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.anu_enabled {
-            self.anu_enabled = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.anu_enabled
+        {
+          self.anu_enabled = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "anu_data_format" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.anu_data_format {
-            self.anu_data_format = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.anu_data_format
+        {
+          self.anu_data_format = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "anu_array_length" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.anu_array_length {
-            self.anu_array_length = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.anu_array_length
           }
+        {
+          let value = value as u32;
+          self.anu_array_length = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "anu_hex_block_size" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.anu_hex_block_size {
-            self.anu_hex_block_size = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.anu_hex_block_size
           }
+        {
+          let value = value as u32;
+          self.anu_hex_block_size = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "anu_log" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.anu_log {
-            self.anu_log = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.anu_log
+        {
+          self.anu_log = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "anu_timeout" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.anu_timeout {
-            self.anu_timeout = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.anu_timeout
           }
+        {
+          let value = value as u32;
+          self.anu_timeout = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_status" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.proxy_status {
-            self.proxy_status = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.proxy_status
+        {
+          self.proxy_status = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_server_address" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.proxy_server_address {
-            self.proxy_server_address = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.proxy_server_address
+        {
+          self.proxy_server_address = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_server_port" => {
-        if let Some(value) = new_value.as_integer() {
-          let value = value as u32;
-          if Some(value) != self.proxy_server_port {
-            self.proxy_server_port = Some(value);
-
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
+        if let Some(value) = new_value.as_integer()
+          && {
+            let value = value as u32;
+            Some(value) != self.proxy_server_port
           }
+        {
+          let value = value as u32;
+          self.proxy_server_port = Some(value);
+
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_use_pac" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.proxy_use_pac {
-            self.proxy_use_pac = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.proxy_use_pac
+        {
+          self.proxy_use_pac = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_script_address" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.proxy_script_address {
-            self.proxy_script_address = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.proxy_script_address
+        {
+          self.proxy_script_address = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_login_credentials" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.proxy_login_credentials {
-            self.proxy_login_credentials = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.proxy_login_credentials
+        {
+          self.proxy_login_credentials = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_login_username" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.proxy_login_username {
-            self.proxy_login_username = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.proxy_login_username
+        {
+          self.proxy_login_username = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_login_password" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.proxy_login_password {
-            self.proxy_login_password = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.proxy_login_password
+        {
+          self.proxy_login_password = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_use_ssl" => {
-        if let Some(value) = new_value.as_bool() {
-          if Some(value) != self.proxy_use_ssl {
-            self.proxy_use_ssl = Some(value);
+        if let Some(value) = new_value.as_bool()
+          && Some(value) != self.proxy_use_ssl
+        {
+          self.proxy_use_ssl = Some(value);
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       "proxy_ssl_certificate" => {
-        if let Some(value) = new_value.as_str() {
-          if Some(value.to_string()) != self.proxy_ssl_certificate {
-            self.proxy_ssl_certificate = Some(value.to_string());
+        if let Some(value) = new_value.as_str()
+          && Some(value.to_string()) != self.proxy_ssl_certificate
+        {
+          self.proxy_ssl_certificate = Some(value.to_string());
 
-            #[cfg(debug_assertions)]
-            println!("\t- Updating key  {key:?} = {new_value:?}");
-          }
+          #[cfg(debug_assertions)]
+          println!("\t- Updating key  {key:?} = {new_value:?}");
         }
       }
       _ => {}
@@ -5076,7 +5109,7 @@ fn create_main_window(
                 brain_batch
                   .lock()
                   .unwrap()
-                  .process_batch(&address_store, entries, current_fps);
+                  .process_batch(&address_store, entries, Some(current_fps));
 
               added_count.fetch_add(batch.len(), std::sync::atomic::Ordering::Relaxed);
               let added = added_count.load(std::sync::atomic::Ordering::Relaxed);
@@ -7466,19 +7499,17 @@ fn create_new_wallet_window(
     address_store_new,
     move |_| {
       address_store_new.remove_all();
+
       let selected_entropy_source_index = source_dropdown.selected() as usize;
       let selected_entropy_source_value = VALID_ENTROPY_SOURCES.get(selected_entropy_source_index);
       let source = selected_entropy_source_value.unwrap().to_string();
 
       let selected_derivation_path = derivation_dropdown.selected() as usize;
       let selected_derivation_path_value = VALID_BIP_DERIVATIONS.get(selected_derivation_path);
-
       let mnemonic_rng_string: String = (0..1024)
         .map(|_| char::from(rand::rng().random_range(32..127)))
         .collect();
 
-      // let derivation_path = format!("m/{}", derivation_path)
-      // Generate seed
       let (entropy, mnemonic_words, seed) =
         match generate_seed(&source, None, Some(&mnemonic_rng_string), None) {
           Ok(values) => {
@@ -7491,10 +7522,13 @@ fn create_new_wallet_window(
           }
         };
 
-      println!("{}", entropy);
-      println!("{}", mnemonic_words);
-      println!("{}", mnemonic_rng_string);
-      println!("{}", seed);
+      d3bug(&format!("entropy: {entropy:?}"), "debug");
+      d3bug(&format!("mnemonic_words: {mnemonic_words:?}"), "debug");
+      d3bug(
+        &format!("mnemonic_rng_string: {mnemonic_rng_string:?}"),
+        "debug",
+      );
+      d3bug(&format!("seed: {seed:?}"), "debug");
 
       // Generate Master keys
       let (master_private, master_public) =
@@ -7511,10 +7545,9 @@ fn create_new_wallet_window(
           }
         };
 
-      println!("{}", master_private);
-      println!("{}", master_public);
+      d3bug(&format!("master_private: {master_private:?}"), "debug");
+      d3bug(&format!("master_public: {master_public:?}"), "debug");
 
-      // ERROR: Static problem borrowed shit
       let resource_path = std::path::Path::new("coin").join("ECDB.csv");
       let resource_path_str = resource_path.to_str().unwrap_or_default();
       let my_public = qr2m_lib::get_file_from_resources(resource_path_str);
@@ -7540,7 +7573,6 @@ fn create_new_wallet_window(
                 if let "32" = *value {
                   String::from("m/0'/0'/0'")
                 } else {
-                  // String::from("m/44'/0'/0'/0/0'")
                   format!("m/44'/{}'/0'/0/0'", active_coin_index)
                 }
               }
@@ -7576,15 +7608,15 @@ fn create_new_wallet_window(
                 &address.private_key,
               );
 
-              // address_store_new.append(&new_entry);
-              // println!("new_entry: {:?}", new_entry);
               batch.push(new_entry);
 
               let duration =
                 brain_batch
                   .lock()
                   .unwrap()
-                  .process_batch(&address_store_new, batch, 60.0);
+                  .process_batch(&address_store_new, batch, None);
+
+              d3bug(&format!("duration: {duration:?}"), "debug");
             } else {
               d3bug(
                 &format!("Problem with generating address with index {active_coin_index:?}"),
@@ -7795,14 +7827,14 @@ impl BrainBatch {
     &mut self,
     list_store: &gio::ListStore,
     entries: Vec<AddressDatabase>,
-    fps: f64,
+    fps: Option<f64>,
   ) -> std::time::Duration {
     let start = std::time::Instant::now();
     list_store.extend_from_slice(&entries);
     let duration = start.elapsed();
     self.list_store_size += entries.len();
     self.last_duration = duration;
-    self.adjust_batch_size(fps);
+    self.adjust_batch_size(fps.unwrap_or(60.0));
     duration
   }
 }

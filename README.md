@@ -70,7 +70,7 @@ This project is licensed under a **Creative Commons Attribution Non Commercial N
     - Linux GNU
     - macOS latest
   - Future builds will support:
-    - Linux MUSL
+    - Linux MUSL (this is capital F hard)
     - Flatpak
     - Snap
     - Windows
