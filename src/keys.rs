@@ -745,21 +745,38 @@ pub fn generate_master_keys_secp256k1(
     println!(" - Public header: {public_header:?}");
   }
 
-  let private_header = u32::from_str_radix(
-    private_header
-      .unwrap_or("0x0488ADE4")
-      .trim_start_matches("0x"),
-    16,
-  )
-  .expect(&t!("error.master.parse.header", value = "private"));
+  let private_header = private_header
+    .unwrap_or("0x0488B21E")
+    .trim_start_matches("0x");
+  let private_header_value = u32::from_str_radix(private_header, 16).unwrap_or_else(|_| {
+    eprintln!("Could not parse private header: '{}'", private_header);
+    0x0488ADE4
+  });
 
-  let public_header = u32::from_str_radix(
-    public_header
-      .unwrap_or("0x0488B21E")
-      .trim_start_matches("0x"),
-    16,
-  )
-  .expect(&t!("error.master.parse.header", value = "public"));
+  let public_header = public_header
+    .unwrap_or("0x0488B21E")
+    .trim_start_matches("0x");
+  let public_header_value = u32::from_str_radix(public_header, 16).unwrap_or_else(|_| {
+    eprintln!("Could not parse public header: '{}'", public_header);
+    0x0488B21E
+  });
+
+  //
+  // let private_header = u32::from_str_radix(
+  //   private_header
+  //     .unwrap_or("0x0488ADE4")
+  //     .trim_start_matches("0x"),
+  //   16,
+  // )
+  // .expect(&t!("error.master.parse.header", value = "private"));
+  //
+  // let public_header = u32::from_str_radix(
+  //   public_header
+  //     .unwrap_or("0x0488B21E")
+  //     .trim_start_matches("0x"),
+  //   16,
+  // )
+  // .expect(&t!("error.master.parse.header", value = "public"));
 
   let seed_bytes = hex::decode(seed).expect(&t!("error.seed.decode"));
   let message = "Bitcoin seed";
@@ -767,7 +784,7 @@ pub fn generate_master_keys_secp256k1(
   let (master_private_key_bytes, master_chain_code_bytes) = hmac_result.split_at(32);
   let mut master_private_key = Vec::new();
 
-  master_private_key.extend_from_slice(&u32::to_be_bytes(private_header));
+  master_private_key.extend_from_slice(&u32::to_be_bytes(private_header_value));
   master_private_key.push(0x00);
   master_private_key.extend([0x00; 4].iter());
   master_private_key.extend([0x00; 4].iter());
@@ -795,7 +812,7 @@ pub fn generate_master_keys_secp256k1(
     secp256k1::PublicKey::from_secret_key(&secp, &master_secret_key).serialize();
   let mut master_public_key = Vec::new();
 
-  master_public_key.extend_from_slice(&u32::to_be_bytes(public_header));
+  master_public_key.extend_from_slice(&u32::to_be_bytes(public_header_value));
   master_public_key.push(0x00);
   master_public_key.extend([0x00; 4].iter());
   master_public_key.extend([0x00; 4].iter());
