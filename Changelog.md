@@ -1,3 +1,6 @@
+# version 0.87.1
+- bug removed: panic when public/private header is None
+
 # version 0.87.0
 - New wallet
 - cargo updated
