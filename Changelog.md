@@ -1,3 +1,6 @@
+# version 0.87.2
+- bug removed: again master private/public keys
+
 # version 0.87.1
 - bug removed: panic when public/private header is None
 
