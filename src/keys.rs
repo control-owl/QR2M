@@ -744,8 +744,13 @@ pub fn generate_master_keys_secp256k1(
     println!(" - Private header: {private_header:?}");
     println!(" - Public header: {public_header:?}");
   }
-  let private_header = private_header.unwrap_or("0x0488ADE4");
-  let public_header = public_header.unwrap_or("0x0488B21E");
+
+  let private_header = private_header
+    .filter(|s| !s.is_empty())
+    .unwrap_or("0x0488ADE4");
+  let public_header = public_header
+    .filter(|s| !s.is_empty())
+    .unwrap_or("0x0488B21E");
 
   let private_header = u32::from_str_radix(private_header.trim_start_matches("0x"), 16)
     .expect(&t!("error.master.parse.header", value = "private_header"));

@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Test releases" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="Test" singleton="false">
-    <option name="buildProfileId" value="release" />
+    <option name="buildProfileId" value="dev" />
     <option name="command" value="test --package QR2M --bin QR2M --target-dir &quot;target/test&quot;" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
@@ -14,9 +14,7 @@
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
     <method v="2">
-      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Cargo_Format" />
-      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Cargo_Clippy" />
-      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_Cargo_Check" />
+      <option name="ToolBeforeRunTask" enabled="true" actionId="Tool_External Tools_Clippy" />
       <option name="RunConfigurationTask" enabled="true" run_configuration_name="Offline" run_configuration_type="CargoCommandRunConfiguration" run_configuration_target="RsBuildProfile:release" />
       <option name="RunConfigurationTask" enabled="true" run_configuration_name="Full" run_configuration_type="CargoCommandRunConfiguration" run_configuration_target="RsBuildProfile:release" />
       <option name="RunConfigurationTask" enabled="true" run_configuration_name="Dev" run_configuration_type="CargoCommandRunConfiguration" run_configuration_target="RsBuildProfile:release" />
