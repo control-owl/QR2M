@@ -1,3 +1,7 @@
+# version 0.87.2
+- bug removed : master private/public keys when None and more
+- few clippy warnings resolved
+
 # version 0.87.1
 - bug removed: panic when public/private header is None
 

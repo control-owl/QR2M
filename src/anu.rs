@@ -222,14 +222,14 @@ fn load_last_anu_request() -> FunctionOutput<SystemTime> {
 
   let path = Path::new(&local_temp_dir);
 
-  if path.exists() {
-    if let Ok(file) = File::open(path) {
-      let reader = BufReader::new(file);
-      if let Some(Ok(timestamp_str)) = reader.lines().next() {
-        if let Ok(timestamp) = timestamp_str.trim().parse::<i64>() {
-          return Ok(SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp as u64));
-        }
-      }
+  if path.exists()
+    && let Ok(file) = File::open(path)
+  {
+    let reader = BufReader::new(file);
+    if let Some(Ok(timestamp_str)) = reader.lines().next()
+      && let Ok(timestamp) = timestamp_str.trim().parse::<i64>()
+    {
+      return Ok(SystemTime::UNIX_EPOCH + Duration::from_secs(timestamp as u64));
     }
   }
 
