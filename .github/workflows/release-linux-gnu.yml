@@ -97,20 +97,23 @@ jobs:
           VERSION="v${{ env.VERSION_NUMBER }}"
 
           echo "Checking if tag $VERSION exists..."
-          if ! "$(git ls-remote --tags origin "$VERSION")" ; then
-            echo "Tag $VERSION does not exists. Creating new signed tag"
+          
+          if [ -n "$(git ls-remote --tags origin "$VERSION")" ]; then
+            echo "Tag $VERSION already exists on remote, skipping."
+          else
+            echo "Tag $VERSION does not exist on remote. Creating new signed tag."
+          
             if ! git tag -a "$VERSION" -s -m "Release $VERSION"; then
               echo "GPG signing failed"
               exit 1
             fi
-              git push origin "$VERSION" || {
-                echo "Tag push failed"
-                exit 1
-              }
-              echo "Tag $VERSION created sucessfully."
-              git ls-remote --tags origin
-          else
-            echo "Tag $VERSION already exists, skipping"
+          
+            if ! git push origin "$VERSION"; then
+              echo "Tag push failed"
+              exit 1
+            fi
+          
+            echo "Tag $VERSION created successfully."
           fi
 
       - name: "Generate signature file"
