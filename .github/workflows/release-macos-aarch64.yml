@@ -104,7 +104,7 @@ jobs:
           VERSION="v${{ env.VERSION_NUMBER }}"
           
           echo "Checking if tag $VERSION exists..."
-          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+          if ! "$(git ls-remote --tags origin "$VERSION")" ; then
             echo "Tag $VERSION does not exists. Creating new signed tag"
             if ! git tag -a "$VERSION" -s -m "Release $VERSION"; then
               echo "GPG signing failed"

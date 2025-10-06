@@ -1,3 +1,6 @@
+# version 0.87.3
+- bug found: github workflow tagging
+
 # version 0.87.2
 - bug removed: master private/public keys when None and more
 - few clippy warnings resolved
